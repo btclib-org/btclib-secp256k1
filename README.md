@@ -1153,6 +1153,13 @@ Python objects for as long as the interpreter keeps them: see
 
 ## The vendored library is not optional
 
+The vendored [libsecp256k1](https://github.com/bitcoin-core/secp256k1) is
+not this project's work: it is distributed under its own licence, by its
+own authors, and the `secp256k1` submodule is only ever read from. That
+sentence used to be in `AUTHORS.md`, which section 14 makes the same file
+in every repository — an attribution true of one tree cannot live in a
+file every tree carries, and this is the section it is about.
+
 Linking against a libsecp256k1 already installed on the system, instead
 of the vendored one, is what a distribution packager needs: Debian,
 Fedora, conda-forge, Nix and Alpine have policies against vendored copies
