@@ -20,18 +20,20 @@ import re
 from pathlib import Path
 
 _ROOT = Path(__file__).parents[1]
-_HOLDER_RE = r"Copyright \([Cc]\) (\d{4})(?:-(\d{4}))? (.+)"
+# the holder line, with no year group to make a range optional: section
+# 14 of the organization standard has LICENSE name the holder and no
+# range, so a year left in the file is read as part of the holder here
+# and disagrees with `authors`, which is the direction that reports it
+# rather than tolerating it
+_HOLDER_RE = r"Copyright \([Cc]\) (.+)"
 _AUTHOR_RE = r'authors\s*=\s*\[\{\s*name\s*=\s*"([^"]+)"'
 
 
-def _license_holder() -> tuple[str, str, str]:
+def _license_holder() -> str:
     text = (_ROOT / "LICENSE").read_text(encoding="utf-8")
     match = re.search(_HOLDER_RE, text)
-    assert match, (
-        f"LICENSE has no 'Copyright (c) YYYY[-YYYY] holder' line: {text[:80]!r}"
-    )
-    start, end, holder = match.group(1), match.group(2), match.group(3)
-    return start, end or start, holder
+    assert match, f"LICENSE has no 'Copyright (c) holder' line: {text[:80]!r}"
+    return match.group(1)
 
 
 def _pyproject_author() -> str:
@@ -43,7 +45,7 @@ def _pyproject_author() -> str:
 
 def test_license_holder_matches_the_declared_author() -> None:
     """The wheel's `Author` metadata is the same holder LICENSE names."""
-    _, _, license_holder = _license_holder()
+    license_holder = _license_holder()
     author = _pyproject_author()
     assert license_holder == author, (
         f"LICENSE names {license_holder!r}, pyproject.toml's author "
