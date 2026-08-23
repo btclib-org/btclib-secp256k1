@@ -1,10 +1,11 @@
 ---
 name: Append a dev suffix to the version
 description: >
-  Rewrites the version in pyproject.toml, appending the given suffix, so
-  that a rehearsal builds a version no index has seen. Every build job of
-  the test workflow runs this, and they must all produce the same
-  version: the suffix is decided once, by the caller.
+  Rewrites the version in pyproject.toml, appending the given suffix, and
+  re-locks so that uv.lock agrees: what a rehearsal needs before it
+  builds a version no index has seen. Every build job of the test
+  workflow runs this, and they must all produce the same version: the
+  suffix is decided once, by the caller.
 
 inputs:
   suffix:
@@ -43,3 +44,16 @@ runs:
         path.write_text(text[: match.start()] + line + text[match.end() :], encoding="utf-8")
         PY
         grep -m1 '^version' pyproject.toml
+        # uv.lock carries the project version, so the rewrite above
+        # leaves the two disagreeing, and every uv command that passes
+        # --locked -- all of them, section 1 of the organization standard
+        # allowing no other flag -- then fails with "the lockfile needs
+        # to be updated". Re-locking here, rather than relaxing the
+        # build steps to --frozen, is btclib-org/.github#128's decision:
+        # the only entry this moves is the project's own, measured
+        # against the tree as `git diff --stat uv.lock` answering one
+        # line. It is also what makes the sdist coherent: that archive
+        # ships uv.lock, which otherwise declared the unsuffixed version
+        # inside a distribution named for the suffixed one. Every caller
+        # sets up uv before reaching this, as it does python
+        uv lock

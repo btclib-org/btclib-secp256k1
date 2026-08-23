@@ -618,20 +618,12 @@ shasum -a 256 dist/btclib_secp256k1-0.8.0.4.tar.gz
 ```
 
 is the whole of it — against a worktree rather than the primary
-checkout, for the reason CLAUDE.md gives, and `--locked` rather than
-the `--frozen` that `build-sdist` in `test.yml` runs. That is
-deliberate, not the two files drifting apart: `test.yml`'s own comment
-on `--frozen` names its reason, the rehearsal path patching a
-`.dev<run><attempt>` suffix into `pyproject.toml` before that step,
-which is exactly the lock-and-tree disagreement `--locked` refuses. A
-rebuild from a released tag carries no such patch — nothing rewrote the
-version, so the lock and `pyproject.toml` already agree — and
-`--locked` asserts that agreement rather than skipping it, checking
-that the lock is the one the tag committed instead of taking
-`uv.lock` as `--frozen` finds it. Both flags build the same sdist:
-`v0.8.0.4` rebuilt with `--locked` matches the published digest exactly
-as it did with `--frozen`, so this changes what the rebuild checks on
-the way, not what it produces. Compare the digest against
+checkout, for the reason CLAUDE.md gives, and with the command
+`build-sdist` in `test.yml` runs, `--locked` included: a rebuild from a
+released tag has nothing rewriting the version, so the lock and
+`pyproject.toml` already agree, and the flag asserts that the lock is
+the one the tag committed rather than taking `uv.lock` as it finds it.
+Compare the digest against
 `pypi.org/pypi/btclib-secp256k1/<version>/json`'s own, or against the
 `sdist` artifact `gh run download` pulls from the release's run; both
 name the file this reproduces.

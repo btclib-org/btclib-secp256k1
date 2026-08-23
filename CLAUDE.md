@@ -230,13 +230,10 @@ precisely so these stay true, and both must report zero findings.
   a `concurrency-suffix` input and `release.yml` passes one: without it a
   rehearsal dispatched on a branch shares a group with a push to that
   branch, and one cancels the other
-- uv commands pass `--locked`, never `--frozen` — except the wheel-build
-  steps of `test.yml` (`build-cibuildwheel`, `build-dynamic`,
-  `build-sdist`, the Windows cross-build), which run after the
-  `dev-version` action has rewritten `pyproject.toml` on the rehearsal
-  path; `--locked` refuses exactly that disagreement, so those steps use
-  `--frozen`, and the comment above `build-cibuildwheel`'s `Build wheels`
-  step has the reasoning in full
+- the rehearsal path rewrites the version in `pyproject.toml`, and the
+  `dev-version` action that does it re-locks in the same step, so every
+  uv command here passes `--locked` with no exception, the build steps
+  after that action included; the action's own comment has the reasoning
 - the packaging tools come from the pinned `check` group, not from `uvx`,
   which would fetch whatever the index holds when the job runs
 - a hook that needs a tool carries it in `additional_dependencies`, with

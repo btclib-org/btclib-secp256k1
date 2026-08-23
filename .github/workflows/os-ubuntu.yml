@@ -47,7 +47,7 @@ name: os-ubuntu
 # `_load_lib`'s second branch, and not the artifact pip resolves to
 # wherever no static wheel matches. That set is wider than one cell:
 #
-#     uv run --frozen --only-group build cibuildwheel \
+#     uv run --locked --only-group build cibuildwheel \
 #         --platform windows --print-build-identifiers | grep pp
 #
 # answers nothing at all, and neither does musllinux on any PyPy, so
