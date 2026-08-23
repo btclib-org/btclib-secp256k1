@@ -20,10 +20,9 @@ this closes, if there is one: "Closes #123".
 <!--
 The command you ran and what it answered, the test that covers the change,
 the vector it reproduces. This repository asks for a measurement rather than
-a claim -- see the "Verifying, rather than reasoning about, a change"
-section of CLAUDE.md -- and for a wrapper the vector has to come from
-somewhere other than these bindings: their own output agreeing with itself
-proves nothing.
+a claim -- see the "Verifying" section of CLAUDE.md -- and for a wrapper
+the vector has to come from somewhere other than these bindings: their
+own output agreeing with itself proves nothing.
 
 A claim about the build matrix is measurable too: `gh run view <id>
 --log-failed` reads better than a prediction of what CI will say.

@@ -255,6 +255,13 @@ own equivalent: every `automodule` directive imports this package, which
 means compiling libsecp256k1 first. Coverage is measured in branch mode
 and gated by the `fail_under` ratchet in `pyproject.toml`.
 
+The group flags are not decoration. `uv run` syncs the environment
+itself, and without `--no-default-groups --group test` it installs the
+whole dev set, which is how the coverage job came to install twenty-nine
+packages after deliberately installing ten. After touching
+`pyproject.toml`, `uv lock` — the `uv-lock` hook does it too, and then the
+gate is a second run.
+
 **Check exit codes, not filtered output.** `pre-commit run ... | grep -v
 Passed` hides a failure, and `grep` finding nothing exits 1, which is not
 the gate's answer to anything.
@@ -635,6 +642,23 @@ tree's prose:
   branch, so a release always needs the tagged commit
 
 ### What gates a merge, and what only reports
+
+`.pre-commit-config.yaml` is the single definition of what "clean" means,
+and the `lint` workflow runs that very file, so what CI enforces is what
+the local gate enforces. Never add a check that exists only in a
+workflow, and never leave a hook weaker locally than on a runner: a hook
+that needs a tool the developer may not have carries it in
+`additional_dependencies`, which is why `actionlint` ships `shellcheck-py`
+and `zizmor` is a `local` hook pinned to a version. A check discovered by
+CI after a push is a check in the wrong place.
+
+The aggregate of `test`, the `lint` job and the documentation build are
+the required checks, and `REPOSITORY.md` reads that rule back from the
+endpoint rather than restating it. `release` reuses all three. Everything
+else reports: a sentinel opens no issue when it fails, `vendored-vectors`
+excepted for the reason its own header gives, because each is expected to
+go red for something no pull request introduced and a red check nobody
+can act on from a branch is noise.
 
 | workflow | when | what it varies |
 | --- | --- | --- |

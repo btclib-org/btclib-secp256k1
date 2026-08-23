@@ -252,8 +252,8 @@ Then:
    once `required_signatures` was read as asking for a valid signature
    and not for a particular signer — a commit GitHub composes and signs
    on merge is exactly as good a base for the release tag as one signed
-   from the command line, and CLAUDE.md now says so for every pull
-   request here, this one included.
+   from the command line, which is what section 11 of the organization
+   standard asks of every pull request here, this one included.
 
    What no landing here can cost any more is the history of a cycle. It
    could once: 0.7.1 was *Squash and merge* on a release pull request

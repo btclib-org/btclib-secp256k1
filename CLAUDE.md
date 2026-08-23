@@ -1,4 +1,7 @@
-# Working on btclib_secp256k1
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working
+with code in this repository.
 
 Python bindings to a vendored [libsecp256k1](./secp256k1/), built from
 source. The package is thin: the cryptography is upstream, and what lives
@@ -9,26 +12,27 @@ that asks it, and `gh run view <id> --json artifacts` answers it; a number
 here would be a line every matrix change has to edit, and nothing would
 fail when it was not edited.
 
-Repository configuration — branch protection, required checks, token
-permissions, publishing environments, Dependabot, secret scanning — is in
-[REPOSITORY.md](./REPOSITORY.md). Read that file before changing a workflow,
-a branch rule or a repository setting. Writing code does not need it.
+How to work here — what the issue tracker takes, the prose style, how a
+pull request is opened and landed — is
+[CONTRIBUTING.md](./CONTRIBUTING.md), which is the same file in every
+repository of the organization up to its last section, that one holding
+this tree's environment, its gate commands and which of its workflows
+decide a merge. Reviewing is [REVIEWING.md](./REVIEWING.md), the same way
+and with the same last section, and `/review` is that file as a command;
+read it before reviewing a pull request and before opening one, since it
+is what the pull request will be answered against. Repository
+configuration — branch protection, required checks, token permissions,
+publishing environments, Dependabot, secret scanning — is
+[REPOSITORY.md](./REPOSITORY.md): read it before changing a workflow, a
+branch rule or a setting.
 
-Reviewing a pull request — what a review establishes before it gives
-an ack, what a finding must contain, and why everything it notices
-that the diff is not about becomes an issue rather than a comment — is
-[REVIEWING.md](./REVIEWING.md), and `/review` is that file as a command.
-
-This file is for what is not written down elsewhere. The documentation is,
-and stays, in:
+The rest of the documentation, and none of it repeated here:
 
 - [README.md](./README.md) — design, wrapped modules, build, and the
   static/dynamic/sdist distinction
-- [CONTRIBUTING.md](./CONTRIBUTING.md) — how to build and test
-  locally, how to reproduce each CI job, and what a change has to satisfy
 - [RELEASING.md](./RELEASING.md) — the release, and the rehearsal
-- [scripts/README.md](./scripts/README.md) — the build backend, one file at
-  a time
+- [scripts/README.md](./scripts/README.md) — the build backend, one file
+  at a time
 - the comments in `.github/workflows/*.yml` and `pyproject.toml`, which
   carry the reasoning behind their choices
 
@@ -51,10 +55,12 @@ Above it, one module per libsecp256k1 module wrapped: `dsa`, `ssa`,
 the boundary. No module is one call of another: `mult` had become that
 -- `pubkey_from_prvkey` with a flag fixed -- and was folded into `keys`.
 
-MuSig2 is deliberately *not* wrapped: its two-round protocol needs a
-session whose secret nonce cannot be reused, which belongs where the
-signing state lives, in btclib; it is reachable through the raw `ffi`
-and `lib` this package exposes. See the Design section of the README
+MuSig2 is deliberately *not* wrapped as a protocol: its two-round session
+holds a secret nonce that cannot be reused, which belongs where the
+signing state lives, in btclib. `musig.KeyAggCache` and `musig.Session`
+are the one place this package holds a libsecp256k1 object with no
+serialization to be one, and `musig.py`'s module docstring carries the
+reasoning for taking that exception. See the Design section of the README
 before adding a module.
 
 Below it, `scripts/cffi_build.py` builds the vendored library with CMake
@@ -64,23 +70,6 @@ compiled at all — chosen by `BTCLIB_LIBSECP256K1_DYNAMIC`,
 `BTCLIB_LIBSECP256K1_CROSS_COMPILE` and `CFFI_PLATFORM`.
 `stubs/_btclib_secp256k1.pyi` is what lets strict mypy typecheck a
 module that only exists after a build.
-
-## The gate is one file
-
-`.pre-commit-config.yaml` is the single definition of what "clean" means.
-The `lint` workflow runs that very file, so what CI enforces is what a
-commit enforces:
-
-```shell
-uvx pre-commit run --all-files
-```
-
-Never add a check that exists only in a workflow, and never leave a hook
-weaker locally than on a runner: a hook that needs a tool the developer
-may not have carries it in `additional_dependencies` (this is why
-`actionlint` ships `shellcheck-py` and `zizmor` is a `local` hook pinned
-to a version). A check discovered by CI after a push is a check in the
-wrong place.
 
 ## The primary checkout is the maintainer's
 
@@ -180,186 +169,8 @@ cause. Use `/model opus` for the session, then switch back to Sonnet.
 
 Do not use Fable unless explicitly instructed.
 
-## Commands whose flags are load-bearing
+## Non-obvious facts that will otherwise waste a session
 
-```shell
-# the suite, as the coverage job runs it: uv run syncs by itself, and
-# without these flags it installs the whole dev set
-uv run --locked --no-default-groups --group test pytest --cov
-
-# another interpreter; --no-cache because the cached extension
-# belongs to one ABI
-uv run --python 3.10 --no-cache pytest
-
-# the packaging gates, pinned by uv.lock rather than fetched by uvx
-uv build --sdist
-uv run --locked --only-group check twine check --strict dist/*
-uv run --locked --only-group check pyroma --min 10 dist/*.tar.gz
-
-# after touching pyproject.toml; the uv-lock hook does it too
-uv lock
-
-# after adding a hex constant to a test module; the vendored vector
-# data has a baseline of its own, whose command is in CONTRIBUTING.md.
-# Neither file is excluded from the scan, only recorded as reviewed.
-# --slim and a redirect, not --baseline: the flag is what keeps a moved
-# line from rewriting the file, and --baseline writes the full form
-# whatever it read -- it also merges, so a redirect drops what an audit
-# marked; CONTRIBUTING.md carries both halves
-uvx --from detect-secrets detect-secrets scan --slim \
-    --exclude-files '^(\.secrets\..*baseline|tests/.*\.(csv|json))$' \
-    > .secrets.baseline
-```
-
-## The workflows that gate, and the ones that do not
-
-The suite's aggregate, the lint job and the documentation build are the
-required checks on a pull request, and `REPOSITORY.md` reads the rule
-back from the endpoint rather than asserting it. So code does not reach a
-review without having passed them or passing them beside it on the same
-sha, and a reviewer may rely on that rather than establishing it again;
-`REVIEWING.md` has what the reliance takes.
-
-`lint`, `docs` and `test` are the gate, and `release` reuses all three.
-`codeql` is not one of them and holds nothing: no branch rule names its
-aggregate, and it has no `pull_request` trigger at all, so a merge never
-waits on it. It runs on the push to `main` that a merge creates — its
-own `on:` block says what that trade bought and what it defers — and
-weekly besides, which is what covers the code nobody touched. `release`
-does not reuse it and does not have to: a tag is an ancestor of `main`
-before the matrix builds anything (`version-check` in `release.yml`), so
-the tree it publishes is one that push-triggered analysis has already
-read. The rest are sentinels: each is a workflow of its own, has no
-aggregate job, is named by no branch rule, and opens no issue on failure
-(`vendored-vectors` excepted, for the reason its own header gives). That
-is deliberate in every case — each is expected to go red for a reason no
-pull request introduced, and a red check nobody can act on from a branch
-is noise. Their crons are spread out, because sentinels landing in one inbox
-on one morning are one sentinel, and `codeql` keeps a morning of its own
-for the same reason. Which day and which minute each takes is section 10
-of the organization standard in `btclib-org/.github` and not this file's to
-restate; where two deliberately share a morning an hour apart, their cron
-comments say what reading the pair together buys. What each
-sentinel asks is the first thing its own header says, and the `on:` block
-under that header is when.
-
-`os-ubuntu`, `os-macos` and `os-windows` are the three platform sentinels: the suite
-on both images of a platform and on every interpreter, which is the whole
-of what the gate's single cell does not ask. Keeping them off the gate is a
-measurement rather than a preference — macOS runners queue for tens of
-minutes where every other platform queues for two, and GitHub Free gives an
-organization twenty concurrent jobs shared across every repository in it,
-which a matrix on every commit spends before a reviewer is reached.
-`test.yml`'s header carries the numbers and the command that re-derives
-them, `os-windows.yml`'s the rest of the second, and `os-ubuntu.yml`'s header is
-the argument the other two point at. `release` calls all three, so what a
-merge does not wait for a publication still does.
-
-`deps-latest` is the one that covers a gap nothing else does. Every uv command
-elsewhere passes `--locked`, the dependency groups declare no version, and
-the one runtime dependency is cffi — which this package does not merely
-import but *compiles against*, so a cffi, setuptools or cmake release can
-break the build rather than a test — and none of those three is something
-Dependabot moves, `[build-system] requires` being resolved at build time
-and pinned by no lock file. Dependabot is weekly and lands the morning
-after this runs, which is the other half of the arrangement: the sentinel
-answers first, so the pull requests that arrive next are a diff whose
-result is already known. `.github/dependabot.yml` carries that reasoning
-where the day is set, and `deps-latest.yml`'s cron comment where this one is.
-
-`mutation` is scoped by `.github/mutation/bindings.toml`, which is also
-what a local run reads, so there is one statement of what is mutated and
-what judges it. Two things to know before starting one: it mutates the
-source in place and restores it, so nothing else may read the tree while it
-runs, and `cosmic-ray baseline` comes first — without it a stale test
-command fails every mutant identically and the session reports a perfect
-kill rate, which is the one failure mode that looks like good news.
-
-## What this repository expects
-
-- **the prose style is CONTRIBUTING.md's "Documentation and comments"
-  section**, stated once there because contributors read that file and not
-  this one. Its shortest form: comments say why, the what being in the
-  diff; a change that makes a comment untrue updates the comment, in the
-  workflows and the build scripts as much as in the package; and never
-  state a count that nothing checks
-- **tests validate against external vectors.** A test that compares these
-  bindings with themselves proves nothing. `tests/test_vectors.py`
-  documents where each vendored file comes from
-- **coverage is a ratchet at 100%,** with `raise RuntimeError` excluded:
-  see the reasoning in `pyproject.toml`
-- **warnings are errors** (`filterwarnings`), because the 3.10 to 3.14
-  spread turns a deprecation into a breakage
-- **the version is declared once,** in `pyproject.toml`; `__version__`
-  reads the installed metadata. Never bump it in an ordinary change:
-  releases are cut by a maintainer, and the release workflow checks the
-  tag against it. The one bump that is not a release is the fourth number
-  opened straight after one, so that the tree stops claiming the version
-  it shipped: RELEASING.md's step that opens the next version, and the
-  reason that step exists
-- **the `secp256k1` submodule moves in a change of its own,** with the
-  version named in `README.md` and `RELEASE_NOTES.md` moved with it
-- **`main` is the only long-lived branch**, so a pull request targets it
-  and a tag on it is a release; it is protected, and every change gets
-  there through a pull request, and through nothing else — a direct push
-  is refused for everyone. Squash is the only merge button enabled, and
-  auto-merge is what presses it once review and checks are in: one
-  commit regardless of how many the branch carried, composed and signed
-  by GitHub, whose signature is what the rule asks for, a valid one
-  rather than a particular signer's. GitHub therefore reconciles every
-  landing — Merged, `Closes #N` in the description fires, and the head
-  branch goes — with no case left where a commit arrives that no pull
-  request names. REPOSITORY.md has the settings that make that true. A
-  pull request stacked on another is rebased once its parent lands, and
-  pays a fresh run of the matrix for it. The `dev` this repository used
-  to develop on, and the
-  release merge into `master` that went with it, are gone; RELEASING.md
-  is the file that describes what replaced them
-
-## Conventions the workflows hold to
-
-Each of these was arrived at by something going wrong, and `actionlint`
-and `zizmor` are hooks precisely so they stay true. Both must report zero
-findings.
-
-- every action pinned to a commit SHA, with the tag in a trailing comment
-- every workflow declares `permissions: contents: read`, and a job that
-  needs more declares it itself
-- every job declares `timeout-minutes`
-- `concurrency` groups are named literally (`test-${{ github.ref }}`),
-  never through `github.workflow`: in a called workflow what that resolves
-  to is undocumented, and if it is the caller's name the two workflows a
-  release calls would cancel each other. `github.ref` in a called workflow
-  is the *caller's* ref, so a reusable workflow also takes a
-  `concurrency-suffix` input, and `release.yml` passes one: without it a
-  rehearsal dispatched on a branch shares a group with a push to that
-  branch, and one cancels the other
-- `actions/checkout` passes `persist-credentials: false`, so the token
-  does not stay in `.git/config` where an artifact upload could carry it
-- uv commands pass `--locked`, never `--frozen` — except the wheel-build
-  steps of `test.yml` (`build-cibuildwheel`, `build-dynamic`,
-  `build-sdist`, the Windows cross-build), which run after the
-  `dev-version` action has rewritten `pyproject.toml` on the rehearsal
-  path; `--locked` refuses exactly that disagreement, so those steps use
-  `--frozen`, and the comment above `build-cibuildwheel`'s `Build wheels`
-  step has the reasoning in full
-- the packaging tools come from the pinned `check` group, not from `uvx`,
-  which would fetch whatever the index holds when the job runs
-- a hook that needs a tool carries it in `additional_dependencies`, with
-  a version: unpinned it is whatever existed when each environment was
-  built, and nothing ever moves it
-
-## Facts that would otherwise cost a session
-
-- **`uv run --python 3.10 …` replaces `.venv`** with an environment built
-  on that interpreter, and leaves it there. Going back is another
-  `uv sync`, plus `--reinstall-package btclib_secp256k1 --no-cache` if
-  the extension in the cache belongs to the ABI just left. The README
-  says so, at the end of a long section
-- **`uv run` syncs the environment itself.** Without
-  `--no-default-groups --group test` it installs the whole dev set, which
-  is how the coverage job came to install twenty-nine packages after
-  deliberately installing ten
 - **the settings that cannot be enabled are in REPOSITORY.md**, with the
   API call that shows each still off: the two secret-scanning extensions
   are the ones that answer a PATCH with 200 and change nothing. Do not
@@ -387,19 +198,52 @@ findings.
   used where its size and truncated mtime match — which is the same
   window as above, and the reason the hand recipe wants the control run
   and not only the variable
-- **`detect-secrets` runs twice, over two baselines**: the tree with the
-  entropy detectors on, and `tests/*.csv`/`tests/*.json` with them off,
-  those files being hex and nothing else. Adding to either side fails its
-  hook until that baseline is regenerated; both commands are in
-  CONTRIBUTING.md, and reading the diff is the point of a baseline
-- **the `pypi-published` workflow went green with 0.7.1**, on 4 August 2026,
-  nineteen cells out of nineteen, having been nineteen out of nineteen red
-  the day before: 0.4.0 had no arm64 wheel and its sdist no longer built,
-  so that red was a fact about what users could install rather than a
-  broken workflow. A red there still means the outside world moved, which
-  is why it is a workflow of its own and not a job of `release`
+- **a mutation session mutates the source in place and restores it**, so
+  nothing else may read the tree while one runs: no second session, no
+  `pytest` in another shell, and a `git status` in the middle is a
+  working tree with a mutant in it. `cosmic-ray baseline` comes first,
+  always — without it a stale test command fails every mutant
+  identically and the session reports a perfect kill rate, which is the
+  one failure mode of a mutation run that looks like good news
+- **the `pypi-published` workflow went green with 0.7.1**, on 4 August
+  2026, nineteen cells out of nineteen, having been nineteen out of
+  nineteen red the day before: 0.4.0 had no arm64 wheel and its sdist no
+  longer built, so that red was a fact about what users could install
+  rather than a broken workflow. A red there still means the outside
+  world moved, which is why it is a workflow of its own and not a job of
+  `release`
 
-## Verifying, rather than reasoning about, a change
+## Conventions to match
+
+Section 9 of the organization standard is the prose style and section 10
+is what every workflow of the organization does; neither is re-listed
+here, that standard's own *One fact in one place* being the reason.
+`CONTRIBUTING.md`'s last section has the gates and the commands, and what
+a change to these bindings has to satisfy.
+
+What is left to this file is where this tree departs from section 10, or
+holds something it does not reach. `actionlint` and `zizmor` are hooks
+precisely so these stay true, and both must report zero findings.
+
+- `concurrency` groups are named literally, and `github.ref` in a called
+  workflow is the *caller's* ref, so a reusable workflow here also takes
+  a `concurrency-suffix` input and `release.yml` passes one: without it a
+  rehearsal dispatched on a branch shares a group with a push to that
+  branch, and one cancels the other
+- uv commands pass `--locked`, never `--frozen` — except the wheel-build
+  steps of `test.yml` (`build-cibuildwheel`, `build-dynamic`,
+  `build-sdist`, the Windows cross-build), which run after the
+  `dev-version` action has rewritten `pyproject.toml` on the rehearsal
+  path; `--locked` refuses exactly that disagreement, so those steps use
+  `--frozen`, and the comment above `build-cibuildwheel`'s `Build wheels`
+  step has the reasoning in full
+- the packaging tools come from the pinned `check` group, not from `uvx`,
+  which would fetch whatever the index holds when the job runs
+- a hook that needs a tool carries it in `additional_dependencies`, with
+  a version: unpinned it is whatever existed when each environment was
+  built, and nothing ever moves it
+
+## Verifying
 
 The build matrix is expensive — tens of jobs compiling C — and this
 package exists to behave identically everywhere, so a claim about it is
