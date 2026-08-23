@@ -28,11 +28,17 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 from subprocess import PIPE, Popen
 from sysconfig import get_config_var, get_path, get_platform
 from typing import Any
 
 import cffi
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 cross_compile = os.environ.get("BTCLIB_LIBSECP256K1_CROSS_COMPILE", "false") == "true"
 static = os.environ.get("BTCLIB_LIBSECP256K1_DYNAMIC", "false") != "true"
@@ -325,6 +331,7 @@ class Secp256k1CFFIExtension(FFIExtension):
         self.libraries = ["secp256k1"]
         super().__init__()
 
+    @override
     def clean(self) -> None:
         """Remove the out-of-tree CMake build and the emitted extensions."""
         # a stale CMake cache remembers the previous configuration
@@ -386,6 +393,7 @@ class Secp256k1CFFIExtension(FFIExtension):
             return [f"-DCMAKE_OSX_ARCHITECTURES={arch}"]
         return []
 
+    @override
     def build_c(self) -> None:
         """Build the vendored library with CMake, on every platform."""
         self.cmake_dir.mkdir(parents=True, exist_ok=True)
@@ -494,6 +502,7 @@ class Secp256k1CFFIExtension(FFIExtension):
         if self.static and platform.system() == "Windows":
             self.libraries = ["libsecp256k1"]
 
+    @override
     def generate_def(self) -> tuple[str, str]:
         """Concatenate the public headers, and preprocess them for cffi.
 

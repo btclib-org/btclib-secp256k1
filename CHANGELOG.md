@@ -932,6 +932,24 @@ release-notes length in the first place, and are still in
 
 ### The gate
 
+- **`enable_error_code` is the organization's list**
+  (btclib-org/.github#165). Section 6's optional mypy error codes are one
+  list, the same in every repository that runs mypy; this tree's carried
+  `narrowed-type-not-subtype`, which the locked mypy reports under bare
+  `--strict` with no code enabled at all, and lacked `explicit-override`
+  and `unused-awaitable`. The comment beside the array now names the
+  standard instead of walking a survey of this tree and a comparison
+  against btclib's, a per-tree survey being the rule that let the lists
+  drift. `explicit-override` is the one code of the two with findings
+  here, every one a method of the build backend overriding
+  `FFIExtension` or hatchling's `BuildHookInterface`: those methods carry
+  `@override`, from `typing` at 3.12 and from `typing_extensions` below
+  it, so `[build-system] requires` gains `typing_extensions` under a
+  `python_version<"3.12"` marker -- resolved at build time and pinned by
+  no lock file, like everything else in that array. The mypy hook
+  declares the same package among its additional dependencies, what the
+  checked files import being declared there.
+
 - **The test modules are `*_test.py`, and `name-tests-test` runs at its
   default** (btclib-org/.github#131). Section 7 of the organization
   standard states one spelling and names the hook that enforces it at

@@ -518,6 +518,9 @@ repos:
           - types-cffi==2.0.0.20260518
           - hatchling==1.32.0
           - pytest==9.1.1
+          # hyphenated as uv.lock spells it, hook_pins_test.py keying
+          # the two on one name
+          - typing-extensions==4.16.0
   # the workflows are as much a part of this repository as the package,
   # and until now nothing checked them: an expression referring to a
   # context that does not exist, or a step reading an input a job never
