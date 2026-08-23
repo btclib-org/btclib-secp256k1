@@ -30,6 +30,13 @@ release-notes length in the first place, and are still in
 
 ### Documentation
 
+- **`REVIEWING.md` is the organization's copy.** A review reads the prose
+  that stays in the tree, treats a commit message or a pull request's
+  body as a finding only where it decides something, and asks a stated
+  count, a measurement nothing re-derives, or the history of the code
+  told in a comment to go — section 14 of the standard, the shared half
+  byte for byte.
+
 - **`CODE_OF_CONDUCT.md` is gone, and the inherited copy is what GitHub
   shows** (btclib-org/.github#123). Section 14 of the organization
   standard no longer lists it: the file was a pointer to the PSF code of
