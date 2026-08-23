@@ -42,6 +42,18 @@ release-notes length in the first place, and are still in
   `git grep -n -i 'code_of_conduct\|code of conduct'` answered with
   that pattern, the entry just named, and two lines of the file itself.
 
+- **`.gitattributes` is the organization's file** (btclib-org/.github#102).
+  Section 14 of the standard names it as the same file in every
+  repository, and `tests/verbatim_test.py` there compares the copies it
+  finds; this one was its own prose, two comments in its own words with
+  `RELEASE_NOTES.md` first and `CHANGELOG.md` under a second paragraph
+  about what nothing reads. It is now byte for byte the copy in
+  `btclib-org/.github`: one comment, both lines under it, and section 9
+  of the standard named as where the rule is recorded. This tree has no
+  attribute of its own to keep under `## This repository in particular`,
+  so it carries no such heading. `git check-attr merge` still answers
+  `union` for both files.
+
 - **`RELEASING.md` says what to do rather than what happened**. Two
   paragraphs were an account of the 0.7.1 rehearsal that failed before it
   worked and of the setup the rename made necessary a second time. What a

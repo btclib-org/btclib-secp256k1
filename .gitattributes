@@ -1,28 +1,16 @@
-# RELEASE_NOTES.md is an append-only list that every release adds to at
-# the same place: the newest section goes on top, so two branches that
-# each add one conflict on the insertion point with nothing to decide.
-# `union` keeps both sides' added lines, on rebases included, which is
-# what a merge of two appends should be.
+# The changelog and the release notes are append-only lists, and every
+# branch appends to the same few groups: two branches each adding a bullet
+# conflict on the insertion point, which is a conflict with nothing to
+# decide. `union` resolves it by keeping both sides' added lines, in the
+# order base-then-ours, and it is built into git — nobody has to configure
+# anything for it to apply.
 #
-# Its price is that this file never conflicts at all any more, so two
-# branches editing *the same* line merge in silence. That is the trade: a
-# conflict with nothing to decide costs every branch, and a silent merge
-# costs only the branches that edited one line two ways.
-RELEASE_NOTES.md merge=union
-
-# CHANGELOG.md is the same list one level down. A branch appends its
-# bullet to the group the change belongs to, so two branches meet at that
-# group's last line rather than at the top of the file -- and they meet
-# there whenever both changes are the same kind of change, which is when
-# they are most likely to be open together. Without the driver that is a
-# conflict; with it both bullets survive, in the order the merge finds
-# them.
-#
-# The price is the one above and it bites harder here, because nothing
-# reads this file: RELEASE_NOTES.md at least states a version the release
-# path checks, while two branches rewriting one bullet two ways merge in
-# silence with nothing to notice it. What buys that off is what the file
-# holds -- prose about what changed, where the accident is a sentence and
-# not a behaviour -- and that the alternative is every branch resolving a
-# conflict with nothing to decide.
+# It applies to rebases too, which is where it earns its keep, and it has
+# a price worth knowing: these two files then never conflict at all, so
+# the same existing entry edited on two branches merges in silence rather
+# than being flagged. That is why neither states how many entries it has —
+# a count is exactly such an edit, and union would have kept both numbers.
+# Section 9 of the organization standard, btclib-org/.github's README.md,
+# is where this rule is recorded.
 CHANGELOG.md merge=union
+RELEASE_NOTES.md merge=union
