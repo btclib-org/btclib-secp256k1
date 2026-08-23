@@ -173,7 +173,7 @@ jobs:
           # the same reason as README.md rather than by oversight: the
           # wheel carries it as a license file, `WHEEL_LICENSE_FILES` in
           # .github/scripts/verify_wheel_contents.py names it and
-          # tests/test_wheel_contents.py asserts it is there, so adding it
+          # tests/wheel_contents_test.py asserts it is there, so adding it
           # would skip the matrix on a change check-dist reads. An empty
           # list is not a documentation change, it is a question this
           # could not answer, so the count is checked before the pattern.

@@ -335,7 +335,7 @@ requires an `Args` entry per parameter and a `Returns` section, in the
 Google style napoleon renders, so a new argument nobody documented fails
 the lint gate; `Raises` is not enforced, and `pyproject.toml` says why
 beside the setting that turns it off. And anything written as a doctest,
-in a docstring or in `README.md`, is run by `tests/test_examples.py` on
+in a docstring or in `README.md`, is run by `tests/examples_test.py` on
 every interpreter and every kind of wheel — which constrains an example
 to be deterministic: fixed keys, and a verification rather than a
 signature wherever the value depends on randomness that is not pinned.
@@ -616,7 +616,7 @@ tree's prose:
 
 - **new wrapped functionality is validated against external vectors.**
   A test that compares these bindings against themselves proves nothing.
-  `tests/test_vectors.py` documents where each vendored vector file comes
+  `tests/vectors_test.py` documents where each vendored vector file comes
   from — BIP340, RFC6979, trezor-firmware — and a new wrapper should
   reach for something published elsewhere in the same way. A test's
   docstring says which side of the assertion is the independent one,

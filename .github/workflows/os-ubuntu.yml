@@ -135,13 +135,13 @@ jobs:
         # every interpreter this package claims, as os-macos.yml and
         # os-windows.yml carry it, so that the platform is the only thing
         # that differs between the three. What "claims" means is checked
-        # rather than asserted: tests/test_interpreters.py reads this
+        # rather than asserted: tests/interpreters_test.py reads this
         # list against `requires-python`, the classifiers, and the lists
         # the other two sentinels declare, which it requires to be equal
         # to this one rather than merely to overlap it.
         # 3.14t is the free-threaded build, and it is here for what this
         # package is: a cffi extension holding no interpreter lock of its
-        # own, whose thread safety is a claim tests/test_concurrency.py
+        # own, whose thread safety is a claim tests/concurrency_test.py
         # makes and only a build without the GIL can put under load.
         # Spelled as uv spells them, this being uv rather than
         # setup-python: `pypy3.11`, not the `pypy-3.11` setup-python takes

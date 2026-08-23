@@ -559,7 +559,7 @@ def test_the_negating_half_of_a_nonce_takes_a_buffer_too() -> None:
     coin flip on the key: 5 and 7 answered, 6 raised.
 
     Both parities are asserted to occur rather than assumed, as
-    `tests/test_verified_signing.py` does of the same question.
+    `tests/verified_signing_test.py` does of the same question.
     """
     parities = set()
     for prvkey in (5, 6):

@@ -42,7 +42,7 @@ from btclib_secp256k1._secret import keypair, wipe
 N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 PRVKEY = 7
-# the small scalar whose point has odd y, as tests/test_nonces.py keeps
+# the small scalar whose point has odd y, as tests/nonces_test.py keeps
 # it: a parity test over an even-y key alone compares zeros with zeros
 ODD_Y_PRVKEY = 6
 TWEAK = 11
@@ -387,7 +387,7 @@ def test_the_keypair_parity_is_the_callers_to_ask_for() -> None:
     comparison here is 0 whether the pointer was written through or not.
     Discarding the caller's pointer inside the helper is then a mutant
     the whole suite passes, while `from_keypair` answers 0 for every
-    odd-y key. 6 is the odd-y scalar `tests/test_nonces.py` already
+    odd-y key. 6 is the odd-y scalar `tests/nonces_test.py` already
     keeps for this, under the name it gives it there.
     """
     for prvkey, expected in ((PRVKEY, 0), (ODD_Y_PRVKEY, 1)):

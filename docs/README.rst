@@ -52,7 +52,7 @@ RELEASE_NOTES, CONTRIBUTING and SECURITY that ``index.rst`` carries.
 Point it at a scratch directory if you want the boilerplate for a new
 module, then copy the stanza across.
 
-Forgetting the edit is what ``tests/test_docs.py`` is for: it compares
+Forgetting the edit is what ``tests/docs_test.py`` is for: it compares
 the modules under ``btclib_secp256k1/`` against the directives in
 ``docs/source/`` and fails naming whichever is missing. This note is
 the convenience; the test is the guarantee.

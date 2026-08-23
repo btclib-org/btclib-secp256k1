@@ -5,7 +5,7 @@
 """A test this package names in its prose is a test that exists.
 
 The prose here points at tests by name -- the module docstring of
-`tests/test_verified_signing.py` names several, and `btclib_secp256k1/dsa.py`
+`tests/verified_signing_test.py` names several, and `btclib_secp256k1/dsa.py`
 names cases behind a claim it makes about itself -- and nothing
 said whether the name still belonged to anything. #256 was two landmarks
 that had come to point at the wrong test, and naming the test instead of
@@ -14,21 +14,21 @@ position, a rename falsifies a name, and neither turns anything red.
 
 What is read is every backticked span in the sources, whitespace collapsed
 out of it, that then spells a test name. Text rather than the syntax tree,
-which inverts `tests/test_secret.py`'s reasoning for the opposite
+which inverts `tests/secret_test.py`'s reasoning for the opposite
 population: there a mention had to be told from a call, so the names come
 off the AST; here the mention *is* the subject, and half of them are in
 comments the AST does not carry.
 
 Two shapes make the reader what it is rather than a one-line pattern:
 
-- **a citation wrapped by the reflow.** `tests/test_docs.py` cites
+- **a citation wrapped by the reflow.** `tests/docs_test.py` cites
   `test_no_documented_module_has_gone_away` broken at an underscore across
   two lines. A pattern anchored to one line does not report it as dangling
   -- it never sees it, which is the failure a guard must not have -- so the
   span is collapsed before it is compared, of whitespace and of the `#` a
   wrap inside a comment block adds. What collapsing costs is stated in
   `_cited`.
-- **a name that is not ours.** `tests/test_vectors.py` cites
+- **a name that is not ours.** `tests/vectors_test.py` cites
   rust-secp256k1's own `test_low_r` to say which upstream vector it
   reproduces: correct prose that resolves to nothing here. Those are named
   in `_FOREIGN`, with where each comes from, and each is asserted to still
@@ -184,7 +184,7 @@ def test_the_prose_was_read_at_all() -> None:
     "span, expected",
     [
         ("`test_the_sweep_is_whole`", {"test_the_sweep_is_whole"}),
-        # the wrap in tests/test_docs.py, at an underscore in a docstring
+        # the wrap in tests/docs_test.py, at an underscore in a docstring
         (
             "`test_no_documented_module\n    _has_gone_away`",
             {"test_no_documented_module_has_gone_away"},
@@ -194,7 +194,7 @@ def test_the_prose_was_read_at_all() -> None:
         # a backticked span that is code rather than a citation
         ("`dsa.sign(msg, key)`", set()),
         ("`_pubkey_from_prvkey_`", set()),
-        # not backticked at all: trezor's names in tests/test_vectors.py
+        # not backticked at all: trezor's names in tests/vectors_test.py
         ("test_ecdsa_sign_digest_deterministic and test_ecdsa_der", set()),
     ],
 )

@@ -80,7 +80,10 @@ def _imported_modules(name: str) -> set[str]:
     """
     code = f"import sys, {name}; print('\\n'.join(sys.modules))"
     completed = subprocess.run(  # noqa: S603
-        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+        [sys.executable, "-c", code],
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
     )
     return set(completed.stdout.split())
 

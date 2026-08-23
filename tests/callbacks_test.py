@@ -28,7 +28,7 @@ last test here is it.
 
 An internal error is reachable through neither: libsecp256k1 reports
 through that callback what it holds to be unreachable, so the recording
-function is called directly, the way test_extension.py drives the branch
+function is called directly, the way extension_test.py drives the branch
 of the loader that the build it runs on does not have.
 """
 

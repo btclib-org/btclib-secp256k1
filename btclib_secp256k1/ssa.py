@@ -74,7 +74,7 @@ def nonce_bip340(
     key, the `BIP0340/nonce` tag and the auxiliary randomness. So what
     comes back is the `k` of the signature `sign` makes of the same
     arguments -- the first 32 octets of that signature are the x of `k`
-    times the generator, which is what `tests/test_nonces.py` holds it to.
+    times the generator, which is what `tests/nonces_test.py` holds it to.
 
     The key BIP340 signs with is the one of the even-y point, so a
     private key whose point has odd y enters the derivation negated, and
@@ -567,7 +567,7 @@ def verify(
     # calls, minimum kept for each. That is the smallest of these and is
     # kept for consistency with the rest rather than on its own account.
     # `_verify_` makes the same calls for a caller holding the x-only
-    # key, and tests/test_parsed_keys.py asserts the two answer alike
+    # key, and tests/parsed_keys_test.py asserts the two answer alike
     xonly_pubkey = xonly.parse(pubkey_bytes)
     msg_bytes = octets(msg_bytes, "message")
     signature_bytes = octets(signature_bytes, "signature", _SIGNATURE_SIZE)

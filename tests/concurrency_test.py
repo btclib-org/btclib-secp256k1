@@ -158,7 +158,7 @@ def test_exactly_one_thread_signs_a_shared_secret_nonce() -> None:
     A single round rather than `ROUNDS`: a secret nonce is spent by the
     first thread to reach it, `ROUNDS` more attempts on the same one
     only exercising the refusal `test_a_wiped_secret_nonce_refuses_to
-    _sign` already covers in `tests/test_musig.py`.
+    _sign` already covers in `tests/musig_test.py`.
     """
     pubkey_bytes = keys.pubkey_from_prvkey(prvkey)
     cache = musig.KeyAggCache([pubkey_bytes])

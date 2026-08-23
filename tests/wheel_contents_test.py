@@ -23,7 +23,7 @@ copied from there rather than written twice, the two pages having the
 same "list stated by the paragraph naming it" shape.
 
 The script is loaded by path, `.github/scripts` being no package, as
-`test_submodule_pin.py` loads its own subject.
+`submodule_pin_test.py` loads its own subject.
 """
 
 from __future__ import annotations

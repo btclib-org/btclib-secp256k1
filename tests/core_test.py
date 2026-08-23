@@ -260,7 +260,7 @@ def test_type_checks_refuse_what_merely_has_a_length() -> None:
     """A size check alone is not a check: `len` answers for more than bytes.
 
     What the boundary takes is bytes, a bytearray and a memoryview --
-    `tests/test_bytes_like.py` drives every entry point with each of the
+    `tests/bytes_like_test.py` drives every entry point with each of the
     three. What it refuses is everything else, and it refuses it by
     name: a `str` has a length and is not octets, a `float` has none and
     came back as `object of type 'float' has no len()` before there was
@@ -298,7 +298,7 @@ def test_type_checks_refuse_what_merely_has_a_length() -> None:
 def test_a_scalar_may_be_octets_this_package_can_overwrite() -> None:
     """A cffi array of 32 octets is taken as it stands, and nothing else is.
 
-    Why it is taken is `tests/test_secret.py`'s subject: memory a caller
+    Why it is taken is `tests/secret_test.py`'s subject: memory a caller
     can zero, where the `bytes` this would otherwise convert to is a copy
     of the secret that nothing can. What is refused is every shape whose
     32 octets cannot be known to be 32 octets of scalar, and the three

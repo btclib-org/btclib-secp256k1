@@ -97,7 +97,7 @@ def nonce_rfc6979(
     message hash, the key, no algorithm tag, and the extra entropy. That
     signing call selects the *default* nonce function, which libsecp256k1
     documents as the same pointer as this one -- an identity
-    `tests/test_nonces.py` asserts rather than assumes. So what comes back
+    `tests/nonces_test.py` asserts rather than assumes. So what comes back
     is the `k` of the signature `sign` makes of the same arguments: `r` is
     the x of `k` times the generator, reduced, which is what that same
     file holds it to.
@@ -666,7 +666,7 @@ def verify(
     # call costs -- an Apple M5, macOS 26.6, arm64, CPython 3.13.14, the
     # two spellings alternated in one process over 7 rounds of 20 000
     # calls, minimum kept for each. `_verify_` makes the same calls for a
-    # caller holding both objects, and tests/test_parsed_keys.py asserts
+    # caller holding both objects, and tests/parsed_keys_test.py asserts
     # the two answer alike
     pubkey_bytes = octets(pubkey_bytes, "public key")
     pubkey = ffi.new("secp256k1_pubkey *")
