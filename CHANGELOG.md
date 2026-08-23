@@ -367,6 +367,35 @@ release-notes length in the first place, and are still in
 
 ### CI
 
+- **The rehearsal re-locks, and every build step passes `--locked`**
+  (btclib-org/.github#128). The `dev-version` action rewrites the version
+  in `pyproject.toml` on the rehearsal path, and the build steps after it
+  passed `--frozen`, the organization standard's one exception to
+  `--locked`, never `--frozen`, documented in `CLAUDE.md`,
+  `CONTRIBUTING.md` and `RELEASING.md` here and nowhere in the standard.
+  The standard's decision is that a rehearsal re-locks rather than
+  relaxing the flag, which is what `btclib`'s action already did: this
+  one now runs `uv lock` after the rewrite, and the six `run:` commands
+  of `test.yml` that passed `--frozen` -- `build-cibuildwheel`'s
+  `Build wheels`, `build-dynamic`'s `Build wheel` and its two repair
+  steps, `build-sdist`'s `Build source`, and `build-windows`'s
+  `Build Windows wheel`, one more than the issue counted because that
+  one's flag sits on the second line of a `run: |` block its `sed` did
+  not reach -- pass `--locked`. Measured on a copy of `main` with the
+  action's own script appending `.dev421`: `uv run --locked --only-group
+  build python -m build -s` exits 2 with "The lockfile at `uv.lock`
+  needs to be updated, but `--locked` was provided"; `uv lock` then
+  moves one line, the project's own `version`, and the same command
+  exits 0. It also changes what a rehearsal's sdist ships: `uv.lock` is
+  in that archive, and the one built with `--frozen` declared `0.8.0.5`
+  inside `btclib_secp256k1-0.8.0.5.dev421.tar.gz`, where the re-locked
+  one declares `0.8.0.5.dev421`. The exception is gone from the three
+  files that stated it, and `os-ubuntu.yml`'s example command passes
+  `--locked` too, answering nothing with either flag. The lock in the
+  tree does not move: the re-lock happens in CI, on the rehearsal
+  alone, and `uv lock --check` in `release.yml` keeps asking that the
+  committed one agree.
+
 - **`links.yml` accepts every code lychee would accept unasked, and
   passes no cache flag** (btclib-org/.github#110, btclib-org/.github#111).
   `--accept 200,206,429` replaced lychee's default rather than adding to

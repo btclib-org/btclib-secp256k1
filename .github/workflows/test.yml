@@ -352,12 +352,11 @@ jobs:
       # push that did not touch it. --only-group omits the project, so
       # this installs no extension of its own; the build frontend
       # cibuildwheel then runs per interpreter comes from the same group.
-      # --frozen, not the --locked of the check-dist job: the step above
-      # rewrites the version in pyproject.toml on the rehearsal path,
-      # which is exactly the disagreement --locked refuses. That the lock
-      # is in step with pyproject.toml is asserted where it can be, by the
-      # uv-lock hook on every commit and by `uv lock --check` in the
-      # release workflow
+      # --locked, here as in the check-dist job: the dev-version step
+      # above rewrites the version in pyproject.toml on the rehearsal
+      # path and re-locks in the same step, so the lock agrees with the
+      # tree this builds whichever path the run took, and the flag asserts
+      # that agreement instead of skipping it (btclib-org/.github#128)
       # what a pull request has to answer about any of these images is
       # whether this tree still builds there, and that is answered by the
       # first wheel: the toolchain, the CMake build of the vendored
@@ -400,7 +399,7 @@ jobs:
       # (issue btclib-org/btclib#1148)
       - name: Build wheels
         shell: bash
-        run: uv run --frozen --only-group build cibuildwheel
+        run: uv run --locked --only-group build cibuildwheel
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -467,20 +466,20 @@ jobs:
         run: |
           echo "MACOSX_DEPLOYMENT_TARGET=$TARGET" >> "$GITHUB_ENV"
 
-      # the build group and --frozen: see build-cibuildwheel
+      # the build group and --locked: see build-cibuildwheel
       - name: Build wheel
-        run: BTCLIB_LIBSECP256K1_DYNAMIC=true uv run --frozen --only-group build python -m build -w
+        run: BTCLIB_LIBSECP256K1_DYNAMIC=true uv run --locked --only-group build python -m build -w
 
       # auditwheel and delocate decide the platform tag this wheel ends up
       # carrying, which is what pip matches against, so they are pinned
       # with the rest of the build group rather than installed with -U
       - name: Repair wheel (Linux)
         if: runner.os == 'Linux'
-        run: uv run --frozen --only-group build auditwheel repair dist/*
+        run: uv run --locked --only-group build auditwheel repair dist/*
 
       - name: Repair wheel (macOS)
         if: runner.os == 'macOS'
-        run: uv run --frozen --only-group build delocate-wheel -w wheelhouse dist/*
+        run: uv run --locked --only-group build delocate-wheel -w wheelhouse dist/*
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -519,9 +518,9 @@ jobs:
         with:
           suffix: ${{ inputs.version-suffix }}
 
-      # the build group and --frozen: see build-cibuildwheel
+      # the build group and --locked: see build-cibuildwheel
       - name: Build source
-        run: uv run --frozen --only-group build python -m build -s
+        run: uv run --locked --only-group build python -m build -s
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -657,14 +656,14 @@ jobs:
       - name: Install dependencies
         run: sudo apt install -y mingw-w64
 
-      # the build group and --frozen: see build-cibuildwheel. The `wheel`
+      # the build group and --locked: see build-cibuildwheel. The `wheel`
       # this used to install with it is a setuptools-era requirement:
       # hatchling writes the wheel itself, and nothing here invokes that
       # package
       - name: Build Windows wheel
         run: |
           BTCLIB_LIBSECP256K1_CROSS_COMPILE=true CFFI_PLATFORM=Windows \
-            uv run --frozen --only-group build python -m build -w
+            uv run --locked --only-group build python -m build -w
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
