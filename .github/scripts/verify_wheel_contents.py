@@ -99,7 +99,7 @@ FORBIDDEN_NAMES = ("sitecustomize.py", "usercustomize.py")
 # hatchling
 WHEEL_METADATA_FILES = frozenset({"METADATA", "RECORD", "WHEEL"})
 # `license-files` in pyproject.toml, copied into `licenses/` verbatim
-WHEEL_LICENSE_FILES = frozenset({"AUTHORS.md", "COPYRIGHT", "LICENSE"})
+WHEEL_LICENSE_FILES = frozenset({"AUTHORS.md", "LICENSE"})
 
 # suffixes a compiled extension module carries, keyed by platform: cffi's
 # static path compiles one of these, named `_btclib_secp256k1` with an

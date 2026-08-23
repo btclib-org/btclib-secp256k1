@@ -55,8 +55,9 @@ and, under `licenses/`, `WHEEL_LICENSE_FILES`:
 - `METADATA`, `RECORD`, `WHEEL` — what hatchling writes for a package
   configured as this one is. No `top_level.txt`: that file is
   setuptools's, and this build backend is hatchling
-- `AUTHORS.md`, `COPYRIGHT`, `LICENSE` — `project.license-files` in
-  `pyproject.toml`, copied into `licenses/` verbatim
+- `AUTHORS.md`, `LICENSE` — `project.license-files` in `pyproject.toml`,
+  copied into `licenses/` verbatim. Not `COPYRIGHT`: that is a
+  repository file, and `pyproject.toml` says why beside the setting
 
 Under `btclib_secp256k1/` — exactly the files this checkout's own
 `btclib_secp256k1/` directory has, source and `py.typed` alike. The

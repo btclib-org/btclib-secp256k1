@@ -1,3 +1,9 @@
+<!-- markdownlint-disable MD022 MD032 -->
+<!-- This file is merge=union, so a rebase joins two sections and drops
+     the blank line between them without a conflict: the rule is off
+     here for the duration of btclib-org/.github#33, and goes back on
+     when that queue is empty. btclib-org/.github#138 is the record. -->
+
 # Changelog
 
 <!-- markdownlint-configure-file
@@ -23,6 +29,18 @@ release-notes length in the first place, and are still in
 ## v0.8.0.5 (work in progress, not released yet)
 
 ### Documentation
+
+- **`CODE_OF_CONDUCT.md` is gone, and the inherited copy is what GitHub
+  shows** (btclib-org/.github#123). Section 14 of the organization
+  standard no longer lists it: the file was a pointer to the PSF code of
+  conduct, and the copy in `btclib-org/.github` is what a public
+  repository of the organization carrying none displays. `test.yml`'s
+  `prose` pattern stops naming it, a name nothing matches being a rule
+  that has quietly stopped applying; the entry under *CI* below that
+  added the name to that pattern describes the tree between that landing
+  and this one. Nothing else linked it: on the tree before this,
+  `git grep -n -i 'code_of_conduct\|code of conduct'` answered with
+  that pattern, the entry just named, and two lines of the file itself.
 
 - **`RELEASING.md` says what to do rather than what happened**. Two
   paragraphs were an account of the 0.7.1 rehearsal that failed before it
@@ -336,6 +354,27 @@ release-notes length in the first place, and are still in
   for having no such file and had been left out.
 
 ### CI
+
+- **`claude-review.yml` reports red on anything but an ack of this
+  head** (btclib-org/.github#146). The review job ended at a step
+  testing whether the action had run at all, so a `CHANGES REQUESTED`, a
+  run that posted no comment, and an ack naming a sha the branch had
+  moved past each left the check green. The step `btclib-org/.github`
+  carries at `18e6c64` is here now, with its comment: it reads the last
+  verdict `claude[bot]` posted on the pull request and fails unless it is
+  an `ACK` whose sha is a prefix of the head. Its shell is byte-identical
+  to that copy's; two lines of the comment above it are reworded where
+  the original pointed at that repository's own `README.md` and its own
+  pull request. Run outside the workflow against this repository's pull
+  requests, with `REPO`, `NUMBER` and `HEAD_SHA` in the environment: on
+  #343 and #333 at their heads it prints `the review acked ...` and
+  exits 0; on #343 with another head it exits 1 naming both shas; on
+  #337, whose last verdict is a `CHANGES REQUESTED`, it exits 1 saying
+  so; on #339 and #338, where no `claude[bot]` comment ends in a verdict,
+  it exits 1 saying that. Still not a required check, and red there
+  gates nothing. The two copies of the workflow differ beyond this step
+  -- the header, the checkout comment, `allowed_bots` and the prompt are
+  each this repository's -- and those stay as they were.
 
 - **`release.yml` names its steps** (#300). The steps of this file that
   carried no `name:` have one, where both siblings' `release.yml` names
@@ -824,6 +863,14 @@ release-notes length in the first place, and are still in
 
 ### The gate
 
+- **`CHANGELOG.md` stops asking for the blank line a union merge drops**
+  (btclib-org/.github#138). MD022 and MD032 are off for this file alone,
+  by a comment at its head and not by an edit to `.markdownlint.jsonc`,
+  which is section 14's verbatim copy: a rebase of two branches that
+  each appended a section joins them without the blank line between, and
+  the rule would then fail the gate on a file that never conflicted. The
+  comment says when it goes back on.
+
 - **`CLAUDE.md`'s roster of the gate names only what gates** (issue
   #323). It said "`lint`, `docs`, `test` and `codeql` are the gate", and
   `codeql` is none of it: the endpoint returns three contexts, and the
@@ -979,6 +1026,25 @@ release-notes length in the first place, and are still in
 
   `uvx pre-commit run local-link-prefix --all-files` re-derives the
   whole of it.
+
+### Packaging metadata
+
+- **`COPYRIGHT` leaves the wheel and the sdist** (btclib-org/.github#135).
+  That issue decides that every package of the organization ships the
+  same license files and `COPYRIGHT` is not among them: the holder a
+  consumer needs is in `LICENSE`, and `COPYRIGHT` is the source of a
+  source-file header rather than a statement to a consumer. So
+  `license-files` is `["LICENSE", "AUTHORS.md"]`, and because hatchling's
+  sdist target ships every tracked file unless told otherwise, the file
+  is named in that target's `exclude` too. Measured on `uv build` before
+  and after: the wheel's `dist-info/licenses/` loses `COPYRIGHT` and the
+  `License-File:` line for it leaves `METADATA` and `PKG-INFO`; the sdist
+  loses `COPYRIGHT` and `CODE_OF_CONDUCT.md` (above) and nothing else.
+  `WHEEL_LICENSE_FILES` in `.github/scripts/verify_wheel_contents.py`,
+  `tests/test_wheel_contents.py` and the page under `docs/` that states
+  the script's constants say the same set, and the verifier, `twine
+  check --strict`, `check-wheel-contents` and `pyroma --min 10` each
+  exit 0 on the new archives.
 
 ## v0.8.0.4
 
