@@ -123,21 +123,28 @@ jobs:
           # external URL, which `grep -rl http --include='*.md' docs
           # tests` is what says rather than a claim here about what
           # those pages are.
-          # The retries, the timeout and the cache are what keep a slow or
-          # throttling host from being reported as a dead one, and the
-          # measurement behind them is this repository's own: of the
-          # eighty-six URLs, one answered 418 to the first request and 200
-          # to the second, which is a bot-block and not rot. 429 is
-          # accepted for the same reason -- a rate limit is the runner's
-          # address being judged, not the link
+          # The retries and the timeout are what keep a slow or throttling
+          # host from being reported as a dead one, and the measurement
+          # behind them is this repository's own: of the eighty-six URLs,
+          # one answered 418 to the first request and 200 to the second,
+          # which is a bot-block and not rot. 429 is accepted for the same
+          # reason -- a rate limit is the runner's address being judged,
+          # not the link. The accepted list replaces lychee's default
+          # rather than adding to it, so the default -- `100..=103,200..=299`,
+          # what `lychee --help` prints for the flag -- is spelled out
+          # before the 429: a list naming 200 alone turns a 204 to a HEAD,
+          # or a redirect ending in a 201, into a dead link without anybody
+          # touching the tree.
+          # No cache flag: a run starts from a fresh workspace and no step
+          # restores the file lychee would write, so it decided nothing
+          # between runs, and within one lychee already requests each
+          # unique URL once
           args: >-
             --no-progress
             --max-retries 3
             --retry-wait-time 10
             --timeout 45
-            --cache
-            --max-cache-age 1d
-            --accept 200,206,429
+            --accept 100..=103,200..=299,429
             "*.md" "scripts/*.md" ".github/*.md"
           # fail the job rather than only summarizing: a green run that
           # found dead links is the state this workflow exists to end

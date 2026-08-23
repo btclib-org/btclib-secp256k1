@@ -367,6 +367,22 @@ release-notes length in the first place, and are still in
 
 ### CI
 
+- **`links.yml` accepts every code lychee would accept unasked, and
+  passes no cache flag** (btclib-org/.github#110, btclib-org/.github#111).
+  `--accept 200,206,429` replaced lychee's default rather than adding to
+  it -- `lychee --help` gives the default as `100..=103,200..=299` -- so
+  a host answering 204 to a HEAD, or a redirect ending in a 201, was a
+  dead link the weekly run went red on without anybody touching the
+  tree. The list is now that default spelled out, plus the 429 the
+  comment beside it argues for. `--cache --max-cache-age 1d` went with
+  it: a run starts from a fresh workspace and no step restored the file
+  lychee writes, so the flag decided nothing between runs, and within
+  one lychee requests each unique URL once whatever the flag says --
+  measured on this tree's own globs, 135 links and 102 requests. The
+  comment crediting the cache with keeping a throttling host from
+  reading as dead described a mechanism that was not there, and now
+  credits the retries and the timeout alone.
+
 - **`claude-review.yml` reports red on anything but an ack of this
   head** (btclib-org/.github#146). The review job ended at a step
   testing whether the action had run at all, so a `CHANGES REQUESTED`, a
