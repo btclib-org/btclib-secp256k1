@@ -194,12 +194,12 @@ read by every checkout of this repository.
 | `claude-review` | pull request, and `@claude` in a comment | — |
 | `vendored-vectors` | weekly, a change to itself | — |
 | `codeql` | push to main, and weekly | the two scanned languages |
-| `ubuntu` | weekly, a release | both ubuntu images × every interpreter |
-| `macos` | weekly, a release | both macOS images × every interpreter |
-| `windows` | weekly, a release | both Windows images × every interpreter |
-| `latest` | weekly | the dependencies, at their newest |
+| `os-ubuntu` | weekly, a release | both ubuntu images × every interpreter |
+| `os-macos` | weekly, a release | both macOS images × every interpreter |
+| `os-windows` | weekly, a release | both Windows images × every interpreter |
+| `deps-latest` | weekly | the dependencies, at their newest |
 | `links`, `mutation` | weekly | — |
-| `published` | weekly, a release | what PyPI serves |
+| `pypi-published` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
 
 The first two rows are what a merge waits for, and the suite cell among them
@@ -220,8 +220,8 @@ minutes rather than for two, and the twenty-one Windows suite cells were
 27.3 of a run's 112.9 runner-minutes, the largest family of jobs in it and
 ahead of every wheel build. The numbers are in `test.yml`'s header.
 
-**What the sentinels vary, they vary whole.** `ubuntu` runs both images on
-every interpreter, the cell the gate already covers included. A matrix with
+**What the sentinels vary, they vary whole.** `os-ubuntu` runs both images
+on every interpreter, the cell the gate already covers included. A matrix with
 the gate's cell cut out of it is one nobody can read the shape of, and
 whoever asked what ran would have to re-derive the hole from the gate.
 
@@ -239,10 +239,11 @@ whole. `test.yml` carries the measurement beside the step.
 What a pull request no longer asks is pip's *selection* among a directory of
 wheels tagged for several interpreters, which now runs nowhere; the wheel
 each interpreter would get is still tested by the job that builds it, and
-`ubuntu`, `macos` and `windows` still compile both linkages from the tree on
-every interpreter. What no run asks at all is the suite against the dynamic
-wheel as a package — the sentinels compile that linkage from the tree
-instead. `ubuntu.yml`'s header records both costs beside each other.
+`os-ubuntu`, `os-macos` and `os-windows` still compile both linkages from
+the tree on every interpreter. What no run asks at all is the suite
+against the dynamic wheel as a package — the sentinels compile that
+linkage from the tree instead. `os-ubuntu.yml`'s header records both
+costs beside each other.
 
 Everything but the first two rows also takes `workflow_dispatch`, which for
 `codeql` and the three platform workflows is the only way to ask about a
@@ -376,14 +377,14 @@ command at all, for the reason above, and no longer gates.
       sphinx-build -W --keep-going -b html docs/source docs/build/html
   ```
 
-The `published` workflow has no local equivalent by design: what it
+The `pypi-published` workflow has no local equivalent by design: what it
 installs is what PyPI serves.
 
 The sentinels beside it gate nothing, so a red one is read in the Actions
 tab rather than fixed on a branch. Each is dispatchable, and all but `links`
 run locally.
 
-- `ubuntu`, `macos` and `windows`, which are the suite on both images of
+- `os-ubuntu`, `os-macos` and `os-windows`, the suite on both images of
   a platform and on every interpreter, so only the row matching the
   machine at hand reproduces. A cell is these two commands in this order —
   the coverage job's own command without `--cov`, run once against each
@@ -402,9 +403,9 @@ run locally.
   asks is whether an (image, interpreter) pair passes, and coverage is
   measured and gated once, on the gate's cell
 
-- `latest`, which resolves every dependency at its newest before running
-  the suite. The upgrade rewrites `uv.lock`, so restore it afterwards with
-  `git checkout uv.lock`:
+- `deps-latest`, which resolves every dependency at its newest before
+  running the suite. The upgrade rewrites `uv.lock`, so restore it
+  afterwards with `git checkout uv.lock`:
 
   ```shell
   uv lock --upgrade

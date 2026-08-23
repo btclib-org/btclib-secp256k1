@@ -5,8 +5,8 @@ name: test
 # installed, and the suite run on the one cell a reviewer should wait for.
 # That cell is the `coverage` job below -- ubuntu-latest on the
 # interpreter .python-version pins -- and every other cell of the suite is
-# ubuntu.yml's, macos.yml's or windows.yml's, run weekly and before a
-# release. ubuntu.yml's header is the argument for the split; the numbers
+# os-ubuntu.yml's, os-macos.yml's or os-windows.yml's, run weekly and before a
+# release. os-ubuntu.yml's header is the argument for the split; the numbers
 # behind it are here, next to the jobs they were measured on.
 #
 # **The wheel builds for all six images stay here**, and that is the line
@@ -36,13 +36,13 @@ name: test
 # every repository in it, and this workflow set asked for seventy-three on
 # every commit. The twenty-one Windows suite cells were 27.3 of the 112.9
 # runner-minutes, the largest family of jobs in the run and ahead of every
-# wheel build. windows.yml has the rest of that measurement.
+# wheel build. os-windows.yml has the rest of that measurement.
 #
 # The ubuntu suite cells are the third, against the same ceiling: two
 # images times every interpreter, on the platform whose cells are the
 # cheapest to wait for and therefore the last a gate gives up. What
 # decides them is that the gate asks one question of the suite and the
-# calendar asks the rest, which is what ubuntu.yml's header argues.
+# calendar asks the rest, which is what os-ubuntu.yml's header argues.
 
 on:
   push:
@@ -373,7 +373,7 @@ jobs:
       # the first build of an image. check-dist installs one wheel by
       # path and takes it from build-dynamic, which builds whole, and
       # pip's selection among a directory of wheels tagged for several
-      # interpreters is asked nowhere -- ubuntu.yml's header carries that
+      # interpreters is asked nowhere -- os-ubuntu.yml's header carries that
       # trade and what answers the rest of the question instead.
       #
       # A push to main, a release and a rehearsal all build everything --
@@ -558,7 +558,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # macOS is macos.yml's, for the reason the header gives; what that
+        # macOS is os-macos.yml's, for the reason the header gives; what that
         # workflow runs there is a source build of the same tree, which is
         # what an install from the sdist is
         os: [ubuntu-latest, windows-latest]
@@ -739,7 +739,7 @@ jobs:
       # fail. The dynamic wheel is the subject because it is the one that
       # needs cffi at run time, a static extension carrying its own.
       # Importing it is the whole of what runs here -- the suite against
-      # this artifact is a cost ubuntu.yml's header records
+      # this artifact is a cost os-ubuntu.yml's header records
       - name: Install a wheel with its dependencies resolved from PyPI
         run: |
           # the glob itself, not ls parsed by a pipeline: nullglob is what
@@ -776,7 +776,7 @@ jobs:
   #
   # The name carries the workflow because a context is keyed by name alone:
   # two workflows with a job named the same thing produce one ambiguous
-  # check, and ubuntu.yml, macos.yml and windows.yml are three more
+  # check, and os-ubuntu.yml, os-macos.yml and os-windows.yml are three more
   # workflows whose jobs run the suite.
   #
   # `if: !cancelled()` because a job with unmet `needs` is skipped, and a

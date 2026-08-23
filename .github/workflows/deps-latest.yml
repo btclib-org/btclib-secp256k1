@@ -1,5 +1,5 @@
 ---
-name: latest
+name: deps-latest
 
 # the dependency sentinel: everything uv resolves, upgraded to the newest
 # release that satisfies pyproject.toml, and then put through the suite,
@@ -30,7 +30,7 @@ name: latest
 # ways an upstream release turns this tree red without anybody touching it
 # are not hypothetical. Determinism is what makes the gate legible; the
 # early warning belongs on a schedule, off the critical path -- the same
-# division published.yml makes for what PyPI serves.
+# division pypi-published.yml makes for what PyPI serves.
 #
 # Scope: what uv resolves. Not the pre-commit hook revisions, which are
 # pinned by rev in .pre-commit-config.yaml and moved by pre-commit.ci's
@@ -55,7 +55,7 @@ on:
   schedule:
     # Wednesday, the day before Dependabot's, which is the whole of the
     # placement: this reports on the upgrade before the pull request
-    # carrying it opens. published.yml follows an hour later, the pair
+    # carrying it opens. pypi-published.yml follows an hour later, the pair
     # asking what moved underneath -- the dependencies here, and what the
     # index serves there.
     # The time is the organization grid -- section 10 of
@@ -75,11 +75,11 @@ permissions:
 # workflow today, but that expression is the caller's name when something
 # does, and the convention is what keeps the groups distinct
 concurrency:
-  group: latest-${{ github.ref }}
+  group: deps-latest-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # far narrower than test.yml's matrix, and the reasoning is published.yml's:
+  # far narrower than test.yml's matrix, and the reasoning is pypi-published.yml's:
   # there, every (os, arch, interpreter) triple is a distinct C toolchain and
   # a distinct wheel; here what varies is which release of each dependency
   # the interpreter selects, and the two ends of the supported range are
@@ -128,7 +128,7 @@ jobs:
       # and worth knowing before running the same command in a working tree
       - name: Upgrade every dependency to its latest release
         # this matrix includes windows-latest, whose default shell is
-        # PowerShell rather than bash -- see windows.yml's suite-windows
+        # PowerShell rather than bash -- see os-windows.yml's suite-windows
         # job for the failure mode a POSIX-only step hits there unnoticed
         # (issue btclib-org/btclib#1148). Both steps below are one plain
         # command each and run identically under either shell today,

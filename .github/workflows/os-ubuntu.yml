@@ -1,5 +1,5 @@
 ---
-name: ubuntu
+name: os-ubuntu
 
 # the ubuntu third of the platform sweep, and the header the other two
 # point at: what the merge gate keeps, what a sentinel then owes, and why
@@ -9,7 +9,7 @@ name: ubuntu
 # **The gate is one cell**: ubuntu-latest on the interpreter
 # .python-version pins, which is the `coverage` job of test.yml, beside
 # the lint, docs and packaging jobs. Everything exhaustive is here or in
-# macos.yml or windows.yml. What that gives up is the point of the
+# os-macos.yml or os-windows.yml. What that gives up is the point of the
 # arrangement rather than a cost it hides: a regression on 3.10, on arm or
 # on PyPy is no longer refused before a merge, and sits on main until the
 # weekly sentinel for it runs. What it buys is every pull request --
@@ -57,7 +57,7 @@ name: ubuntu
 # it is and no larger: check-dist installs the dynamic manylinux wheel
 # by path into an empty environment and imports it, which is the .so
 # beside the module, hatch_build.py's tag and the cffi requirement;
-# published.yml's `kind: dynamic` cell asks the same of what the index
+# pypi-published.yml's `kind: dynamic` cell asks the same of what the index
 # actually serves. What no run asks is the suite through the packaged
 # artifact, against an extension the cells below have already compiled
 # and tested byte for byte.
@@ -65,7 +65,7 @@ name: ubuntu
 # **Both images**, and not the newest alone: what differs between them is
 # the architecture the vendored library, the extension and the interpreter
 # are compiled for, and ubuntu-24.04-arm is the only Linux aarch64 this
-# package is asked about from source. macos.yml and windows.yml carry the
+# package is asked about from source. os-macos.yml and os-windows.yml carry the
 # arm image of their own platform for the same reason.
 #
 # It gates no commit and no merge, but release.yml calls it, so one cannot
@@ -76,7 +76,7 @@ on:
     # Friday, alone: a platform sentinel is two images times every
     # interpreter, compiling libsecp256k1 twice a cell, and three of them
     # in one morning is the queue this arrangement exists to avoid.
-    # macos.yml and windows.yml share Saturday between them; this one
+    # os-macos.yml and os-windows.yml share Saturday between them; this one
     # takes the day before.
     # The time is the organization grid -- section 10 of
     # btclib-org/.github's README.md -- and not this file's to restate.
@@ -110,7 +110,7 @@ permissions:
 # and cancel each other. The suffix is the second half of the same problem,
 # github.ref inside a called workflow being the caller's ref: see lint.yml
 concurrency:
-  group: ubuntu-${{ github.ref }}${{ inputs.concurrency-suffix }}
+  group: os-ubuntu-${{ github.ref }}${{ inputs.concurrency-suffix }}
   cancel-in-progress: true
 
 jobs:
@@ -132,8 +132,8 @@ jobs:
         os:
           - ubuntu-latest
           - ubuntu-24.04-arm
-        # every interpreter this package claims, as macos.yml and
-        # windows.yml carry it, so that the platform is the only thing
+        # every interpreter this package claims, as os-macos.yml and
+        # os-windows.yml carry it, so that the platform is the only thing
         # that differs between the three. What "claims" means is checked
         # rather than asserted: tests/test_interpreters.py reads this
         # list against `requires-python`, the classifiers, and the lists

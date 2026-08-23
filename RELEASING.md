@@ -93,7 +93,7 @@ the release it rehearses.
 
 ## Cutting a release
 
-`latest` is worth dispatching before the tag rather than waiting for its
+`deps-latest` is worth dispatching before the tag rather than waiting for its
 cron, because what it answers is cheaper to know before a version is
 consumed than after. It gates nothing, so it will not stop you: reading
 it is the point. It resolves every dependency at its newest and then runs
@@ -120,13 +120,13 @@ Updating the pinned dependencies is a decision of the same shape, and
 belongs here for the same reason: whether to run `uv lock --upgrade` (or
 wait for Dependabot's own pull requests to catch up) is not itself a
 release-timing question, `uv.lock` pinning what ships regardless of what
-`latest` resolved against. Unlike `mutation`, though, it is worth
-deciding on purpose rather than defaulting by omission: `latest`'s run
+`deps-latest` resolved against. Unlike `mutation`, though, it is worth
+deciding on purpose rather than defaulting by omission: `deps-latest`'s run
 for 0.8.0.4 found ruff 0.16.3→0.16.4, stevedore 5.9.0→5.9.1 and pygments
 2.20.0→2.21.0 already past what `uv.lock` pinned, with nobody having
-chosen either way. State the choice — upgraded, or left as `latest`
+chosen either way. State the choice — upgraded, or left as `deps-latest`
 found it, and why — in the release pull request, the same line
-`latest`'s own result already gets.
+`deps-latest`'s own result already gets.
 
 Then:
 
@@ -205,14 +205,14 @@ Then:
    and against the open sections of `CHANGELOG.md` and
    `RELEASE_NOTES.md`, which closing the release notes above has just
    closed and which are where each change was described as it landed.
-   `latest`'s result and the breaking-changes check's griffe findings
+   `deps-latest`'s result and the breaking-changes check's griffe findings
    belong here too, a line rather than a screenshot: neither gates
    anything, and a pull request that never
    mentions them having run reads exactly like one that skipped them.
 
    A deliberate skip and an item nobody has gotten to yet are different
    facts and do not fit under one checkbox: 0.7.1.2's own checklist
-   folded "dispatch `latest`" and "`mutation` is owed" into a single
+   folded "dispatch `deps-latest`" and "`mutation` is owed" into a single
    line, which could not say "skipped this once, on purpose" and "done,
    by hand and out of band" at the same time without being rewritten
    first. Separate lines for independent questions cost nothing and stay
@@ -370,13 +370,13 @@ Then:
    "
    ```
 
-   BIP340 vector 0, the same check `published` makes below. Then check
+   BIP340 vector 0, the same check `pypi-published` makes below. Then check
    the attestations, the two checks the rehearsal makes and for the same
    reasons: a compiled extension can install and not work, and the
    attestations are under `/integrity/<project>/<version>/<filename>/provenance`
    rather than in the JSON API, which answers `null` for `provenance`
    even where they are
-1. `published` no longer needs a manual dispatch to answer this for the
+1. `pypi-published` no longer needs a manual dispatch to answer this for the
    release itself: `release.yml`'s own `published` job (`needs:
    publish-pypi`) calls the same workflow directly, so by the time the run
    finishes it has already installed from PyPI what was just uploaded, on
@@ -558,7 +558,7 @@ artifacts already built.
    and `--prerelease allow` for the `.dev<run><attempt>` suffix the
    version installed carries
 1. run something with it, installing being weaker than working where a
-   compiled extension is what was installed. The check the `published`
+   compiled extension is what was installed. The check the `pypi-published`
    workflow makes — BIP340 vector 0, and the round trip of a signature
    the build makes itself — is the one to reach for, and it is worth
    reaching for here rather than only after PyPI: this is the first

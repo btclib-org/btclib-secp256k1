@@ -14,7 +14,7 @@ touches, and the person it misleads is not reading this repository.
 
 The sentinels are where the interpreter set lives because that is where
 the suite meets every interpreter: the merge gate runs one cell, on the
-version `.python-version` pins, and `ubuntu.yml`'s header says why. Each
+version `.python-version` pins, and `os-ubuntu.yml`'s header says why. Each
 of the three carries the list in full, and each of their comments says
 the other two carry the same one, so the list is read per file and the
 three are required to agree: a version added to one and forgotten in
@@ -40,7 +40,7 @@ from pathlib import Path
 
 _ROOT = Path(__file__).parents[1]
 _PYPROJECT = (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-_SENTINELS = ("ubuntu.yml", "macos.yml", "windows.yml")
+_SENTINELS = ("os-ubuntu.yml", "os-macos.yml", "os-windows.yml")
 _WORKFLOWS = {
     name: (_ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
     for name in _SENTINELS

@@ -89,7 +89,7 @@ permissions:
 # cancel superseded runs on the same branch/PR, named literally rather than
 # through github.workflow for the reason lint.yml gives at length. No
 # concurrency-suffix input here, unlike every workflow release.yml calls
-# but published.yml, which takes a version instead: nothing calls this
+# but pypi-published.yml, which takes a version instead: nothing calls this
 # workflow, so github.ref is this run's own ref
 concurrency:
   group: codeql-${{ github.ref }}

@@ -243,7 +243,7 @@ comments say what reading the pair together buys. What each
 sentinel asks is the first thing its own header says, and the `on:` block
 under that header is when.
 
-`ubuntu`, `macos` and `windows` are the three platform sentinels: the suite
+`os-ubuntu`, `os-macos` and `os-windows` are the three platform sentinels: the suite
 on both images of a platform and on every interpreter, which is the whole
 of what the gate's single cell does not ask. Keeping them off the gate is a
 measurement rather than a preference — macOS runners queue for tens of
@@ -251,11 +251,11 @@ minutes where every other platform queues for two, and GitHub Free gives an
 organization twenty concurrent jobs shared across every repository in it,
 which a matrix on every commit spends before a reviewer is reached.
 `test.yml`'s header carries the numbers and the command that re-derives
-them, `windows.yml`'s the rest of the second, and `ubuntu.yml`'s header is
+them, `os-windows.yml`'s the rest of the second, and `os-ubuntu.yml`'s header is
 the argument the other two point at. `release` calls all three, so what a
 merge does not wait for a publication still does.
 
-`latest` is the one that covers a gap nothing else does. Every uv command
+`deps-latest` is the one that covers a gap nothing else does. Every uv command
 elsewhere passes `--locked`, the dependency groups declare no version, and
 the one runtime dependency is cffi — which this package does not merely
 import but *compiles against*, so a cffi, setuptools or cmake release can
@@ -265,7 +265,7 @@ and pinned by no lock file. Dependabot is weekly and lands the morning
 after this runs, which is the other half of the arrangement: the sentinel
 answers first, so the pull requests that arrive next are a diff whose
 result is already known. `.github/dependabot.yml` carries that reasoning
-where the day is set, and `latest.yml`'s cron comment where this one is.
+where the day is set, and `deps-latest.yml`'s cron comment where this one is.
 
 `mutation` is scoped by `.github/mutation/bindings.toml`, which is also
 what a local run reads, so there is one statement of what is mutated and
@@ -366,8 +366,9 @@ findings.
   spend a session rediscovering them
 - **every `schedule` and `workflow_dispatch` here is inert off `main`**:
   both only run from the default branch, so a rehearsal of `release.yml`
-  cannot be dispatched from a branch, and `macos.yml`, `latest.yml` and the
-  other sentinels are reachable there through nothing at all until merged
+  cannot be dispatched from a branch, and `os-macos.yml`,
+  `deps-latest.yml` and the other sentinels are reachable there through
+  nothing at all until merged
 - **a hand-applied mutation can outlive its restore.** `(0, 1, 2, 3)` and
   `(0, 1, 1, 3)` are the same length, so restoring the file with `cp` in the
   same second leaves mtime *and* size matching what the `.pyc` recorded, and
@@ -391,7 +392,7 @@ findings.
   those files being hex and nothing else. Adding to either side fails its
   hook until that baseline is regenerated; both commands are in
   CONTRIBUTING.md, and reading the diff is the point of a baseline
-- **the `published` workflow went green with 0.7.1**, on 4 August 2026,
+- **the `pypi-published` workflow went green with 0.7.1**, on 4 August 2026,
   nineteen cells out of nineteen, having been nineteen out of nineteen red
   the day before: 0.4.0 had no arm64 wheel and its sdist no longer built,
   so that red was a fact about what users could install rather than a
