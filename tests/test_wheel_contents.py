@@ -52,7 +52,6 @@ _DIST_INFO_MEMBERS = (
     f"{_DIST_INFO}/RECORD",
     f"{_DIST_INFO}/WHEEL",
     f"{_DIST_INFO}/licenses/AUTHORS.md",
-    f"{_DIST_INFO}/licenses/COPYRIGHT",
     f"{_DIST_INFO}/licenses/LICENSE",
 )
 

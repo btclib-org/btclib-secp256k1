@@ -6,7 +6,12 @@ readme = "README.md"
 # PEP 639: a SPDX expression and the files it refers to, replacing the
 # deprecated license table and the License :: classifier
 license = "MIT"
-license-files = ["LICENSE", "COPYRIGHT", "AUTHORS.md"]
+# not COPYRIGHT: that file is the organization's notice, a repository
+# file and not a distributed one -- the holder a consumer needs is in
+# LICENSE already, and COPYRIGHT is the source of a source-file header
+# rather than a statement to a consumer (btclib-org/.github#135). The
+# sdist target below keeps it out of that archive for the same reason
+license-files = ["LICENSE", "AUTHORS.md"]
 requires-python = ">=3.10"
 # the organization and not a list of people, which is btclib's convention
 # and the only one that stays true: a name in metadata is baked into every
@@ -132,11 +137,16 @@ path = "scripts/hatch_build.py"
 cffi_modules = ["scripts/cffi_build.py:ffi_ext"]
 
 [tool.hatch.build.targets.sdist]
-# ship pristine vendored sources only: build artifacts from a local build
-# would be stale (or plain wrong) on the machine installing the sdist.
-# The CMake build writes nothing inside the vendored tree, so most of
-# what follows can only be left over in a tree that predates it
+# COPYRIGHT is a repository file, kept out of this archive for the
+# reason `license-files` above gives for keeping it out of the wheel;
+# anchored, so that the pattern names the root file alone. The rest
+# ships pristine vendored sources only: build artifacts from a local
+# build would be stale (or plain wrong) on the machine installing the
+# sdist. The CMake build writes nothing inside the vendored tree, so
+# most of what follows can only be left over in a tree that predates
+# it
 exclude = [
+    "/COPYRIGHT",
     "/build",
     "/dist",
     "/wheelhouse",
