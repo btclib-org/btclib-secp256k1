@@ -337,6 +337,42 @@ release-notes length in the first place, and are still in
 
 ### CI
 
+- **`release.yml` names its steps** (#300). The steps of this file that
+  carried no `name:` have one, where both siblings' `release.yml` names
+  all of theirs. GitHub renders an unnamed step as the command it runs,
+  so a failing job in a release run was read by expanding steps rather
+  than by scanning them, and the same step was harder to recognise across
+  the three repositories, which is the cost #300 names. Neither of the
+  divergences that issue cites was a missing name --
+  btclib-org/btclib#1141 is a step that has one and lacks `shell: bash`,
+  and btclib-org/btclib#1142 is a guard at job level -- so what a name
+  buys is that the next such comparison is made by scanning, not that it
+  would have caught either of those.
+
+  The names are the siblings' own wherever the step is theirs too:
+  `Checkout code`, `Setup uv`, `Publish to PyPI`, `Publish to TestPyPI`,
+  `Upload the attestation bundle`, `Download the attestation bundle`.
+  Where they disagree it is because this package publishes what the
+  siblings do not. Each publish job downloads twice where the siblings
+  download once, so its two steps are named apart -- `Download the
+  wheels` and `Download the source distribution` -- one wheel matrix
+  built by the jobs that compile the vendored library and an sdist built
+  by a job that does not, against a single `Download the distribution
+  files` that would name neither. `attest` and `github-release` take no
+  wheels at all, so the siblings' name would have fitted there; they read
+  `Download the source distribution` too, so that one artifact is fetched
+  under one name throughout the file.
+
+  #300 stays open, being about every workflow here rather than this one:
+  the other files keep their unnamed steps until a pull request that
+  touches each of them arrives, which is what that issue asks for instead
+  of a sweep. Nothing reports one -- `actionlint` has no rule for a step
+  without a name -- so the command is what answers:
+
+  ```shell
+  grep -nE '^ *- (uses|run):' .github/workflows/*.yml
+  ```
+
 - **The merge gate runs one cell of the suite, and the sweeps moved to
   the calendar** (btclib-org/.github#85). `test.yml`'s `suite-static` and
   `suite-dynamic` jobs are gone: two ubuntu images, each walking every
