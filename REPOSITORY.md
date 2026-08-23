@@ -68,13 +68,13 @@ more than that checkout gives: `submodule-pin` resolves the release
 `ci:` is the documented key for the clone, and it was tried on #132 rather
 than reasoned about — with it the submodule arrives and the hook still
 fails, `the vendored clone is shallow and carries no v0.8.0 tag`. There is
-no `fetch-depth` key to ask that service for, so the hook is in the `ci:`
-`skip` list beside `pyroma`, which needs a network that service also does
-not give. What that costs is one of the hook's two runners: the one the
-rule names, `Lint and type-check`, checks the submodule out with
-`fetch-depth: 0` precisely so it has what the hook needs, and so does a
-developer's own commit. Re-read that skip list before adding to it: an
-entry may join for a reason of that kind and no other.
+no `fetch-depth` key to ask that service for, so the hook is the one
+entry in the `ci:` `skip` list. What that costs is one of the hook's two
+runners: the one the rule names, `Lint and type-check`, checks the
+submodule out with `fetch-depth: 0` precisely so it has what the hook
+needs, and so does a developer's own commit. Re-read that skip list
+before adding to it: an entry may join for a reason of that kind and no
+other.
 
 Neither `os-ubuntu.yml`, `os-macos.yml`, `os-windows.yml`, `deps-latest.yml`,
 `links.yml`, `mutation.yml`, `pypi-install.yml` nor `vendored-vectors.yml`
