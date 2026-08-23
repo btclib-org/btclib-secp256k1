@@ -517,7 +517,7 @@ command at all, for the reason above, and no longer gates.
       sphinx-build -W --keep-going -b html docs/source docs/build/html
   ```
 
-The `pypi-published` workflow has no local equivalent by design: what it
+The `pypi-install` workflow has no local equivalent by design: what it
 installs is what PyPI serves.
 
 The sentinels beside it gate nothing, so a red one is read in the Actions
@@ -672,7 +672,7 @@ can act on from a branch is noise.
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
 | `deps-latest` | weekly | the dependencies, at their newest |
 | `links`, `mutation` | weekly | — |
-| `pypi-published` | weekly, a release | what PyPI serves |
+| `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
 
 The first two rows are what a merge waits for, and the suite cell among them

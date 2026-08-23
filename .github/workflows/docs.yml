@@ -71,7 +71,7 @@ permissions:
 # cancel superseded runs on the same branch/PR, named literally and
 # discriminated by an input rather than left to github.ref alone, for the
 # three reasons lint.yml gives at length: release.yml calls this workflow
-# beside lint.yml, test.yml, os-macos.yml, os-windows.yml and pypi-published.yml, and
+# beside lint.yml, test.yml, os-macos.yml, os-windows.yml and pypi-install.yml, and
 # a group computed from github.workflow would have every one of them
 # cancel the others, that expression being the caller's name in each
 concurrency:

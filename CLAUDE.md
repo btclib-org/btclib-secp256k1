@@ -205,7 +205,7 @@ Do not use Fable unless explicitly instructed.
   always — without it a stale test command fails every mutant
   identically and the session reports a perfect kill rate, which is the
   one failure mode of a mutation run that looks like good news
-- **the `pypi-published` workflow went green with 0.7.1**, on 4 August
+- **the `pypi-install` workflow went green with 0.7.1**, on 4 August
   2026, nineteen cells out of nineteen, having been nineteen out of
   nineteen red the day before: 0.4.0 had no arm64 wheel and its sdist no
   longer built, so that red was a fact about what users could install

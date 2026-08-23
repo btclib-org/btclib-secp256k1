@@ -1,5 +1,5 @@
 ---
-name: pypi-published
+name: pypi-install
 
 # the sentinel on what users actually install. Every other workflow here
 # tests artifacts built in the same run, from the tree that triggered it:
@@ -92,7 +92,7 @@ permissions:
 # sample worth keeping, and none supersedes the others. A concurrent run
 # queues instead
 concurrency:
-  group: pypi-published-${{ github.ref }}
+  group: pypi-install-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

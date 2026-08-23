@@ -370,13 +370,13 @@ Then:
    "
    ```
 
-   BIP340 vector 0, the same check `pypi-published` makes below. Then check
+   BIP340 vector 0, the same check `pypi-install` makes below. Then check
    the attestations, the two checks the rehearsal makes and for the same
    reasons: a compiled extension can install and not work, and the
    attestations are under `/integrity/<project>/<version>/<filename>/provenance`
    rather than in the JSON API, which answers `null` for `provenance`
    even where they are
-1. `pypi-published` no longer needs a manual dispatch to answer this for the
+1. `pypi-install` no longer needs a manual dispatch to answer this for the
    release itself: `release.yml`'s own `published` job (`needs:
    publish-pypi`) calls the same workflow directly, so by the time the run
    finishes it has already installed from PyPI what was just uploaded, on
@@ -558,7 +558,7 @@ artifacts already built.
    and `--prerelease allow` for the `.dev<run><attempt>` suffix the
    version installed carries
 1. run something with it, installing being weaker than working where a
-   compiled extension is what was installed. The check the `pypi-published`
+   compiled extension is what was installed. The check the `pypi-install`
    workflow makes — BIP340 vector 0, and the round trip of a signature
    the build makes itself — is the one to reach for, and it is worth
    reaching for here rather than only after PyPI: this is the first

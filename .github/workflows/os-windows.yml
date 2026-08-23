@@ -133,7 +133,7 @@ jobs:
       #
       # both steps below run on windows-latest or windows-11-arm, where
       # the default shell is PowerShell rather than bash -- see
-      # pypi-published.yml's own fix, issue btclib-org/btclib#1141, for the
+      # pypi-install.yml's own fix, issue btclib-org/btclib#1141, for the
       # failure mode a POSIX-only step hits there unnoticed. Each is one
       # plain command and runs identically under either shell today,
       # which is exactly the hazard: a future edit adding POSIX-only

@@ -77,7 +77,7 @@ developer's own commit. Re-read that skip list before adding to it: an
 entry may join for a reason of that kind and no other.
 
 Neither `os-ubuntu.yml`, `os-macos.yml`, `os-windows.yml`, `deps-latest.yml`,
-`links.yml`, `mutation.yml`, `pypi-published.yml` nor `vendored-vectors.yml`
+`links.yml`, `mutation.yml`, `pypi-install.yml` nor `vendored-vectors.yml`
 appears in the rule, and none of them must: each is expected to go red for a
 reason no pull request introduced. The first three are the ones worth naming
 twice, because they do run the suite: what a merge no longer waits for is

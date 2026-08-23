@@ -57,7 +57,7 @@ name: os-ubuntu
 # it is and no larger: check-dist installs the dynamic manylinux wheel
 # by path into an empty environment and imports it, which is the .so
 # beside the module, hatch_build.py's tag and the cffi requirement;
-# pypi-published.yml's `kind: dynamic` cell asks the same of what the index
+# pypi-install.yml's `kind: dynamic` cell asks the same of what the index
 # actually serves. What no run asks is the suite through the packaged
 # artifact, against an extension the cells below have already compiled
 # and tested byte for byte.
