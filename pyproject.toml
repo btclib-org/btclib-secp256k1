@@ -129,6 +129,9 @@ requires = [
     'cffi>=2.0; python_version>="3.14"',
     'setuptools; python_version>="3.12"',
     "cmake>=3.22",
+    # `typing.override` is 3.12: below it, scripts/ takes the decorator
+    # mypy's explicit-override asks for from here
+    'typing_extensions; python_version<"3.12"',
 ]
 build-backend = "hatchling.build"
 
@@ -277,31 +280,27 @@ required-version = ">=0.12.0"
 strict = true
 show_column_numbers = true
 show_error_codes = true
-# the optional error codes strict does not turn on, each measured with
-# its own --enable-error-code over btclib_secp256k1, tests and
-# scripts: every one of the eleven finds nothing today, so each is a
-# ratchet and none is a cleanup. Eleven rather than the nine btclib's
-# own pyproject.toml selects: redundant-expr and possibly-undefined are
-# the two more, both absent from btclib's list because of a runtime
-# isinstance guard on a field mypy already believes is typed from a
-# json Literal, an idiom this package has no occasion for, wrapping no
-# json of its own
+# the optional error codes strict does not turn on: section 6 of the
+# organization standard lists them, the same list in every repository
+# that runs mypy (btclib-org/.github#165). A code that finds nothing
+# here is a ratchet, and the line it would catch is the one written
+# after the survey
 enable_error_code = [
     "deprecated",
     "exhaustive-match",
+    "explicit-override",
     "ignore-without-code",
     "mutable-override",
-    "narrowed-type-not-subtype",
     "possibly-undefined",
     "redundant-expr",
     "redundant-self",
     "truthy-bool",
     "truthy-iterable",
     "unimported-reveal",
+    "unused-awaitable",
 ]
-# the third code btclib leaves out, and not part of the array above:
-# mypy exposes it as its own flag rather than through
-# --enable-error-code. Same absent idiom, same zero findings measured
+# a flag of its own rather than an error code, so not in the array
+# above; section 6 asks for it beside the list
 warn_unreachable = true
 # stubs/_btclib_secp256k1.pyi describes the cffi boundary; without it
 # ffi and lib are Any and every wrapper checks out vacuously

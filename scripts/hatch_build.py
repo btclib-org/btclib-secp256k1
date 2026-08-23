@@ -19,11 +19,17 @@ the distinction reaches the installed package at all.
 import os
 import platform
 import shutil
+import sys
 import sysconfig
 from pathlib import Path
 from typing import Any
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 
 class CustomBuildHook(BuildHookInterface[Any]):
@@ -67,6 +73,7 @@ class CustomBuildHook(BuildHookInterface[Any]):
             raise RuntimeError(msg)
         return build_vars[ext_name]
 
+    @override
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:
         """Build the extensions and tell hatchling what it is packaging.
 
