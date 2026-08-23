@@ -23,7 +23,7 @@ in each, against different versions.
 
 Parsed rather than loaded. `uv.lock` is toml and the floor here is 3.10,
 where `tomllib` is not yet in the standard library, which is the reason
-`test_copyright.py` beside this one reads pyproject.toml the same way;
+`copyright_test.py` beside this one reads pyproject.toml the same way;
 `.pre-commit-config.yaml` is yaml and no group here carries a parser for
 it. Both shapes are narrow enough to match: a `[[package]]` table with a
 name and a version, and a two-space-indented `- name==version` under the

@@ -8,7 +8,7 @@
 out of it, so what has to hold is an equality -- signature for signature,
 message length for message length -- and that equality is what the
 published BIP340 vectors already pin on the other side: tests/
-test_vectors.py signs each vector through a signer as well as through
+vectors_test.py signs each vector through a signer as well as through
 `ssa.sign_custom`, so the value both are held against comes from
 bitcoin/bips rather than from this package agreeing with itself.
 
@@ -164,7 +164,7 @@ def test_wipe_overwrites_the_keypair() -> None:
 
     The keypair holds the 32 octets of the key, so the assertion is that
     they are found in the memory the signer holds and are not found
-    afterwards -- which is the same thing tests/test_secret.py asserts of
+    afterwards -- which is the same thing tests/secret_test.py asserts of
     the buffer a call owns, over the one a caller owns.
     """
     signer = ssa.Signer(PRVKEY)

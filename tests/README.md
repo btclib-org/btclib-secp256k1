@@ -2,13 +2,13 @@
 
 Where the files under `tests/` that are not this package's own tests
 came from, and whether the copy here still matches it. The docstring of
-`test_vectors.py` already cites the same upstreams, against `master`: a
+`vectors_test.py` already cites the same upstreams, against `master`: a
 citation like `bitcoin/bips/blob/master/bip-0340/test-vectors.csv` names
 a file that changes under us and says nothing about the revision that
 was actually copied. Here each citation is pinned to a commit, and each
 blob is compared.
 
-Nothing in this file restates what a vector tests -- `test_vectors.py`
+Nothing in this file restates what a vector tests -- `vectors_test.py`
 already says that. This says which revision of it is held, and for the
 two `secp256k1-py` files the answer is "the same JSON values, ours
 reformatted", which the verdict accounts for.
@@ -84,7 +84,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical**, CRLF included. Every vector, all three columns.
 The `comment` column names the degenerate case each one is -- `u%p=0`,
 `t%p=0`, `u^3+t^2+7=0`, and which of x1, x2, x3 the map lands on -- and
-`test_vectors.py` uses it as the test id, so a failure says which case
+`vectors_test.py` uses it as the test id, so a failure says which case
 broke.
 
 ### `tests/bip324_packet_encoding_test_vectors.csv`
@@ -212,7 +212,7 @@ there.
 Read in part, and the part is a decision rather than a limit. Each case
 carries its transaction as scriptSig, witness and prevout scriptPubKey
 hex, and BIP352's eligibility rules are rules about those; this package
-reads no script, so `test_vectors.py` takes the `input_pub_keys` the file
+reads no script, so `vectors_test.py` takes the `input_pub_keys` the file
 publishes for the eligible inputs and pairs them with the inputs in
 order. The one script question left is whether a prevout is P2TR, which
 is what decides between the x-only and the full key argument and can be
@@ -277,7 +277,7 @@ git ls-files 'tests/*.csv' 'tests/*.json'
   `bip352_send_and_receive_test_vectors.json`.
 - JSON-equal, reformatted: `ecdsa_sig.json`, `ecdsa_custom_nonce_sig.json`.
 
-Not vendored, and outside the scope of this file: `test_vectors.py`
+Not vendored, and outside the scope of this file: `vectors_test.py`
 also self-checks the RFC6979 `(k, r, s)` triples in its own docstring
 against `r == x(k*G)`, which is not a citation to a vendored file, and
 constructs the recovery id 2 and 3 signature published nowhere, holding
@@ -294,14 +294,14 @@ cannot tell the two apart — the suites of the organization name the same
 idea three different ways.
 
 So which of the eight this repository tests is **declared here**, and
-`test_conventions.py` asserts the declaration is true: every convention
+`conventions_test.py` asserts the declaration is true: every convention
 named below is one of section 7's, every module named exists and holds at
 least one test, and the two halves together account for all eight.
 
 | convention | tested in |
 | --- | --- |
-| the copyright header | `test_copyright.py` |
-| the documentation | `test_docs.py` |
+| the copyright header | `copyright_test.py` |
+| the documentation | `docs_test.py` |
 
 Not tested here: the public surface; the import graph; the changelog;
 the build system; the calling convention; input validation.
@@ -312,20 +312,20 @@ convention this package has: nothing here declares `__all__`, and no
 prose asks for one, so there is no census to walk and none of the three
 bullets that rest on such a walk applies. **Input validation** is one of
 those three — section 7 asks for it "driven by a walk over the public
-surface rather than by a hand-written list", and `test_core.py` refuses
+surface rather than by a hand-written list", and `core_test.py` refuses
 plenty by hand. **The calling convention** is the other: two tests read a
 signature, but each about one function rather than as a rule over the
 package.
 
-**The changelog** is the near miss. `test_vendored_data.py` forbids
+**The changelog** is the near miss. `vendored_data_test.py` forbids
 exactly the count section 7 forbids — a number nothing derives — but of
 this file rather than of `CHANGELOG.md` and `RELEASE_NOTES.md`, which is
 what that bullet names. The rule is here; the bullet's subject is not.
 
 **The import graph** and **the build system** have nothing standing in
-for them: `test_extension.py` reads `sys.modules` to hold an import cost
+for them: `extension_test.py` reads `sys.modules` to hold an import cost
 rather than to establish that every module imports first, and
-`test_wheel_contents.py` tests the script that inspects a built wheel
+`wheel_contents_test.py` tests the script that inspects a built wheel
 rather than what runs while one is built.
 
 What must not be aligned across the organization is where these live or

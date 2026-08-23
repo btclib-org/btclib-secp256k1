@@ -3,7 +3,7 @@
 A release publishes wheels of two kinds and one sdist. This page states
 what a wheel may hold, what it may never hold, and what has to be there;
 `.github/scripts/verify_wheel_contents.py` enforces every rule down to
-the last section, and `tests/test_wheel_contents.py` compares the two in
+the last section, and `tests/wheel_contents_test.py` compares the two in
 both directions, so this page cannot state a rule the script does not
 have, and the script cannot grow a rule this page does not state. The
 prose around the lists is prose, and is checked by nobody.

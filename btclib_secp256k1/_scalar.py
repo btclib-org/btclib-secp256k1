@@ -193,7 +193,7 @@ def _owned_octets(num: CData, name: str) -> CData:
     # function's TypeError and not about the argument -- and `"char[32]"`
     # is worse, being a cdecl that resolves, 32 octets wide, so the str
     # would have been accepted and handed to libsecp256k1 as a str.
-    # `tests/test_core.py` holds both
+    # `tests/core_test.py` holds both
     if isinstance(num, str):
         raise TypeError(not_a_scalar)
     try:

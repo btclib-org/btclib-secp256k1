@@ -846,7 +846,7 @@ is Core's scheme rather than a rephrasing of it: the first attempt is the
 plain RFC6979 signature, and each retry mixes a `uint32` counter, little
 endian in the first 4 of 32 octets, into the nonce. Written any other
 way it would answer octets nobody else answers; written this way,
-`tests/test_vectors.py` holds it to Core's own vectors and to
+`tests/vectors_test.py` holds it to Core's own vectors and to
 rust-secp256k1's.
 
 It costs a signature and then some: 24.9 microseconds against the 11.7 of
@@ -975,7 +975,7 @@ and never show. libsecp256k1 exports both derivations as callable
 pointers, so this is the C function itself rather than a second
 implementation of it, called with what the signer passes it -- and what
 comes back is the `k` of the signature the same arguments produce, which
-is how `tests/test_nonces.py` checks it: `r` is the x of `k` times the
+is how `tests/nonces_test.py` checks it: `r` is the x of `k` times the
 generator. A python implementation of either derivation has published
 vectors and, until now, no oracle. The nonce is the secret a signature is
 built on, so reading one into python takes it out of constant-time code:
@@ -996,7 +996,7 @@ at. What is not there is what BIP352 states over scripts -- which inputs
 of a transaction are eligible, and which of those are taproot -- because
 that is a script question and there is no script here: the two kinds of
 key are two arguments, and the caller says which is which.
-`tests/test_vectors.py` drives both directions of every BIP352 vector,
+`tests/vectors_test.py` drives both directions of every BIP352 vector,
 and reads that eligibility off the keys the vector file itself publishes
 rather than off its scripts, for the same reason.
 
@@ -1092,7 +1092,7 @@ the buffers it writes to.
 
 This matters on a free-threaded interpreter, for which a wheel is built
 (`cp314t`), where those calls are no longer serialized;
-`tests/test_concurrency.py` exercises it.
+`tests/concurrency_test.py` exercises it.
 
 The outposts above are what hold a buffer across calls, and they answer
 differently. `ssa.Signer` does not cost that guarantee: libsecp256k1
@@ -1133,7 +1133,7 @@ an unsynchronized concurrent access on the exact memory a MuSig2
 nonce-reuse leak comes from, the worst failure this module has. A lock
 private to the instance is what orders it: `SecretNonce._take` makes
 the read and the clear one atomic step, so at most one caller — from
-any thread — ever receives the object. `tests/test_concurrency.py`
+any thread — ever receives the object. `tests/concurrency_test.py`
 races `WORKERS` threads on one `SecretNonce` and asserts exactly one
 signs.
 
@@ -1189,7 +1189,7 @@ Against it:
   context sets its own callbacks, so the bindings stay safe either way,
   but a system library is built with the abort()ing defaults, so a
   context created through `lib` could take the process down, which is
-  what `tests/test_core.py` asserts cannot happen
+  what `tests/core_test.py` asserts cannot happen
 - the test suite would become conditional on the library it finds, while
   the coverage ratchet is measured on one configuration
 - it is a second build path, which unifying on CMake removed, and a

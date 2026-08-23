@@ -109,7 +109,7 @@ def _git(*args: str, cwd: Path | None = None, disown: bool = False) -> str | Non
         [_GIT, *args],
         cwd=cwd or _ROOT,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
         check=False,
         env=env,
     )

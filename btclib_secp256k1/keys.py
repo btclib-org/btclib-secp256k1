@@ -390,7 +390,7 @@ def pubkey_tweak_add(
     # 3.13.14, the two spellings alternated in one process over 7 rounds
     # of 20 000 calls, minimum kept for each. The private half makes the
     # same calls for a caller holding the point, and
-    # tests/test_parsed_keys.py asserts the two answer alike
+    # tests/parsed_keys_test.py asserts the two answer alike
     pubkey_bytes = octets(pubkey_bytes, "public key")
     pubkey = ffi.new("secp256k1_pubkey *")
     if not lib.secp256k1_ec_pubkey_parse(ctx, pubkey, pubkey_bytes, len(pubkey_bytes)):
@@ -977,7 +977,7 @@ def _parsed(pubkey_bytes: BytesLike, name: str) -> CData | None:
     is a tenth of the call, on the parse every wrapper taking a public key
     begins with. Two spellings of one parse is what that buys, and what
     holds them together is that either one refusing these octets is the
-    other one refusing them: `tests/test_keys.py` asserts the pair over
+    other one refusing them: `tests/keys_test.py` asserts the pair over
     both serializations and over what is neither.
 
     Args:

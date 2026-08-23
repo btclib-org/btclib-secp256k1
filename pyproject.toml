@@ -206,7 +206,7 @@ ignore = ["W003", "W009"]
 # failure against it. What it guards is the one thing a green suite cannot
 # report about itself, whether a test passes because of what ran before it
 # -- which here is not hypothetical: the context is created once at import
-# and randomized, and tests/test_concurrency.py shares it across threads,
+# and randomized, and tests/concurrency_test.py shares it across threads,
 # so an order that happens to work is an order this suite could not
 # distinguish from one that has to
 test = ["pytest", "pytest-cov", "pytest-randomly"]
@@ -375,7 +375,7 @@ extend-exclude = ["secp256k1"]
 # rather than indenting it a level further in and closing it twice. It
 # reads as the single expression it is. Measured before being taken --
 # `ruff format --preview --diff .` reformats one hunk, in
-# tests/test_properties.py -- and that is the whole of the cost today.
+# tests/properties_test.py -- and that is the whole of the cost today.
 # The cost later is the point to remember: an unstable style is one the
 # next rev of the hook can change underneath the tree, so bumping
 # ruff-pre-commit is a `--diff` before it is a version number

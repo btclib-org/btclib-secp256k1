@@ -82,7 +82,7 @@ def _section() -> str:
     tests/README.md must not contribute rows. The slice ends at the next
     `## ` rather than at the end of the file, so that a section added
     after this one is not read as part of it -- the fragility this
-    module's own arrival removed from test_vendored_data.py, and there is
+    module's own arrival removed from vendored_data_test.py, and there is
     no reason to reintroduce it here.
     """
     text = _README.read_text(encoding="utf-8")

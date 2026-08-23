@@ -35,7 +35,7 @@ which kind of
 private, `_verify_` taking a parsed key where `_parse_der` is an
 ordinary helper. `foo` is `_foo_` with a parse in front of it, a
 serialize behind it, or both, which is the equality
-`tests/test_parsed_keys.py` holds every pair to; what the private half
+`tests/parsed_keys_test.py` holds every pair to; what the private half
 saves is what composing two public ones pays between them, a
 serialization of a point that was already in hand and a parse of what
 was just serialized -- and for a compressed key that parse is a field

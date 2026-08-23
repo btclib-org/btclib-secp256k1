@@ -9,7 +9,7 @@ bindings (dsa, ssa, keys) instead of against vendored constants: the
 ECDH secret is recomputed from the shared point, and the recoverable
 signature is compared with the deterministic ECDSA one.
 
-`musig` has its own tests, in `tests/test_musig.py`: it is the one
+`musig` has its own tests, in `tests/musig_test.py`: it is the one
 module here that holds state across calls, which is a different shape
 of test from the other three, one call each against an equation checked
 another way.

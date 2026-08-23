@@ -367,6 +367,22 @@ release-notes length in the first place, and are still in
 
 ### CI
 
+- **`links.yml` accepts every code lychee would accept unasked, and
+  passes no cache flag** (btclib-org/.github#110, btclib-org/.github#111).
+  `--accept 200,206,429` replaced lychee's default rather than adding to
+  it -- `lychee --help` gives the default as `100..=103,200..=299` -- so
+  a host answering 204 to a HEAD, or a redirect ending in a 201, was a
+  dead link the weekly run went red on without anybody touching the
+  tree. The list is now that default spelled out, plus the 429 the
+  comment beside it argues for. `--cache --max-cache-age 1d` went with
+  it: a run starts from a fresh workspace and no step restored the file
+  lychee writes, so the flag decided nothing between runs, and within
+  one lychee requests each unique URL once whatever the flag says --
+  measured on this tree's own globs, 135 links and 102 requests. The
+  comment crediting the cache with keeping a throttling host from
+  reading as dead described a mechanism that was not there, and now
+  credits the retries and the timeout alone.
+
 - **`claude-review.yml` reports red on anything but an ack of this
   head** (btclib-org/.github#146). The review job ended at a step
   testing whether the action had run at all, so a `CHANGES REQUESTED`, a
@@ -874,6 +890,43 @@ release-notes length in the first place, and are still in
   command that re-reads both keys together.
 
 ### The gate
+
+- **The test modules are `*_test.py`, and `name-tests-test` runs at its
+  default** (btclib-org/.github#131). Section 7 of the organization
+  standard states one spelling and names the hook that enforces it at
+  its default; this tree was `test_*.py` throughout and passed
+  `--pytest-test-first` to hold the hook to that. Every module under
+  `tests/` is renamed with `git mv`, the argument is gone, and every
+  reference in prose, comments and workflows names the new file --
+  `git grep -P '\btest_[a-z_]+\.py\b'` answers with `CHANGELOG.md`
+  alone, whose earlier entries record the names as they were. Both
+  spellings are pytest's default collection patterns, so no test is
+  collected or dropped by the move; what it buys is a `git grep` that
+  keys on one pattern across the organization. `.secrets.baseline` is
+  regenerated with the command `CONTRIBUTING.md` gives, and differs from
+  the one before in the filenames and nothing else.
+
+- **`pretty-format-json` runs, over the hand-written json**
+  (btclib-org/.github#130). It was off with a comment saying the only
+  json tracked here was the two `ecdsa_*` vector files; the tree has
+  tracked the BIP327 and BIP352 vectors and `.claude/settings.json`
+  since. The hook now runs
+  with `tests/` excluded as a directory -- every json there is an
+  upstream vector `tests/README.md` pins to a blob sha and a verdict,
+  which a reformat would void silently -- and `.vscode/` excluded for the
+  reason `check-json` gives, so what it formats is the hand-written file,
+  and `check-hooks-apply` has a subject to see.
+
+- **`toml-comment-width` and `decoded-subprocess-encoding` run**
+  (btclib-org/.github#134). Section 4 of the standard lists both local
+  hooks without a condition and this tree ran neither. The first holds a
+  toml comment to 80 columns, a trailing unbreakable link exempt; every
+  comment in `pyproject.toml` was already at the width, by reading. The
+  second refuses `text=True` and `universal_newlines=True` on a child
+  process, which decode with the locale's encoding: the call sites, in
+  `tests/extension_test.py`, `tests/mutation_counts_test.py` and the
+  scripts under `.github/scripts` that parse what a child printed, pass
+  `encoding="utf-8"` instead -- the same text mode, named.
 
 - **`CHANGELOG.md` stops asking for the blank line a union merge drops**
   (btclib-org/.github#138). MD022 and MD032 are off for this file alone,

@@ -352,7 +352,7 @@ SIGNABLE = [
 def test_bip327_key_agg_vector(case: dict[str, Any]) -> None:
     """Aggregate the keys of one BIP327 vector into the key it publishes.
 
-    `tests/test_musig.py` verifies an aggregate signature against an
+    `tests/musig_test.py` verifies an aggregate signature against an
     aggregate key `musig.KeyAggCache` computed, which is a round trip: a
     wrong-but-self-consistent aggregation passes it. This is the
     aggregation itself, against the published value -- the coefficients,
@@ -626,7 +626,7 @@ def test_bip352_sending_vector(case: dict[str, Any]) -> None:
     unspecified -- libsecp256k1 returns one output per recipient in the
     order the recipients were given -- it is simply not what these
     vectors pin, and `test_the_outputs_follow_the_recipient_order` in
-    tests/test_modules.py is what holds it.
+    tests/modules_test.py is what holds it.
 
     A single empty set is the sender making nothing, which here is a
     `ValueError` rather than an empty list: there is no silent payment
@@ -972,7 +972,7 @@ def test_rfc6979_ecdsa_vector(
 
     The published k is also what `dsa.nonce_rfc6979` has to answer, which
     is the only assertion here that holds that entry point to something
-    other than this package: `tests/test_nonces.py` compares it with the
+    other than this package: `tests/nonces_test.py` compares it with the
     signature it made, and this compares it with the value RFC6979
     publishes.
     """

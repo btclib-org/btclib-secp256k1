@@ -107,12 +107,28 @@ repos:
         # is given that directory and fails on what it cannot parse, which
         # is the question this hook asks
         exclude: ^\.vscode/
-      # off, and the reason is the two files it would reach: the only json
-      # tracked here is tests/ecdsa_sig.json and
-      # tests/ecdsa_custom_nonce_sig.json, whose bytes are recorded in
-      # .secrets.baseline. Reformatting them voids that record, and
-      # excluding both leaves the hook applying to nothing
-      # - id: pretty-format-json
+      - id: pretty-format-json
+        name: pretty-format-json (in place fixes)
+        # --autofix because every other fixing hook here corrects rather
+        # than reports
+        args: [--autofix]
+        # Two directories, for two different reasons.
+        # `.vscode`, for the reason check-json above is given the same
+        # exclude: those files are jsonc, this hook parses json, and
+        # prettier below is what formats them instead -- at its own
+        # indent, which is not this hook's and does not have to be, no
+        # other tool reading them.
+        # tests/ is the vendored directory, as tests/README.md declares
+        # it: every json in there is an upstream vector file, pinned by a
+        # git blob sha to a verdict, and a reformat voids the pin and the
+        # verdict together -- silently, this hook correcting rather than
+        # reporting. Excluded by directory rather than by name so that
+        # the next file vendored into it is safe before anyone remembers
+        # this line; check-json above still asks the question worth
+        # asking of them, which is whether they parse. What is left is
+        # the hand-written json, `.claude/settings.json` today, which is
+        # this hook's subject
+        exclude: ^(\.vscode/|tests/)
       - id: check-merge-conflict
       - id: check-vcs-permalinks
       - id: detect-private-key
@@ -120,10 +136,11 @@ repos:
       - id: check-docstring-first
       # a file pytest never collects is not a failing test, it is no test,
       # which is the one failure a suite cannot report about itself.
-      # --pytest-test-first for the `test_*.py` convention this tree
-      # already uses, the hook's own default being the other one
+      # At its default, `*_test.py`, which is section 7 of the
+      # organization standard's one spelling: this tree was on
+      # `test_*.py` and passed --pytest-test-first to keep it, and the
+      # rename is what took the argument away
       - id: name-tests-test
-        args: [--pytest-test-first]
       # measures what is being added, so the vendored submodule and the
       # vector files already here pass and the next large blob does not
       - id: check-added-large-files
@@ -373,15 +390,46 @@ repos:
   # session under .github: .taplo.toml holds the formatting choices and the
   # reasoning for them, as .yamllint.yaml does for the width of a yaml line.
   # uv.lock is toml to identify and therefore matched by the hook's own
-  # types, and it is uv's file to write. taplo-lint is not enabled beside
-  # this: it validates against a schema catalogue it fetches, and pyroma
-  # below reads the metadata offline
+  # types, and it is uv's file to write. It runs before toml-comment-width
+  # below, which reads a comment line and is the one thing here a formatter
+  # does not settle -- taplo aligns a comment that trails a value and
+  # rewraps none. taplo-lint is not enabled beside this: it validates
+  # against a schema catalogue it fetches, and pyroma below reads the
+  # metadata offline
   - repo: https://github.com/ComPWA/taplo-pre-commit
     rev: v0.9.3
     hooks:
       - id: taplo-format
         name: taplo (toml, in place fixes)
         exclude: ^uv\.lock$
+  # the width of a toml comment, which was the last prose here held to
+  # nothing but reading: markdownlint holds markdown to 80 columns, ruff
+  # holds Python comments and docstrings to the same and yamllint the
+  # workflows, and pyproject.toml carries more reasoning than any single
+  # file those cover. Every comment there was at the width when this hook
+  # arrived, which is what reading had achieved and what nothing would
+  # have noticed the first time it stopped being true.
+  # A local pygrep rule because nothing off the shelf does it: taplo
+  # formats values and leaves comments alone, by design, a formatter that
+  # reflowed prose being a formatter that rewrites it.
+  # `.{80}\S*[ \t]` reports a line only when whitespace is left past
+  # column 80, which is MD013's amnesty and ruff's: a comment ending in a
+  # link that cannot be broken is not a defect. Without the amnesty this
+  # would be stricter on toml prose than the rules it mirrors are on the
+  # same sentences in a .py or a .md.
+  # The `#` after optional indent selects a comment and not a long value:
+  # `addopts` and `skip` in pyproject.toml are single tokens no width can
+  # break, and a value is not prose.
+  # pygrep matches bytes, so a non-ascii character would count as its
+  # utf-8 length. The error is in the safe direction -- a line reported
+  # one column early is rewrapped, never a line silently let through
+  - repo: local
+    hooks:
+      - id: toml-comment-width
+        name: toml comment width (80 columns, unbreakable links exempt)
+        language: pygrep
+        entry: '^(?=[ \t]*#).{80}\S*[ \t]'
+        files: \.toml$
   # ruff replaces black, isort, flake8, autoflake, pyupgrade, bandit,
   # copyright_notice_precommit, pydocstringformatter and yesqa: one tool,
   # one config section in pyproject.toml, and a fraction of the runtime.
@@ -411,6 +459,27 @@ repos:
         name: pydoclint (arguments and return values)
         args: [--config=pyproject.toml]
         files: ^btclib_secp256k1/.*\.py$
+  # the other half of pyproject.toml's unspecified-encoding, which reads
+  # `open` and the pathlib and tempfile spellings and stops there. A child
+  # process decoded through `text=True` takes the locale's encoding by
+  # exactly the same rule -- what a test asserts then depends on what
+  # Windows decoded the child's stdout as, and two of the scripts under
+  # .github/scripts parse what a child printed, unattended -- and no
+  # linter here has an opinion on that keyword.
+  # `encoding=` is what the call wanted anyway: passing it puts subprocess
+  # in text mode, so the fix is one keyword in place of another and never
+  # a mode change.
+  # A literal keyword rather than a call-shaped pattern, because pygrep is
+  # line based and every such call here spans several lines. It costs
+  # nothing to be that blunt: there is no reason to write `text=True` that
+  # `encoding="utf-8"` does not answer
+  - repo: local
+    hooks:
+      - id: decoded-subprocess-encoding
+        name: a decoded subprocess names its encoding, not text=True
+        language: pygrep
+        entry: '\b(text|universal_newlines)=True'
+        files: \.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.3.1

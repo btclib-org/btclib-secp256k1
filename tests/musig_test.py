@@ -4,16 +4,16 @@
 
 """`musig` holds state, which is the one thing the other modules do not.
 
-`tests/test_vectors.py` holds `musig` to BIP327's own vectors, case by
+`tests/vectors_test.py` holds `musig` to BIP327's own vectors, case by
 case; what is left for this file is what a vector cannot state, the same
-split `tests/test_signer.py` makes for `ssa.Signer`: the lifetime the
+split `tests/signer_test.py` makes for `ssa.Signer`: the lifetime the
 three classes hand the caller. `KeyAggCache` and `Session` hold nothing
 secret, so what is asserted of them here is the shape of a session end
 to end, and that a bad contribution to `pubkey_agg`, `nonce_agg` or
 `partial_sig_agg` is named by its position. `SecretNonce` does hold a
 secret, and what is asserted of it is `wipe`'s cases -- overwritten,
 consumed by `partial_sign`, wiped twice, dropped -- the same shape
-`tests/test_signer.py` holds `ssa.Signer` to, and for the reason
+`tests/signer_test.py` holds `ssa.Signer` to, and for the reason
 SECURITY.md gives: this is the second buffer in the package whose
 zeroing is asked for rather than done.
 """
@@ -37,7 +37,7 @@ def secnonce_memory(secnonce: musig.SecretNonce) -> bytes:
     """Return the octets of the secret nonce a `SecretNonce` holds.
 
     Reaching into the object is the only way to ask, exactly as
-    `tests/test_signer.py`'s `keypair_memory` does for `ssa.Signer`.
+    `tests/signer_test.py`'s `keypair_memory` does for `ssa.Signer`.
 
     Args:
         secnonce: the secret nonce to look inside.
@@ -326,7 +326,7 @@ def test_a_dropped_secret_nonce_leaves_the_memory_as_it_was() -> None:
 
     SECURITY.md names this as the second buffer of the package whose
     zeroing is asked for rather than done, and this is that sentence as
-    an assertion, matching `tests/test_signer.py`'s own for `ssa.Signer`.
+    an assertion, matching `tests/signer_test.py`'s own for `ssa.Signer`.
     """
     secnonce = musig.nonce_gen(PUBKEYS[0], PRVKEYS[0])
     # kept alive here, and by nothing else once the secnonce is dropped

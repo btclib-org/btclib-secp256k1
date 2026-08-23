@@ -720,7 +720,7 @@ def test_the_discrimination_holds_for_a_key_held_in_a_buffer() -> None:
 
     The failing branch derives, and the derivation asks for a scalar. So
     a caller holding the private key in memory it can wipe -- which is
-    what `tests/test_secret.py` is about -- used to reach this branch and
+    what `tests/secret_test.py` is about -- used to reach this branch and
     be told `the private key must be bytes or an int`: a type error about
     an argument they had passed correctly, in place of the one diagnosis
     this check exists to make.
