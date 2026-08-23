@@ -23,14 +23,8 @@ ci:
   # request with nowhere to land
   autoupdate_commit_msg: "Update the pinned pre-commit hook revisions"
   autoupdate_schedule: weekly
-  # the two hooks pre-commit.ci cannot run, each for something that
-  # service does not give a hook rather than for anything either hook
-  # does. pyroma rates the metadata of the source tree, which means
-  # building that metadata, and pre-commit.ci runs hooks with no network
-  # at all -- so the isolated build cannot fetch hatchling to prepare it,
-  # and the fallback to a non-isolated one has no backend in the hook
-  # environment either.
-  #
+  # the one hook pre-commit.ci cannot run, for something that service
+  # does not give it rather than for anything the hook does.
   # submodule-pin resolves the release README.md names in the vendored
   # clone's refs, and there are no refs to resolve it against there.
   # `submodules: true` is the documented `ci:` key for that -- "whether to
@@ -41,13 +35,13 @@ ci:
   # key to ask that service for, so the key bought a clone nothing can use
   # and is not kept. REPOSITORY.md records the residual gap.
   #
-  # In both cases the lint workflow runs this same file with what the hook
-  # needs -- a network for the first, `submodules: true` and
-  # `fetch-depth: 0` for the second -- so what is skipped here is one of
-  # two runners rather than the hook: each still gates a commit on this
-  # machine and a pull request in that workflow, which is the required
-  # check. An entry may join them for a reason of that kind and no other
-  skip: [pyroma, submodule-pin]
+  # The lint workflow runs this same file with what the hook needs --
+  # `submodules: true` and `fetch-depth: 0` -- so what is skipped here is
+  # one of two runners rather than the hook: it still gates a commit on
+  # this machine and a pull request in that workflow, which is the
+  # required check. An entry may join it for a reason of that kind and no
+  # other
+  skip: [submodule-pin]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -639,14 +633,40 @@ repos:
   # what test.yml's own pyroma step rates the sdist for -- a missing
   # classifier or url, metadata that is valid but poor -- this rates the
   # source tree instead, for an answer before pushing rather than after
-  # the build. Matching btclib's own hook, unpinned to any args or
-  # additional_dependencies for the same reason every other hook here
-  # isn't: the rev below is the version pin.
-  #
-  # Named in the ci block's skip list at the top of this file, and it is
-  # the only hook there: building metadata needs an index to fetch the
-  # backend from, and pre-commit.ci has no network
+  # the build
   - repo: https://github.com/regebro/pyroma
     rev: "5.0.1"
     hooks:
       - id: pyroma
+        # the backend, in pyroma's own environment, because pyroma builds
+        # this project to read its metadata and its command line has no
+        # way to say how. It asks `build` for the metadata without
+        # isolation and falls back to an isolated build when that raises,
+        # and an isolated build is a virtual environment pre-commit.ci
+        # cannot populate, that service running hooks with no network.
+        # The non-isolated path imports the backend out of the hook
+        # environment and checks nothing else, so the backend alone is
+        # what it takes: the cffi and cmake requirements beside hatchling
+        # in [build-system] are the compiled extension's, and preparing
+        # the metadata asks for neither. Measured, rather than read off
+        # the fallback's shape:
+        #
+        #   PIP_NO_INDEX=1 uv run --locked --only-group lint \
+        #     pre-commit run pyroma --all-files
+        #
+        # passes with this line and dies in pip with it removed, the
+        # traceback ending in the isolated fallback installing what
+        # [build-system] requires. That run is why pyroma is not in the
+        # ci block's skip list at the top of this file. Section 12 words
+        # the non-isolated path as taken where the environment satisfies
+        # `requires`, which is not what decides it --
+        # btclib-org/.github#251 has the measurement.
+        #
+        # The specifier is [build-system]'s, and has to stay it: section
+        # 12 of the organization standard asks that a hook building this
+        # project build it with a backend that declaration admits
+        # (btclib-org/.github#197). Not pinned, unlike the additional
+        # dependencies above: what this has to match is a range rather
+        # than a release, and the isolated build it replaces would have
+        # resolved the same range itself
+        additional_dependencies: ["hatchling>=1.27"]

@@ -30,6 +30,19 @@ release-notes length in the first place, and are still in
 
 ### Documentation
 
+- **`.gitattributes` is the organization's file byte for byte**
+  (btclib-org/.github#192). Section 14 of the standard makes the two
+  `merge=union` entries and the reasoning beside them the standard's
+  text rather than each tree's, and the paragraph missing from this copy
+  is the one saying both lines belong in every repository's copy, a tree
+  carrying no `RELEASE_NOTES.md` included: an attribute on a path the
+  tree does not hold matches nothing. This tree has no attribute of its
+  own, so it carries no `## This repository in particular` heading and
+  the whole file is the shared half. `shasum -a256` agrees with the raw
+  file the API serves for `btclib-org/.github`, and
+  `git check-attr merge` still answers `union` for `CHANGELOG.md` and
+  `RELEASE_NOTES.md`.
+
 - **`REVIEWING.md`'s *The gates are the evidence* excepts no gate from
   the run a reviewer may rely on, the test suite included.** The
   organization's copy, shared half byte for byte (section 14): a run is
@@ -933,6 +946,41 @@ release-notes length in the first place, and are still in
   command that re-reads both keys together.
 
 ### The gate
+
+- **`show_error_codes` leaves `[tool.mypy]`** (btclib-org/.github#191).
+  mypy has error codes on: `Options` carries `hide_error_codes`, `False`
+  before any configuration file is read, and no `show_error_codes`
+  attribute at all -- `config_parser.py` accepts that key only through
+  its generic `show_`/`hide_` inversion, and `mypy --help` writes the
+  spelling that changes the default, `--hide-error-codes`. Section 6 of
+  the organization standard drops the line from its sample for that
+  reason and keeps `show_column_numbers`, whose default is `False`.
+  Measured on the mypy `uv.lock` pins, against a file with one
+  incompatible return: the diagnostic and its `[return-value]` code are
+  byte for byte the same with the key and without it.
+
+- **`pyroma` builds this project with a backend `[build-system]` admits,
+  and runs on pre-commit.ci** (btclib-org/.github#197). Section 12 asks
+  that a hook building the project build it with the backend that
+  declaration admits. pyroma reads the metadata through `build`, whose
+  non-isolated path imports the backend out of the hook's own
+  environment, so the hook carries `additional_dependencies:
+  ["hatchling>=1.27"]`, which is `[build-system]`'s own specifier. That
+  path checks nothing beyond the backend it imports: the hook
+  environment holds hatchling and pyroma's own dependencies and neither
+  the cffi nor the cmake requirement declared beside it, and
+
+  ```shell
+  PIP_NO_INDEX=1 uv run --locked --only-group lint \
+      pre-commit run pyroma --all-files
+  ```
+
+  passes. With the line removed the same command dies in pip, the
+  traceback ending in the isolated fallback installing what
+  `[build-system]` requires -- the network pre-commit.ci does not give.
+  So `pyroma` leaves the `ci:` block's `skip:` list, where
+  `submodule-pin` stays for the reason its own comment gives, and
+  `REPOSITORY.md`'s paragraph on that list names the hook it holds.
 
 - **`enable_error_code` is the organization's list**
   (btclib-org/.github#165). Section 6's optional mypy error codes are one
