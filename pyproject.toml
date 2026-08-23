@@ -232,8 +232,8 @@ mutation = ["cosmic-ray"]
 # matching btclib's own docs group exactly: myst-parser reads the four
 # root markdown files docs/source/*_link.md includes, sphinx_rtd_theme
 # is the html theme docs/source/conf.py names, and sphinx itself compiles
-# this package to autodoc it -- the reason CONTRIBUTING.md's Build
-# section and the git submodule matter here in a way they do not for
+# this package to autodoc it -- the reason the environment section of
+# CONTRIBUTING.md and the git submodule matter here in a way they do not for
 # btclib's own pure Python build
 docs = ["myst-parser", "sphinx", "sphinx_rtd_theme"]
 dev = [
@@ -576,7 +576,7 @@ max-complexity = 10
 # the hook's pattern matched only \.py$ and not \.pyi$, and ruff lints
 # .pyi files by default, so there is no second extension to remember
 # this time
-notice-rgx = "^# Copyright \\(c\\) The btclib developers\\n#\\n# Distributed under the MIT software license, see the accompanying\\n# LICENSE file or https://opensource\\.org/license/mit for the full text\\."
+notice-rgx = "^# Copyright \\(c\\) The btclib developers\\n# Distributed under the MIT software license, see the accompanying\\n# LICENSE file or https://opensource\\.org/license/mit for the full text\\."
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

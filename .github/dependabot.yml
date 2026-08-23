@@ -12,7 +12,7 @@
 # that is not there is not an error anywhere, it is a repository where
 # nothing is ever proposed.
 #
-# Weekly, matching btclib: latest.yml upgrades everything and runs that
+# Weekly, matching btclib: deps-latest.yml upgrades everything and runs that
 # same matrix against it every Wednesday, off the critical path, so a
 # Thursday pull request is a diff whose result is already known, and a
 # smaller one is easier to read and to revert than a month of drift

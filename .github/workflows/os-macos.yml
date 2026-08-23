@@ -1,55 +1,41 @@
 ---
-name: windows
+name: os-macos
 
-# the Windows third of the platform sweep, and ubuntu.yml's header is the
+# the macOS third of the platform sweep, and os-ubuntu.yml's header is the
 # argument for all three: what the merge gate keeps, what a sentinel then
 # owes, and why a cell here builds from the tree rather than installing a
 # wheel.
 #
-# The constraint is a ceiling rather than a wall clock, which is what makes
-# it worth re-deciding a split that was already made once: GitHub Free gives
-# an organization twenty concurrent jobs, shared across every repository in
-# it, and this workflow set asked for seventy-three of them on every commit
-# while btclib asked for thirty-nine and bitcoin-core-rpc for forty-four. On
-# one pull request run the twenty-one Windows suite cells were 27.3 of the
-# 112.9 runner-minutes and the largest single family of jobs in it, ahead of
-# every wheel build; the run's critical path was 1713 seconds, of which the
-# median cell spent 694 queueing. The command that re-derives it:
+# macOS is where the queue is longest, and that is why the split is a
+# measurement rather than a preference: the numbers, and the command that
+# re-derives them, are in test.yml's own header, next to the wheel builds
+# it keeps.
 #
-#     id=$(gh run list --workflow=test.yml --limit 1 \
-#         --json databaseId --jq '.[0].databaseId')
-#     gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100"
-#
-# **The Windows wheel builds stay in test.yml**, and that is the same line
-# macos.yml's header draws: the release publishes the artifacts of that run,
-# so a win_amd64 or win_arm64 wheel not built there is a wheel not on PyPI.
-# Those two jobs are not what stretched the run either -- what did was
-# twenty-one cells contending for slots behind them.
-#
-# What is given up is therefore narrower than twenty-one jobs suggests, and
-# cibuildwheel is why: `test-command` in pyproject.toml runs the whole suite
-# against every wheel it builds, on the runner that built it, so the Windows
-# wheels this package ships are still tested before a merge by the job that
-# produces them.
-#
-# This builds from the tree, twice per cell -- the static extension a
-# CPython wheel carries, then the dynamic one, which is the choice
+# This builds from the tree, twice per cell: the static extension a
+# CPython wheel carries, then the dynamic one, which is the same choice
 # `BTCLIB_LIBSECP256K1_DYNAMIC` gives a developer and covers both branches
 # of `_load_lib`. Two steps of one job rather than two jobs, because the
-# queue is the cost being managed and a second job pays it again.
+# queue is the cost being managed here and a second job pays it again.
 #
-# It gates no commit and no merge -- a Windows regression sits on main for
-# at most a week -- but release.yml calls it, so one cannot be published
+# So this is the platform against the lock, on every interpreter, and
+# deps-latest.yml is the dependencies against the platforms. A red macOS column
+# in deps-latest.yml with this workflow green is an upgrade; red in both is
+# macOS. One variable each, and the pair reads as a difference.
+#
+# It gates no commit and no merge -- a macOS regression sits on main for at
+# most a week -- but release.yml calls it, so one cannot be published
 
 on:
   schedule:
-    # Saturday, the hour after macos.yml: see that file for why the two
-    # platforms share a day and not an hour.
+    # Saturday, with os-windows.yml an hour later: the two platforms a
+    # reviewer would wait longest for, sharing the day the grid gives to
+    # platforms and not the hour. Red in both is the tree; red in one is
+    # that platform, which is the whole of what running them apart buys.
     # The time is the organization grid -- section 10 of
     # btclib-org/.github's README.md -- and not this file's to restate.
     # Only the default branch schedules workflows, so on any other branch
     # this is reachable through the dispatch below alone
-    - cron: "8 5 * * 6"
+    - cron: "8 4 * * 6"
   # lets release.yml gate a publication on this platform too, which is what
   # keeps a weekly sentinel from being the only thing that ever asks
   workflow_call:
@@ -77,29 +63,37 @@ permissions:
 # and cancel each other. The suffix is the second half of the same problem,
 # github.ref inside a called workflow being the caller's ref: see lint.yml
 concurrency:
-  group: windows-${{ github.ref }}${{ inputs.concurrency-suffix }}
+  group: os-macos-${{ github.ref }}${{ inputs.concurrency-suffix }}
   cancel-in-progress: true
 
 jobs:
-  suite-windows:
+  suite-macos:
     name: Run the suite on ${{ matrix.python-version }}, ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    # libsecp256k1 is compiled twice per cell, from a cache that is cold
+    # whenever the lock moved: far above what the suite itself needs, and
+    # what it bounds is a hung job rather than a slow one. The queueing this
+    # workflow exists to move happens before a job starts and is not counted
+    # here
+    timeout-minutes: 40
     strategy:
       # every cell to the end: which interpreter fails on which image is the
       # whole answer, and stopping at the first one hides the rest
       fail-fast: false
       matrix:
-        # both images, because what differs between them is the
-        # architecture the interpreter and the compiled extension target
+        # both images, and not the newest alone: one is Apple silicon and
+        # the other Intel, and what differs between them is the
+        # architecture the vendored library and the extension are compiled
+        # for
         os:
-          - windows-latest
-          - windows-11-arm
-        # every interpreter this package claims, as ubuntu.yml and
-        # macos.yml carry it: nothing here installs a published wheel, so
-        # no exclusion is a wheel that is missing. The one below is what an
-        # interpreter cannot do -- CPython has no Windows arm64 build
-        # before 3.11, so 3.10 has none to run on that image
+          - macos-26-intel
+          - macos-latest
+        # every interpreter this package claims. os-ubuntu.yml and
+        # os-windows.yml carry the same list, so that the platform is the
+        # only thing that differs between the three and a red cell here is
+        # attributable to it.
+        # Spelled as uv spells them, this being uv rather than
+        # setup-python: `pypy3.11`, not the `pypy-3.11` setup-python takes
         python-version:
           - "3.10"
           - "3.11"
@@ -109,9 +103,6 @@ jobs:
           - "3.14t"
           - "pypy3.10"
           - "pypy3.11"
-        exclude:
-          - os: windows-11-arm
-            python-version: "3.10"
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -129,22 +120,13 @@ jobs:
 
       # the command CONTRIBUTING.md gives a developer, and the one the
       # coverage job of test.yml runs on ubuntu: a static build, where
-      # `_load_lib` returns the extension's own `lib`.
-      #
-      # both steps below run on windows-latest or windows-11-arm, where
-      # the default shell is PowerShell rather than bash -- see
-      # published.yml's own fix, issue btclib-org/btclib#1141, for the
-      # failure mode a POSIX-only step hits there unnoticed. Each is one
-      # plain command and runs identically under either shell today,
-      # which is exactly the hazard: a future edit adding POSIX-only
-      # syntax would go green on this cell having run nothing (issue
-      # btclib-org/btclib#1148)
+      # `_load_lib` returns the extension's own `lib`
       - name: Run pytest against a static build
-        shell: bash
         run: uv run --locked --no-default-groups --group test pytest
 
-      # the other branch of `_load_lib`: cffi in ABI mode, dlopening the
-      # shared object beside the module.
+      # the other branch of `_load_lib`, and the only thing that exercises
+      # the dynamic macOS wheel now that test.yml does not: cffi in ABI
+      # mode, dlopening the shared object beside the module.
       # --reinstall-package with --no-cache because the extension already
       # installed by the step above is the other linkage, and neither the
       # environment nor the build cache is keyed on the variable that
@@ -152,7 +134,6 @@ jobs:
       - name: Run pytest against a dynamic build
         env:
           BTCLIB_LIBSECP256K1_DYNAMIC: "true"
-        shell: bash
         run: >
           uv run --locked --no-default-groups --group test
           --reinstall-package btclib_secp256k1 --no-cache pytest

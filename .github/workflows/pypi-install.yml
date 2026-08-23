@@ -1,5 +1,5 @@
 ---
-name: published
+name: pypi-install
 
 # the sentinel on what users actually install. Every other workflow here
 # tests artifacts built in the same run, from the tree that triggered it:
@@ -61,8 +61,8 @@ on:
         type: string
         default: ""
   schedule:
-    # Wednesday, the hour after latest.yml, and the pair is why this is
-    # weekly: latest.yml upgrades every dependency and runs the suite from
+    # Wednesday, the hour after deps-latest.yml, and the pair is why this is
+    # weekly: deps-latest.yml upgrades every dependency and runs the suite from
     # the tree, this asks what the index actually serves, and read
     # together they separate a break this repository caused from one that
     # arrived. What it watches is external rot -- a new runner image, a
@@ -92,7 +92,7 @@ permissions:
 # sample worth keeping, and none supersedes the others. A concurrent run
 # queues instead
 concurrency:
-  group: published-${{ github.ref }}
+  group: pypi-install-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

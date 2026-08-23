@@ -1,5 +1,4 @@
 # Copyright (c) The btclib developers
-#
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
@@ -33,9 +32,10 @@ PYPROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
 project = "btclib_secp256k1"
 # no __copyright__ in this package to read back, unlike btclib's own
-# conf.py: LICENSE is the only place the holder and years are declared,
-# so this reads that file instead, minus the "Copyright (c) " sphinx
-# prepends itself
+# conf.py: LICENSE is the only place the holder is declared, so this reads
+# that file instead, minus the "Copyright (c) " sphinx prepends itself.
+# What comes out carries no year, section 14 of the organization standard
+# having LICENSE name the holder and no range, so the footer dates nothing
 project_copyright = re.search(
     r"^Copyright \(c\) (.+)$",
     (ROOT / "LICENSE").read_text(encoding="utf-8"),

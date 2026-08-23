@@ -76,12 +76,12 @@ rule names, `Lint and type-check`, checks the submodule out with
 developer's own commit. Re-read that skip list before adding to it: an
 entry may join for a reason of that kind and no other.
 
-Neither `ubuntu.yml`, `macos.yml`, `windows.yml`, `latest.yml`,
-`links.yml`, `mutation.yml`, `published.yml` nor `vendored-vectors.yml`
+Neither `os-ubuntu.yml`, `os-macos.yml`, `os-windows.yml`, `deps-latest.yml`,
+`links.yml`, `mutation.yml`, `pypi-install.yml` nor `vendored-vectors.yml`
 appears in the rule, and none of them must: each is expected to go red for a
 reason no pull request introduced. The first three are the ones worth naming
 twice, because they do run the suite: what a merge no longer waits for is
-every cell of it but one, the reasoning being in `ubuntu.yml`'s header and
+every cell of it but one, the reasoning being in `os-ubuntu.yml`'s header and
 the numbers in `test.yml`'s, and `release.yml` calls all three so that a
 publication still does.
 
@@ -318,8 +318,10 @@ gh api repos/btclib-org/btclib-secp256k1/rulesets \
   --jq '.[] | "\(.name) \(.enforcement) bypass=\(.bypass_actors | length)"'
 ```
 
-`main-integrity` is the four CONTRIBUTING.md names — a verified
-signature, linear history, no force push, no branch deletion — with **no
+`main-integrity` is the four [section 11 of the organization
+standard](https://github.com/btclib-org/.github#11-github-settings)
+names — a verified signature, linear history, no force push, no branch
+deletion — with **no
 bypass actor at all**, which is what makes "on every commit, not at
 review time" true of an administrator too, `enforce_admins` above being
 off. `main-self-merge` is the pull request rule, and names the maintainer
@@ -647,7 +649,7 @@ GitHub free to move the numbers without notice):
 | Enterprise | 500 | 50 |
 
 **Read the second column before spending anything on the first.** The
-twenty is what `windows.yml`'s header measured against, and paying for
+twenty is what `os-windows.yml`'s header measured against, and paying for
 Team would triple it; the five is the ceiling behind the macOS queue
 `test.yml`'s header measures, and Team does not move it at all. A macOS
 column that queued for tens of minutes was far more jobs than five slots

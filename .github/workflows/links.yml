@@ -13,7 +13,7 @@ name: links
 # third party answering 502 or throttling a runner would turn a red merge
 # into something to re-run rather than something to fix. Weekly, on demand,
 # and red in the Actions tab is where this belongs -- the same division
-# published.yml already makes for what PyPI serves.
+# pypi-install.yml already makes for what PyPI serves.
 # It therefore does not appear in main's required checks, and must not:
 # that rule lives outside the repository and names its checks as literal
 # strings. See REPOSITORY.md.
