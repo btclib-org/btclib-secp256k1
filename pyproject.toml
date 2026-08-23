@@ -232,8 +232,8 @@ mutation = ["cosmic-ray"]
 # matching btclib's own docs group exactly: myst-parser reads the four
 # root markdown files docs/source/*_link.md includes, sphinx_rtd_theme
 # is the html theme docs/source/conf.py names, and sphinx itself compiles
-# this package to autodoc it -- the reason CONTRIBUTING.md's Build
-# section and the git submodule matter here in a way they do not for
+# this package to autodoc it -- the reason the environment section of
+# CONTRIBUTING.md and the git submodule matter here in a way they do not for
 # btclib's own pure Python build
 docs = ["myst-parser", "sphinx", "sphinx_rtd_theme"]
 dev = [

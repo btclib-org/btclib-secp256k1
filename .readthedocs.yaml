@@ -38,8 +38,8 @@ version: 2
 
 # every automodule directive imports this package, and this package
 # compiles the vendored libsecp256k1 to do that -- read the docs has to
-# check out the git submodule, matching what CONTRIBUTING.md's Build
-# section already asks a developer to do, or every directive gets a bare
+# check out the git submodule, matching what CONTRIBUTING.md's
+# environment section already asks a developer to do, or every directive gets a bare
 # heading and nothing beneath it, silently, the same failure mode
 # .readthedocs.yaml's -W exists to turn into a build error instead
 submodules:

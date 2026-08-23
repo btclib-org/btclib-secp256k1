@@ -318,8 +318,10 @@ gh api repos/btclib-org/btclib-secp256k1/rulesets \
   --jq '.[] | "\(.name) \(.enforcement) bypass=\(.bypass_actors | length)"'
 ```
 
-`main-integrity` is the four CONTRIBUTING.md names — a verified
-signature, linear history, no force push, no branch deletion — with **no
+`main-integrity` is the four [section 11 of the organization
+standard](https://github.com/btclib-org/.github#11-github-settings)
+names — a verified signature, linear history, no force push, no branch
+deletion — with **no
 bypass actor at all**, which is what makes "on every commit, not at
 review time" true of an administrator too, `enforce_admins` above being
 off. `main-self-merge` is the pull request rule, and names the maintainer

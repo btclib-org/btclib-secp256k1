@@ -136,8 +136,8 @@ jobs:
             exit 1
           fi
 
-      # CONTRIBUTING.md and RELEASING.md both say a release is a tag on
-      # a commit on main; nothing enforced it. The deployment tag policy
+      # RELEASING.md says a release is a tag on a commit on main, every
+      # invariant a release rests on resting on that; nothing enforced it. The deployment tag policy
       # of the pypi environment constrains the *name* of the ref and
       # nothing else, so a v* tag on a branch head, on a stale state or
       # on a fork-synced commit reaches the environment exactly

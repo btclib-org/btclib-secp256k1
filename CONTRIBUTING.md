@@ -1,38 +1,172 @@
-# How to contribute
+# Contributing
 
-<!-- The toolchain badges are here rather than in the README because they
-report no state: each names a choice, and this is the file that says how
-the choice is enforced and what the command for it is. The README keeps the
-badges that can turn red. btclib and bitcoin-core-rpc do the same, with a
-cal_ver badge this project has no use for: the version tracks the vendored
-libsecp256k1 release rather than the calendar. -->
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
-[![format: ruff](https://img.shields.io/badge/format-ruff-yellowgreen.svg?logo=ruff)](https://docs.astral.sh/ruff/formatter/)
-[![lint: ruff](https://img.shields.io/badge/lint-ruff-yellowgreen.svg?logo=ruff)](https://docs.astral.sh/ruff/)
-[![docstrings: ruff](https://img.shields.io/badge/docstrings-ruff-yellowgreen.svg?logo=ruff)](https://docs.astral.sh/ruff/rules/#pydocstyle-d)
-[![type check: mypy](https://img.shields.io/badge/type_check-mypy-yellowgreen.svg?logo=mypy)](https://mypy-lang.org/)
-[![lint: markdownlint-cli2](https://img.shields.io/badge/lint-markdownlint--cli2-yellowgreen.svg?logo=markdown)](https://github.com/DavidAnson/markdownlint-cli2)
-[![pre-commit enabled](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
-[![GitHub repository: btclib-org/btclib-secp256k1](https://img.shields.io/badge/GitHub-btclib--org%2Fbtclib--libsecp256k1-181717?logo=github)](https://github.com/btclib-org/btclib-secp256k1/)
-
-Thank you for investing your time in this project. What follows is how to
-build and test these bindings, and what this repository
-expects of a change. What the build itself does on each platform is in
-the [Build](./README.md#build) section of the README, which is not repeated
-here.
-
-Please read the [Code of Conduct](./CODE_OF_CONDUCT.md) too.
-
-What this repository holds in common with its siblings — the toolchain,
-the lint gate, the tool tables behind it, the workflow set and the branch
-rules — is stated once in the
-[btclib-org repository standard](https://github.com/btclib-org/.github/blob/main/README.md),
+What this repository holds in common with the others of the organization
+— the toolchain, the lint gate, the tool tables behind it, the workflow
+set and the branch rules — is stated once in the
+[btclib-org repository standard](https://github.com/btclib-org/.github),
 each rule with the alternative it was decided against. It binds this
 repository, so a change departing from it is a divergence, and one filed
 as an issue in that repository rather than here: a difference between two
 repositories belongs to neither of them.
 
-## Which project is this
+**This file is the same in every repository of the organization up to
+its last section.** What is true of one tree only — the commands that
+build its environment, the gates it runs, which of its workflows decide
+a merge — is under that heading, and the comparison stops there.
+
+## The issue tracker
+
+Where an issue is filed, and what an alignment finding has to name, is
+[the standard's *What this repository is*][s-what]: an issue spanning
+repositories, or whose subject is the standard, goes to
+[btclib-org/.github](https://github.com/btclib-org/.github/issues), and
+one about this tree alone stays here.
+
+A finding noticed while doing something else is filed, not carried.
+`REVIEWING.md`'s *Every collateral finding becomes an issue* is the whole
+of what to do with one, and it applies to an author as much as to a
+reviewer: a pull request answering two questions cannot be accepted for
+either.
+
+## Documentation and comments
+
+[Section 9 of the standard][s9] is the prose style, and it governs the
+prose this tree ships — comments, docstrings and markdown. It is not
+restated here: a second wording is the one that goes stale, which is
+that section's own *One fact in one place*.
+
+A commit message is prose this tree ships too, though section 9 does not
+say so: squash is the only merge method and the landing commit carries
+the messages, so what is written in one is read on `main` long after the
+branch is gone.
+
+## Pull requests
+
+What `main` accepts, and what it refuses to everyone, is [section 11 of
+the standard][s11]. Run the gates locally before opening anything —
+the last section of this file says which they are — because CI runs
+exactly them, so a red run there is a local run that was not done.
+
+What a pull request's title and description have to say about the issues
+it closes, and why a manual link in the Development panel is a trap
+neither of them shows, is [the standard's *What a pull request says it
+is*][s-title]. Read it before opening one; it is the rule most often
+found broken after the fact.
+
+`REVIEWING.md` is the standard a review is written against, and is this
+file's other half. Read before opening a pull request, it is what the
+pull request will be answered against.
+
+`CHANGELOG.md` gets an entry for anything a reader would notice, and the
+release notes move only for something a user has to *act* on, in the
+repositories that publish.
+
+### One subject, opened as soon as it is written
+
+A pull request answers one question. Issues that share a subject are one
+pull request, closing each of them; issues that do not are one pull
+request each, however small either of them is.
+
+It is opened the moment it is written and verified — not held for the
+previous one to be reviewed or to land, and not batched with the next. A
+batch arrives as one reviewing job with several subjects, which is the
+shape that costs the most to read; a finished pull request held back is
+review that could have started and did not.
+
+Working this way stacks branches, which is fine and costs one rule: a
+child whose base was amended is moved with the old base named,
+
+```shell
+git rebase --onto <new-base> <old-base-sha> <child>
+```
+
+because a plain rebase replays the base's old commit inside the child,
+and the forge then shows the base's old text as additions with nothing
+red anywhere. Read the child's diff afterwards rather than trusting the
+rebase, and retarget each child onto `main` as its parent lands.
+
+### The review
+
+A review is given promptly and on local evidence. It does not wait for
+CI, does not report a check as a finding, and does not discuss a run at
+all: whether CI is green is the author's business, once, at landing time.
+
+The exchange is anchored to a sha rather than to a branch, a branch being
+free to move under a review:
+
+- the author hands off by naming the sha pushed and the evidence run
+  against it, then leaves that head alone;
+- the reviewer answers with findings — where, what is wrong, how they
+  know it, and whether each is blocking;
+- the author accepts what is reasonable, declines the rest with a reason
+  in the thread, and pushes the answer without waiting for CI;
+- the reviewer resolves the threads they opened, that being what says a
+  finding is closed, and re-reviews the delta rather than the branch.
+
+**What ends the loop is the ack of record**, and the author does not
+supply their own. A reading that says what it found and delivers no
+verdict is a review too and ends nothing; [the standard's *Review*][s-rev]
+has which is which, and `REVIEWING.md` has how each is written. A
+disagreement that survives a second exchange goes to the maintainer
+instead of into a third round.
+
+### Landing it
+
+CI is read once, and this is where. Rebase onto `main`'s tip, push that
+head so the checks run on the tree that will land, and only then wait for
+them: checks read before a rebase describe a tree nobody is landing. A
+rebase that moved nothing but the base leaves the ack standing; one that
+resolved a conflict does not, that resolution being a change no reviewer
+has seen.
+
+Then squash, [the only method the rule accepts][s11].
+
+**The maintainer's bypass is not automatic — it has to be invoked, and
+`gh pr merge` cannot invoke it**, refusing client-side before it asks
+GitHub anything:
+
+```text
+Pull request is not mergeable: the base branch policy prohibits the merge
+```
+
+The merge endpoint applies it server-side, and it is the same endpoint
+the merge button asks:
+
+```shell
+gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge \
+  -f merge_method=squash
+```
+
+**Verify what landed rather than trusting the answer**, the signature
+[the standard asks for][s-sigs] being a valid one rather than a
+particular signer's:
+
+```shell
+gh api repos/{owner}/{repo}/commits/main \
+  --jq '.commit.verification | {verified, reason}'
+```
+
+The forge deletes the head branch itself, per the setting section 11
+names. What is still yours is bringing every checkout sitting on `main`
+up to date,
+that being where the next session starts from and a stale one being where
+a branch gets built on a base that has moved. `REPOSITORY.md` carries the
+settings and why they are what they are.
+
+[s-what]: https://github.com/btclib-org/.github#what-this-repository-is
+[s11]: https://github.com/btclib-org/.github#11-github-settings
+[s9]: https://github.com/btclib-org/.github#9-prose-comments-and-docstrings
+[s-title]: https://github.com/btclib-org/.github#what-a-pull-request-says-it-is
+[s-rev]: https://github.com/btclib-org/.github#review
+[s-sigs]: https://github.com/btclib-org/.github#signatures
+
+## This repository in particular
+
+Everything above is the same file in every repository of the
+organization; everything below is this one's, and the comparison stops at
+this heading.
+
+### Which of three repositories this is
 
 These are thin python bindings to
 [libsecp256k1](https://github.com/bitcoin-core/secp256k1). Three
@@ -52,33 +186,38 @@ to route:
   the argument validation at the cffi boundary, the packaging, and the
   wheels
 
-A vulnerability is never an issue: see the
-[security policy](./SECURITY.md).
-
-## Opening an issue
-
-Search the [issues](https://github.com/btclib-org/btclib-secp256k1/issues)
-and [pull requests](https://github.com/btclib-org/btclib-secp256k1/pulls)
-first, then use one of the
-[forms](https://github.com/btclib-org/btclib-secp256k1/issues/new/choose).
 The bug form asks which of the three artifacts is installed — a static
 wheel, a dynamic one, or a build from the sdist — because they differ in
-how libsecp256k1 is linked and a bug is rarely in all three.
+how libsecp256k1 is linked and a bug is rarely in all three. A
+vulnerability is never an issue: see the
+[security policy](./SECURITY.md).
 
-Issues are not assigned to anyone: if one interests you, you are welcome
-to open a pull request for it.
+### The environment and the gates
 
-## Building and testing
+<!-- The toolchain badges are here rather than in README.md because they
+report no state: each names a choice, and this is the section that says
+how the choice is enforced and what the command for it is. They are under
+this heading rather than at the top of the file because everything above
+it is the same file in every repository of the organization, so nothing
+at the top of it can be one repository's. The README keeps the badges
+that can turn red. -->
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![format: ruff](https://img.shields.io/badge/format-ruff-yellowgreen.svg?logo=ruff)](https://docs.astral.sh/ruff/formatter/)
+[![lint: ruff](https://img.shields.io/badge/lint-ruff-yellowgreen.svg?logo=ruff)](https://docs.astral.sh/ruff/)
+[![docstrings: ruff](https://img.shields.io/badge/docstrings-ruff-yellowgreen.svg?logo=ruff)](https://docs.astral.sh/ruff/rules/#pydocstyle-d)
+[![type check: mypy](https://img.shields.io/badge/type_check-mypy-yellowgreen.svg?logo=mypy)](https://mypy-lang.org/)
+[![lint: markdownlint-cli2](https://img.shields.io/badge/lint-markdownlint--cli2-yellowgreen.svg?logo=markdown)](https://github.com/DavidAnson/markdownlint-cli2)
+[![pre-commit enabled](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
-The btclib_secp256k1 project includes
-[libsecp256k1](https://github.com/bitcoin-core/secp256k1)
-as submodule in the secp256k1 folder.
-By default, when cloning a project you get the directories that contain
-submodules, but none of the files within them.
-You must run `git submodule init` to initialize
-your local configuration file,
-and `git submodule update` to fetch the submodule data
-and check out the appropriate commit.
+uv is the only thing that has to be installed; it fetches interpreters
+and tools itself. A C toolchain is the second prerequisite, this package
+compiling the vendored library and an extension against it, and the
+[Build](./README.md#build) section of the README says what each platform
+needs.
+
+The vendored library is a submodule, and a clone gets the directory
+without the files in it, so a checkout is two commands before it is
+anything:
 
 <!-- markdownlint-disable MD013 -->
 ```console
@@ -89,47 +228,110 @@ Cloning into 'secp256k1'...
 ```
 <!-- markdownlint-enable MD013 -->
 
-The project uses [uv](https://docs.astral.sh/uv/) to manage the
-development environment. The interpreter it is built on is pinned in
-`.python-version`, and uv installs it if missing: neither pyenv nor a
-hand-made virtualenv is needed. The development dependencies are the
-PEP 735 groups declared in `pyproject.toml`.
+Then the environment. `.python-version` pins the interpreter and uv
+installs it if it is missing, so neither pyenv nor a hand-made virtualenv
+is needed; the development dependencies are the PEP 735 groups declared
+in `pyproject.toml`.
 
 ```shell
-uv sync
+uv sync --locked
 ```
 
-This also builds and installs the extension in editable mode, so the
-C toolchain the README describes must be available.
+That also builds and installs the extension in editable mode, which is
+the minutes rather than seconds part of it.
 
-To build:
+Three gates decide a merge, and each command below is the one its
+workflow runs:
 
 ```shell
-uv build --sdist
-uv build --wheel
+uv run --locked --only-group lint pre-commit run --all-files
+uv run --locked --no-default-groups --group test pytest --cov
+uv run --locked --no-default-groups --group docs \
+    sphinx-build -W --keep-going -b html docs/source docs/build/html
 ```
 
-To test:
+The documentation build needs the submodule checked out, unlike btclib's
+own equivalent: every `automodule` directive imports this package, which
+means compiling libsecp256k1 first. Coverage is measured in branch mode
+and gated by the `fail_under` ratchet in `pyproject.toml`.
+
+**Check exit codes, not filtered output.** `pre-commit run ... | grep -v
+Passed` hides a failure, and `grep` finding nothing exits 1, which is not
+the gate's answer to anything.
+
+**The lint gate is not installed as a git hook.** `pre-commit install`
+writes into the common git directory, which every worktree of this
+repository shares:
 
 ```shell
-uv run pytest
+git -C <worktree> rev-parse --git-path hooks
 ```
 
-To measure the code coverage provided by tests:
+answers with the primary checkout's `.git/hooks`, so one session
+installing it installs it for every other. Run the gate by hand before
+committing.
+
+Two hooks are regenerated rather than fixed when they fail. The test data
+is private keys, so `detect-secrets` would report all of it; the known
+findings are recorded as reviewed rather than excluded, in two baselines
+that differ only in whether the entropy detectors run. Adding a hex
+constant to a test module, or a vector to a file under `tests/` matching
+`*.csv` or `*.json`, fails the corresponding hook until its baseline is
+regenerated:
 
 ```shell
-uv run pytest --cov
+# the tree, entropy detectors on. --slim omits `line_number` and
+# `generated_at`, so the file stops changing when a flagged line
+# moves; a fresh scan rather than `--baseline`, which writes the full
+# form whatever it read -- `--slim` reaches `format_for_output` only on
+# the branch that prints to stdout -- and therefore the exclusion
+# spelled out rather than read back from the baseline's own filter
+uvx --from detect-secrets detect-secrets scan --slim \
+    --exclude-files '^(\.secrets\..*baseline|tests/.*\.(csv|json))$' \
+    > .secrets.baseline
+
+# the vendored vector data, entropy detectors off: these files are
+# 64-character hex and nothing else, so a new vector would read as a
+# new secret. The paths are the hook's `files` pattern spelled out
+uvx --from detect-secrets detect-secrets scan --slim \
+    --disable-plugin HexHighEntropyString \
+    --disable-plugin Base64HighEntropyString \
+    tests/*.csv tests/*.json \
+    > .secrets.vectors.baseline
 ```
 
-Coverage is measured in branch mode and gated by the `fail_under`
-ratchet in `pyproject.toml`; the same check runs in CI.
+Both are slim, and what that costs is one field of the diff: a new secret
+still arrives as a new `hashed_secret` under its filename, and finding
+*where* it is takes a grep instead of a line number. `detect-secrets
+audit` needs the full form and says so, which is a reason to regenerate
+without `--slim` for an audit rather than to keep the churn in the
+committed file.
 
-To run everything CI checks before a PR, i.e. the formatter, the
-linters and the type checker:
+The redirect costs a second thing, which is the one to know before
+auditing: `--baseline` does not only save, it **merges**, and what it
+carries forward is exactly the audit's product — `is_secret` and
+`is_verified` per finding, "verification of secrets, both automated and
+manual" in its own words. A scan into a file has no old baseline to
+merge, so those marks go back to their defaults, and slim output prints
+no `is_secret` at all when it is unset: the loss shows up as a diff of
+nothing. `jq '[.results[][]] | length' .secrets.baseline` (and the same
+against `.secrets.vectors.baseline`) is how to check whether there is
+anything to lose — every finding in either file being unverified and none
+carrying `is_secret` means there isn't, today — but an audit's marks want
+saving elsewhere or re-applying after the next regeneration. Read the
+diff before committing it, which is the whole point of a baseline: what
+appears there is what nobody has looked at yet.
 
-```shell
-uv run pre-commit run --all-files
-```
+Two things the gates enforce about the prose, which section 9 of the
+standard states as a rule and does not say is checked here. `pydoclint`
+requires an `Args` entry per parameter and a `Returns` section, in the
+Google style napoleon renders, so a new argument nobody documented fails
+the lint gate; `Raises` is not enforced, and `pyproject.toml` says why
+beside the setting that turns it off. And anything written as a doctest,
+in a docstring or in `README.md`, is run by `tests/test_examples.py` on
+every interpreter and every kind of wheel — which constrains an example
+to be deterministic: fixed keys, and a verification rather than a
+signature wherever the value depends on randomness that is not pinned.
 
 To time these bindings against the other python wrappers of
 libsecp256k1, clone
@@ -172,7 +374,14 @@ UV_PROJECT_ENVIRONMENT=.venv-3.10 uv run --python 3.10 --no-cache pytest
 `.gitignore` matches that name with `.venv*/`, the comment beside the
 pattern saying what ships the environment when nothing matches it.
 
-### The editor
+To build the distributions:
+
+```shell
+uv build --sdist
+uv build --wheel
+```
+
+#### The editor
 
 `.vscode/settings.json` and `.vscode/extensions.json` are tracked, and they
 hold no preference: the recommended extensions are the tools
@@ -184,82 +393,6 @@ at the commit that trips over it.
 Anything machine-local — an interpreter path, a telemetry answer, a theme —
 belongs in the editor's own user settings instead, those two files being
 read by every checkout of this repository.
-
-### What runs when
-
-| workflow | when | what it varies |
-| --- | --- | --- |
-| `test` | pull request, push | the wheels, the sdist, one suite cell |
-| `lint`, `docs` | pull request, push | — |
-| `claude-review` | pull request, and `@claude` in a comment | — |
-| `vendored-vectors` | weekly, a change to itself | — |
-| `codeql` | push to main, and weekly | the two scanned languages |
-| `os-ubuntu` | weekly, a release | both ubuntu images × every interpreter |
-| `os-macos` | weekly, a release | both macOS images × every interpreter |
-| `os-windows` | weekly, a release | both Windows images × every interpreter |
-| `deps-latest` | weekly | the dependencies, at their newest |
-| `links`, `mutation` | weekly | — |
-| `pypi-published` | weekly, a release | what PyPI serves |
-| `release` | a tag | calls the gates and the rows marked *a release* |
-
-The first two rows are what a merge waits for, and the suite cell among them
-is one: `ubuntu-latest` on the interpreter `.python-version` pins, measured
-for coverage. Which day each of the rest runs, and at which minute, is
-section 10 of the organization standard in `btclib-org/.github` and not this
-file's to restate — one calendar covering the organization is one thing to
-remember, and a copy of it per repository is one more thing to keep true in
-each.
-
-Why so little gates is one number: GitHub Free gives an organization twenty
-concurrent jobs (as of 2026-08-21), shared across every repository in it. A
-commit here, in btclib and in bitcoin-core-rpc each ask for more jobs than
-that ceiling alone allows, so a pull request in any of the three spent its
-wall clock waiting for a slot. At that ceiling a cell before a review buys a
-rarer answer at the price of every review: macOS runners queue for tens of
-minutes rather than for two, and the twenty-one Windows suite cells were
-27.3 of a run's 112.9 runner-minutes, the largest family of jobs in it and
-ahead of every wheel build. The numbers are in `test.yml`'s header.
-
-**What the sentinels vary, they vary whole.** `os-ubuntu` runs both images
-on every interpreter, the cell the gate already covers included. A matrix with
-the gate's cell cut out of it is one nobody can read the shape of, and
-whoever asked what ran would have to re-derive the hole from the gate.
-
-**Every image still builds wheels on every pull request**: `cibuildwheel`
-runs the suite against each wheel as it builds it, and the release publishes
-the artifacts of a run that built every one. What narrows on a branch is how
-many per image — one interpreter's rather than every interpreter's, ubuntu
-included — because what a pull request asks of an image is whether this tree
-still builds there, and the toolchain, the CMake build of the vendored
-library and the cffi extension are what differ per image rather than per
-interpreter. Nothing on a branch reads past that first build: `check-dist`
-installs one wheel by path and takes it from `build-dynamic`, which builds
-whole. `test.yml` carries the measurement beside the step.
-
-What a pull request no longer asks is pip's *selection* among a directory of
-wheels tagged for several interpreters, which now runs nowhere; the wheel
-each interpreter would get is still tested by the job that builds it, and
-`os-ubuntu`, `os-macos` and `os-windows` still compile both linkages from
-the tree on every interpreter. What no run asks at all is the suite
-against the dynamic wheel as a package — the sentinels compile that
-linkage from the tree instead. `os-ubuntu.yml`'s header records both
-costs beside each other.
-
-Everything but the first two rows also takes `workflow_dispatch`, which for
-`codeql` and the three platform workflows is the only way to ask about a
-branch at all. `claude-review` is the exception that takes none: both its
-jobs read the pull request or the comment that triggered them, so a manual
-run would start with nothing to read.
-
-`codeql` runs on `main` and on its weekly schedule and not on a pull
-request, which is the same arithmetic as the rows above: three slots held
-while a review waits. What still reads a branch before it merges is
-`zizmor`, a `pre-commit` hook and therefore part of `lint`, which audits
-these workflows for an injected expression; REPOSITORY.md has the trade in
-full. It is also the one workflow with no local command: reproducing it
-means the CodeQL CLI, a bundle GitHub distributes rather than a dependency
-`uv.lock` can pin, so what answers a finding is the run itself and the
-Security tab beside it.
 
 ### Running what CI runs
 
@@ -469,252 +602,110 @@ run locally.
   that raised, which is Cosmic Ray not having measured rather than a test
   that is missing.
 
-## What a change has to satisfy
+### What a change here has to satisfy
 
-`main` is the only long-lived branch, so that is what a pull request
-targets and where every change lands; a tag on `main` is a release.
+Past the gates above, and past what section 9 of the standard asks of any
+tree's prose:
 
-- **the pre-commit hooks pass.** `uv run pre-commit run --all-files` runs
-  the formatter, the linters and the type checker; the `lint` workflow
-  runs that very configuration, so what CI enforces is what the hook
-  does. `uvx pre-commit install` makes it a commit hook
-- **the tests pass with full coverage.** `uv run pytest --cov`; the
-  `fail_under` ratchet in `pyproject.toml` is what makes the number mean
-  something, so new code arrives with the tests that cover its branches
-- **the secret-scanning baseline follows the vectors.** The test data is
-  private keys, so `detect-secrets` would report all of it; the known
-  findings are recorded as reviewed rather than excluded, in two baselines
-  that differ only in whether the entropy detectors run. Adding a hex
-  constant to a test module, or a vector to a file under `tests/` matching
-  `*.csv` or `*.json`, fails the corresponding hook until its baseline is
-  regenerated:
-
-  ```shell
-  # the tree, entropy detectors on. --slim omits `line_number` and
-  # `generated_at`, so the file stops changing when a flagged line
-  # moves; a fresh scan rather than `--baseline`, which writes the full
-  # form whatever it read -- `--slim` reaches `format_for_output` only on
-  # the branch that prints to stdout -- and therefore the exclusion
-  # spelled out rather than read back from the baseline's own filter
-  uvx --from detect-secrets detect-secrets scan --slim \
-      --exclude-files '^(\.secrets\..*baseline|tests/.*\.(csv|json))$' \
-      > .secrets.baseline
-
-  # the vendored vector data, entropy detectors off: these files are
-  # 64-character hex and nothing else, so a new vector would read as a
-  # new secret. The paths are the hook's `files` pattern spelled out
-  uvx --from detect-secrets detect-secrets scan --slim \
-      --disable-plugin HexHighEntropyString \
-      --disable-plugin Base64HighEntropyString \
-      tests/*.csv tests/*.json \
-      > .secrets.vectors.baseline
-  ```
-
-  Both are slim, and what that costs is one field of the diff: a new
-  secret still arrives as a new `hashed_secret` under its filename, and
-  finding *where* it is takes a grep instead of a line number.
-  `detect-secrets audit` needs the full form and says so, which is a
-  reason to regenerate without `--slim` for an audit rather than to keep
-  the churn in the committed file.
-
-  The redirect costs a second thing, which is the one to know before
-  auditing: `--baseline` does not only save, it **merges**, and what it
-  carries forward is exactly the audit's product — `is_secret` and
-  `is_verified` per finding, "verification of secrets, both automated and
-  manual" in its own words. A scan into a file has no old baseline to
-  merge, so those marks go back to their defaults, and slim output prints
-  no `is_secret` at all when it is unset: the loss shows up as a diff of
-  nothing. `jq '[.results[][]] | length' .secrets.baseline` (and the
-  same against `.secrets.vectors.baseline`) is how to check whether
-  there is anything to lose — every finding in either file being
-  unverified and none carrying `is_secret` means there isn't, today —
-  but an audit's marks want saving elsewhere or re-applying after the
-  next regeneration.
-
-  read the diff before committing it, which is the whole point of a
-  baseline: what appears there is what nobody has looked at yet
 - **new wrapped functionality is validated against external vectors.**
   A test that compares these bindings against themselves proves nothing.
   `tests/test_vectors.py` documents where each vendored vector file comes
   from — BIP340, RFC6979, trezor-firmware — and a new wrapper should
-  reach for something published elsewhere in the same way
+  reach for something published elsewhere in the same way. A test's
+  docstring says which side of the assertion is the independent one,
+  which is why a docstring is required of a test at all: the name says
+  which call is under test, and not what is being claimed about it
 - **a new wrapper checks sizes and delegates the rest.** What the
   boundary is for is stopping a short buffer from reaching a bare
   pointer; whether the bytes are a valid key, point or signature is
   libsecp256k1's answer to give, and an argument of the wrong size or
   form raises rather than being padded or reinterpreted into a valid one.
   The reasoning is in the README, under What the boundary checks
-- **the prose satisfies the section below.** The workflows, the build
-  scripts and the configuration files in this repository carry the
-  reasoning behind their choices, because that is the part a reader
-  cannot recover, and a hook can check that a docstring exists but not
-  what it says
+- **warnings are errors** (`filterwarnings`), because the spread of
+  interpreters this package claims turns a deprecation into a breakage
+- **the version is declared once,** in `pyproject.toml`, and
+  `__version__` reads the installed metadata. Never bump it in an
+  ordinary change: releases are cut by a maintainer following
+  [RELEASING.md](./RELEASING.md), and `release.yml` checks the tag
+  against it
 - **the vendored submodule moves on purpose.** Bumping `secp256k1` is a
   change of what this package wraps: it belongs in its own pull request,
   with the version named in the README and in `RELEASE_NOTES.md` moved
   with it. Dependabot signals upstream movement but tracks the default
   branch, so a release always needs the tagged commit
 
-### Documentation and comments
+### What gates a merge, and what only reports
 
-What "satisfies" means for the prose is written down here, because a hook
-can check that a docstring exists and not what it says. It governs the
-workflows, `pyproject.toml` and `.pre-commit-config.yaml` as much as the
-package: the reasoning with its negative results is what makes those
-files reviewable rather than merely readable.
+| workflow | when | what it varies |
+| --- | --- | --- |
+| `test` | pull request, push | the wheels, the sdist, one suite cell |
+| `lint`, `docs` | pull request, push | — |
+| `claude-review` | pull request, and `@claude` in a comment | — |
+| `vendored-vectors` | weekly, a change to itself | — |
+| `codeql` | push to main, and weekly | the two scanned languages |
+| `os-ubuntu` | weekly, a release | both ubuntu images × every interpreter |
+| `os-macos` | weekly, a release | both macOS images × every interpreter |
+| `os-windows` | weekly, a release | both Windows images × every interpreter |
+| `deps-latest` | weekly | the dependencies, at their newest |
+| `links`, `mutation` | weekly | — |
+| `pypi-published` | weekly, a release | what PyPI serves |
+| `release` | a tag | calls the gates and the rows marked *a release* |
 
-**Tone of voice: neutral, factual, dry.** The same register everywhere:
-no jokes, no salesmanship, no emphasis where the fact is enough.
-Explanatory detail is wanted; decoration is not.
+The first two rows are what a merge waits for, and the suite cell among them
+is one: `ubuntu-latest` on the interpreter `.python-version` pins, measured
+for coverage. Which day each of the rest runs, and at which minute, is
+section 10 of the organization standard in `btclib-org/.github` and not this
+file's to restate — one calendar covering the organization is one thing to
+remember, and a copy of it per repository is one more thing to keep true in
+each.
 
-**Length is a cost, and the reason is what buys it.** One sentence where
-one will carry it, and a paragraph only where a shorter one would leave
-the reader wrong. Three habits lengthen prose here without adding to it,
-and each is worth deleting on sight:
+Why so little gates is one number: GitHub Free gives an organization twenty
+concurrent jobs (as of 2026-08-21), shared across every repository in it. A
+commit here, in btclib and in bitcoin-core-rpc each ask for more jobs than
+that ceiling alone allows, so a pull request in any of the three spent its
+wall clock waiting for a slot. At that ceiling a cell before a review buys a
+rarer answer at the price of every review: macOS runners queue for tens of
+minutes rather than for two, and the twenty-one Windows suite cells were
+27.3 of a run's 112.9 runner-minutes, the largest family of jobs in it and
+ahead of every wheel build. The numbers are in `test.yml`'s header.
 
-- the same reason in a second wording — not emphasis, but a second copy
-  to keep true, and the one that drifts;
-- the sentence that only introduces the next one;
-- the tour of alternatives, where the rejected one and the thing that
-  rejects it are the whole of the negative result.
+**What the sentinels vary, they vary whole.** `os-ubuntu` runs both images
+on every interpreter, the cell the gate already covers included. A matrix with
+the gate's cell cut out of it is one nobody can read the shape of, and
+whoever asked what ran would have to re-derive the hole from the gate.
 
-Nothing checks prose the way the suite checks code, so every line of it
-is one a later change can falsify in silence. That is what its length is
-weighed against.
+**Every image still builds wheels on every pull request**: `cibuildwheel`
+runs the suite against each wheel as it builds it, and the release publishes
+the artifacts of a run that built every one. What narrows on a branch is how
+many per image — one interpreter's rather than every interpreter's, ubuntu
+included — because what a pull request asks of an image is whether this tree
+still builds there, and the toolchain, the CMake build of the vendored
+library and the cffi extension are what differ per image rather than per
+interpreter. Nothing on a branch reads past that first build: `check-dist`
+installs one wheel by path and takes it from `build-dynamic`, which builds
+whole. `test.yml` carries the measurement beside the step.
 
-**A docstring states the contract.** What the function takes, what it
-returns or raises, and the rule the behaviour comes from — not a
-restatement of the name. In the package the first two are enforced:
-`pydoclint` requires an `Args` entry per parameter and a `Returns`
-section, in the Google style napoleon renders, so a new argument that
-nobody documented fails the gate. `Raises` is not enforced and is still
-required — these wrappers raise mostly through what they call, so the
-check that compares a `Raises` section with the body's own `raise`
-statements would ask the docstrings to be wrong; `pyproject.toml` says
-so where it turns that check off.
+What a pull request no longer asks is pip's *selection* among a directory of
+wheels tagged for several interpreters, which now runs nowhere; the wheel
+each interpreter would get is still tested by the job that builds it, and
+`os-ubuntu`, `os-macos` and `os-windows` still compile both linkages from
+the tree on every interpreter. What no run asks at all is the suite
+against the dynamic wheel as a package — the sentinels compile that
+linkage from the tree instead. `os-ubuntu.yml`'s header records both
+costs beside each other.
 
-A test's docstring states what it verifies: the property, the published
-vector, the failure mode, and which side of the assertion is the
-independent one. That last part is why a docstring is required of a test
-at all — the name says which call is under test, which is not the same as
-what is being claimed about it.
+Everything but the first two rows also takes `workflow_dispatch`, which for
+`codeql` and the three platform workflows is the only way to ask about a
+branch at all. `claude-review` is the exception that takes none: both its
+jobs read the pull request or the comment that triggered them, so a manual
+run would start with nothing to read.
 
-**An example is executed.** Anything written as a doctest, in a docstring
-or in README.md, is run by `tests/test_examples.py` on every interpreter
-and every kind of wheel. That constrains an example to be deterministic —
-fixed keys, and a verification rather than a signature wherever the value
-depends on randomness that is not pinned — which is the price of the one
-form of documentation this repository can gate like a test.
-
-**A comment carries the reasoning, including the negative result.** Say
-why the code is as it is and why *not* the obvious alternative. The second
-half is what stops the next reader from "fixing" a deliberate choice, and
-it is why this repository's configuration files are as long as they are.
-
-**Cite the authority.** Where behaviour comes from a BIP, an RFC, or
-libsecp256k1 itself, name it rather than asserting the behaviour as if
-these bindings had decided it. Where they deviate, say so and say why.
-
-**Measure, don't assert.** A number in prose comes from a command, and the
-command belongs beside it, so the next reader can re-measure instead of
-trusting a figure whose date they cannot see. Never state a count that
-nothing checks — an unchecked number drifts into a false claim — and never
-state how many of anything a file or a matrix holds: a stated total is a
-line every open branch has to edit, and two branches moving it to the same
-wrong number merge without a conflict. A dated measurement is the
-exception, and it is dated for exactly that reason.
-
-**One fact in one place.** Two files stating the same thing become two
-files disagreeing about it; the second one points at the first. That is
-why [REPOSITORY.md](./REPOSITORY.md) holds the repository settings and
-CLAUDE.md points at it.
-
-**No history in the prose.** Comments and docstrings say why the code is
-as it is, in the present tense; they do not tell the story of what it used
-to be. "This is here rather than X because X breaks Y" stays, whatever
-prompted it; "this used to be X, until Z" goes — unless the old spelling
-is something a caller can still encounter, in which case it is not history
-but the present. History has a file of its own,
-[RELEASE_NOTES.md](./RELEASE_NOTES.md), and the commit messages.
-
-## Pull requests
-
-The whole build and test matrix — tens of jobs, each compiling
-libsecp256k1 from source — runs on every pull request and on every push
-to it, which is deliberate: this package exists to be identical
-everywhere. It does mean a draft pull request is the polite place for
-work in progress.
-
-Every change starts with an open issue; `Closes #N` in the pull
-request's description is what closes it, once a reviewed pull request
-merges. A pull request needs an approving review from somebody other
-than its author before it can merge — GitHub refuses a self-approval.
-[REVIEWING.md](./REVIEWING.md) is the standard that review is written
-against, and is this file's other half: what a review establishes before
-it gives an ack, how a finding states its severity, and why everything it
-notices that the pull request is not about becomes an issue rather than a
-comment. Read before opening a pull request, it is what the pull request
-will be answered against. Allow maintainer edits so the branch can be
-updated for a merge, and mark review conversations resolved as you
-address them.
-
-`main` enforces four things on every commit that reaches it, not only
-at review time: a verified signature, linear history, no force push, no
-branch deletion. These run as a GitHub ruleset with no bypass actor —
-not a rule trusted to hold on its own — so a commit that is unsigned, or
-a push that rewrites history, is rejected before it is something to
-review. A verified signature is GPG, SSH or S/MIME; GitHub's
-[documentation](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification)
-has what counts and how to set one up.
-
-**A correction is a commit of its own, never an amend.** Once a branch is
-pushed and under review, `git commit --amend` and a force-push replace the
-commits the review is attached to: the reviewer loses the diff they read,
-"changes since your last review" has nothing to compare against, and every
-one of those matrix jobs starts again from a commit nobody has seen. Add
-the fix on top, with a message saying what it fixes, and reply to the
-comment with the sha. Two force-pushes carry no new work, and stay right
-for that reason. One is yours: a `git rebase origin/main` on a branch
-whose base has moved, which wants the gates re-run after it, not only
-before, and a note in the pull request saying the head moved. The other
-is the maintainer's and comes at the end, your branch's own commits
-collapsed into the one about to land — the paragraph after next is where
-that is, and it is worth expecting rather than reading as a rewrite of
-the review.
-
-Nothing is lost in `main`'s history by working that way, because a pull
-request lands as one commit: a branch of several is squashed into one
-whose subject is the pull request title with its number, so the review's
-commits are the record of the review and `main` keeps one commit per
-landed change. A merge commit would put the branch's steps into `main`
-and a rebase merge would replay them one by one — `main` is linear by
-branch rule, and one change is one commit there.
-
-**How that commit reaches `main` is the squash button**, pressed by
-auto-merge once the review and the checks are in. GitHub composes it and
-signs it with its web-flow key, which is a valid signature and therefore
-all the branch rule asks for. There is no other way in: `main` takes a
-pull request and nothing else, a direct push being refused for everyone.
-REPOSITORY.md has the settings that make that true, and what the other
-two merge methods would have cost.
-
-What a pull request set to merge itself once the checks go green is
-holding is `gh pr view <n> --json autoMergeRequest`.
-
-None of that changes the shape of a correction: it is decided at the
-landing and not on the branch, so a fix added on top of a reviewed branch
-is still the right shape — by the time it is squashed the review has its
-record.
-Enabling it is the way to not wait for a matrix that compiles C on every
-platform, and what it costs is the paragraph above: GitHub signs what it
-composes, so a pull request left to merge itself lands a commit signed
-by the web-flow key rather than by the maintainer, and one whose sha the
-branch never carried. GitHub only offers it while something is still
-pending, and it merges nothing the branch rule would not have let
-through by hand.
-
-Releases are cut by a maintainer, following [RELEASING.md](./RELEASING.md);
-nothing about a version needs to be touched in a pull request.
-
-Once merged, your contribution is visible on the
-[contributors page](https://github.com/btclib-org/btclib-secp256k1/graphs/contributors).
+`codeql` runs on `main` and on its weekly schedule and not on a pull
+request, which is the same arithmetic as the rows above: three slots held
+while a review waits. What still reads a branch before it merges is
+`zizmor`, a `pre-commit` hook and therefore part of `lint`, which audits
+these workflows for an injected expression; REPOSITORY.md has the trade in
+full. It is also the one workflow with no local command: reproducing it
+means the CodeQL CLI, a bundle GitHub distributes rather than a dependency
+`uv.lock` can pin, so what answers a finding is the run itself and the
+Security tab beside it.
