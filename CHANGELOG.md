@@ -392,6 +392,20 @@ release-notes length in the first place, and are still in
   group and the lock are the single declaration, which was the argument
   for having no such file and had been left out.
 
+- **`[tool.pydoclint]`'s reason for `skip-checking-short-docstrings =
+  false` argued from what the check would find, not from what a
+  docstring here says** (btclib-org/.github#114). Section 4 of the
+  standard decides the key by the form a docstring's contract takes:
+  `false` where a section is how it is stated, the default where prose
+  states it. The comment instead argued that the default would let a
+  short docstring pass unread — the argument section 4 rejects when a
+  tree at the default makes it. This package's docstrings state their
+  contract in `Args` and `Returns` sections; the two that carry
+  neither, `Signer.wipe` and `SecretNonce.wipe`, take no argument and
+  return nothing, so they owe neither section under any setting of the
+  key. The comment now gives the form as the reason; the value is
+  unchanged.
+
 ### CI
 
 - **The rehearsal re-locks, and every build step passes `--locked`**
