@@ -484,9 +484,14 @@ style = "google"
 # the docstring is a second place to be wrong
 arg-type-hints-in-docstring = false
 check-return-types = false
-# the default skips a docstring that is only a summary line, which is
-# exactly the state this check exists to end: without it every function
-# documented in one line passes, and the gate holds nothing
+# false, and what decides it is the form a docstring's contract takes
+# here: an `Args` list naming each parameter and a `Returns` list
+# stating what comes back, the summary above them free to say only
+# what the call does. Left at the default, a docstring that already
+# carries those sections is held against the signature, and one with
+# neither -- `wipe`, taking and returning nothing -- is skipped along
+# with it; `false` asks the same question of both, and the two `wipe`
+# methods answer it by having nothing to state
 skip-checking-short-docstrings = false
 # and this one is off, deliberately. It compares the Raises section with
 # the `raise` statements of the body, and these wrappers raise mostly
