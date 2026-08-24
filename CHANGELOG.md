@@ -1412,6 +1412,15 @@ release-notes length in the first place, and are still in
   check --strict`, `check-wheel-contents` and `pyroma --min 10` each
   exit 0 on the new archives.
 
+- **`[project].name` takes the canonical hyphen** (btclib-org/.github#277).
+  It was declared `btclib_secp256k1`, the import package's own spelling,
+  where the organization standard's section 3 asks every publisher's
+  `name` for PEP 503's hyphen regardless of what the import package
+  takes. The wheel filename and the `.dist-info` directory are
+  unchanged: PEP 427's escaping rule already folds either spelling to
+  the same `btclib_secp256k1-<version>`, and `uv.lock`'s own package
+  record already carried the hyphenated form before this change.
+
 ### The release path
 
 - **`build-sdist` pins the sdist's `mtime` to the tagged commit's date**
