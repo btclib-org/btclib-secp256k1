@@ -421,6 +421,15 @@ release-notes length in the first place, and are still in
   `SECURITY.md` is: the archive leaves github.com, and a reader who has
   it and not the repository meets the project with no organization
   beside it (btclib-org/.github#98).
+- **`CLAUDE.md`'s worktree recipe named the worktree after the issue
+  alone, `wt<issue>`** (btclib-org/.github#292). A worktree's
+  administrative directory lives in the one shared `.git`, keyed on its
+  path's basename, and one issue is routinely owed by several
+  repositories of the organization, so a session working this repository
+  against such an issue computed the same name a sibling repository's
+  session was computing too, with no error and a silent collision. The
+  recipe now names the worktree `wt-<tracker>-<issue>-<repo>-<role>`,
+  most general part first.
 
 ### CI
 
