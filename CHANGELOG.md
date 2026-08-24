@@ -1410,6 +1410,23 @@ release-notes length in the first place, and are still in
   siblings' own does. `RELEASING.md`'s "Rebuild a release from its tag"
   runs both steps now, and no longer explains their absence.
 
+### `notice-rgx` derives from `COPYRIGHT`
+
+- **A test compares them** (#346, btclib-org/.github#135). `CPY` checks
+  every source file's header against `[tool.ruff.lint.flake8-copyright]`'s
+  `notice-rgx`, which is `COPYRIGHT`'s text transcribed by hand as a
+  regex, and nothing checked the regex against the file it was
+  transcribed from: a `COPYRIGHT` edited without the regex, or the
+  other way round, passed every gate. `tests/copyright_test.py` now
+  derives the expected pattern from `COPYRIGHT` itself and asserts
+  equality, deliberately narrower than `re.escape` for it: that
+  function's own special-character set is the same across every
+  CPython and PyPy version this package supports, but is
+  unconditionally wider than what's committed -- it also escapes `#`
+  and whitespace, for `re.VERBOSE` safety, where `notice-rgx` does not
+  -- so deriving through it would fail this test's round trip on every
+  supported interpreter alike, not on some of them.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
