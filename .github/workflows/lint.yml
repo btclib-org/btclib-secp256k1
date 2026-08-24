@@ -121,7 +121,8 @@ jobs:
       # the submodule, and a --depth=1 clone carries no tag at all -- and
       # it is the whole cost of moving that check off the release path.
       # Every other hook here reads files this repository owns
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           submodules: true
@@ -161,7 +162,8 @@ jobs:
       # the rest, and it health-checks each restored environment against
       # the interpreter it finds, so a stale one is rebuilt rather than
       # run -- which is what makes a partial restore safe to want
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Cache the pre-commit hook environments
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pre-commit
           key: >-
@@ -170,7 +172,8 @@ jobs:
           restore-keys: |
             pre-commit-${{ runner.os }}-${{ steps.image.outputs.os }}-
 
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           # the wheels of the lint group, pre-commit itself among them;
           # the hook environments are the cache step above

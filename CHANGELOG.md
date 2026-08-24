@@ -28,6 +28,22 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.5 (work in progress, not released yet)
 
+### CI
+
+- **Every workflow step is named** (#300). An unnamed step is rendered
+  as its command on the run page, which a release run reads by
+  expanding rather than by scanning, dozens deep; it also cost the
+  alignment work across the three repositories, a step named in two
+  files and not the third being harder to recognise as the same step
+  (btclib-org/btclib#1141, btclib-org/btclib#1142). Names match what
+  `btclib` and `bitcoin-core-rpc` already carry for the same step --
+  "Checkout code", "Setup uv", "Cache the pre-commit hook
+  environments", "Make the version unique for TestPyPI (rehearsal
+  only)" -- and an upload or download names what it moves rather than
+  repeating the action. Held deliberately until this repository had no
+  open pull request, a whole-file sweep rebasing worst against one that
+  had touched only a few lines of the same workflow.
+
 ### Every module declares `__all__`
 
 - **The public surface is a declared list, not everything a module
