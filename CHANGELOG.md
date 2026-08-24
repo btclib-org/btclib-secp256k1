@@ -74,6 +74,24 @@ release-notes length in the first place, and are still in
   comparison against `btclib`'s own settings or history, in both files,
   now states the same fact without the name.
 
+- **`CONTRIBUTING.md`'s repository-specific section stops comparing
+  against `btclib` by name** (#365, btclib-org/.github#81). The same
+  census finds four more instances below `## This repository in
+  particular`, each the same shape: a fact about this repository's own
+  build or gates, explained by contrast with `btclib`'s rather than
+  stated on its own -- the documentation build needing the submodule
+  checked out, the organization's shared concurrent-jobs ceiling, and
+  the benchmarks' own dependency list. Each now states the fact without
+  the name, or names it as "the library downstream of these bindings"
+  where the relationship itself is what the sentence is about. Left
+  unchanged, and read against the standard's own "positioning in the
+  family" carve-out rather than assumed a violation: the routing
+  sentence telling a contributor that a wallet, a transaction or a
+  signing session belongs in `btclib`'s own tracker, which is what
+  these bindings are for -- the same shape section 9 of the standard
+  names allowed, where a package stands on the organization that
+  publishes it and where it sits in the family.
+
 - **`.gitattributes` is the organization's file byte for byte**
   (btclib-org/.github#192). Section 14 of the standard makes the two
   `merge=union` entries and the reasoning beside them the standard's
