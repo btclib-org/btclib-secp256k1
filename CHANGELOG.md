@@ -1328,6 +1328,27 @@ release-notes length in the first place, and are still in
 
 ### Packaging metadata
 
+- **`check-sdist` gates the sdist against what git tracks** (#344).
+  Section 12 of the organization standard asks it of every repository
+  that builds an sdist, and this was the one tree the standard's own
+  exemption used to cover, on the strength of an exclude-list archive
+  rather than an allowlisted one. Run with `--installer=pip`, which
+  reads this hook's own environment rather than resolving `uv`
+  regardless of what `[build-system]` declares, and
+  `additional_dependencies` is that table's `requires` verbatim: `build
+  --no-isolation` checks the whole of it before calling the backend,
+  packing an sdist asking nothing of the cffi and cmake requirements
+  themselves. `--inject-junk` found seven common OS and editor droppings
+  `.gitignore` did not stop from reaching the archive --
+  `.Spotlight-V100`, `.Trashes`, `Thumbs.db`, `ehthumbs.db`, a vim swap
+  file and two spellings of `.DS_Store` and an AppleDouble sidecar --
+  now excluded in `[tool.hatch.build.targets.sdist]` beside the build
+  artifacts the same table already kept out. `.python-version` is the
+  one tracked file `[tool.check-sdist]`'s `git-only` now names on
+  purpose: both tracked and `.gitignore`-matched, it pins the
+  interpreter a checkout resolves against, which is the only place
+  anything reads it.
+
 - **`COPYRIGHT` leaves the wheel and the sdist** (btclib-org/.github#135).
   That issue decides that every package of the organization ships the
   same license files and `COPYRIGHT` is not among them: the holder a
@@ -1344,6 +1365,33 @@ release-notes length in the first place, and are still in
   the script's constants say the same set, and the verifier, `twine
   check --strict`, `check-wheel-contents` and `pyroma --min 10` each
   exit 0 on the new archives.
+
+### The release path
+
+- **`build-sdist` pins the sdist's `mtime` to the tagged commit's date**
+  (#345, btclib-org/.github#140). Section 12 of the organization
+  standard asks every publisher for a `SOURCE_DATE_EPOCH` step and a
+  normalizing one regardless of what its own backend already does, one
+  process across the three repositories rather than one bounded by
+  whichever backend happens to need it; `RELEASING.md` used to explain
+  the absence of both by a `setuptools.build_meta` backend neither
+  sibling has carried since before this file was written, and by a
+  script it called a no-op, which the standard's own correction on
+  btclib-org/.github#140 withdraws -- the step does not sit over a value
+  that is already right, it replaces one. Measured before this change:
+  hatchling's sdist writer stamps `1580601600` on every member when the
+  variable is unset, `1580601600` being neither the moment of the build
+  nor the tagged commit's date, and honours the variable exactly when it
+  is set. `.github/scripts/normalize_sdist.py` is the siblings' script
+  cut down to the one field hatchling does not already write this
+  repository's way: measured with `tarfile.getmembers()`, ownership is
+  already `uid`/`gid` `0` and `uname`/`gname` `""`, and mode is each
+  member's own git-tracked executable bit -- `secp256k1/autogen.sh` and
+  the small set of vendored tools beside it stay executable on a plain
+  extract, which flattening mode to one constant would have undone.
+  `tests/normalize_sdist_test.py` covers the script the way the
+  siblings' own does. `RELEASING.md`'s "Rebuild a release from its tag"
+  runs both steps now, and no longer explains their absence.
 
 ## v0.8.0.4
 

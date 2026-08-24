@@ -607,54 +607,56 @@ version comparison, the `RELEASE_NOTES.md` section, and the ancestry on
 
 ## Rebuild a release from its tag
 
-A rebuild of a released tag is the same bytes as the sdist that was
-published, and needs neither `SOURCE_DATE_EPOCH` nor a normalizing step
-to get there:
+`build-sdist` in `test.yml` exports `SOURCE_DATE_EPOCH` from the commit
+date and normalizes the sdist, so a rebuild of a released tag is the
+same bytes as what was published — that job's own upload is what
+`publish-pypi` publishes, unchanged. A worktree and not `git checkout`,
+for the reason CLAUDE.md gives:
 
 ```shell
 git worktree add --detach /tmp/btclib-secp256k1-rebuild v0.8.0.4
 cd /tmp/btclib-secp256k1-rebuild
 git submodule update --init --recursive
+export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 uv run --locked --only-group build python -m build -s
+uv run --no-project --python 3.14 \
+  .github/scripts/normalize_sdist.py dist/
 shasum -a 256 dist/btclib_secp256k1-0.8.0.4.tar.gz
 ```
 
-is the whole of it — against a worktree rather than the primary
-checkout, for the reason CLAUDE.md gives, and with the command
-`build-sdist` in `test.yml` runs, `--locked` included: a rebuild from a
-released tag has nothing rewriting the version, so the lock and
-`pyproject.toml` already agree, and the flag asserts that the lock is
-the one the tag committed rather than taking `uv.lock` as it finds it.
-Compare the digest against
+is the whole of it, `--locked` included for the same reason as before: a
+rebuild from a released tag has nothing rewriting the version, so the
+lock and `pyproject.toml` already agree, and the flag asserts that the
+lock is the one the tag committed rather than taking `uv.lock` as it
+finds it. Compare the digest against
 `pypi.org/pypi/btclib-secp256k1/<version>/json`'s own, or against the
 `sdist` artifact `gh run download` pulls from the release's run; both
 name the file this reproduces.
 
-**Why no `SOURCE_DATE_EPOCH` step, where both siblings have one.** The
-build backend does the work here on its own. This repository's
-`build-system.build-backend` is `hatchling.build`; both siblings' is
-`setuptools.build_meta`. Hatchling's sdist and wheel writers default to
-a `reproducible` mode that reads `SOURCE_DATE_EPOCH` and, when it is
-unset, falls back to a fixed constant — `1580601600`, not the moment of
-the build — for every member's timestamp, and stamp ownership and mode
-the same way regardless of who built it or when. Nothing in
-`pyproject.toml` turns that default off. setuptools' sdist writer has no
-such fallback: unset, it stamps the actual checkout's clock, sub-second,
-which is why both siblings each carry a
-`.github/scripts/normalize_sdist.py` and a `SOURCE_DATE_EPOCH` step in
-their release workflow, rewriting after the fact what their backend
-will not fix by default. Looking for that script here on the strength
-of the siblings' example finds nothing, and correctly so — there is
-nothing here for it to fix, and adding one would rewrite bytes that
-already reproduce.
+**What the script rewrites here, and what it leaves alone.** This
+repository's `build-system.build-backend` is `hatchling.build`, unlike
+both siblings' `uv_build`, and hatchling's sdist writer already stamps
+every member's ownership at `uid`/`gid` `0` and `uname`/`gname` `""` —
+measurable with `tarfile.getmembers()` against a build of this tree —
+so the script does not touch them. Nor does it touch mode: each
+member's mode is the executable bit git tracks for that file,
+`secp256k1/autogen.sh` and the small set of vendored tools beside it
+staying executable on a plain extract, and flattening that to one
+constant would strip the bit those files need to run. `mtime` is the
+field left, and the one hatchling does not fix on its own: unset,
+`SOURCE_DATE_EPOCH` falls back to hatchling's own constant,
+`1580601600`, neither of which is the tagged commit's date, so the
+script — and the `SOURCE_DATE_EPOCH` step ahead of the build, belt and
+braces against a future hatchling release deciding the variable
+differently — is what makes it that instead. The step is section 12 of
+the organization standard: one process across the three repositories,
+`btclib-org/.github#140`'s decision, rather than one bounded by
+whichever backend happens to need it.
 
-The vendored `secp256k1` submodule is not a second source of drift, and
-looks riskier than it is: `.gitmodules` pins it to a commit, and a git
-checkout of a pinned commit is the same bytes wherever and whenever it
-happens, the recursive `submodule update` above included. What made the
-siblings' sdists non-reproducible was never vendored content — neither
-sibling vendors any — it was their build backend's clock, and this
-repository's backend does not read one.
+The vendored `secp256k1` submodule is not a source of drift on top of
+that: `.gitmodules` pins it to a commit, and a git checkout of a pinned
+commit is the same bytes wherever and whenever it happens, the
+recursive `submodule update` above included.
 
 Only the sdist reproduces this way; the wheels do not, and are not
 worth chasing to make them. They are `cibuildwheel` output over that

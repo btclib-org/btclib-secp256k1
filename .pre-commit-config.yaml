@@ -648,6 +648,47 @@ repos:
     hooks:
       - id: uv-lock
 
+  # check-sdist compares the sdist's members against git's tracked
+  # files: a tracked file the archive leaves out and [tool.check-sdist]
+  # below does not name is reported missing, and a member neither git
+  # nor that table accounts for is reported extra. hatchling's own
+  # excludes -- [tool.hatch.build.targets.sdist]'s exclude list above --
+  # are read through check-sdist's hatchling.build plugin, keyed on
+  # [build-system], so nothing here repeats them; [tool.check-sdist]
+  # holds only what that plugin does not reach.
+  # --installer=pip, as pyroma above: the default installer is uv|pip,
+  # which resolves to uv wherever a uv is importable or on PATH and
+  # then runs `uv build` -- not PEP 517 for this backend, uv building
+  # with the copy of uv_build bundled in itself regardless of what
+  # [build-system] declares, so additional_dependencies would decide
+  # nothing. --installer=pip runs `python -m build --sdist
+  # --no-isolation` instead, which reads this hook's own environment
+  # rather than an isolated one.
+  # additional_dependencies is [build-system]'s requires verbatim,
+  # unlike pyroma's hatchling alone: build --no-isolation checks the
+  # whole of requires before calling the backend, packing an sdist
+  # asking nothing of the cffi and cmake requirements themselves --
+  # measured, the same command with hatchling alone dying
+  # "Getting build dependencies for sdist... ERROR Missing
+  # dependencies: cmake>=3.22, setuptools, cffi>=2.0" -- but requiring
+  # every declared package to be installable first regardless.
+  # --inject-junk plants an egg-info directory beside the sources for
+  # the length of the run, which [tool.check-sdist]'s git-only below
+  # accounts for
+  - repo: https://github.com/henryiii/check-sdist
+    rev: v1.6.0
+    hooks:
+      - id: check-sdist
+        args: [--inject-junk, --installer=pip]
+        additional_dependencies:
+          - "hatchling>=1.27"
+          - 'cffi>=1.6; python_version<"3.13"'
+          - 'cffi>=1.17; python_version=="3.13"'
+          - 'cffi>=2.0; python_version>="3.14"'
+          - 'setuptools; python_version>="3.12"'
+          - "cmake>=3.22"
+          - 'typing_extensions; python_version<"3.12"'
+
   # what test.yml's own pyroma step rates the sdist for -- a missing
   # classifier or url, metadata that is valid but poor -- this rates the
   # source tree instead, for an answer before pushing rather than after
