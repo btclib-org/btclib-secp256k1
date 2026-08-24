@@ -1263,3 +1263,8 @@ for, and
 is where this project's own boundary is timed against the others', one
 run kept whole rather than reduced to a single figure — an order of
 magnitude to read there, never a number to quote here.
+
+---
+
+The btclib organization and its projects are actively supported by
+[DGI](https://dgi.io) and [CheckSig](https://checksig.com).

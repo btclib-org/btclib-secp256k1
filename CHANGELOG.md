@@ -416,6 +416,12 @@ release-notes length in the first place, and are still in
   fast-forward that brings a clean checkout forward without working in
   it.
 
+- **`README.md` ends with the line naming who supports the work.** The
+  organization standard states the line as tier 1's, for the reason
+  `SECURITY.md` is: the archive leaves github.com, and a reader who has
+  it and not the repository meets the project with no organization
+  beside it (btclib-org/.github#98).
+
 ### CI
 
 - **The rehearsal re-locks, and every build step passes `--locked`**
