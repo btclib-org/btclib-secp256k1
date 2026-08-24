@@ -476,6 +476,34 @@ release-notes length in the first place, and are still in
 
 ### CI
 
+- **`release.yml`'s prose stays inside the width its neighbours hold, and
+  states no count nothing derives** (#340, #342). The paragraph above
+  `Check that the tag is on main` left one line at exactly the
+  100-column limit `.yamllint.yaml` enforces, where every other line of
+  that block wraps between 63 and 73 -- a rewrap begun and not
+  finished, invisible to the hook because it sits at the limit rather
+  than past it; it wraps the same way as its neighbours now. The
+  comment above `github-release`'s sdist-only download named the
+  release matrix's asset count as `thirty`; nothing in the workflow
+  computes that figure, and it moves with cibuildwheel's own identifier
+  list, the skip list and the image matrix, so the sentence no longer
+  states one.
+
+- **Three `release.yml` steps that run only on a push now say so in
+  their name** (#341). `Check that the tag matches the declared
+  version`, `Check that the tag is on main` and `Check that the release
+  notes are retitled for the tag` each carry
+  `if: github.event_name == 'push'`, and none of the three said
+  `(release only)`, the suffix both `btclib` and `bitcoin-core-rpc`
+  already carry on the same condition; they do now. `Sign a build
+  provenance statement for the sdist` and `Create the release, with
+  RELEASE_NOTES.md as its notes` keep their own names: both jobs run on
+  `always()` rather than on that event check -- the attest job accepts
+  either publish job succeeding, and the release job runs off
+  `publish-pypi` succeeding rather than off the trigger directly -- so
+  the suffix would misdescribe them, and each already names what it
+  does more precisely than the sibling name it was compared against.
+
 - **The rehearsal re-locks, and every build step passes `--locked`**
   (btclib-org/.github#128). The `dev-version` action rewrites the version
   in `pyproject.toml` on the rehearsal path, and the build steps after it
