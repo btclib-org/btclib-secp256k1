@@ -248,7 +248,7 @@ repos:
   # is in pyproject.toml; codespell needs none today -- measured, with its
   # default dictionaries it finds nothing here to skip or allow for
   - repo: https://github.com/crate-ci/typos
-    rev: v1.49.0
+    rev: v1
     hooks:
       - id: typos
   - repo: https://github.com/DavidAnson/markdownlint-cli2
@@ -430,7 +430,7 @@ repos:
   # The rule selection (and what each family stands in for) is documented
   # there
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.3
+    rev: v0.16.4
     hooks:
       - id: ruff-check
         name: ruff (lint, in place fixes)
@@ -697,7 +697,7 @@ repos:
   # source tree instead, for an answer before pushing rather than after
   # the build
   - repo: https://github.com/regebro/pyroma
-    rev: "5.0.1"
+    rev: "5.1b1"
     hooks:
       - id: pyroma
         # the backend, in pyroma's own environment, because pyroma builds
