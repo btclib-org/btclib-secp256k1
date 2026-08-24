@@ -224,6 +224,8 @@ ignore = ["W003", "W009"]
 # resolve against a checkout, which is the only place anything reads
 # it, so its absence from an installed sdist costs nothing
 git-only = [".python-version"]
+
+# PEP 735 groups, resolved by uv (or by pip --group): they replace the
 # hatch environments, which duplicated what nox and pre-commit already
 # did. The authoritative versions of the linters remain the revisions
 # pinned in .pre-commit-config.yaml, which is the gate; the ones here

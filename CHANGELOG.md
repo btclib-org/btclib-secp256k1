@@ -1341,8 +1341,9 @@ release-notes length in the first place, and are still in
   themselves. `--inject-junk` found seven common OS and editor droppings
   `.gitignore` did not stop from reaching the archive --
   `.Spotlight-V100`, `.Trashes`, `Thumbs.db`, `ehthumbs.db`, a vim swap
-  file and two spellings of `.DS_Store` and an AppleDouble sidecar --
-  now excluded in `[tool.hatch.build.targets.sdist]` beside the build
+  file, an AppleDouble sidecar and the wildcard spelling of `.DS_Store`
+  that plain `.DS_Store` in `.gitignore` does not match -- now excluded
+  in `[tool.hatch.build.targets.sdist]` beside the build
   artifacts the same table already kept out. `.python-version` is the
   one tracked file `[tool.check-sdist]`'s `git-only` now names on
   purpose: both tracked and `.gitignore`-matched, it pins the

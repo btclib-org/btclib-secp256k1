@@ -673,8 +673,11 @@ repos:
   # dependencies: cmake>=3.22, setuptools, cffi>=2.0" -- but requiring
   # every declared package to be installable first regardless.
   # --inject-junk plants an egg-info directory beside the sources for
-  # the length of the run, which [tool.check-sdist]'s git-only below
-  # accounts for
+  # the length of the run. git-only below cannot be what keeps it out --
+  # it is read against files git tracks, and an injected directory is
+  # never one -- .gitignore's own "*.egg-info/" is what hatchling's
+  # sdist target drops it on, the same VCS-ignore reading the comment
+  # above names for .python-version's absence
   - repo: https://github.com/henryiii/check-sdist
     rev: v1.6.0
     hooks:
