@@ -30,6 +30,21 @@ release-notes length in the first place, and are still in
 
 ### Documentation
 
+- **`RELEASING.md` and `REPOSITORY.md` stop naming `btclib` to justify
+  this package's own choices** (btclib-org/.github#81). The first pass
+  held both files out of scope, reading a maintainer's runbook as prose
+  the rule does not reach; `bitcoin-core-rpc`'s later half
+  (bitcoin-core-rpc#245) read the same rule as reaching a new maintainer
+  who may not have `btclib` at all, and that reading is what lands here
+  too. `RELEASING.md`'s CycloneDX paragraph — the case this round turns
+  on — now states its own reasoning instead of sending that reader to
+  `btclib`'s `RELEASING.md` for it: a generator that read only
+  `Requires-Dist` could not describe a vendored submodule's pin, that
+  limit is fixed upstream (btclib-org/btclib#1280), and what remains is
+  adoption here, tracked at `btclib-org/.github#24`. Every other
+  comparison against `btclib`'s own settings or history, in both files,
+  now states the same fact without the name.
+
 - **`.gitattributes` is the organization's file byte for byte**
   (btclib-org/.github#192). Section 14 of the standard makes the two
   `merge=union` entries and the reasoning beside them the standard's

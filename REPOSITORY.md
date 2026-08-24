@@ -39,13 +39,13 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 `codeql: every job passed` is not among them, and that is the one place a
 check was traded for the slots it held. GitHub Free gives an organization
 twenty concurrent jobs (as of 2026-08-21), shared across every repository
-in it: this one, btclib and bitcoin-core-rpc each ask for more jobs than
-that on every commit, so a pull request in any of the three waited for a
-slot rather than for the work. `codeql.yml` now runs on `main`
-and on its weekly schedule, the analysis landing on the merge commit rather
-than ahead of it, and it still produces that aggregate — the name is
-available, so requiring it again is a patch to the rule and nothing in the
-tree.
+in it: this one, bitcoin-core-rpc and one more repository each ask for
+more jobs than that on every commit, so a pull request in any of the
+three waited for a slot rather than for the work. `codeql.yml` now runs
+on `main` and on its weekly schedule, the analysis landing on the merge
+commit rather than ahead of it, and it still produces that aggregate —
+the name is available, so requiring it again is a patch to the rule and
+nothing in the tree.
 
 What still reads a branch before it merges is the workflow half of the same
 question: `zizmor` is a `pre-commit` hook, so `lint.yml` audits these very
@@ -274,10 +274,11 @@ checks already described, one approving review with
 `dismiss_stale_reviews`, **required signatures**, linear history, no force
 pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off** — an administrator can bypass all of it, matching
-btclib now and for the same reason: a solo-maintainer repository cannot
-satisfy "one approving review" from the author, GitHub refusing
-self-approval, so the review is a stop rather than a speed bump, and the
-admin bypass is the only way past it without a second maintainer to add.
+another repository in the organization now and for the same reason: a
+solo-maintainer repository cannot satisfy "one approving review" from the
+author, GitHub refusing self-approval, so the review is a stop rather than
+a speed bump, and the admin bypass is the only way past it without a
+second maintainer to add.
 
 ```shell
 gh api -X DELETE \
@@ -292,7 +293,8 @@ onto the trunk, admin included. Off would not undo that squash today
 either — that commit is what PyPI's PEP 740 attestations for 0.7.1 are
 bound to, and moving it now would desynchronize a published release from
 what it attests to rather than restore anything. What changed is only
-whether the next incident has the same escape hatch btclib already keeps.
+whether the next incident has the same escape hatch another repository in
+the organization already keeps.
 
 One protected branch is the whole of it, which is a consequence of there
 being one long-lived branch:
@@ -427,8 +429,8 @@ delete by hand. Measured on
 at 12:39:19 and `head_ref_deleted` at 12:39:20, with nobody asking. The
 thing not to do is get ahead of it — deleting the branch before the
 reconciliation is what leaves a pull request Closed with its commit on
-`main` all the same, as btclib's
-<https://github.com/btclib-org/btclib/pull/930> came out.
+`main` all the same, as has happened once at another repository in the
+organization.
 
 ## Merge methods
 
@@ -659,11 +661,11 @@ for a plan — on this repository it is the answer, and the plan below
 Enterprise that would undo it does not exist.
 
 What Team would buy is the rest: the Linux and Windows crowding, and the
-contention with the other repositories of the organization, `btclib` and
-`bitcoin-core-rpc` each asking for well more than the twenty on their own
-commits too. Whether that is worth three seats is a question for whoever
-pays for them, and it is recorded here so that it is asked with the
-second column in view.
+contention with the other repositories of the organization,
+`bitcoin-core-rpc` and one more each asking for well more than the twenty
+on their own commits too. Whether that is worth three seats is a question
+for whoever pays for them, and it is recorded here so that it is asked
+with the second column in view.
 
 ## Topics
 
@@ -692,12 +694,9 @@ and `bip324` are in a list of what this package wraps.
 
 ## No website
 
-Unlike btclib, this repository serves no GitHub Pages site, so no file in
-its root is a URL anywhere:
+This repository serves no GitHub Pages site, so no file in its root is a
+URL anywhere:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/pages   # 404
 ```
-
-btclib.org is built from the btclib repository's `main` root, which is
-why that project's README is also a web page and this one's is not.
