@@ -300,22 +300,22 @@ least one test, and the two halves together account for all eight.
 
 | convention | tested in |
 | --- | --- |
+| the public surface | `all_test.py` |
 | the copyright header | `copyright_test.py` |
 | the documentation | `docs_test.py` |
 
-Not tested here: the public surface; the import graph; the changelog;
-the build system; the calling convention; input validation.
+Not tested here: the import graph; the changelog; the build system;
+the calling convention; input validation.
 
 The reasons the rest are absent differ, and are given one by one because
-a reader needs which and not how many. **The public surface** is not a
-convention this package has: nothing here declares `__all__`, and no
-prose asks for one, so there is no census to walk and none of the three
-bullets that rest on such a walk applies. **Input validation** is one of
-those three — section 7 asks for it "driven by a walk over the public
-surface rather than by a hand-written list", and `core_test.py` refuses
-plenty by hand. **The calling convention** is the other: two tests read a
-signature, but each about one function rather than as a rule over the
-package.
+a reader needs which and not how many. **Input validation** is the one
+`all_test.py`'s arrival changes without answering: section 7 asks for it
+"driven by a walk over the public surface rather than by a hand-written
+list", and now there is a walk to drive it from, but nothing here does —
+`core_test.py` refuses plenty by hand, against a list nothing checks
+against `__all__`. **The calling convention** has no such dependency and
+is absent on its own account: two tests read a signature, but each about
+one function rather than as a rule over the package.
 
 **The changelog** is the near miss. `vendored_data_test.py` forbids
 exactly the count section 7 forbids — a number nothing derives — but of

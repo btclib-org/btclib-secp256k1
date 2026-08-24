@@ -28,6 +28,25 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.5 (work in progress, not released yet)
 
+### Every module declares `__all__`
+
+- **The public surface is a declared list, not everything a module
+  happens not to underscore** (#357, btclib-org/.github#79). A module
+  with no `__all__` answers `import *` with every name it does not
+  underscore, the ones it imported included: `ffi` and `lib` came out of
+  `btclib_secp256k1.dsa` alongside its own entry points. Every module
+  under `btclib_secp256k1/` now declares one, `_scalar`, `_secret` and
+  `_cdata` excepted by their own leading underscore, and `context.ctx`
+  kept public beside `check` for the caller reaching `lib` directly that
+  SECURITY.md and the README already document. `tests/all_test.py` is
+  the census section 7 asks for: it walks the package rather than
+  listing it, so a new public name fails until it is exported or
+  recorded in `UNEXPORTED`, and a module re-exporting a name it only
+  imported is caught the same way. `tests/README.md`'s convention table
+  moves the public surface out of "Not tested here" and into the table;
+  input validation stays absent, section 7's own escape for it now
+  missing only the connection nothing here makes.
+
 ### Documentation
 
 - **`SECURITY.md` stops claiming what it cannot check** (#356,

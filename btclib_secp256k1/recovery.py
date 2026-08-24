@@ -18,6 +18,8 @@ from .context import ctx
 from .dsa import serialize_der
 from .keys import serialize
 
+__all__ = ["parse_compact", "recover", "serialize_compact", "sign", "to_der"]
+
 # the width of a compact signature, in both directions: it is what
 # `serialize_compact` writes and what `parse_compact` accepts, so the
 # statement of it serves the argument check too, and the buffer's type is

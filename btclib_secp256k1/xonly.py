@@ -36,6 +36,19 @@ from ._scalar import in_range, octets, scalar
 from ._secret import keypair, take, wipe
 from .context import ctx
 
+__all__ = [
+    "from_keypair",
+    "from_prvkey",
+    "from_pubkey",
+    "parse",
+    "prvkey_tweak_add",
+    "pubkey_verify",
+    "serialize",
+    "to_pubkey",
+    "tweak_add",
+    "tweak_add_check",
+]
+
 # the x-only serialization, which is the whole of the key: the other
 # two lengths this module takes are a full public key, whose x it is
 _XONLY_SIZE = 32

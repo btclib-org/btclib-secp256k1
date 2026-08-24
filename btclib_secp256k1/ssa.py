@@ -18,6 +18,15 @@ from ._scalar import entropy, octets, optional_entropy, scalar
 from ._secret import keypair, take, wipe
 from .context import ctx
 
+__all__ = [
+    "EXTRAPARAMS_MAGIC",
+    "Signer",
+    "nonce_bip340",
+    "sign",
+    "sign_custom",
+    "verify",
+]
+
 # SECP256K1_SCHNORRSIG_EXTRAPARAMS_MAGIC: the libsecp256k1 macros do not
 # survive the preprocessing of the headers into cffi definitions
 EXTRAPARAMS_MAGIC = b"\xda\x6f\xb3\x8c"
