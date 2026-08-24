@@ -5,7 +5,11 @@
 Please do not open a GitHub issue. Provide responsible disclosure
 either privately through GitHub, from the Security tab of this
 repository ("Report a vulnerability"), or by emailing
-*security at btclib dot org*, as for every btclib project.
+*security at btclib dot org* — the organization's own address, kept in
+section 2 of the standard in
+[btclib-org/.github](https://github.com/btclib-org/.github), rather than
+repeated here as a claim about every other repository this file does
+not read.
 
 ## What belongs here, and what belongs upstream
 
