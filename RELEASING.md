@@ -11,22 +11,21 @@ The `attest` job then signs a build provenance statement for the sdist,
 which is the file the GitHub release attaches and therefore the one copy
 the index's attestation says nothing about.
 
-**No CycloneDX bill of materials is attached, on purpose**, unlike
-btclib's release. This package's `Requires-Dist` names only `cffi` —
-the dependency it actually wraps, the vendored libsecp256k1 C
-library at its pinned commit in the `secp256k1` submodule, does not
-appear there and so is invisible to the generator btclib uses. That
-holds for both wheels this package ships, not only the static one:
-a static build links the library into the extension, a dynamic
-(ABI-mode) build ships it as a shared object beside the extension
-instead (see CLAUDE.md's Architecture section) — `Requires-Dist`
-says nothing about the pin either way. btclib's `RELEASING.md` (the
-"Read the bill of materials attached to the release" step) has the
-full reasoning, and issue
-[btclib-org/btclib#1159](https://github.com/btclib-org/btclib/issues/1159)
-has the evaluation behind it. The limit is the generator's rather than
-this package's, so the decision is conditional: if the generator ever
-learns to describe a submodule pin as a component, it reopens.
+**No CycloneDX bill of materials is attached, on purpose.** This
+package's `Requires-Dist` names only `cffi` — the dependency it
+actually wraps, the vendored libsecp256k1 C library at its pinned
+commit in the `secp256k1` submodule, does not appear there and so is
+invisible to a generator that builds its components from
+`Requires-Dist`. That holds for both wheels this package ships, not
+only the static one: a static build links the library into the
+extension, a dynamic (ABI-mode) build ships it as a shared object
+beside the extension instead (see CLAUDE.md's Architecture section) —
+`Requires-Dist` says nothing about the pin either way, so a document
+built from it would look complete while staying silent about the one
+component a verifier would most want described. The limit is the
+generator's rather than this package's, so the decision is
+conditional: if the generator ever learns to describe a submodule pin
+as a component, it reopens.
 [btclib-org/.github#24](https://github.com/btclib-org/.github/issues/24)
 records that trigger and stays open; an issue no longer open watches
 nothing.
@@ -162,8 +161,8 @@ Then:
    against — `python -c "import btclib_secp256k1 as m;
    print(m.__version__)"` answers the real version regardless. The list
    of what else to discount is per release rather than inherited, the
-   way btclib's own griffe step names `Union[X, Y] -> X | Y` as PEP 604
-   spelling and nothing to act on.
+   way a sibling repository's own griffe step names `Union[X, Y] -> X | Y`
+   as PEP 604 spelling and nothing to act on.
 
    Measured rather than assumed: `v0.8.0.3` to `main` (0.8.0.4) reports
    nothing beyond the `__version__` line above, `musig` being purely
@@ -638,7 +637,7 @@ the build — for every member's timestamp, and stamp ownership and mode
 the same way regardless of who built it or when. Nothing in
 `pyproject.toml` turns that default off. setuptools' sdist writer has no
 such fallback: unset, it stamps the actual checkout's clock, sub-second,
-which is why btclib and bitcoin-core-rpc each carry a
+which is why both siblings each carry a
 `.github/scripts/normalize_sdist.py` and a `SOURCE_DATE_EPOCH` step in
 their release workflow, rewriting after the fact what their backend
 will not fix by default. Looking for that script here on the strength
