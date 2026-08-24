@@ -43,9 +43,15 @@ in it: this one, bitcoin-core-rpc and one more repository each ask for
 more jobs than that on every commit, so a pull request in any of the
 three waited for a slot rather than for the work. `codeql.yml` now runs
 on `main` and on its weekly schedule, the analysis landing on the merge
-commit rather than ahead of it, and it still produces that aggregate —
-the name is available, so requiring it again is a patch to the rule and
-nothing in the tree.
+commit rather than ahead of it, and it carries no aggregate any more
+either: a branch rule can only name a context a pull request's own run
+produces, and this workflow's `on:` block has no `pull_request` trigger,
+so no rule could ever require a name it produces —
+btclib-org/.github#90 is where the organization settled that reading as
+section 10's one rule rather than the two the standard used to hold
+apart. Re-requiring the analysis is therefore a workflow change and not
+only a rule change: the trigger and the aggregate would have to return
+together.
 
 What still reads a branch before it merges is the workflow half of the same
 question: `zizmor` is a `pre-commit` hook, so `lint.yml` audits these very
@@ -123,10 +129,10 @@ CodeQL analyses from advanced configurations cannot be processed when
 the default setup is enabled
 ```
 
-So while the setting is on the analysing jobs and the aggregate are red
-rather than absent, and the file is still the one that can be reviewed in a
-diff. What the setting holds is read from the endpoint, `state` being the
-field that says whether it holds anything:
+So while the setting is on the analysing jobs are red rather than absent,
+and the file is still the one that can be reviewed in a diff. What the
+setting holds is read from the endpoint, `state` being the field that
+says whether it holds anything:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/code-scanning/default-setup
@@ -142,22 +148,22 @@ gh api -X PATCH \
   -F state=not-configured
 ```
 
-The order matters in both directions, and it is the branch rule that
-decides it: while the setting is on, `codeql.yml` produces a red
-`codeql: every job passed` rather than none at all, and while it is off,
-nothing produces that context until the workflow has run. So the rule drops
-the `CodeQL` context first, the setting moves second, the checks are
-re-run, and the rule names the new context last — each step leaving the
-merge path open, where any other order closes it on a context nothing
-reports. `enforce_admins` being off is what makes that window survivable
+The order used to matter here, back when the branch rule still named
+`codeql: every job passed`: dropping that context from the rule before
+turning the setting off, and naming it again only after the workflow
+had produced it fresh, was what kept the merge path open through the
+switch rather than closing it on a context nothing reported for one
+step. `enforce_admins` being off is what made that window survivable
 rather than a lock.
 
-That exchange has been made: the endpoint above answers `not-configured`.
-What the rule does *not* name any more is `codeql: every job passed`, for
-the reason the section above gives — so the last step of that order was
-undone afterwards, deliberately, and the order is kept here because the
-setting can be configured again and because requiring the context again is
-the same `PATCH` with one entry more.
+Neither half of that sequence is live any more. That exchange has been
+made: the endpoint above answers `not-configured`, and it was already
+true before this repository's own aggregate went — the rule dropped
+`codeql: every job passed` first, for the reason the section above
+gives. Turning the setting back on today has nothing left to sequence
+around: `codeql.yml` produces no aggregate to be red or to be named, so
+the switch would only turn the `analyze` matrix red, with no rule
+reading either context.
 
 A `CodeQL` check and an `Analyze (python)` job outlive it, and neither
 comes from this tree: GitHub keeps a generated
