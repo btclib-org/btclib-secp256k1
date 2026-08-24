@@ -182,37 +182,11 @@ jobs:
           # a copy of it is opened by this workflow
           category: "/language:${{ matrix.language }}"
 
-  # one context for the branch rule, instead of the matrix's own, for the
-  # reason test.yml gives at its own aggregate: a rule naming
-  # `Analyze python with CodeQL` names a context that stops being produced
-  # the moment the matrix changes, and a required check that produces no run
-  # blocks every merge with nothing in the tree to explain why. A job added
-  # to this workflow belongs in the `needs` below or it gates nothing.
-  #
-  # The name carries the workflow because a context is keyed by name alone:
-  # two workflows with a job named `every job passed` would produce one
-  # ambiguous check
-  codeql-passed:
-    name: "codeql: every job passed"
-    needs: [analyze]
-    # not success(): a job whose dependencies failed is skipped, and a
-    # skipped check reports `skipped`, which branch protection counts as
-    # satisfied. The gate has to run to be able to fail
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      # the condition reads the whole needs context rather than testing each
-      # job by name, so a job added to needs above is covered without
-      # touching this. `skipped` is a failure here too: nothing in this
-      # workflow is conditional, so a skip means something upstream did not
-      # run
-      - name: Fail unless every job above succeeded
-        if: >-
-          contains(needs.*.result, 'failure') ||
-          contains(needs.*.result, 'cancelled') ||
-          contains(needs.*.result, 'skipped')
-        run: |
-          echo "::error::a job this gate depends on did not succeed"
-          exit 1
+  # no aggregate job, where test.yml has one. A branch rule can only name
+  # a context a pull request's own run produces, and the `on:` block
+  # above has no `pull_request` trigger, so no rule could ever require a
+  # name this workflow produces — btclib-org/.github#90 is where the
+  # organization settled that reading as section 10's one rule, in place
+  # of the two the standard used to hold apart. `analyze`'s matrix cells
+  # are therefore the whole of the checks list this workflow contributes
+  # to a commit, one per language rather than one aggregate over both

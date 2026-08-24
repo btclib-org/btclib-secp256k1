@@ -491,6 +491,22 @@ release-notes length in the first place, and are still in
 
 ### CI
 
+- **`codeql.yml` carries no aggregate job any more** (#355,
+  btclib-org/.github#90). Its `on:` block triggers on `push` to `main`
+  and on a weekly schedule alone, no `pull_request` among them, and a
+  branch rule can only name a context a pull request's own run
+  produces -- so `codeql-passed`, producing `codeql: every job passed`,
+  named a context no rule could ever require, which the organization
+  standard now states as section 10's one rule rather than the two it
+  used to hold apart. `analyze`'s two matrix cells are the whole of
+  what this workflow contributes to a commit now, one check per
+  language. `REPOSITORY.md`'s own account of that context -- kept
+  deliberately once already, for the concurrency-slot trade the section
+  above it records, and the ordering that mattered around toggling code
+  scanning's default setup off -- is corrected alongside: what it
+  described as a rule change away is now a workflow change too, and the
+  ordering it walked through has nothing left to sequence around.
+
 - **`release.yml`'s prose stays inside the width its neighbours hold, and
   states no count nothing derives** (#340, #342). The paragraph above
   `Check that the tag is on main` left one line at exactly the
