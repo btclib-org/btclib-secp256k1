@@ -518,9 +518,35 @@ jobs:
         with:
           suffix: ${{ inputs.version-suffix }}
 
+      # what the build below and the normalizer after it both read.
+      # hatchling's sdist writer honours this when it is set and falls
+      # back to a fixed constant, 1580601600, when it is not -- so this
+      # step is what makes the published mtime the tagged commit's own
+      # date rather than that constant, section 12 of the organization
+      # standard asking every publisher for it regardless of what its own
+      # backend already does. The commit date, not the tag's: a
+      # lightweight tag has none of its own to prefer, and this job's
+      # checkout is the commit a release tags
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
       # the build group and --locked: see build-cibuildwheel
       - name: Build source
         run: uv run --locked --only-group build python -m build -s
+
+      # insurance rather than the fix: the step above already leaves the
+      # sdist's own mtime at SOURCE_DATE_EPOCH, and this rewrites it again
+      # so that the published value stays this repository's choice
+      # regardless of what a future hatchling release does with the
+      # variable. The script's own docstring has the measurement of what
+      # else hatchling already writes the same way, untouched here.
+      # --no-project, so this runs on the interpreter actions/setup-python
+      # already installed and touches nothing this job is about to publish
+      - name: Make the sdist's determinism this tree's own
+        run: |
+          uv run --no-project --python 3.14 \
+            .github/scripts/normalize_sdist.py dist/
+          sha256sum dist/*
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

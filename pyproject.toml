@@ -165,6 +165,19 @@ exclude = [
     "**/*.lo",
     "**/*.la",
     "**/*~",
+    # OS and editor droppings a working tree can pick up between commits,
+    # .gitignore not covering all of them: it excludes "**/.DS_Store"
+    # but nothing here excluded "**/.DS_Store?", "**/._*", Windows'
+    # "**/Thumbs.db" and "**/ehthumbs.db", or a vim swap file, and
+    # `check-sdist --inject-junk` plants exactly these to prove an
+    # sdist built from an untidy tree never ships them
+    "**/.DS_Store*",
+    "**/._*",
+    "**/.Spotlight-V100",
+    "**/.Trashes",
+    "**/Thumbs.db",
+    "**/ehthumbs.db",
+    "**/*.swp",
     "secp256k1/src/btclib_default_callbacks.c",
     "secp256k1/autom4te.cache",
     "secp256k1/aclocal.m4",
@@ -197,6 +210,20 @@ exclude = [
 # the top level (W003), and therefore a second top-level entry (W009),
 # are exactly what that wheel is supposed to contain
 ignore = ["W003", "W009"]
+
+[tool.check-sdist]
+# check-sdist reads [tool.hatch.build.targets.sdist]'s exclude list
+# above through its own hatchling.build plugin, so this table holds
+# only what that plugin does not reach: hatchling's sdist target also
+# drops whatever the tree's own VCS-ignore files match, independently
+# of the exclude list, and check-sdist's plugin does not read
+# .gitignore to explain the gap.
+#
+# .python-version is tracked and .gitignore-matched both, one of the
+# few files here that are: it pins the interpreter `uv run` and CI
+# resolve against a checkout, which is the only place anything reads
+# it, so its absence from an installed sdist costs nothing
+git-only = [".python-version"]
 
 # PEP 735 groups, resolved by uv (or by pip --group): they replace the
 # hatch environments, which duplicated what nox and pre-commit already
@@ -570,6 +597,14 @@ max-complexity = 10
 # green run of check-dist shows in its own log: same exemption, same
 # reason as the two scripts above
 ".github/scripts/verify_wheel_contents.py" = ["print"]
+# the sdist normalizer, whose usage message and per-archive report are
+# what the workflow step that runs it shows in its own log: same
+# exemption, same reason as the three scripts above
+".github/scripts/normalize_sdist.py" = ["print"]
+# one keyword per sdist member field the script and its tests care
+# about; splitting it into a dataclass would move the same seven names
+# one level down rather than removing any of them
+"tests/normalize_sdist_test.py" = ["too-many-arguments"]
 
 [tool.ruff.lint.flake8-copyright]
 # notice-rgx is COPYRIGHT's text as one regex, anchored with ^ so a
