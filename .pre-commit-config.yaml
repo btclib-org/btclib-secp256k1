@@ -474,6 +474,24 @@ repos:
         language: pygrep
         entry: '\b(text|universal_newlines)=True'
         files: \.py$
+  # Scoped to btclib_secp256k1, which is what actually ships in the
+  # wheel: a comment here is read by someone who installed only this
+  # package, upstream of btclib rather than the other way round. The
+  # organization that publishes the package is allowed -- "btclib-org"
+  # in a URL, "The btclib developers" in the copyright line -- because a
+  # consumer does care who publishes it; naming the downstream package
+  # that depends on this one is not. -i because a downstream name can
+  # open a sentence or sit in a class-name-style compound, and this
+  # package's own name never needs the capitalized spelling to appear
+  # inside btclib_secp256k1/.
+  - repo: local
+    hooks:
+      - id: no-downstream-name-in-package
+        name: the shipped package does not name btclib, org spelling excepted
+        language: pygrep
+        args: ["-i"]
+        entry: 'btclib(?!-secp256k1|_secp256k1|-org|\.org|-node|_node|-benchmarks| developers)'
+        files: ^btclib_secp256k1/.*\.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.3.1

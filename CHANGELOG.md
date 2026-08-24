@@ -436,6 +436,43 @@ release-notes length in the first place, and are still in
   tracker, `issue` against the same-repository collision, `repo` against
   the cross-repository path collision, and `role` against a coder and
   its reviewer holding a worktree at once.
+- **The shipped package and this repository's published docs stop
+  naming `btclib`** (btclib-org/.github#81). This package is upstream of
+  `btclib` -- `cffi` only, and `btclib`'s `secp256k1` extra depends on
+  it -- so a reader of `btclib_secp256k1/` or of the built documentation
+  is not guaranteed to have `btclib` at all. `__init__.py`'s lazy
+  `__version__` docstring named `btclib` as an example of a caller that
+  never asks for the version, and loses only the example by dropping the
+  name. `README.md`'s ergonomics aside deferred a design tradeoff to
+  `btclib` by name; it now defers to the caller generally, the same
+  reasoning intact. `docs/source/package-content-policy.md` explained
+  why this package's sdist policy carries no include-list check by
+  contrasting it with `btclib`'s own script; the same argument now
+  stands on the shape of an include list rather than on that comparison.
+  `README.md`'s MuSig2 section named `btclib`'s own PSBT machinery and
+  API to argue that wrapping libsecp256k1's own session is worth
+  something to `btclib`'s test suite -- an argument about the dependent
+  rather than about this package, correctly cut whole. What that
+  paragraph also carried, and what stays, is the boundary a reader of
+  `musig.KeyAggCache`/`musig.Session` needs regardless of `btclib`: a
+  PSBT's multi-party signing state is not what `Session` is, that object
+  being scoped to one process and one two-round exchange, so whoever
+  needs PSBT-level coordination holds that state elsewhere. What stays
+  everywhere is the organization that publishes this package and the one
+  sentence in `README.md` saying who else uses it, both of which section
+  9 of the standard names as the exception. A
+  `no-downstream-name-in-package` pygrep hook holds `btclib_secp256k1/`
+  to it, case-insensitively -- a downstream name can as easily open a
+  sentence or sit in a class-name-style compound as sit mid-sentence, the
+  shape every occurrence found here took -- the organization spelling
+  and the copyright line's "The btclib developers" excepted.
+
+- **`README.md`'s GitHub badge label names this repository, not the one
+  it was renamed from.** The alt text and the link target were both
+  updated when the repository moved to `btclib-secp256k1` (#133), but
+  the shields.io image label itself still read `btclib--libsecp256k1`,
+  the pre-rename spelling baked into the badge's own URL rather than
+  into any text a diff of the rendered page would show.
 
 ### CI
 

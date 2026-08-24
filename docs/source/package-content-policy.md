@@ -102,10 +102,10 @@ check here or in `check-wheel-contents` reads a member's size at all.
 
 ## The sdist is not this policy's subject
 
-`btclib`'s sibling script checks the sdist because `MANIFEST.in` there
-is an *include* list: a file the tree gains and `MANIFEST.in` does not
-name is a file the sdist silently drops, which is the failure this whole
-class of check exists for. `[tool.hatch.build.targets.sdist] exclude` in
+A `MANIFEST.in`-based sdist is an *include* list: a file the tree gains
+and `MANIFEST.in` does not name is a file the sdist silently drops,
+which is the class of check an include list needs and this repository
+does not. `[tool.hatch.build.targets.sdist] exclude` in
 this repository's `pyproject.toml` is the opposite shape — a file the
 tree gains ships by default, and has to be named to be left out — so the
 failure mode here is an sdist too wide rather than one silently narrow,

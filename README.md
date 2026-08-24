@@ -20,7 +20,7 @@ bitcoin-core-rpc carry the same three lines. -->
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/btclib-secp256k1/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/btclib-secp256k1/main)
 [![documentation build](https://readthedocs.org/projects/btclib-secp256k1/badge/?version=latest)](https://btclib-secp256k1.readthedocs.io)
 
-[![GitHub repository: btclib-org/btclib-secp256k1](https://img.shields.io/badge/GitHub-btclib--org%2Fbtclib--libsecp256k1-181717?logo=github)](https://github.com/btclib-org/btclib-secp256k1/)
+[![GitHub repository: btclib-org/btclib-secp256k1](https://img.shields.io/badge/GitHub-btclib--org%2Fbtclib--secp256k1-181717?logo=github)](https://github.com/btclib-org/btclib-secp256k1/)
 
 ---
 
@@ -468,7 +468,7 @@ this package is [stateless by construction](#design), and
 object with an owner and an invalidation and, [Thread safety](#thread-safety)
 says, its own answer to sharing one across threads. What the rule above
 does not weigh is ergonomics — the line a caller does not have to write
-is real, and belongs in btclib along with the lifetimes.
+is real, and belongs with the caller along with the lifetimes.
 
 So the numbers **confirm** the rule rather than establish it, and it is
 worth being clear which of them would survive a different machine. Not
@@ -1040,16 +1040,11 @@ calls it on the way out. `ssa.Signer` is the model this follows, and
 SECURITY.md records both as the buffers in this package whose zeroing is
 asked for rather than done.
 
-[btclib](https://github.com/btclib-org/btclib) still carries its own
-MuSig2 signing state, independent of the C library's: its PSBT is the
-multi-party signing machinery MuSig2 plugs into, and the specifications
-say so too (BIP327 the protocol, BIP373 its PSBT fields, BIP328 its
-descriptors). `btclib.ecc.musig2.sign` zeroes the secret nonce it
-consumes and `btclib.psbt.musig2.partial_sign` carries the same
-guarantee into a PSBT round, in a pure-python implementation of BIP327
-that is a different thing from wrapping libsecp256k1's own session --
-`musig` is what btclib can now check that implementation against,
-rather than only against published vectors.
+A PSBT's multi-party signing state is not what `musig.Session` is:
+that object is scoped to one process and one two-round exchange -- it
+has no serialization, the module docstring above giving the reason
+that is taken as an exception here -- so whoever needs PSBT-level
+coordination holds that state elsewhere, outside this package.
 
 The aggregate signature `Session.partial_sig_agg` answers is a plain
 BIP340 signature, over the aggregate key `KeyAggCache.pubkey_get` or

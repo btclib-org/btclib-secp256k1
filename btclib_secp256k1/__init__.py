@@ -91,8 +91,7 @@ else:
         of the table and what the 14 milliseconds are made of, so that
         the decomposition is written down once. So the caller that wants
         the version pays for it and the one that never asks pays
-        nothing; btclib, which depends on this package, is one of
-        those.
+        nothing.
 
         The value is stored into the module's own namespace on the way
         out, which is the usual shape of PEP 562 and is what keeps the
