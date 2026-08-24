@@ -38,10 +38,12 @@ release-notes length in the first place, and are still in
   who may not have `btclib` at all, and that reading is what lands here
   too. `RELEASING.md`'s CycloneDX paragraph — the case this round turns
   on — now states its own reasoning instead of sending that reader to
-  `btclib`'s `RELEASING.md` for it, and points at `btclib-org/.github#24`
-  for what would reopen the question. Every other comparison against
-  `btclib`'s own settings or history, in both files, now states the same
-  fact without the name.
+  `btclib`'s `RELEASING.md` for it: a generator that read only
+  `Requires-Dist` could not describe a vendored submodule's pin, that
+  limit is fixed upstream (btclib-org/btclib#1280), and what remains is
+  adoption here, tracked at `btclib-org/.github#24`. Every other
+  comparison against `btclib`'s own settings or history, in both files,
+  now states the same fact without the name.
 
 - **`.gitattributes` is the organization's file byte for byte**
   (btclib-org/.github#192). Section 14 of the standard makes the two

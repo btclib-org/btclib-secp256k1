@@ -22,12 +22,15 @@ extension, a dynamic (ABI-mode) build ships it as a shared object
 beside the extension instead (see CLAUDE.md's Architecture section) —
 `Requires-Dist` says nothing about the pin either way, so a document
 built from it would look complete while staying silent about the one
-component a verifier would most want described. The limit is the
-generator's rather than this package's, so the decision is
-conditional: if the generator ever learns to describe a submodule pin
-as a component, it reopens.
+component a verifier would most want described. That was the
+generator's own limit rather than this package's, and it no longer
+holds:
+[btclib-org/btclib#1280](https://github.com/btclib-org/btclib/issues/1280)
+taught a generator to read a submodule's pinned commit from its
+`.gitmodules` entry and gitlink instead of from `Requires-Dist`. What
+is still missing is adoption here, not a technical inability.
 [btclib-org/.github#24](https://github.com/btclib-org/.github/issues/24)
-records that trigger and stays open; an issue no longer open watches
+stays open until that adoption lands; an issue no longer open watches
 nothing.
 
 The version published is the one in `pyproject.toml`; the tag only
