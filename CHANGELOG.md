@@ -30,6 +30,16 @@ release-notes length in the first place, and are still in
 
 ### Documentation
 
+- **`SECURITY.md` stops claiming what it cannot check** (#356,
+  btclib-org/.github#109). "as for every btclib project" was an
+  enumeration this file has no way to verify, and it was already
+  false when measured: `btclib-benchmarks` gave a different address,
+  `devs@btclib.org`, until it dropped `SECURITY.md` entirely. The
+  reporting address is unchanged -- *security at btclib dot org* -- and
+  the sentence now points at where it actually lives, section 2 of
+  the organization standard, rather than restating a claim about
+  repositories this file does not read.
+
 - **`RELEASING.md` and `REPOSITORY.md` stop naming `btclib` to justify
   this package's own choices** (btclib-org/.github#81). The first pass
   held both files out of scope, reading a maintainer's runbook as prose
