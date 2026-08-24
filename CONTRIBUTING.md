@@ -250,9 +250,9 @@ uv run --locked --no-default-groups --group docs \
     sphinx-build -W --keep-going -b html docs/source docs/build/html
 ```
 
-The documentation build needs the submodule checked out, unlike btclib's
-own equivalent: every `automodule` directive imports this package, which
-means compiling libsecp256k1 first. Coverage is measured in branch mode
+The documentation build needs the submodule checked out: every
+`automodule` directive imports this package, which means compiling
+libsecp256k1 first. Coverage is measured in branch mode
 and gated by the `fail_under` ratchet in `pyproject.toml`.
 
 The group flags are not decoration. `uv run` syncs the environment
@@ -344,8 +344,9 @@ To time these bindings against the other python wrappers of
 libsecp256k1, clone
 [btclib-benchmarks](https://github.com/btclib-org/btclib-benchmarks) and
 run `scripts/libsecp256k1_wrappers.py` there. The comparands are that
-project's dependencies rather than this one's, which is the point: btclib
-is one of them, and btclib is what depends on these bindings.
+project's dependencies rather than this one's, which is the point: the
+library downstream of these bindings is one of them, and depends on
+these bindings itself.
 
 To test against another supported interpreter, bypass the build cache:
 uv keys it on the sources, which do not tell it that the compiled
@@ -505,9 +506,9 @@ command at all, for the reason above, and no longer gates.
   own. What turned it red is one of them, in the run
 
 - `Build the documentation`, the same command `.readthedocs.yaml` runs
-  and `docs/README.rst` documents. Needs the submodule checked out,
-  unlike btclib's own equivalent job: every `automodule` directive
-  imports this package, which means compiling libsecp256k1 first
+  and `docs/README.rst` documents. Needs the submodule checked out:
+  every `automodule` directive imports this package, which means
+  compiling libsecp256k1 first
 
   ```shell
   git submodule update --init
@@ -683,10 +684,11 @@ each.
 
 Why so little gates is one number: GitHub Free gives an organization twenty
 concurrent jobs (as of 2026-08-21), shared across every repository in it. A
-commit here, in btclib and in bitcoin-core-rpc each ask for more jobs than
-that ceiling alone allows, so a pull request in any of the three spent its
-wall clock waiting for a slot. At that ceiling a cell before a review buys a
-rarer answer at the price of every review: macOS runners queue for tens of
+commit here, in bitcoin-core-rpc and in one more repository each ask for
+more jobs than that ceiling alone allows, so a pull request in any of the
+three spent its wall clock waiting for a slot. At that ceiling a cell
+before a review buys a rarer answer at the price of every review: macOS
+runners queue for tens of
 minutes rather than for two, and the twenty-one Windows suite cells were
 27.3 of a run's 112.9 runner-minutes, the largest family of jobs in it and
 ahead of every wheel build. The numbers are in `test.yml`'s header.
