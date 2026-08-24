@@ -24,6 +24,22 @@ from ._scalar import in_range, octets, optional_entropy, scalar
 from ._secret import take
 from .context import ctx
 
+__all__ = [
+    "is_low_r",
+    "is_low_s",
+    "nonce_rfc6979",
+    "normalize",
+    "parse_compact",
+    "parse_der",
+    "serialize_compact",
+    "serialize_der",
+    "sign",
+    "signature_verify",
+    "to_compact",
+    "to_der",
+    "verify",
+]
+
 # the two buffers a signature is serialized into, and the lengths that go
 # with them in both directions: `_parsed` accepts a compact signature of
 # the width `serialize_compact` writes, so one statement of it answers

@@ -23,6 +23,29 @@ from ._scalar import octets, scalar
 from ._secret import scalar_buffer, take
 from .context import ctx
 
+__all__ = [
+    "COMPRESSED",
+    "UNCOMPRESSED",
+    "PubkeyTweakChain",
+    "parse",
+    "prvkey_negate",
+    "prvkey_tweak_add",
+    "prvkey_tweak_mul",
+    "prvkey_verify",
+    "pubkey_cmp",
+    "pubkey_combine",
+    "pubkey_from_prvkey",
+    "pubkey_negate",
+    "pubkey_sort",
+    "pubkey_sum",
+    "pubkey_tweak_add",
+    "pubkey_tweak_mul",
+    "pubkey_tweak_mul_sum",
+    "pubkey_verify",
+    "reserialize",
+    "serialize",
+]
+
 # SECP256K1_EC_COMPRESSED and SECP256K1_EC_UNCOMPRESSED: the
 # libsecp256k1 flag macros do not survive the preprocessing of the
 # headers into cffi definitions

@@ -33,6 +33,18 @@ from ._scalar import in_range, octets, scalar
 from ._secret import keypair, scalar_buffer, take, wipe
 from .context import ctx
 
+__all__ = [
+    "LABEL_SIZE",
+    "SUMMARY_SIZE",
+    "create_outputs",
+    "label",
+    "labeled_spend_pubkey",
+    "parse_label",
+    "prevouts_summary",
+    "scan_outputs",
+    "serialize_label",
+]
+
 # the two widths this module has to check, neither of them a macro that
 # survives the preprocessing of the headers into cffi definitions. The
 # summary's is asked of the struct rather than written down, so that a

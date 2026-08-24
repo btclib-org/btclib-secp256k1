@@ -13,6 +13,8 @@ from ._scalar import scalar
 from ._secret import take
 from .context import ctx
 
+__all__ = ["shared_secret"]
+
 
 @overload
 def _shared_secret_(pubkey: CData, prvkey: BytesLike | int) -> bytes: ...

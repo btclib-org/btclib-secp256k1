@@ -17,6 +17,8 @@ from ._secret import take
 from .context import ctx
 from .keys import parse, serialize
 
+__all__ = ["create", "decode", "encode", "xdh"]
+
 # the width of an ElligatorSwift encoding: 64 bytes, the two field
 # elements it is. `create` and `_encode_` write it, `_decode_` and `xdh`
 # accept it, and the one statement of it answers for all four -- the

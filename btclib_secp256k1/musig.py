@@ -79,6 +79,21 @@ from ._scalar import in_range, octets, scalar
 from ._secret import keypair, wipe
 from .context import ctx
 
+__all__ = [
+    "KeyAggCache",
+    "SecretNonce",
+    "Session",
+    "aggnonce_parse",
+    "aggnonce_serialize",
+    "nonce_agg",
+    "nonce_gen",
+    "nonce_gen_counter",
+    "partial_sig_parse",
+    "partial_sig_serialize",
+    "pubnonce_parse",
+    "pubnonce_serialize",
+]
+
 # the three serializations this module has fixed widths for: BIP327's own
 # for a public and an aggregate nonce (33 octets per point, two points
 # each), and libsecp256k1's compact 32-byte partial signature -- s alone,

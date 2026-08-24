@@ -13,6 +13,8 @@ from . import BytesLike, ffi, lib
 from ._scalar import octets
 from .context import ctx
 
+__all__ = ["tagged_sha256"]
+
 # the buffer the hash is written into: SHA256 has one output length and
 # this is it. The width is stated once and the type is built from it, and
 # what that saves is `ffi.sizeof` of a cdata per call, a hundredth of a

@@ -46,6 +46,13 @@ from typing import TYPE_CHECKING, Any
 
 import _btclib_secp256k1
 
+# what this module itself defines and a caller may rely on. A submodule
+# is not named here: `from btclib_secp256k1 import dsa` reaches one
+# through the import system's own handling of a package, not through
+# this list, and `tests/all_test.py` is what walks the package for the
+# eleven of them rather than this module enumerating them by hand
+__all__ = ["BytesLike", "CData", "MutableBytesLike", "__version__", "ffi", "lib"]
+
 
 def _read_version() -> str:
     """Read the version out of the installed distribution metadata.

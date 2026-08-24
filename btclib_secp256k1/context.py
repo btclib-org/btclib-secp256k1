@@ -11,6 +11,14 @@ import threading
 
 from . import CData, ffi, lib
 
+# `ctx` is exported for the caller reaching `lib` directly, as the
+# README's "Wrapped modules" section shows: `secp256k1_musig_partial_sign`
+# and every other raw call this package makes needs the context passed
+# in. `_randomize` stays unexported despite the same README naming it --
+# private is its own answer to who may call it again, not a name this
+# list withholds
+__all__ = ["check", "ctx"]
+
 # 1 is SECP256K1_CONTEXT_NONE: since libsecp256k1 0.2 signing and
 # verification work with any context, and the SIGN/VERIFY flags are
 # deprecated
