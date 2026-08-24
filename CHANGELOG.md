@@ -92,6 +92,16 @@ release-notes length in the first place, and are still in
   names allowed, where a package stands on the organization that
   publishes it and where it sits in the family.
 
+- **`CONTRIBUTING.md`'s shared half is the organization's copy again**
+  (#375). Section 14's own `verbatim_test.py` compares everything above
+  `## This repository in particular` against `btclib-org/.github`'s
+  copy, and this tree's had drifted from it: a `### The landing queue`
+  subsection the shared half has gained since, and a rewritten paragraph
+  on what a commit message becomes once it lands on `main`, were both
+  missing here. Replaced with the organization's copy of the same text
+  byte for byte -- the same hash the issue's own measurement checks
+  for -- leaving everything from that heading down untouched.
+
 - **`.gitattributes` is the organization's file byte for byte**
   (btclib-org/.github#192). Section 14 of the standard makes the two
   `merge=union` entries and the reasoning beside them the standard's
