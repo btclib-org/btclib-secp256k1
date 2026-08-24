@@ -406,6 +406,16 @@ release-notes length in the first place, and are still in
   key. The comment now gives the form as the reason; the value is
   unchanged.
 
+- **`CLAUDE.md`'s primary-checkout paragraph names the read that cannot
+  go stale** (btclib-org/.github#255). It said reading the checkout was
+  fine and so was `git fetch`, without saying `git fetch` moves
+  `refs/remotes/origin/main` and leaves the work tree where it was, so a
+  `grep` or a `Read` against the checkout answered for whenever it was
+  last brought forward. The paragraph now names `git show
+  origin/main:<path>` as the read that does not go stale, and gives the
+  fast-forward that brings a clean checkout forward without working in
+  it.
+
 ### CI
 
 - **The rehearsal re-locks, and every build step passes `--locked`**
