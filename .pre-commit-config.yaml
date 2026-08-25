@@ -220,6 +220,7 @@ repos:
   # default rule set, less the two .yamllint.yaml disables by name, with
   # the width at 100 rather than the 80 the prose gets -- that file
   # carries the arithmetic behind both
+  # check-only: yamllint has no fix mode, and its own README names none
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0
     hooks:
@@ -239,6 +240,8 @@ repos:
     rev: v2.4.3
     hooks:
       - id: codespell
+        name: codespell (in place fixes)
+        args: [--write-changes]
   # the second spell checker, and the pair is the point: the two are blind
   # in different places, so neither subsumes the other. codespell matches
   # whole words against a list of known misspellings and keeps the hyphen
@@ -247,6 +250,11 @@ repos:
   # camelCase, and carries a dictionary of its own. typos' configuration
   # is in pyproject.toml; codespell needs none today -- measured, with its
   # default dictionaries it finds nothing here to skip or allow for
+  # in place fixes already, by upstream's own .pre-commit-hooks.yaml:
+  # args: [--write-changes, --force-exclude], inherited because this
+  # file passes no args: of its own. An args: added here later for a
+  # different reason would silently drop that default and turn the
+  # fixing off
   - repo: https://github.com/crate-ci/typos
     rev: v1.49.0
     hooks:

@@ -1,9 +1,3 @@
-<!-- markdownlint-disable MD022 MD032 -->
-<!-- This file is merge=union, so a rebase joins two sections and drops
-     the blank line between them without a conflict: the rule is off
-     here for the duration of btclib-org/.github#33, and goes back on
-     when that queue is empty. btclib-org/.github#138 is the record. -->
-
 # Changelog
 
 <!-- markdownlint-configure-file
@@ -27,6 +21,19 @@ release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.
 
 ## v0.8.0.5 (work in progress, not released yet)
+
+### Every fixable hook fixes, and `CHANGELOG.md`'s derogation is gone
+
+- **`codespell` gains `--write-changes`, and `.pre-commit-config.yaml`
+  now states that `typos` already fixes in place through its own
+  upstream default, so an `args:` added there later cannot silently
+  drop it** (closes #379). `markdownlint-cli2` already fixes;
+  `yamllint` is noted where it has no fix mode to turn on.
+- **With every markdown-fixing hook running in place, the two-comment
+  directive at `CHANGELOG.md`'s head has nothing left to guard against:
+  a rebase-dropped blank line is repaired on the next hook run instead
+  of failing a gate with nothing behind it to fix.** The directive is
+  gone, and MD022 and MD032 apply to this file again.
 
 ### Every module declares `__all__`
 
