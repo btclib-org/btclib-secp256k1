@@ -159,6 +159,14 @@ release-notes length in the first place, and are still in
   told in a comment to go — section 14 of the standard, the shared half
   byte for byte.
 
+- **`REVIEWING.md`'s *The verdict* posts the summary to the forge as a
+  review and says which verdict is the ack of record.** The organization's
+  copy, shared half byte for byte (section 14): `APPROVE` carries the
+  `ACK <sha>` summary and `REQUEST_CHANGES` the `CHANGES REQUESTED <sha>`
+  one, section 11 says whose verdict that is, and every other summary is
+  a comment rather than an ack, a forge approval by the pull request's own
+  author included (btclib-org/.github#353).
+
 - **`CODE_OF_CONDUCT.md` is gone, and the inherited copy is what GitHub
   shows** (btclib-org/.github#123). Section 14 of the organization
   standard no longer lists it: the file was a pointer to the PSF code of
