@@ -43,8 +43,11 @@ class _Reported(threading.local):
 _reported = _Reported()
 
 
-def _record_illegal(message: CData, data: CData) -> None:
+def _record_illegal(message: CData, data: CData) -> None:  # noqa: ARG001
     """Record a violated precondition. Called by libsecp256k1.
+
+    `data` is unused: the signature is the C callback's, fixed by
+    libsecp256k1's own type, not this function's to shorten.
 
     Args:
         message: the failed condition, as a C string.
@@ -53,8 +56,10 @@ def _record_illegal(message: CData, data: CData) -> None:
     _reported.illegal = ffi.string(message).decode()
 
 
-def _record_error(message: CData, data: CData) -> None:
+def _record_error(message: CData, data: CData) -> None:  # noqa: ARG001
     """Record an internal error. Called by libsecp256k1.
+
+    `data` is unused, for the reason `_record_illegal`'s docstring gives.
 
     Args:
         message: the failed condition, as a C string.

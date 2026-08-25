@@ -156,7 +156,9 @@ class RootFileLinks(SphinxPostTransform):
 
     default_priority = 5
 
-    def run(self, **kwargs: Any) -> None:
+    # kwargs is unused: this overrides SphinxPostTransform.run, whose
+    # signature sphinx itself calls with, not this method's to narrow
+    def run(self, **kwargs: Any) -> None:  # noqa: ARG002
         """Rewrite every myst xref naming a file of this repository."""
         for node in list(self.document.findall(pending_xref)):
             if node.get("reftype") != "myst" or node.get("refdomain") is not None:

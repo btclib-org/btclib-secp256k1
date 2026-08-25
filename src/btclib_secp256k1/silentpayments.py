@@ -741,7 +741,9 @@ def _lookup(cache: dict[bytes, CData]) -> Callable[[CData, CData], CData]:
         looking like it worked.
     """
 
-    def lookup(label33: CData, label_context: CData) -> CData:
+    # label_context is unused: the signature above is libsecp256k1's own,
+    # and this is the whole of it
+    def lookup(label33: CData, label_context: CData) -> CData:  # noqa: ARG001
         return cache.get(bytes(ffi.buffer(label33, LABEL_SIZE)), ffi.NULL)
 
     return lookup

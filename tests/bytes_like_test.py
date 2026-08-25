@@ -517,7 +517,7 @@ def held(value: Any, made: list[tuple[Any, bytes]]) -> Any:
 
 @pytest.mark.parametrize("name,call,args,kwargs", CALLS, ids=[c[0] for c in CALLS])
 def test_a_scalar_may_be_a_buffer_at_every_entry_point(
-    name: str,
+    name: str,  # noqa: ARG001 -- kept for the id, per the docstring below
     call: Callable[..., Any],
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
@@ -577,7 +577,7 @@ def test_the_negating_half_of_a_nonce_takes_a_buffer_too() -> None:
 @pytest.mark.parametrize("kind", [bytearray, memoryview])
 @pytest.mark.parametrize("name,call,args,kwargs", CALLS, ids=[c[0] for c in CALLS])
 def test_answers_the_same_for_every_bytes_like(
-    name: str,
+    name: str,  # noqa: ARG001 -- kept for the id, per the docstring below
     call: Callable[..., Any],
     args: tuple[Any, ...],
     kwargs: dict[str, Any],
