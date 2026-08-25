@@ -406,64 +406,7 @@ preview = true
 # rule set it was, and what preview buys here is a config that reads
 preview = true
 explicit-preview-rules = true
-select = [
-    "F",   # pyflakes
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "I",   # isort
-    "UP",  # pyupgrade
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "C90", # mccabe complexity
-    "S",   # flake8-bandit
-    "SIM", # flake8-simplify
-    "PTH", # flake8-use-pathlib
-    "RET", # flake8-return
-    "D",   # pydocstyle
-    "PL",  # pylint
-    "RUF", # ruff-specific
-    # ISC earns its place here: a test vector too long for one line is
-    # written as adjacent string literals, which is what a list of vectors
-    # missing a comma also looks like
-    "ISC",  # flake8-implicit-str-concat
-    "PT",   # flake8-pytest-style
-    "PGH",  # pygrep-hooks: a blanket noqa or type: ignore
-    "TRY",  # tryceratops
-    "FURB", # refurb
-    "PIE",  # flake8-pie
-    # also selected in btclib's own pyproject.toml; added here to match,
-    # each measured zero-finding on this tree with `uv run ruff check
-    # --select <code> --no-cache src/btclib_secp256k1 tests`
-    "A",   # flake8-builtins: a name that shadows a builtin
-    "BLE", # flake8-blind-except
-    "ERA", # eradicate: code that was commented out instead of deleted
-    "RSE", # flake8-raise
-    "T20", # flake8-print: a library writes to no stream of its own
-    "TID", # flake8-tidy-imports: absolute, so the layering is readable
-    # a fresh survey, of rule sets neither project had named before:
-    # FA, FIX, FLY and T10 are clean here too. TD is the other
-    # zero-finding set it turned up and is not selected, matching
-    # btclib's own reasoning -- it disciplines a TODO's format where FIX
-    # refuses the comment outright, and only one belongs in a codebase
-    # that finishes what it starts. SLOT is not selected either, but for
-    # the opposite reason from btclib: it checks tuple and NamedTuple
-    # subclasses specifically, and this package has none, so selecting
-    # it would enforce nothing rather than ratchet something clean
-    "FA",  # flake8-future-annotations
-    "FIX", # flake8-fixme: a TODO left behind is a thing not finished
-    "FLY", # flynt: string concatenation ruff can turn into an f-string
-    "T10", # flake8-debugger: a breakpoint() left in
-    # the one finding PYI has, on stubs/_btclib_secp256k1.pyi, is
-    # exempted below rather than fixed: see per-file-ignores
-    "PYI", # flake8-pyi
-    # flake8-copyright, replacing the copyright-notice pre-commit hook:
-    # a rule living inside ruff's own file-selection logic checks
-    # whatever files it is given the same way regardless of who is
-    # asking, unlike the retired hook, which checked only staged files
-    # unless given --enforce-all -- the gap btclib's own ed6e8014 found
-    # and closed by hand there
-    "CPY", # flake8-copyright
-]
+select = ["ALL"]
 # here and in per-file-ignores below, a rule is named rather than coded.
 # `select` above has no choice, a family having no name form, but an entry
 # that suppresses one rule can say which one: the reason then sits in the
@@ -472,6 +415,19 @@ select = [
 # so nothing here enforces it -- what does is that the next reader of this
 # file should not have to look each code up to find out what was allowed
 ignore = [
+    # ruff's own docs/formatter.md, under "Conflicting lint rules", at
+    # the ruff revision this file and .pre-commit-config.yaml both pin
+    # (v0.16.3): the formatter's own rewriting undoes what this rule
+    # asks for, so selecting it is a lint failure the next `ruff format`
+    # produces again. The list is the vendor's and does not change with
+    # this tree; `ruff format --check .` prints the same warning
+    # directly. D203 needs no entry here -- the pep257 convention below
+    # already disables it in favour of D211, the other half of the pair
+    # ruff calls incompatible, without printing the warning ruff
+    # reserves for a pair nothing has settled -- and ISC002 needs none
+    # either: the vendor's own conditional is "if used without ISC001",
+    # and ISC001 stays selected here
+    "missing-trailing-comma",
     # comparing against a key, signature or hash length (32, 33, 64, 65)
     # is not a magic value: it is the domain
     "magic-value-comparison",
@@ -479,6 +435,109 @@ ignore = [
     # class defined to carry it: these wrappers raise ValueError and
     # RuntimeError, which is what a caller catches
     "raise-vanilla-args",
+    # flake8-errmsg asks the same message to be built in a named variable
+    # before a raise names it; the entry above already gives the reason
+    # this tree keeps the opposite -- every one of these wrappers raises
+    # ValueError or RuntimeError explaining what went wrong at the one
+    # place that knows it. dot-format-in-exception finds nothing today,
+    # this codebase having no `.format()` call left for it to catch, but
+    # the same argument declines it as it would the other two rather
+    # than leaving a hole a `.format()` call could reopen unnoticed
+    "raw-string-in-exception",
+    "f-string-in-exception",
+    "dot-format-in-exception",
+    # flake8-boolean-trap: a caller reading `foo(x, True)` cannot tell
+    # what the positional argument means without opening `foo`'s
+    # signature. This wrapping layer disagrees at scale on purpose --
+    # `compressed` and its like are ordinary positional/default
+    # parameters mirroring libsecp256k1's own C signature; a boolean
+    # this binding invents on top of it, `grind` in dsa.sign for
+    # instance, is named and explained at that same signature, next to
+    # the ones that do mirror it. Either way what a positional `True`
+    # means is the docstring already open, not a blind read of `foo`
+    "boolean-type-hint-positional-argument",
+    "boolean-default-value-positional-argument",
+    "boolean-positional-value-in-call",
+    # flake8-self: a caller outside the library reaching into a private
+    # attribute is what this rule is for, and it cannot tell that caller
+    # from the three shapes this tree actually has -- a test verifying an
+    # implementation detail on purpose (`_secnonce`, `_keypair`, the
+    # callback stand-ins `_record_illegal`/`_record_error`), a sibling
+    # module reaching into another module's private state the way
+    # `xonly._parsed` calls `keys._parsed` (CLAUDE.md's Architecture
+    # section), or `scripts/hatch_build.py` reading cffi's own
+    # `FFI._assigned_source`, which cffi exposes no public accessor for
+    "private-member-access",
+    # flake8-annotations' any-type: measured against every site it finds,
+    # not assumed. Three shapes and no others -- the cffi boundary itself
+    # (`ffi`/`lib` in stubs/_btclib_secp256k1.pyi and in
+    # scripts/cffi_build.py, and `_load_lib`'s `module` in __init__.py,
+    # which CLAUDE.md's Architecture section explains takes a stand-in
+    # module a real annotation cannot name), a signature this tree does
+    # not own -- `scripts/hatch_build.py` overriding hatchling's own
+    # build-hook method, docs/source/conf.py overriding
+    # `SphinxPostTransform.run` -- and a test sweeping every entry point
+    # of the boundary through one generic helper (tests/bytes_like_test.py)
+    # or standing in for an arbitrary one (tests/verified_signing_test.py)
+    # rather than spelling out the callable union each call site would
+    # otherwise need
+    "any-type",
+    # flake8-type-checking asks that an import used only in an
+    # annotation move behind `if TYPE_CHECKING:`, so that it costs
+    # nothing at runtime. Measured against this tree's own documentation
+    # build rather than assumed: applying ruff's own TC001-003 fix
+    # across src/ moves every import it flags there behind the guard,
+    # and `sphinx.ext.autodoc` can then no longer resolve the deferred
+    # annotations that named them -- `BytesLike` included -- so `-n`
+    # fails the build on cross-references it does not raise without the
+    # change. `git restore --source=HEAD --worktree -- src tests`
+    # before and after is the control that isolates it to the
+    # `TYPE_CHECKING` guards rather than to anything else in the diff.
+    # `TC004` and `TC005` -- the hygiene of a `TYPE_CHECKING` block
+    # already there -- find nothing: __init__.py's own such block holds
+    # a bare annotation (`__version__: str`), not an import, so neither
+    # rule has anything to check
+    "typing-only-first-party-import",
+    "typing-only-third-party-import",
+    "typing-only-standard-library-import",
+    "runtime-cast-value",
+    # Perflint's try-except-in-loop alone, matching this tree's own
+    # search loops -- `_load_lib`'s search over the candidate shared
+    # objects a dynamic build ships, `tests/vectors_test.py`'s sweep over
+    # a vector's own error cases -- where the exception is the loop's
+    # own control flow, not a mistake a second pass would remove
+    "try-except-in-loop",
+    # TD disciplines the format of a TODO/FIXME/XXX/HACK marker that FIX
+    # above already refuses outright wherever one opens a comment: this
+    # repository finishes what it starts, so nothing here can carry a
+    # marker for TD to discipline the format of in the first place
+    "TD",
+    # zero-finding for a construct this codebase does not contain,
+    # measured with `ruff check . --select <code>` rather than assumed:
+    # DTZ without a naive datetime, G and LOG without logging, ASYNC
+    # without async code, NPY without NumPy, EXE without a shebang
+    # anywhere left to check against an executable bit
+    # (`check-shebang-scripts-are-executable` already does, in
+    # .pre-commit-config.yaml), AIR without Airflow, DJ without Django,
+    # FAST without FastAPI, ICN without an import this tree gives a
+    # non-conventional alias, INT without gettext, PD without pandas,
+    # YTT without a `sys.version` comparison (`sys.version_info >= (3,
+    # 12)` is the constant-tuple comparison the rule does not flag), and
+    # SLOT without a tuple or NamedTuple subclass
+    "DTZ",
+    "G",
+    "LOG",
+    "ASYNC",
+    "NPY",
+    "EXE",
+    "AIR",
+    "DJ",
+    "FAST",
+    "ICN",
+    "INT",
+    "PD",
+    "YTT",
+    "SLOT",
 ]
 
 [tool.ruff.lint.flake8-pytest-style]
@@ -555,21 +614,34 @@ max-complexity = 10
 # names it. An exemption for a check nobody runs claims a decision that
 # was never taken, so it goes. Naming the rule in `select` is what would
 # bring it back, and this line with it -- wider than it was, the import
-# being in the mutation counter and the vendored-vector check too
+# being in the mutation counter and the vendored-vector check too.
+# implicit-namespace-package joins it for the reason the glob entry below
+# gives: a standalone entry point, never imported as a package
 "scripts/cffi_build.py" = [
     "subprocess-without-shell-equals-true",
     "start-process-with-partial-path",
+    "implicit-namespace-package",
 ]
 # T20 is selected for the library, which writes to no stream of its own;
 # the warning printed here is what a wheel builder reads in its own log,
-# which is the case that rule is not about
-"scripts/hatch_build.py" = ["exec-builtin", "print"]
+# which is the case that rule is not about. implicit-namespace-package is
+# the same exemption as scripts/cffi_build.py's, for the same reason
+"scripts/hatch_build.py" = [
+    "exec-builtin",
+    "print",
+    "implicit-namespace-package",
+]
 # docstring-in-stub asks that a stub carry none, on the assumption that
 # one lives in the .py file the stub mirrors -- true everywhere else, and
 # not here: the extension this stub describes is compiled, not
 # written, so this module docstring is the only place its own
 # reasoning (why ffi and lib need one, why lib stays Any) can live
 "stubs/_btclib_secp256k1.pyi" = ["docstring-in-stub"]
+# flake8-no-pep420: every file here is a standalone entry point a workflow
+# step invokes with "python .github/scripts/<name>.py", never an import --
+# the directory holds no __init__.py because it is not a package, and
+# adding one to satisfy this rule would make it look like one
+".github/scripts/*.py" = ["implicit-namespace-package"]
 # BEHIND, SKIPPED and the all-clear line are what a monthly run's log
 # says happened, the issue it opens or closes being the same report a
 # second way; matching btclib's own T201 exemption for the same script
@@ -594,6 +666,10 @@ max-complexity = 10
 # about; splitting it into a dataclass would move the same seven names
 # one level down rather than removing any of them
 "tests/normalize_sdist_test.py" = ["too-many-arguments"]
+# sphinx imports this one by its own convention, reading docs/source/ as
+# a configuration directory rather than a package; the same reason
+# excludes the standalone scripts above
+"docs/source/conf.py" = ["implicit-namespace-package"]
 
 [tool.ruff.lint.flake8-copyright]
 # notice-rgx is COPYRIGHT's text as one regex, anchored with ^ so a

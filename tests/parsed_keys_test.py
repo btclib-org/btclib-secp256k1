@@ -287,7 +287,7 @@ EQUALITIES: list[tuple[str, Callable[[], Any], Callable[[], Any]]] = [
 @pytest.mark.parametrize("pubkey_bytes", [PUBKEY, PUBKEY_LONG], ids=["33", "65"])
 @pytest.mark.parametrize("name,public,private", PAIRS, ids=[pair[0] for pair in PAIRS])
 def test_the_private_half_is_the_public_one_without_the_parse(
-    name: str,
+    name: str,  # noqa: ARG001 -- kept for the id, per the docstring below
     public: Callable[[bytes], Any],
     private: Callable[[Any], Any],
     pubkey_bytes: bytes,
@@ -312,7 +312,9 @@ def test_the_private_half_is_the_public_one_without_the_parse(
     "name,public,private", EQUALITIES, ids=[pair[0] for pair in EQUALITIES]
 )
 def test_the_private_half_answers_what_the_public_one_answers(
-    name: str, public: Callable[[], Any], private: Callable[[], Any]
+    name: str,  # noqa: ARG001 -- kept for the id, per the docstring below
+    public: Callable[[], Any],
+    private: Callable[[], Any],
 ) -> None:
     """`public(...)` is the private half with the serialization around it.
 

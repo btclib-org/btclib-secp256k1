@@ -22,6 +22,37 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.5 (work in progress, not released yet)
 
+### `ruff` selects every rule family
+
+- **`[tool.ruff.lint]`'s `select` reads `["ALL"]`, replacing the
+  hand-picked list of families this file named individually** (issue
+  #387, btclib-org/.github#334). Section 5 of the organization standard
+  gives the reason: a hand-picked list is a list that rots, since
+  nothing forces a second edit here the day ruff ships a family nobody
+  has looked at yet, where `ALL` takes a new family in on the pull
+  request that bumps ruff's own pinned revision instead. `ignore` now
+  carries every family this tree declines, each entry naming the rule
+  and arguing the decline beside it: the formatter conflict
+  (`missing-trailing-comma`), families this codebase's own shape
+  declines on their own merits -- flake8-errmsg beside the existing
+  `raise-vanilla-args` reasoning, flake8-boolean-trap against the
+  wrapping layer's own booleans, some mirroring libsecp256k1's C
+  signature and the rest named and explained at that same signature,
+  flake8-self against the three shapes this tree actually
+  reaches a private attribute through, flake8-annotations' `any-type`
+  against the cffi boundary and the third-party signatures a few
+  functions override, and flake8-type-checking's import-deferral rules,
+  which measurably break `sphinx.ext.autodoc`'s resolution of a
+  module's other annotations the moment one import moves behind
+  `TYPE_CHECKING` -- and the families genuinely zero-finding because the
+  construct is absent from this codebase. The sites the family sweep
+  still flags beyond those -- `context.py`'s and `silentpayments.py`'s
+  cffi callback signatures, `docs/source/conf.py`'s
+  `SphinxPostTransform` override, and the pytest parametrize IDs
+  `tests/bytes_like_test.py` and `tests/parsed_keys_test.py` keep for
+  the test name -- answer with a targeted `# noqa` at each site instead
+  of a blanket exemption.
+
 ### The documentation build is `furo`, and `-n` is on
 
 - **The `docs` group declares `furo` and `docs/source/conf.py` names it as
