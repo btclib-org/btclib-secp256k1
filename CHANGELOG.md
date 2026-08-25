@@ -1248,6 +1248,19 @@ release-notes length in the first place, and are still in
   pull request, and `fuzz` is out of scope here, its design unresolved
   at btclib-org/.github#342.
 
+- **`claude-review.yml` posts its verdict as a pull request review, not
+  a comment** (issue #387, btclib-org/.github#340). `gh pr review <n>
+  --approve --body "<summary>"` carries `ACK <sha>` and
+  `--request-changes` carries `CHANGES REQUESTED <sha>`, both inside
+  the review body; a reading that reaches no verdict still posts as a
+  plain `gh pr comment`, as every summary did before this. The guard
+  step that refuses a green run posting no verdict now reads
+  `repos/$REPO/pulls/$NUMBER/reviews` rather than
+  `issues/$NUMBER/comments`, matched against the head sha the same way.
+  GitHub refuses only a *self*-approval, and this workflow never runs
+  as the pull request's author, so nothing stops it approving one; the
+  job stays what it was, not a required check.
+
 ### The gate
 
 - **`show_error_codes` leaves `[tool.mypy]`** (btclib-org/.github#191).
