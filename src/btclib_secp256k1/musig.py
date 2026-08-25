@@ -517,7 +517,7 @@ def nonce_gen(
             requirement.
 
     Returns:
-        The secret nonce, held rather than returned as octets: the
+        The secret nonce, held rather than returned as octets -- the
         module docstring says why, and `SecretNonce` is what a caller
         wipes if this session is abandoned before `partial_sign`.
 

@@ -269,13 +269,14 @@ check = ["twine", "check-wheel-contents", "pyroma"]
 # runs this -- the scheduled mutation workflow is the only consumer, and it
 # asks for --group test as well, cosmic-ray shelling out to pytest
 mutation = ["cosmic-ray"]
-# matching btclib's own docs group exactly: myst-parser reads the four
-# root markdown files docs/source/*_link.md includes, sphinx_rtd_theme
-# is the html theme docs/source/conf.py names, and sphinx itself compiles
-# this package to autodoc it -- the reason the environment section of
-# CONTRIBUTING.md and the git submodule matter here in a way they do not for
-# btclib's own pure Python build
-docs = ["myst-parser", "sphinx", "sphinx_rtd_theme"]
+# myst-parser reads the four root markdown files docs/source/*_link.md
+# includes, furo is the html theme docs/source/conf.py names -- section 2
+# of the organization standard, over sphinx_rtd_theme, the theme a Read
+# the Docs project starts with by default and not a reason to keep it --
+# and sphinx itself compiles this package to autodoc it: the reason the
+# environment section of CONTRIBUTING.md and the git submodule matter
+# here in a way they do not for btclib's own pure Python build
+docs = ["furo", "myst-parser", "sphinx"]
 dev = [
     { include-group = "test" },
     { include-group = "lint" },

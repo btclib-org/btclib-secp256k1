@@ -287,7 +287,7 @@ def pubkey_from_prvkey(prvkey: BytesLike | int, compressed: bool = True) -> byte
         compressed: whether to return 33 bytes rather than 65.
 
     Returns:
-        The serialized point kG: 33 bytes whose first octet carries the
+        The serialized point kG -- 33 bytes whose first octet carries the
         parity of y, or the 65 bytes of 0x04 || x || y.
 
     Raises:

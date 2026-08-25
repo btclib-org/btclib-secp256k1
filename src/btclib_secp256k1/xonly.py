@@ -190,7 +190,7 @@ def from_pubkey(pubkey_bytes: BytesLike) -> tuple[bytes, int]:
         pubkey_bytes: the public key, 32, 33 or 65 bytes.
 
     Returns:
-        The 32-byte x coordinate, and the parity of the y it was handed:
+        The 32-byte x coordinate, and the parity of the y it was handed --
         0 for even, 1 for odd, and 0 for a key that arrived x-only, an
         x naming the even-y point. The parity is answered rather than
         dropped because a caller may want to know which serialization it
@@ -222,7 +222,7 @@ def from_prvkey(prvkey: BytesLike | int) -> tuple[bytes, int]:
         prvkey: the private key, 32 bytes or an int below 2**256.
 
     Returns:
-        The 32-byte x coordinate of kG, and the parity of its y: 0 for
+        The 32-byte x coordinate of kG, and the parity of its y -- 0 for
         even, 1 for odd. That parity is what BIP340 signing negates the
         key for, so a signer wanting only the key it signs under can
         ignore it.
@@ -301,7 +301,7 @@ def from_keypair(keypair_obj: CData) -> tuple[bytes, int]:
             holds and as `secp256k1_keypair_create` writes.
 
     Returns:
-        The 32-byte x coordinate, and the parity of y: 0 for even, 1 for
+        The 32-byte x coordinate, and the parity of y -- 0 for even, 1 for
         odd. The parity is of the point the private key gives, the
         keypair being the negated key where that y is odd.
 
@@ -370,7 +370,7 @@ def tweak_add(pubkey_bytes: BytesLike, tweak: BytesLike | int) -> tuple[bytes, i
         tweak: the tweak, 32 bytes or an int below 2**256.
 
     Returns:
-        The 32-byte tweaked x-only key, and the parity of its y: that
+        The 32-byte tweaked x-only key, and the parity of its y -- that
         parity is what a taproot output commits to, and what
         `tweak_add_check` is given back.
 

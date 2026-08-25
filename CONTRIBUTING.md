@@ -277,7 +277,7 @@ workflow runs:
 uv run --locked --only-group lint pre-commit run --all-files
 uv run --locked --no-default-groups --group test pytest --cov
 uv run --locked --no-default-groups --group docs \
-    sphinx-build -W --keep-going -b html docs/source docs/build/html
+    sphinx-build -n -W --keep-going -b html docs/source docs/build/html
 ```
 
 The documentation build needs the submodule checked out: every
@@ -543,7 +543,7 @@ command at all, for the reason above, and no longer gates.
   ```shell
   git submodule update --init
   uv run --locked --no-default-groups --group docs \
-      sphinx-build -W --keep-going -b html docs/source docs/build/html
+      sphinx-build -n -W --keep-going -b html docs/source docs/build/html
   ```
 
 The `pypi-install` workflow has no local equivalent by design: what it

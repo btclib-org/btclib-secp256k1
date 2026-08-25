@@ -547,7 +547,7 @@ def _scan_outputs_(
             published.
 
     Returns:
-        One triple per output found, in vout order: its 32-byte x-only
+        One triple per output found, in vout order -- its 32-byte x-only
         public key, the 32-byte tweak to add to the spend private key to
         spend it, and the 33-byte label it was found with, or None where
         it was paid to the unlabeled address.
@@ -649,7 +649,7 @@ def scan_outputs(
             are what a mapping cannot be keyed on, being unhashable.
 
     Returns:
-        One triple per output found, in vout order: its 32-byte x-only
+        One triple per output found, in vout order -- its 32-byte x-only
         public key, the 32-byte tweak to add to the spend private key to
         spend it, and the 33-byte label it was found with, or None where
         it was paid to the unlabeled address. An empty list where the

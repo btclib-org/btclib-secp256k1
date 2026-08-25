@@ -26,7 +26,7 @@ Build from the project root, exactly as ``.readthedocs.yaml`` does:
 .. sourcecode:: bash
 
     $ uv run --locked --no-default-groups --group docs \
-          sphinx-build -W --keep-going -b html docs/source docs/build/html
+          sphinx-build -n -W --keep-going -b html docs/source docs/build/html
 
 Open ``docs/build/html/index.html`` in a browser to see the result. The
 ``Makefile`` and ``make.bat`` here drive the same build, from within this
@@ -40,7 +40,10 @@ directory and without the flags:
 ``-W`` is not decoration: without it a module that fails to import is a
 warning and nothing more, and the published documentation silently has
 no API in it. Read the docs builds with the same flag, so a build that
-is green here is green there.
+is green here is green there. ``-n`` turns an unresolved cross-reference
+into a warning for ``-W`` to fail on -- without it a renamed class or a
+moved function in a role such as ``:class:`` builds green and links
+nowhere.
 
 Adding or removing a module
 ----------------------------
