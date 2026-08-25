@@ -1195,6 +1195,23 @@ release-notes length in the first place, and are still in
   `git grep -n 'pre-commit-\${{' -- .github/workflows/` beside it as the
   command that re-reads both keys together.
 
+- **`scorecard.yml` runs the OpenSSF Scorecard against this repository**
+  (issue #387, btclib-org/.github#339), section 10's sentinel keyed on a
+  repository being public and not a fork:
+  `gh api repos/btclib-org/btclib-secp256k1 --jq '.fork, .private'`
+  answers `false` and `false`. `publish_results: true` feeds the score
+  `api.scorecard.dev` serves and files what it finds as code-scanning
+  alerts; `id-token: write` is the transparency-log entry the publish
+  asks for, `security-events: write` the alert upload. Its triggers are
+  the action's own rather than section 10's usual set -- `push:` on
+  `main` only, no `pull_request`, no `workflow_dispatch` -- and it
+  carries a `schedule:` block: Saturday and hour 03 from section 10's
+  calendar, minute 08 from this repository's own row in that section's
+  second table. btclib-org/.github#363 proposes that row and is open
+  rather than landed as of this entry. No badge: that is a separate
+  pull request, and `fuzz` is out of scope here, its design unresolved
+  at btclib-org/.github#342.
+
 ### The gate
 
 - **`show_error_codes` leaves `[tool.mypy]`** (btclib-org/.github#191).
