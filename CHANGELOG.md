@@ -22,6 +22,14 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.5 (work in progress, not released yet)
 
+### The uv floor is raised to the Dependabot ceiling
+
+- **`[tool.uv]`'s `required-version` moves from `>=0.12.0` to
+  `>=0.12.1`, the uv Dependabot's own uv-ecosystem updater bundles, and
+  the comment beside it now points at the organization standard's
+  section 1 and section 15 rather than restating their argument**
+  (closes #380).
+
 ### Every fixable hook fixes, and `CHANGELOG.md`'s derogation is gone
 
 - **`codespell` gains `--write-changes`, and `.pre-commit-config.yaml`
