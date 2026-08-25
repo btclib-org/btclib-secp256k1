@@ -24,11 +24,11 @@ request and no memory of how the last review went. Read the other way
 round, before a pull request is opened, it is what that pull request
 will be answered against.
 
-A review produces comments on a pull request and issues filed against
-the repository. **A reviewer writes nothing to the branch**: no push, no
-amend, no merge. The one commit a review can lead to is the author's own
-click on a suggestion, below, which is theirs to make and theirs to
-decline.
+A review produces a verdict and comments on a pull request, and issues
+filed against the repository. **A reviewer writes nothing to the
+branch**: no push, no amend, no merge. The one commit a review can lead
+to is the author's own click on a suggestion, below, which is theirs to
+make and theirs to decline.
 
 ## The standard an ack is given against
 
@@ -151,9 +151,9 @@ gh issue create --title "<the finding, as a claim>" \
   --body "<what was noticed and where, how it is known, why it matters>"
 ```
 
-Name the issues filed at the foot of the summary comment, under a line
-saying they are **not** findings against this pull request. Without that
-line the list reads as more things to fix before merging, which is the
+Name the issues filed at the foot of the summary, under a line saying
+they are **not** findings against this pull request. Without that line
+the list reads as more things to fix before merging, which is the
 opposite of what filing them was for.
 
 ## What a finding says
@@ -362,9 +362,10 @@ a gap.
 
 ## The verdict
 
-Inline comments for the line-anchored findings, then exactly one summary
-comment. **A review that decides whether the pull request lands** ends
-that comment with one of two lines:
+Inline comments for the line-anchored findings, then exactly one
+summary. **A review that decides whether the pull request lands** posts
+that summary to the forge as a review, and ends it with one of two
+lines:
 
 ```text
 CHANGES REQUESTED <sha>
@@ -374,11 +375,15 @@ CHANGES REQUESTED <sha>
 ACK <sha>
 ```
 
-Nothing else is an ack — not "looks good", and not a forge approval,
-which section 11 of the standard records GitHub as refusing to the author
-of the pull request. That refusal is why the record of a review here is a
-comment at all. It names the sha because an ack belongs to a tree and
-not to a branch.
+`APPROVE` carries the `ACK <sha>` summary and `REQUEST_CHANGES` the
+`CHANGES REQUESTED <sha>` one. Section 11 of the standard says whose
+verdict is the ack of record, and why the forge has to hold a review of
+it rather than a comment.
+
+Every other summary is a comment. Nothing else is an ack — not "looks
+good", and not a forge approval by the author of the pull request, which
+section 11 records GitHub as refusing. Either line names the sha,
+because an ack belongs to a tree and not to a branch.
 
 **A review that does not decide ends without one, and is not an
 unfinished review.** Somebody who reads a diff and says what they found
