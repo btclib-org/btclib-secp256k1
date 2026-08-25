@@ -432,7 +432,7 @@ select = [
     "PIE",  # flake8-pie
     # also selected in btclib's own pyproject.toml; added here to match,
     # each measured zero-finding on this tree with `uv run ruff check
-    # --select <code> --no-cache btclib_secp256k1 tests`
+    # --select <code> --no-cache src/btclib_secp256k1 tests`
     "A",   # flake8-builtins: a name that shadows a builtin
     "BLE", # flake8-blind-except
     "ERA", # eradicate: code that was commented out instead of deleted
@@ -489,7 +489,7 @@ parametrize-names-type = "csv"
 # what keeps the docstrings of the boundary complete, ruff having no
 # rule for a missing argument: pydocstyle below asks that a docstring
 # exists, and this asks that it says what the function takes and gives
-# back. Run as a hook, over btclib_secp256k1 only; see the comment
+# back. Run as a hook, over src/btclib_secp256k1 only; see the comment
 # there for the scope
 [tool.pydoclint]
 # napoleon renders it, which is what docs/source/conf.py enables, so the
@@ -530,7 +530,7 @@ max-line-length = 130
 # markdown file here, and the same rule W505 already in the selected "W"
 # set applies, inert until this line names a length. It costs nothing
 # today, which is the point of taking it now: zero findings over
-# btclib_secp256k1, tests and scripts
+# src/btclib_secp256k1, tests and scripts
 max-doc-length = 80
 
 [tool.ruff.lint.mccabe]

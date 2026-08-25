@@ -308,8 +308,9 @@ def test_the_main_guard_runs_the_script_as___main__(
     real subprocess would leave the guard as uncovered as it is
     elsewhere in `.github/scripts`. `runpy.run_path` executes the file
     fresh with `__name__` set to `"__main__"` in this one, against the
-    real `btclib_secp256k1/` of this checkout, which the fixture above
-    does not patch here since nothing constructs this module through it.
+    real `src/btclib_secp256k1/` of this checkout, which the fixture
+    above does not patch here since nothing constructs this module
+    through it.
     """
     wheel = write_wheel(
         tmp_path / f"btclib_secp256k1-{_VERSION}-cp314-cp314-macosx_11_0_arm64.whl"

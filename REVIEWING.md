@@ -454,7 +454,7 @@ this heading.
 Each of these is a question, and the document that answers it is named
 because that document, and not this one, is where the rule lives.
 
-- A change to `btclib_secp256k1/__init__.py` or to the build: does it
+- A change to `src/btclib_secp256k1/__init__.py` or to the build: does it
   keep **both branches of `_load_lib`** right? Only one of the two — the
   extension with libsecp256k1 linked in, or the shared object
   `ffi.dlopen`s beside it — exists in any given wheel, so the other is

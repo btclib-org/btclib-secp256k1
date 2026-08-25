@@ -82,7 +82,7 @@ from pathlib import Path
 # than hard-coded: a module added to it is a module the next wheel has to
 # carry, and a copy of the file list here would drift the day one is
 # added or removed without anybody editing this script to match
-PACKAGE_DIR = Path(__file__).parents[2] / "btclib_secp256k1"
+PACKAGE_DIR = Path(__file__).parents[2] / "src" / "btclib_secp256k1"
 
 # no member of this wheel carries any of these, whichever top-level
 # artifact the kind below admits: a `.pth` executes at interpreter

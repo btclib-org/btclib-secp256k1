@@ -39,7 +39,7 @@ The rest of the documentation, and none of it repeated here:
 ## Architecture
 
 One thing decides how this package behaves, and it is decided at import
-time by `btclib_secp256k1/__init__.py`: `_load_lib` returns
+time by `src/btclib_secp256k1/__init__.py`: `_load_lib` returns
 `module.lib` when the extension has libsecp256k1 linked into it (a static
 build) and otherwise `ffi.dlopen`s the shared object shipped beside it (a
 dynamic, cffi ABI mode build). Only one of those two branches exists in a
