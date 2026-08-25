@@ -22,6 +22,42 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.5 (work in progress, not released yet)
 
+### The documentation build is `furo`, and `-n` is on
+
+- **The `docs` group declares `furo` and `docs/source/conf.py` names it as
+  `html_theme`, replacing `sphinx_rtd_theme`, and the build adds `-n` to
+  `-W`** (issue #387, btclib-org/.github#329, btclib-org/.github#324).
+  Section 2 of the organization standard gives both: `furo` over the
+  theme a Read the Docs project starts with by default, and `-n` because
+  `-W` alone never sees a cross-reference that resolves to nothing -- a
+  renamed class or a moved function in a `:class:` role builds green and
+  the link goes nowhere. `docs.yml`, `.readthedocs.yaml`,
+  `docs/README.rst` and `CONTRIBUTING.md`'s own copy of the command all
+  carry the flag, so what CI checks, what gets published and what a
+  contributor runs by hand stay one command.
+- **`sphinx.ext.intersphinx` comes first in `extensions`, with a mapping
+  for python**, ahead of turning `-n` on: without an inventory, a name
+  from outside this tree -- `collections.abc.Sequence`,
+  `collections.abc.Mapping`, `collections.abc.Callable`,
+  `types.TracebackType`, the stdlib names this package's own annotations
+  reach -- resolves to nothing and reads as this tree's own broken link.
+  No `nitpick_ignore` entry was needed: every name the public API's
+  annotations reach is either a builtin sphinx's own domain answers for,
+  or stdlib the mapping now resolves.
+- **Every `Returns:` section whose first line carried a colon, in
+  `dsa.py`, `keys.py`, `musig.py`, `silentpayments.py` and `xonly.py`,
+  loses it.** `-n` turned each into a broken cross-reference of its own
+  making rather than a genuine one: Napoleon's Google-style parser reads
+  a `Returns:` section's first line as `type: description` wherever a
+  colon appears in it, so a colon inside the description's own prose was
+  read as a bogus return type, which sphinx's python domain then split
+  again on every `,` and ` of ` it contained and tried to resolve each
+  fragment as a class of its own -- `xonly.from_prvkey`'s
+  `"The 32-byte x coordinate of kG, and the parity of its y"` is the
+  case with the most fragments to split into. The wording is unchanged;
+  the colon that was never meant as a type separator is an em dash
+  instead.
+
 ### The uv floor is raised to the Dependabot ceiling
 
 - **`[tool.uv]`'s `required-version` moves from `>=0.12.0` to

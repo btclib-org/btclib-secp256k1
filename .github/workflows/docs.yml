@@ -111,11 +111,17 @@ jobs:
       # the same command .readthedocs.yaml runs and docs/README.rst
       # documents, so what CI checks is what gets published. -W turns a
       # module sphinx cannot import into a failed build rather than a bare
-      # heading; --keep-going reports every problem in one run
+      # heading; --keep-going reports every problem in one run. -n turns
+      # an unresolved cross-reference into a warning for -W to fail on --
+      # without it a renamed class or a moved function in a :class: role
+      # builds green and links nowhere. conf.py's intersphinx_mapping is
+      # what -n resolves a stdlib name against; nitpick_ignore is where a
+      # reference that genuinely cannot resolve would be excepted, and
+      # carries no entry today
       - name: Build the docs
         run: >
           uv run --locked --no-default-groups --group docs
-          sphinx-build -W --keep-going -b html docs/source docs/build/html
+          sphinx-build -n -W --keep-going -b html docs/source docs/build/html
 
       # the one defect the build above cannot report on itself, matching
       # btclib's own second step and the reasoning in its docs/source/conf.py:

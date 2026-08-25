@@ -51,6 +51,7 @@ release = PYPROJECT["project"]["version"]
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    "sphinx.ext.intersphinx",
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
@@ -66,6 +67,19 @@ extensions = [
 # build instead
 
 source_suffix = [".rst", ".md"]
+
+# -n on the build (CONTRIBUTING.md's documented command, and docs.yml)
+# turns an unresolved cross-reference into a warning for -W to fail on.
+# Without an inventory to resolve against, a name from outside this tree
+# -- collections.abc.Sequence, collections.abc.Mapping, types.TracebackType,
+# the stdlib names this package's own annotations reach -- reports as
+# this tree's own broken link; sphinx's own domain answers for the
+# builtins (int, bytes, str), so no mapping is needed for those. cffi's
+# own ffi and lib are out of scope of intersphinx, cffi publishing no
+# inventory to map them against, but neither draws a reference here:
+# CData, the boundary's own name for cffi's cdata objects, is declared in
+# this package (__init__.py) rather than imported from cffi
+intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
 # unlike btclib's own conf.py, which needs none of this: CONTRIBUTING.md
 # links to "README.md#build", an anchor into a markdown heading rather
@@ -85,7 +99,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 
 # no html_static_path, matching btclib's own conf.py and for the same
 # reason: neither an overridden stylesheet nor a shipped image exists

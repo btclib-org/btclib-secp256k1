@@ -513,7 +513,7 @@ def sign(  # noqa: PLR0913
             check it is for.
 
     Returns:
-        The signature, in the lower-s form libsecp256k1 always produces:
+        The signature, in the lower-s form libsecp256k1 always produces --
         DER, or the 64 octets of `r || s` where `compact` asks for them.
         Where `grind` asks for it, of the low r as well.
 
@@ -891,7 +891,7 @@ def to_der(signature_bytes: BytesLike) -> bytes:
         signature_bytes: the 64 bytes of r and s.
 
     Returns:
-        The same signature in DER encoding. s is not normalized: a
+        The same signature in DER encoding. s is not normalized -- a
         high-s input gives a DER signature `verify` refuses, which
         `normalize` is for.
 
