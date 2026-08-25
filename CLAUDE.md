@@ -245,6 +245,15 @@ Do not use Fable unless explicitly instructed.
   rather than a broken workflow. A red there still means the outside
   world moved, which is why it is a workflow of its own and not a job of
   `release`
+- **`check-sdist` compares the sdist it builds against `git ls-files`,
+  not against `git status`.** An untracked directory left inside a
+  worktree -- a wheel built there for manual verification, say -- is
+  swept into that build and fails the hook with "SDist does not match
+  git", even though `git status --porcelain` reports the tree clean: an
+  untracked file passes that check silently and still breaks this one.
+  The fix is not rerunning the hook; it is not leaving such a directory
+  inside the worktree in the first place, or building it somewhere else
+  entirely
 
 ## Conventions to match
 
