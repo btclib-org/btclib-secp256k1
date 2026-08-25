@@ -1556,6 +1556,25 @@ release-notes length in the first place, and are still in
 
 ### The release path
 
+- **A `public-api` job runs `griffe check` against the tag before the
+  one being cut** (issue #387, btclib-org/.github#326), converging on
+  `btclib`'s own job of the same name. Section 12 of the organization
+  standard puts this in the release path rather than on a merge gate: a
+  pull request breaks the public surface deliberately before 1.0, and a
+  gate reporting every such break has nothing to say about which of them
+  are allowed, where the release path's answer arrives while
+  `RELEASE_NOTES.md` is already being written. griffe does static
+  analysis rather than importing the package, so the job needs no C
+  toolchain, no submodule checkout and no built extension: measured
+  against a bare checkout of `v0.8.0.4`, the comparison succeeds
+  unbuilt. `_btclib_secp256k1`, the compiled cffi extension
+  `__init__.py` imports, is a leading-underscore name and is out of the
+  public surface griffe compares on either side of the comparison,
+  `stubs/_btclib_secp256k1.pyi` on the search path or not, both measured.
+  `-s . -s src` is what carries the comparison across "The package sits
+  under `src/`" above: measured clean between `v0.8.0.4`, with
+  `btclib_secp256k1/` at the repository root, and a `src/`-layout tree.
+
 - **`build-sdist` pins the sdist's `mtime` to the tagged commit's date**
   (#345, btclib-org/.github#140). Section 12 of the organization
   standard asks every publisher for a `SOURCE_DATE_EPOCH` step and a
