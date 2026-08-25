@@ -1614,6 +1614,13 @@ release-notes length in the first place, and are still in
   and the PyPI and pepy links beside them. The documentation-build badge
   image now points at `app.readthedocs.org`; `readthedocs.org` answers
   that path with a redirect to it.
+- **The `scorecard` sentinel joins the row, last among the sentinels**
+  (issue #387, btclib-org/.github#338). Not in calendar order with the
+  rest: btclib-org/.github#358 is the open question of whether a
+  Scorecard badge's place is a stated rule or each tree's own reading of
+  a silent one, and `btclib` and `portanode` both currently place it
+  last regardless of whether their own calendar row exists yet -- this
+  matches that precedent rather than deciding #358 unilaterally.
 
 ## v0.8.0.4
 
