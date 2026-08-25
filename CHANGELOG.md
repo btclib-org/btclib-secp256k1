@@ -1537,6 +1537,23 @@ release-notes length in the first place, and are still in
   -- so deriving through it would fail this test's round trip on every
   supported interpreter alike, not on some of them.
 
+### `README.md`'s badge head follows section 2's fixed order
+
+- **`wheel`, `implementation` and `github/v/release` join the badge
+  block, and every remaining badge takes its place in the order section
+  2 of the organization standard fixes, sentinels included for every
+  weekly workflow this tree runs** (issue #387, btclib-org/.github#338).
+  `wheel` and `implementation` read `img.shields.io/pypi/wheel` and
+  `img.shields.io/pypi/implementation` off the files a release uploaded;
+  `github/v/release` reads the forge rather than the index, next to the
+  PyPI version badge it is paired with. Every badge path naming the
+  distribution now takes PEP 503's hyphen, `btclib-secp256k1`, rather
+  than the import package's `btclib_secp256k1` -- the version,
+  downloads, development-status and supported-Python-versions badges
+  and the PyPI and pepy links beside them. The documentation-build badge
+  image now points at `app.readthedocs.org`; `readthedocs.org` answers
+  that path with a redirect to it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
