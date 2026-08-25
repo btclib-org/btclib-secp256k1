@@ -460,7 +460,7 @@ repos:
       - id: pydoclint
         name: pydoclint (arguments and return values)
         args: [--config=pyproject.toml]
-        files: ^btclib_secp256k1/.*\.py$
+        files: ^src/btclib_secp256k1/.*\.py$
   # the other half of pyproject.toml's unspecified-encoding, which reads
   # `open` and the pathlib and tempfile spellings and stops there. A child
   # process decoded through `text=True` takes the locale's encoding by
@@ -491,7 +491,7 @@ repos:
   # that depends on this one is not. -i because a downstream name can
   # open a sentence or sit in a class-name-style compound, and this
   # package's own name never needs the capitalized spelling to appear
-  # inside btclib_secp256k1/.
+  # inside src/btclib_secp256k1/.
   - repo: local
     hooks:
       - id: no-downstream-name-in-package
@@ -499,7 +499,7 @@ repos:
         language: pygrep
         args: ["-i"]
         entry: 'btclib(?!-secp256k1|_secp256k1|-org|\.org|-node|_node|-benchmarks| developers)'
-        files: ^btclib_secp256k1/.*\.py$
+        files: ^src/btclib_secp256k1/.*\.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.3.1

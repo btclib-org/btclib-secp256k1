@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 _ROOT = Path(__file__).parents[1]
-_PACKAGE_DIR = _ROOT / "btclib_secp256k1"
+_PACKAGE_DIR = _ROOT / "src" / "btclib_secp256k1"
 _DOCS_DIR = _ROOT / "docs" / "source"
 
 # what a documented module looks like to sphinx: ".. automodule:: name",

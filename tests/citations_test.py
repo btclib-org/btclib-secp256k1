@@ -5,8 +5,9 @@
 """A test this package names in its prose is a test that exists.
 
 The prose here points at tests by name -- the module docstring of
-`tests/verified_signing_test.py` names several, and `btclib_secp256k1/dsa.py`
-names cases behind a claim it makes about itself -- and nothing
+`tests/verified_signing_test.py` names several, and
+`src/btclib_secp256k1/dsa.py` names cases behind a claim it makes about
+itself -- and nothing
 said whether the name still belonged to anything. #256 was two landmarks
 that had come to point at the wrong test, and naming the test instead of
 its position is better only until a rename: an append falsifies a
@@ -63,7 +64,7 @@ _ROOT = Path(__file__).parents[1]
 _SOURCES = [
     path
     for path in sorted((_ROOT / "tests").glob("*.py"))
-    + sorted((_ROOT / "btclib_secp256k1").glob("*.py"))
+    + sorted((_ROOT / "src" / "btclib_secp256k1").glob("*.py"))
     if path.name != Path(__file__).name
 ]
 

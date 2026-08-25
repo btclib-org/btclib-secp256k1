@@ -60,7 +60,7 @@ and, under `licenses/`, `WHEEL_LICENSE_FILES`:
   repository file, and `pyproject.toml` says why beside the setting
 
 Under `btclib_secp256k1/` — exactly the files this checkout's own
-`btclib_secp256k1/` directory has, source and `py.typed` alike. The
+`src/btclib_secp256k1/` directory has, source and `py.typed` alike. The
 script reads that directory fresh rather than carrying a copy of its
 file list, which is what `check-wheel-contents --package
 btclib_secp256k1` would check too, asked here by hand instead of

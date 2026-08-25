@@ -30,6 +30,21 @@ release-notes length in the first place, and are still in
   section 1 and section 15 rather than restating their argument**
   (closes #380).
 
+### The package sits under `src/`
+
+- **`btclib_secp256k1/` sits under `src/`, matching section 2 of the
+  organization standard** (#382, btclib-org/.github#313). Hatchling
+  finds it there by its own second file-selection heuristic,
+  `src/<name>/__init__.py`, needing no `[tool.hatch.build.targets.wheel]`
+  table to say so. The vendored `secp256k1/` submodule stays at the
+  repository root: it is not this package. `scripts/cffi_build.py`'s
+  `clean_patterns` entry for the copied shared library moves with the
+  package to `src/btclib_secp256k1/libsecp256k1.*`, and the line
+  reaching the submodule, `Path(__file__).parent.parent / "secp256k1"`,
+  does not. A wheel built from the tree is unaffected: `btclib_secp256k1/`
+  and the compiled extension still sit at the wheel's own root, only the
+  source tree moved.
+
 ### Every fixable hook fixes, and `CHANGELOG.md`'s derogation is gone
 
 - **`codespell` gains `--write-changes`, and `.pre-commit-config.yaml`
