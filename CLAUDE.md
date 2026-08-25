@@ -247,13 +247,25 @@ Do not use Fable unless explicitly instructed.
   `release`
 - **`check-sdist` compares the sdist it builds against `git ls-files`,
   not against `git status`.** An untracked directory left inside a
-  worktree -- a wheel built there for manual verification, say -- is
-  swept into that build and fails the hook with "SDist does not match
-  git", even though `git status --porcelain` reports the tree clean: an
-  untracked file passes that check silently and still breaks this one.
-  The fix is not rerunning the hook; it is not leaving such a directory
-  inside the worktree in the first place, or building it somewhere else
-  entirely
+  worktree -- a wheel built there for manual verification, or a
+  `pytest --basetemp` pointed at the worktree instead of outside it,
+  both do it -- is swept into that build and fails the hook with "SDist
+  does not match git", even though `git status --porcelain` reports the
+  tree clean: an untracked file passes that check silently and still
+  breaks this one. The fix is not rerunning the hook; it is not leaving
+  such a directory inside the worktree in the first place, or building
+  it somewhere else entirely
+- **the merge API queues behind the required checks even for a pull
+  request that touches no workflow file.** `gh api -X PUT .../merge` on
+  a pull request touching no workflow file -- `pyproject.toml`, source
+  and tests, no CI configuration -- returned a transient `502`, then
+  `405 Merge already in progress`, and stayed unmerged until all three
+  required contexts -- `Lint and type-check`, `Build the documentation`,
+  `test: every job passed` -- reported: the full matrix triggers on the
+  push regardless of which file changed. The bypass a `pull_request`
+  ruleset's `bypass_actors` entry grants covers the review requirement,
+  not those checks. `gh pr checks <n>` naming the three, not a retried
+  merge call, is what says whether it is time to try again
 
 ## Conventions to match
 
