@@ -7,7 +7,15 @@ where the code is and where to ask about it. A badge that reports no state
 CONTRIBUTING.md, beside the prose that says how the choice is enforced. One
 badge per line keeps a change to one line and every line inside MD013,
 whose 80 columns bind only where a space follows them. btclib and
-bitcoin-core-rpc carry the same three lines. -->
+bitcoin-core-rpc carry the same three lines.
+Scorecard is placed last among the sentinel badges rather than in the
+calendar order the rest follow, matching btclib's and portanode's own
+placement: btclib-org/.github#358 is where that placement is asked to
+become the stated rule rather than each tree's own reading of a silent
+one. btclib-org/.github#363's row has since landed, which does not
+settle #358 -- section 10's own trigger-exemption reasoning for
+Scorecard is about which events it runs on, not about where its badge
+sits. -->
 [![PyPI version](https://img.shields.io/pypi/v/btclib-secp256k1.svg?logo=pypi)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![downloads](https://static.pepy.tech/badge/btclib-secp256k1)](https://pepy.tech/project/btclib-secp256k1)
 [![development status](https://img.shields.io/pypi/status/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
@@ -30,6 +38,7 @@ bitcoin-core-rpc carry the same three lines. -->
 [![os-macos workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-macos.yml/badge.svg)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-macos.yml)
 [![os-windows workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-windows.yml/badge.svg)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-windows.yml)
 [![mutation workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/mutation.yml/badge.svg)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/mutation.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-secp256k1/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-secp256k1)
 [![documentation build](https://app.readthedocs.org/projects/btclib-secp256k1/badge/?version=latest)](https://btclib-secp256k1.readthedocs.io)
 
 [![GitHub repository: btclib-org/btclib-secp256k1](https://img.shields.io/badge/GitHub-btclib--org%2Fbtclib--secp256k1-181717?logo=github)](https://github.com/btclib-org/btclib-secp256k1/)
