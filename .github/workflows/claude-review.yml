@@ -67,8 +67,8 @@ jobs:
     # btclib-org/bbt, itself a fork.
     #
     # CLAUDE_REVIEW_ENABLED is the switch, an *organization* variable,
-    # and section 11 of the organization's standard, *Review*, is
-    # where what it does is stated rather than here a second time.
+    # and section 11's *Review* is where what it does is stated rather
+    # than here a second time.
     #
     # On the job and not on a step. A step declining to run leaves
     # `steps.review.outcome` at `skipped`, which the guard below reads as
@@ -334,38 +334,49 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           # --paginate because the API pages at thirty reviews and the
-          # newest sit on the last page; --jq answers once per page, so
-          # the last line of the output is the last verdict posted.
+          # newest sit on the last page; --slurp gathers every page into
+          # one array, and gh refuses --slurp beside --jq, so the filter
+          # runs in a jq of its own downstream of the pipe and sees the
+          # whole history in one pass rather than one page at a time.
+          # jq -r, because a quoted verdict would hand the parameter
+          # expansion below a sha wearing a closing quote.
+          # Filtering to matching bodies before taking the last of them
+          # -- `[... | select(test(...))] | last` -- picks the last page
+          # that *had* a match rather than the true last claude[bot]
+          # entry, and silently falls back to a stale verdict when the
+          # most recent one does not match: a busy pull request, or a
+          # claude[bot] comment that is a reading ("declined to give a
+          # verdict") arriving after an acked or changes-requested run.
+          # So the filter below takes the last claude[bot] entry first,
+          # whatever it says, and only then asks whether it is a
+          # verdict -- a later entry with no verdict is itself the
+          # answer, and empties `$verdict` the same as no entry at all.
           #
-          # `.body // ""` is for a null body: `null | split` aborts,
-          # and it aborts the filter over the whole page rather than
-          # skipping that one review, so a single such body loses every
-          # verdict beside it. The API description has that field
-          # required and carries no `nullable` on it, where `commit_id`
-          # beside it in the same schema does, and
+          # `.body // ""` is for a null body: `null | split` aborts. The
+          # API description has that field required and carries no
+          # `nullable` on it, where `commit_id` beside it in the same
+          # schema does, and
           #
           #   gh api repos/{owner}/{repo}/pulls/<number>/reviews \
           #     --jq '.[].body | type'
           #
           # answers `string` throughout this organization. It is
-          # guarded regardless: a description is no contract, and being
-          # wrong about one costs every verdict on the page where the
-          # guard costs nothing.
+          # guarded regardless: a description is no contract.
           #
           # An empty summary is a different shape and wants no guard,
           # `split("\n")` answering `[]` for it. A body of whitespace
           # or newlines alone is what `map(select(length > 0))` is for,
           # splitting into fields that the `sub` before it then empties.
           verdict=$(gh api "repos/$REPO/pulls/$NUMBER/reviews" --paginate \
-            --jq '[ .[]
-                    | select(.user.login == "claude[bot]")
-                    | .body // ""
-                    | split("\n")
-                    | map(sub("\\s+$"; ""))
-                    | map(select(length > 0))
-                    | last // empty
-                    | select(test("^(ACK|NACK|CHANGES REQUESTED) [0-9a-f]{7,40}$"))
-                  ] | last // empty' | tail -1)
+            --slurp \
+            | jq -r '[ .[][] | select(.user.login == "claude[bot]") ]
+                  | last
+                  | (.body // "")
+                  | split("\n")
+                  | map(sub("\\s+$"; ""))
+                  | map(select(length > 0))
+                  | last // empty
+                  | select(test("^(ACK|NACK|CHANGES REQUESTED) [0-9a-f]{7,40}$"))')
           if [ -z "$verdict" ]; then
             echo "::error::the review posted no verdict on this pull" \
                  "request, so nothing says whether $HEAD_SHA was read at" \

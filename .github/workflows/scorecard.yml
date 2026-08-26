@@ -1,11 +1,11 @@
 ---
 name: scorecard
 
-# OpenSSF Scorecard: eighteen checks against this repository's
-# supply-chain posture, computed by a third party rather than by
-# anything this organization asked itself. btclib-org/.github#339 is
-# where this sentinel and its permissions are decided; this file adopts
-# it, and does not restate the reasoning.
+# OpenSSF Scorecard: checks against this repository's supply-chain
+# posture, computed by a third party rather than by anything this
+# organization asked itself. btclib-org/.github#339 is where this
+# sentinel and its permissions are decided; this file adopts it, and
+# does not restate the reasoning.
 #
 # This repository is public and is not a fork, which is the property
 # section 10 of the standard keys the sentinel on:
@@ -23,10 +23,9 @@ on:
     # the action's, not section 10's general rule
     branches: [main]
   schedule:
-    # btclib-org/.github#363 proposes this row: Saturday and hour 03 from
-    # section 10's calendar, minute 08 from this repository's own row in
+    # Saturday, hour 03: section 10's calendar, decided by
+    # btclib-org/.github#363. The minute is this repository's own row in
     # that section's second table -- neither is this file's to restate.
-    # The issue is open rather than landed as of this file
     - cron: "8 3 * * 6"
 
 # least privilege for the GITHUB_TOKEN at the workflow level, with one

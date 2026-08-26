@@ -1361,6 +1361,30 @@ release-notes length in the first place, and are still in
   figure written into a comment is one no hook reads and no test
   compares, so it goes on reading true after the plan moves.
 
+- **`claude-review.yml`'s verdict check reads the last claude[bot] entry
+  across every page of `pulls/<n>/reviews` before asking whether it is a
+  verdict** (closes #394). `--paginate` fetched pages separately and the
+  filter selected only matching bodies before taking the last of those,
+  so a page whose newest claude[bot] entry carried no verdict -- a
+  declined reading arriving after an acked or changes-requested run --
+  silently fell back to an earlier page's stale verdict. `--slurp`
+  flattens every page first, and the filter now takes the
+  chronologically last claude[bot] entry whatever it says, emptying the
+  verdict the same way a page with no such entry at all does.
+
+- **The same file's `CLAUDE_REVIEW_ENABLED` comment cites
+  `section 11's *Review*` alone** (closes #404), matching every other
+  citation of that subsection in this file. It had appended the
+  subsection name to the full `section 11 of the organization's
+  standard` form, a shape none of the file's own later citations use.
+
+- **`scorecard.yml`'s cron comment states the settled fact rather than
+  the state of btclib-org/.github#363** (closes #401). The row schedules
+  Saturday, hour 03 from section 10's calendar, decided by that issue,
+  which is closed; the header's count of Scorecard's own checks drops
+  with it, matching the sibling repositories' wording for the same
+  paragraph.
+
 ### The gate
 
 - **`show_error_codes` leaves `[tool.mypy]`** (btclib-org/.github#191).
