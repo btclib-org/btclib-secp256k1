@@ -1341,6 +1341,26 @@ release-notes length in the first place, and are still in
   -- is ported to "the organization's standard" with no section
   number.
 
+- **`claude-review.yml`'s comments name the `gh pr` subcommands the
+  prompt uses, word the `mention` job's credential refusal for the job
+  it guards, and argue the concurrency cost without a plan-dependent
+  figure** (issue btclib-org/.github#398, btclib-org/.github#402,
+  btclib-org/.github#405, btclib-org/.github#410). The prompt reaches
+  the CLI through `gh pr
+  diff`, `gh pr view` and `gh pr review --comment`, so the comment
+  explaining why `claude_args` is a folded scalar spells out `diff,
+  review and view`. The step guarding `mention` -- the job that answers
+  an `@claude` comment and reviews nothing -- is `Refuse to answer
+  without a credential` and says the workflow answers nothing, taken
+  byte for byte from `btclib-org/portanode`, with the comment above it
+  naming the review job's reason rather than restating it. The header's
+  argument for one more job per pull request rests on the ceiling being
+  the organization's and shared with the other repositories' matrices,
+  and sends a reader to `REPOSITORY.md`'s *Plan-gated settings* for the
+  ceiling and for the command that answers the plan setting it: a
+  figure written into a comment is one no hook reads and no test
+  compares, so it goes on reading true after the plan moves.
+
 ### The gate
 
 - **`show_error_codes` leaves `[tool.mypy]`** (btclib-org/.github#191).
