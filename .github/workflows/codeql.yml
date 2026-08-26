@@ -41,13 +41,15 @@ name: codeql
 
 on:
   # main and the schedule below, and no pull_request trigger: this analysis
-  # is the one gate that was worth trading for the slots it held. GitHub
-  # Free gives an organization twenty concurrent jobs, shared across every
-  # repository in it, and this workflow's three of them were held while a
-  # pull request waited -- so the analysis lands on the merge commit rather
-  # than before it, and the aggregate below is no longer a required check
-  # on main. REPOSITORY.md is where that rule is written down, and dropping
-  # the context there is a token operation that had to come first.
+  # is the one gate that was worth trading for the slots it held. The plan
+  # caps how many jobs the organization may run at once, shared across every
+  # repository in it -- REPOSITORY.md's Plan-gated settings has the figure
+  # and the command that re-derives it -- and this workflow's three of them
+  # were held while a pull request waited, so the analysis lands on the
+  # merge commit rather than before it, and the aggregate below is no
+  # longer a required check on main. REPOSITORY.md is where that rule is
+  # written down, and dropping the context there is a token operation that
+  # had to come first.
   # What still reads a branch before it merges is lint.yml: zizmor is a
   # pre-commit hook and reads exactly these files for an injected
   # expression, which is the finding this workflow would otherwise be alone

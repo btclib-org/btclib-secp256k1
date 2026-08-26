@@ -384,6 +384,19 @@ extend-ignore-re = ['"[0-9a-fA-F]+"']
 extend-exclude = ["secp256k1"]
 
 [tool.ruff.format]
+# markdown is the formatter's alone: `ruff check --show-files .` lists no
+# `.md` and `ruff check` answers "No Python files found" when handed one,
+# while `ruff format` reflows the python fences of every markdown file it
+# reaches. The gate reaches none of them, ruff-pre-commit's own hooks
+# carrying `types_or: [python, pyi, jupyter]`, so without this key a bare
+# `ruff format .` rewrites SECURITY.md's fenced examples -- whose trailing
+# comments are aligned to each other -- with nothing red to say so. This is
+# the reason `[tool.typos.files]` gives for its own entry: the bare
+# invocation answers what the hook answers. It sits under `format` rather
+# than in `[tool.ruff]` above because that is the scope the two commands
+# measure
+exclude = ["*.md"]
+
 # one preview style is worth the instability: a call whose sole argument
 # is a collection keeps that collection's bracket on the call's own line,
 # rather than indenting it a level further in and closing it twice. It

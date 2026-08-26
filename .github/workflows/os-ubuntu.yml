@@ -12,10 +12,11 @@ name: os-ubuntu
 # os-macos.yml or os-windows.yml. What that gives up is the point of the
 # arrangement rather than a cost it hides: a regression on 3.10, on arm or
 # on PyPy is no longer refused before a merge, and sits on main until the
-# weekly sentinel for it runs. What it buys is every pull request --
-# GitHub Free gives an organization twenty concurrent jobs, shared across
+# weekly sentinel for it runs. What it buys is every pull request -- the
+# plan caps how many jobs the organization may run at once, shared across
 # every repository in it, and a matrix on each commit is what a reviewer
-# waits behind. test.yml's header has the measurement.
+# waits behind. REPOSITORY.md's Plan-gated settings has the figure and the
+# command that re-derives it, and test.yml's header has the measurement.
 #
 # **The matrix is whole**, the cell the gate already covers included. A
 # sweep that subtracted it would be a matrix with a hole in it, and

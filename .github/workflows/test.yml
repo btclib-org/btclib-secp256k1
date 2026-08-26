@@ -31,12 +31,14 @@ name: test
 #         --json databaseId --jq '.[0].databaseId')
 #     gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100"
 #
-# The Windows cells were the second, and a different number moved them:
-# GitHub Free gives an organization twenty concurrent jobs, shared across
+# The Windows cells were the second, and a different number moved them: the
+# plan caps how many jobs the organization may run at once, shared across
 # every repository in it, and this workflow set asked for seventy-three on
-# every commit. The twenty-one Windows suite cells were 27.3 of the 112.9
-# runner-minutes, the largest family of jobs in the run and ahead of every
-# wheel build. os-windows.yml has the rest of that measurement.
+# every commit. REPOSITORY.md's Plan-gated settings has that figure and the
+# command that re-derives it. The twenty-one Windows suite cells were 27.3
+# of the 112.9 runner-minutes, the largest family of jobs in the run and
+# ahead of every wheel build. os-windows.yml has the rest of that
+# measurement.
 #
 # The ubuntu suite cells are the third, against the same ceiling: two
 # images times every interpreter, on the platform whose cells are the

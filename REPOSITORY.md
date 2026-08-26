@@ -37,11 +37,12 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 | `Build the documentation` | `docs.yml`, its only job |
 
 `codeql: every job passed` is not among them, and that is the one place a
-check was traded for the slots it held. GitHub Free gives an organization
-twenty concurrent jobs (as of 2026-08-21), shared across every repository
-in it: this one, bitcoin-core-rpc and one more repository each ask for
-more jobs than that on every commit, so a pull request in any of the
-three waited for a slot rather than for the work. `codeql.yml` now runs
+check was traded for the slots it held. The plan caps how many jobs an
+organization may run at once, shared across every repository in it, and
+*Plan-gated settings* below has the figure and the command that
+re-derives it: this one, bitcoin-core-rpc and one more repository each
+ask for more jobs than that cap on every commit, so a pull request in any
+of the three waited for a slot rather than for the work. `codeql.yml` now runs
 on `main` and on its weekly schedule, the analysis landing on the merge
 commit rather than ahead of it, and it carries no aggregate any more
 either: a branch rule can only name a context a pull request's own run
@@ -251,9 +252,9 @@ gh api -X PATCH repos/btclib-org/btclib-secp256k1/code-quality/setup \
 What decided it is the ceiling the section above already trades against,
 not the queries. `Analyze (python)` ran on every pull request and every
 push to `main` — `Code Quality: PR #N` in the run list — for some 52
-seconds of a slot each time, and the twenty concurrent jobs (as of
-2026-08-21) are shared with every other repository in the organization,
-where the same setting was on.
+seconds of a slot each time, and the concurrent jobs the plan allows are
+shared with every other repository in the organization, where the same
+setting was on. *Plan-gated settings* below carries the figure.
 
 What it produced in exchange cannot be read from outside a browser. There
 is no `code-quality/alerts` and no `code-quality/analyses`, both 404, and

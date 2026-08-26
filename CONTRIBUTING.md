@@ -712,8 +712,10 @@ file's to restate — one calendar covering the organization is one thing to
 remember, and a copy of it per repository is one more thing to keep true in
 each.
 
-Why so little gates is one number: GitHub Free gives an organization twenty
-concurrent jobs (as of 2026-08-21), shared across every repository in it. A
+Why so little gates is one number: the ceiling the plan puts on how many
+jobs the organization may run at once, shared across every repository in
+it, which `REPOSITORY.md`'s *Plan-gated settings* holds beside the command
+that re-derives it. A
 commit here, in bitcoin-core-rpc and in one more repository each ask for
 more jobs than that ceiling alone allows, so a pull request in any of the
 three spent its wall clock waiting for a slot. At that ceiling a cell

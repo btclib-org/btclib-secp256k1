@@ -146,6 +146,18 @@ release-notes length in the first place, and are still in
 
 ### Documentation
 
+- **`REVIEWING.md`'s shared half is the organization standard's own
+  text** (closes #407). Everything above *This repository in particular*
+  matches `btclib-org/.github`'s copy byte for byte, and *The verdict* is
+  the section that differed. It names three verdict lines -- `ACK <sha>`,
+  `CHANGES REQUESTED <sha>` and `NACK <sha>` -- and says the ack of
+  record is posted as a review of type COMMENT, `gh pr review
+  --comment`, never as a forge approval or a forge request for changes,
+  which is what this repository's own `claude-review.yml` prompt already
+  instructs. It also separates a `NACK` from a review that ends without
+  a verdict: both leave the pull request unacked, and only the first
+  concludes anything.
+
 - **`SECURITY.md` stops claiming what it cannot check** (#356,
   btclib-org/.github#109). "as for every btclib project" was an
   enumeration this file has no way to verify, and it was already
@@ -652,6 +664,48 @@ release-notes length in the first place, and are still in
   into any text a diff of the rendered page would show.
 
 ### CI
+
+- **The concurrency ceiling's figure lives only in `REPOSITORY.md`'s
+  *Plan-gated settings*** (issue btclib-org/.github#412). Section 10 of
+  the organization standard puts it there, beside the plan command and
+  GitHub's own table that re-derive it, and asks prose that needs the
+  reasoning -- a workflow header, `CONTRIBUTING.md` -- to state it with
+  the ceiling unnumbered and point there for the number. A date beside
+  the figure is not the cure: the date says when it was true and nothing
+  says it still is, where the command answers for the day it is run. The
+  headers of `codeql.yml`, `os-ubuntu.yml`, `os-windows.yml` and
+  `test.yml` carried it undated, `CONTRIBUTING.md` and `REPOSITORY.md`'s
+  *Required checks on main* and *Code quality* with the date. This file
+  states it too and is append-only, so those entries stand as written.
+
+- **`pypi-install.yml`'s index wait runs on every trigger** (issue
+  btclib-org/.github#49). The `if: inputs.version != ''` guard is gone,
+  so a schedule and a dispatch reach the step and ask the index for
+  nothing. What the guard bought was a step no cell ran until a release
+  ran it, which is how the same shell defect shipped from a sibling's
+  copy of this file and then from the copy that never took the one-line
+  fix. The empty case is a condition **around** the loop rather than an
+  early `exit 0`, and that shape is the whole of what the change buys:
+  bash parses a script as it runs, so an exit at the top leaves the loop
+  unparsed on every trigger that takes it — measured, a syntax error
+  below such an exit prints nothing and returns 0, where the same error
+  inside a branch not taken returns 2. Guard removed and loop still
+  unparsed is the decision undone in the act of porting it. That issue
+  records the decision, taken once for the publishing repositories, and
+  the options it declines; it asks for the comment above the step
+  verbatim in `btclib`, `bitcoin-core-rpc` and here, drifting prose being
+  what made the second shipping invisible on review.
+
+- **`check_vendored_vectors.py` reports an entry it cannot check** (issue
+  btclib-org/.github#446). A `tests/README.md` block carrying no
+  `repo`/`path`/`commit` triple is listed under "Not checked by this
+  run, for the reason named" rather than dropped, which is what the
+  module docstring and `_entries_at_tip`'s own already describe and what
+  `btclib`'s copy of the script does. Section 14 of the standard leaves
+  the copies of this file out of what `tests/verbatim_test.py` compares
+  and asks each to state its own scope instead, so the docstring names
+  `tests/README.md` as what it parses and says which shapes it declines
+  without counting the entries it finds there.
 
 - **Every workflow step is named** (#300). An unnamed step is rendered
   as its command on the run page, which a release run reads by
@@ -1386,6 +1440,21 @@ release-notes length in the first place, and are still in
   paragraph.
 
 ### The gate
+
+- **`[tool.ruff.format]` excludes `*.md`** (closes #397). `ruff format`
+  reads the python fences of a markdown file and reflows them; `ruff
+  check` does not read markdown at all, `ruff check --show-files .`
+  listing no `.md` and `ruff check SECURITY.md` answering "No Python
+  files found". The gate reaches those fences through neither, both
+  ruff-pre-commit hooks carrying `types_or: [python, pyi, jupyter]`, so
+  a bare `ruff format .` from the repository root reformatted
+  `SECURITY.md`'s fenced examples -- collapsing the extra spaces that
+  align their trailing comments -- with nothing red anywhere to say the
+  tree had moved. The key is under `format` rather than in
+  `[tool.ruff]` above because that is the scope the two commands
+  measure, and it is there at all for the reason `[tool.typos.files]`
+  gives beside its own: the bare invocation answers what the hook
+  answers.
 
 - **`show_error_codes` leaves `[tool.mypy]`** (btclib-org/.github#191).
   mypy has error codes on: `Options` carries `hide_error_codes`, `False`
