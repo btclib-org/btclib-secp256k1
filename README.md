@@ -1,4 +1,6 @@
-# btclib_secp256k1
+# Simple python bindings to
+[libsecp256k1](https://github.com/bitcoin-core/secp256k1),
+as used by the [btclib](https://github.com/btclib-org/btclib) library.
 
 <!-- The badges are what the reader decides with: the first line says what
 this is and whether it can be used, and the second whether it works. A
@@ -42,11 +44,6 @@ sits. -->
 [![documentation build](https://app.readthedocs.org/projects/btclib-secp256k1/badge/?version=latest)](https://btclib-secp256k1.readthedocs.io)
 
 ---
-
-Simple python bindings to
-[libsecp256k1](https://github.com/bitcoin-core/secp256k1)
-([v0.8.0](https://github.com/bitcoin-core/secp256k1/releases/tag/v0.8.0)).
-As used by the [btclib](https://github.com/btclib-org/btclib) library.
 
 To install (and/or upgrade):
 
