@@ -1,13 +1,13 @@
 # btclib_secp256k1
 
 <!-- The badges are what the reader decides with: the first line says what
-this is and whether it can be used, the second whether it works, the third
-where the code is and where to ask about it. A badge that reports no state
--- "we use ruff", "we use uv" -- reports a choice instead, and those are in
-CONTRIBUTING.md, beside the prose that says how the choice is enforced. One
-badge per line keeps a change to one line and every line inside MD013,
-whose 80 columns bind only where a space follows them. btclib and
-bitcoin-core-rpc carry the same three lines.
+this is and whether it can be used, and the second whether it works. A
+badge that reports no state -- "we use ruff", "we use uv" -- reports a
+choice instead, and those are in CONTRIBUTING.md, beside the prose that
+says how the choice is enforced. One badge per line keeps a change to
+one line and every line inside MD013, whose 80 columns bind only where a
+space follows them. btclib and bitcoin-core-rpc carry the same two
+lines.
 Scorecard is placed last among the sentinel badges rather than in the
 calendar order the rest follow, matching btclib's and portanode's own
 placement: btclib-org/.github#358 is where that placement is asked to
@@ -40,8 +40,6 @@ sits. -->
 [![mutation workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/mutation.yml/badge.svg)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/mutation.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-secp256k1/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-secp256k1)
 [![documentation build](https://app.readthedocs.org/projects/btclib-secp256k1/badge/?version=latest)](https://btclib-secp256k1.readthedocs.io)
-
-[![GitHub repository: btclib-org/btclib-secp256k1](https://img.shields.io/badge/GitHub-btclib--org%2Fbtclib--secp256k1-181717?logo=github)](https://github.com/btclib-org/btclib-secp256k1/)
 
 ---
 
