@@ -470,6 +470,22 @@ Then:
    asks the same question of the statement downloaded beside the file
    rather than of the attestations API, which is the form for whoever
    mirrors the page instead of trusting it live
+1. read the `documented` job rather than the site. Read the docs
+   activates and builds a new release tag from an automation rule of its
+   own, and that job waits for
+   `https://btclib-secp256k1.readthedocs.io/en/<tag>/` to be served and is
+   red if it never is. Green means the release has a permanent URL of its
+   own, which is the one to link wherever the version is named; a rendered
+   `/en/latest/` says nothing about it, serving the tip of `main`
+   regardless of what any tag built. Red means
+   [the builds page](https://app.readthedocs.org/projects/btclib-secp256k1/builds/)
+   is where the reason is, and it is the one red in this file that
+   withholds nothing — no job needs this one, PyPI has the files by the
+   time it decides, and the fix is a build on their side rather than a
+   moved tag. The automation rule is a dashboard action nothing in this
+   repository can make, tracked at btclib-org/.github#26, so a red run
+   with no build attempted at all is that rule missing rather than a
+   build failing
 1. open the next version, in a pull request of its own and before
     anything else lands: bump `pyproject.toml` to a fourth number over
     what was just published — `0.7.1.1` after `0.7.1` — and run `uv
