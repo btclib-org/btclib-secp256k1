@@ -293,10 +293,6 @@ precisely so these stay true, and both must report zero findings.
 - a hook that needs a tool carries it in `additional_dependencies`, with
   a version: unpinned it is whatever existed when each environment was
   built, and nothing ever moves it
-- `codeql.yml` carries no `pull_request` trigger, unlike
-  btclib-org/.github#349's ask: its own `on:` block argues the GitHub
-  Free concurrent-job-slot cost that trigger would add, a tradeoff that
-  issue leaves unaddressed as of this writing
 
 ## Verifying
 

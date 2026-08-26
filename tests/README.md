@@ -285,18 +285,19 @@ it to arithmetic it does itself.
 
 ## Convention tests
 
-Section 7 of the [organization standard][std] lists eight conventions a
-suite can turn into a red test, and says a repository needs the ones its
-own prose states rather than all of them. That escape clause is right and
+Section 7 of the [organization standard][std] lists conventions a suite
+can turn into a red test, and says a repository needs the ones its own
+prose states rather than all of them. That escape clause is right and
 it costs something: an absent convention test reads exactly like a
 convention this repository does not have, and a `grep` over `tests/`
 cannot tell the two apart — the suites of the organization name the same
 idea three different ways.
 
-So which of the eight this repository tests is **declared here**, and
-`conventions_test.py` asserts the declaration is true: every convention
-named below is one of section 7's, every module named exists and holds at
-least one test, and the two halves together account for all eight.
+So which of section 7's conventions this repository tests is **declared
+here**, and `conventions_test.py` asserts the declaration is true: every
+convention named below is one of section 7's, every module named exists
+and holds at least one test, and the two halves together account for
+every one of them.
 
 | convention | tested in |
 | --- | --- |
@@ -305,7 +306,7 @@ least one test, and the two halves together account for all eight.
 | the documentation | `docs_test.py` |
 
 Not tested here: the import graph; the changelog; the build system;
-the calling convention; input validation.
+the calling convention; input validation; the suite opens no socket.
 
 The reasons the rest are absent differ, and are given one by one because
 a reader needs which and not how many. **Input validation** is the one
@@ -327,6 +328,21 @@ for them: `extension_test.py` reads `sys.modules` to hold an import cost
 rather than to establish that every module imports first, and
 `wheel_contents_test.py` tests the script that inspects a built wheel
 rather than what runs while one is built.
+
+**The suite opens no socket** is absent for a reason the others do not
+share: section 7 asks for a walk over the call sites, and there are none
+here to walk.
+
+```shell
+git grep -lw socket -- '*.py'
+```
+
+answers `tests/conventions_test.py` alone — the tuple entry naming the
+convention, and no construction that opens one. The same command with
+`subprocess` in place of `socket` names the files that start one, which
+is the control that the pathspec reaches code rather than nothing. A
+walk over an empty set passes whatever the tree does, so what would earn
+this a test is a construction for it to walk.
 
 What must not be aligned across the organization is where these live or
 what they are called; only which conventions are tested, and that each

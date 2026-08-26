@@ -663,6 +663,20 @@ release-notes length in the first place, and are still in
   the pre-rename spelling baked into the badge's own URL rather than
   into any text a diff of the rendered page would show.
 
+- **`RELEASING.md` re-derives GitHub's artifact retention from the
+  `actions/permissions/artifact-and-log-retention` endpoint, in place of
+  a figure with a date beside it** (closes #410). Section 9 of the
+  organization standard puts the command beside a number, and a date is
+  not the cure: it says when the figure was true, where the endpoint
+  answers for the day it is read. `days` is the window and
+  `maximum_allowed_days` the ceiling the organization's own setting puts
+  on what a repository may ask for, so the rest of the sentence -- that
+  this repository has not narrowed the retention -- is re-derived by the
+  same call. The concurrent-job ceiling in `REPOSITORY.md`'s *Plan-gated
+  settings* keeps its dated qualifier for the reason this figure does
+  not: that is GitHub's published table for a plan, and no endpoint of
+  this repository answers it.
+
 ### CI
 
 - **The concurrency ceiling's figure lives only in `REPOSITORY.md`'s
@@ -1439,6 +1453,32 @@ release-notes length in the first place, and are still in
   with it, matching the sibling repositories' wording for the same
   paragraph.
 
+- **`check_vendored_vectors.py`'s docstring says weekly, which is what
+  `vendored-vectors.yml` schedules** (closes #409). The cron is Monday
+  and that workflow's own header rejects a monthly cadence in as many
+  words. The cadence is load-bearing rather than decorative: the
+  docstring's reason for skipping an entry already documented as behind
+  is that a run would otherwise re-report the same gap, and how often a
+  run happens is what makes that argument weigh what it weighs.
+  `btclib`'s copy of the script says weekly too.
+
+- **`codeql.yml` gains a `pull_request` trigger and a `codeql: every job
+  passed` aggregate, together** (issue btclib-org/.github#459,
+  btclib-org/.github#349). Either half alone is inert: a branch rule can
+  only name a context a pull request's own run produces, and the
+  `analyze` matrix produces one per language rather than one name to
+  hold. Nothing requires the aggregate and this does not ask that
+  anything should -- that rule lives outside the tree and
+  `REPOSITORY.md` reads it back from the endpoint; what lands here is
+  the option, which is what the ceiling on concurrent jobs had cost.
+  The OpenSSF Scorecard's `SAST` check reads the same trigger, asking
+  whether the analysis ran on the commits of merged pull requests. The
+  concurrency group takes the pull request's number where there is one,
+  and both jobs take the draft and closed conditions every job of
+  `test.yml` carries, so a closed run cancels the run its own group
+  holds rather than the analysis of the merge commit.
+  `bitcoin-core-rpc` carries this shape.
+
 ### The gate
 
 - **`[tool.ruff.format]` excludes `*.md`** (closes #397). `ruff format`
@@ -1722,6 +1762,20 @@ release-notes length in the first place, and are still in
   `language`, `entry`, `args` and `types` are upstream's own typos hook
   definition, copied in rather than fetched, matching
   `btclib-org/.github`'s own `.pre-commit-config.yaml` byte for byte.
+
+- **`tests/conventions_test.py`'s `_CONVENTIONS` carries section 7's
+  last bullet, "the suite opens no socket", and `tests/README.md` places
+  it under "Not tested here" with the reason** (issue
+  btclib-org/.github#458). The tuple is the vocabulary the declaration
+  is written in -- a name outside it fails the check -- so a tree short
+  a bullet can put that convention in neither half of the declaration,
+  and the suite stays green while what it asserts is a bullet behind.
+  Not tested rather than tested because section 7 asks for a walk over
+  the call sites and there are none: `git grep -lw socket -- '*.py'`
+  answers `tests/conventions_test.py` alone, the tuple entry itself,
+  where the same command with `subprocess` names the files that start
+  one and is the control that the pathspec reaches code. Neither file's
+  prose states a total any more, the tuple being what a reader counts.
 
 ### Packaging metadata
 

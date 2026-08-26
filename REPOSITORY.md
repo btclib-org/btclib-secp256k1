@@ -36,29 +36,32 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 | `Lint and type-check` | `lint.yml`, its only job |
 | `Build the documentation` | `docs.yml`, its only job |
 
-`codeql: every job passed` is not among them, and that is the one place a
-check was traded for the slots it held. The plan caps how many jobs an
-organization may run at once, shared across every repository in it, and
-*Plan-gated settings* below has the figure and the command that
-re-derives it: this one, bitcoin-core-rpc and one more repository each
-ask for more jobs than that cap on every commit, so a pull request in any
-of the three waited for a slot rather than for the work. `codeql.yml` now runs
-on `main` and on its weekly schedule, the analysis landing on the merge
-commit rather than ahead of it, and it carries no aggregate any more
-either: a branch rule can only name a context a pull request's own run
-produces, and this workflow's `on:` block has no `pull_request` trigger,
-so no rule could ever require a name it produces —
-btclib-org/.github#90 is where the organization settled that reading as
-section 10's one rule rather than the two the standard used to hold
-apart. Re-requiring the analysis is therefore a workflow change and not
-only a rule change: the trigger and the aggregate would have to return
-together.
+`codeql: every job passed` is not among them, and its absence is a
+decision rather than an impossibility: `codeql.yml` runs on a pull
+request and produces that aggregate, so naming it here is a patch to this
+rule and nothing in the tree. It takes both halves to be true of a
+workflow — a branch rule can only name a context a pull request's own run
+produces, and a matrix produces one context per language rather than one
+to hold, so a trigger without an aggregate offers no name and an
+aggregate without a trigger reports on no pull request.
+btclib-org/.github#90 is section 10's one rule on what a required check
+may name; btclib-org/.github#459 is where the organization settled that
+the aggregate a required check needs is what a matrix needs.
 
-What still reads a branch before it merges is the workflow half of the same
-question: `zizmor` is a `pre-commit` hook, so `lint.yml` audits these very
-files for an injected expression on every pull request, and that check is
-required. What a merge defers is the rest of the analysis, for the time
-between that merge and the next run — which for `main` is the merge itself.
+What such a rule would cost is the ceiling: the plan caps how many jobs
+an organization may run at once, shared across every repository in it,
+and *Plan-gated settings* below has the figure and the command that
+re-derives it. This one, bitcoin-core-rpc and one more repository each
+ask for more jobs than that cap on every commit, so a pull request in any
+of the three spends wall clock waiting for a slot, and this workflow's
+matrix and aggregate are among what it waits behind. Requiring the
+aggregate would put that wait on the merge path; leaving it unrequired
+keeps a finding in the Actions tab and in the Security tab beside it,
+where it is read without a merge being held.
+
+`zizmor` is the workflow half of the same question and is required: it is
+a `pre-commit` hook, so `lint.yml` audits these very files for an injected
+expression on every pull request.
 
 `Build the documentation` is named on its own on purpose: a rule naming
 `Lint and type-check` alone would leave a red documentation build outside
@@ -157,14 +160,11 @@ switch rather than closing it on a context nothing reported for one
 step. `enforce_admins` being off is what made that window survivable
 rather than a lock.
 
-Neither half of that sequence is live any more. That exchange has been
-made: the endpoint above answers `not-configured`, and it was already
-true before this repository's own aggregate went — the rule dropped
-`codeql: every job passed` first, for the reason the section above
-gives. Turning the setting back on today has nothing left to sequence
-around: `codeql.yml` produces no aggregate to be red or to be named, so
-the switch would only turn the `analyze` matrix red, with no rule
-reading either context.
+That exchange has been made: the endpoint above answers
+`not-configured`. The sequence would matter again the day the rule named
+`codeql: every job passed`, that context being what a merge would then
+wait on; while no rule names it, turning the setting back on would turn
+the `analyze` matrix and the aggregate red with nothing reading either.
 
 A `CodeQL` check and an `Analyze (python)` job outlive it, and neither
 comes from this tree: GitHub keeps a generated

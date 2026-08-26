@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Re-check every vendored-vector pin against upstream, monthly.
+"""Re-check every vendored-vector pin against upstream, weekly.
 
 tests/README.md pins each vendored vector to a commit and a git blob
 SHA-1, with a documented manual procedure to re-check one.
@@ -17,7 +17,7 @@ project's own entries reaches the narrower part: only
 an entry whose `behind` already reads 0 -- what a human last confirmed
 was exactly at upstream's tip -- is checked. An entry already
 documented as behind would be a decision already made, and
-re-reporting the same gap every month would be noise rather than news;
+re-reporting the same gap every week would be noise rather than news;
 btclib's own README carries that shape and this one does not.
 
 A path upstream has renamed or deleted is reported rather than raising:
