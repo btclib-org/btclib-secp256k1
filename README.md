@@ -1,4 +1,4 @@
-# Simple Python bindings to libsecp256k1
+# Python bindings to libsecp256k1
 
 <!-- The badges are what the reader decides with: the first line says what
 this is and whether it can be used, and the second whether it works. A
