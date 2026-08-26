@@ -1617,6 +1617,19 @@ release-notes length in the first place, and are still in
   `uvx pre-commit run local-link-prefix --all-files` re-derives the
   whole of it.
 
+- **The `typos` hook is `repo: local`, pinned through
+  `additional_dependencies: [typos==1.49.0]`, rather than a
+  `crate-ci/typos` mirror pinned by `rev:`** (issue
+  btclib-org/.github#399). `autoupdate` walks every `repo:` entry except
+  `local` and `meta`, and `crate-ci/typos` re-tags a moving `v1` alias
+  onto the same commit as each release, which `git describe --tags`
+  then names by creation date -- `autoupdate` would propose that alias
+  on every run and `pinned-rev` above would refuse it on every run, so a
+  mirror entry here can only ever answer that refusal, never converge.
+  `language`, `entry`, `args` and `types` are upstream's own typos hook
+  definition, copied in rather than fetched, matching
+  `btclib-org/.github`'s own `.pre-commit-config.yaml` byte for byte.
+
 ### Packaging metadata
 
 - **`check-sdist` gates the sdist against what git tracks** (#344).
@@ -1753,6 +1766,15 @@ release-notes length in the first place, and are still in
   a silent one, and `btclib` and `portanode` both currently place it
   last regardless of whether their own calendar row exists yet -- this
   matches that precedent rather than deciding #358 unilaterally.
+
+### `docs/_build/` leaves `.gitignore`
+
+- **`.gitignore`'s `docs/_build/` entry is gone** (issue
+  btclib-org/.github#411). `build/` already
+  covers `docs/build/html`, the directory the documented `sphinx-build`
+  command in `CONTRIBUTING.md` and `docs.yml` writes to:
+  `git check-ignore -v docs/build/html/index.html` names `build/` as the
+  matching pattern, and `docs/_build/` matches none of it.
 
 ## v0.8.0.4
 
