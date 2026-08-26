@@ -1,6 +1,4 @@
-# Simple python bindings to
-[libsecp256k1](https://github.com/bitcoin-core/secp256k1),
-as used by the [btclib](https://github.com/btclib-org/btclib) library.
+# Simple python bindings to [libsecp256k1](https://github.com/bitcoin-core/secp256k1), as used by the [btclib](https://github.com/btclib-org/btclib) library.
 
 <!-- The badges are what the reader decides with: the first line says what
 this is and whether it can be used, and the second whether it works. A
