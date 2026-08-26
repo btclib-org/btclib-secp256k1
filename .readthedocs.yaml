@@ -26,12 +26,20 @@
 #
 # The rule is a dashboard action rather than anything a pull request
 # reaches: btclib-org/.github#26 carries it, and the commands that
-# re-derive all of this. Issue #295, the release check that reads the
-# rendered tag URL, stays blocked while there is no such URL to read.
-# That check would be reachable only on a tag, the shape
-# btclib-org/.github#49 is about, which is a reason
-# to order it after the URL exists rather than before; nothing here
-# settles btclib-org/.github#49.
+# re-derive all of this. What a pull request does reach is the check
+# that reads the rendered tag URL, and `release.yml`'s `documented` job
+# is it: depended on by nothing, so a red run there withholds no wheel
+# and asks for a build rather than a moved tag. Its loop runs on a tag
+# and on nothing else, which is the exposure btclib-org/.github#49
+# measured on `pypi-install.yml`'s own wait. What landed there does
+# transfer, and `pypi-install.yml` in this tree is the shape: not an
+# early exit, which annuls the property it was chosen for, but the
+# empty case as a condition *around* the loop, so the script is parsed
+# on every trigger and the loop runs on none but a tag. It buys less
+# here than there -- that step ran on Windows cells where the parse
+# itself was the defect, and this is one ubuntu job -- which is why the
+# job-level guard stays for now, and btclib-org/.github#466 is where
+# the three trees decide it together rather than each on its own.
 
 # Required
 version: 2
