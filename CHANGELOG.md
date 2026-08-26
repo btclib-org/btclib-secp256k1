@@ -1292,6 +1292,55 @@ release-notes length in the first place, and are still in
   as the pull request's author, so nothing stops it approving one; the
   job stays what it was, not a required check.
 
+- **`claude-review.yml` converges on `btclib-org/.github`'s current
+  copy again: a job-level gate, a guard that reads the SDK's own error
+  fields, and a verdict posted as a `COMMENT` review rather than an
+  approval** (issue btclib-org/.github#364, btclib-org/.github#385,
+  btclib-org/.github#340). The review job has ended `is_error: true`
+  since 2026-08-23 on every `pull_request` run sampled across the four
+  repositories the first of those issues measured, this one included --
+  `num_turns: 1` and `total_cost_usd: 0` together saying the first
+  turn never completed billably, not that none ran. Nothing in these
+  repositories changed across the moment the runs turned red, which is
+  a narrower claim than the cause lying outside them;
+  `if: vars.CLAUDE_REVIEW_ENABLED == 'true'` now gates both jobs,
+  unset organization-wide, so the job skips cleanly instead of failing
+  loudly on every pull request until the shared workflow or credential
+  that issue points at is fixed. It sits on the job and not on a step:
+  a step that declines to run still leaves `steps.review.outcome` at
+  `skipped`, which the guard below reads as a review that never ran.
+
+  That guard, `Refuse to report a review that never ran`, now runs on
+  `!cancelled()` rather than only when the execution file is missing,
+  and reads `api_error_status`, `stop_reason` and `.result` off that
+  file when `steps.review.outcome` is not `success` -- fields the
+  action's own log sanitizes out of the result message it prints, and
+  writes unsanitized to the file `steps.review.outputs.execution_file`
+  already names.
+
+  The verdict itself moves from `gh pr review --approve` /
+  `--request-changes` to `gh pr review --comment`, always: OpenSSF
+  Scorecard's `Code-Review` check excludes a bot's review of any kind,
+  approving or otherwise, so the self-approval reasoning the previous
+  entry gave for preferring an approval over a comment does not survive
+  it -- what a review buys over a comment is only that the forge
+  records it under `pulls/<n>/reviews`, which the guard already reads.
+  The last line stays `ACK <sha>`, `CHANGES REQUESTED <sha>` or `NACK
+  <sha>`, the guard's regex now accepting `NACK` alongside the other
+  two, and the read-back treats a null review body as empty rather than
+  aborting the whole page it sits on.
+
+  The prompt's own citations of the standard are adapted rather than
+  copied, following section 14's rule for a receiving copy. `.github`'s
+  own copy cites `README.md` because that file is the standard there;
+  a citation naming a rule section 11 actually holds is ported to name
+  section 11 instead -- "section 11 of the organization's standard",
+  and "section 11's *Review*" for the subsection. The one citing
+  `README.md` for the standard as a whole -- the rules a finding cites
+  living in section 9 and in *How to use this file*, not in section 11
+  -- is ported to "the organization's standard" with no section
+  number.
+
 ### The gate
 
 - **`show_error_codes` leaves `[tool.mypy]`** (btclib-org/.github#191).
