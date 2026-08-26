@@ -4,21 +4,21 @@
 
 """Re-check every vendored-vector pin against upstream, monthly.
 
-tests/README.md pins each of the three vendored vectors to a commit and
-a git blob SHA-1, with a documented manual procedure to re-check one.
+tests/README.md pins each vendored vector to a commit and a git blob
+SHA-1, with a documented manual procedure to re-check one.
 This automates that procedure and reports drift, rather than fixing it:
 refreshing a vector file is a decision this script does not get to
 make, so what it opens is an issue, never a commit. Ported from
 btclib's own check_vendored_vectors.py, which this package's README
 convention matches by design (issue #397).
 
-Scope is narrower than the README could need, even though nothing in
-this project's own three entries currently uses the narrower part: only
+Scope is narrower than the README could need, though nothing in this
+project's own entries reaches the narrower part: only
 an entry whose `behind` already reads 0 -- what a human last confirmed
 was exactly at upstream's tip -- is checked. An entry already
 documented as behind would be a decision already made, and
 re-reporting the same gap every month would be noise rather than news;
-btclib's own README has that shape today, this one does not yet.
+btclib's own README carries that shape and this one does not.
 
 A path upstream has renamed or deleted is reported rather than raising:
 it has no commit to name as a tip, and a pin standing on a file that is
@@ -117,6 +117,7 @@ def _entries_at_tip(readme: str) -> tuple[list[Entry], list[str]]:
             fields.get("commit"),
         )
         if not (repo and path and commit):
+            skipped.append(f"{heading} (no commit to check against)")
             continue
         if "<" in path:
             skipped.append(f"{heading} (one pin serves several files)")
@@ -133,11 +134,12 @@ def _latest_commit(repo: str, path: str) -> tuple[str, str] | None:
 
     None where upstream has no commit touching it at all, which means the
     path has been renamed or deleted: the sharpest drift there is, a pin
-    naming a file that is not there any more. This used to unpack one
-    commit out of an empty list and raise `ValueError` instead, so the
-    monthly run went red and `report` was never reached -- no issue
-    opened, on the one kind of drift nobody would otherwise notice, which
-    is what this workflow exists for.
+    naming a file that is not there any more. Answering None rather than
+    unpacking one commit out of an empty list is what lets `report` see
+    it as drift with no tip to name, instead of the run going red on a
+    bare `ValueError` and no issue ever opening -- the one kind of drift
+    nobody would otherwise notice, which is what this workflow exists
+    for.
     """
     result = subprocess.run(  # noqa: S603
         [
@@ -268,8 +270,8 @@ def main() -> int:
     dry_run = len(args) != len(sys.argv) - 1
     if len(args) != 1:
         # a human running this by hand is the only way here, the workflow
-        # passing the path every time: an IndexError naming a list is
-        # what they used to get
+        # passing the path every time: without this check, `args[0]`
+        # below would answer with an IndexError naming a list instead
         print(
             f"usage: {Path(sys.argv[0]).name} <README path> [--dry-run]",
             file=sys.stderr,

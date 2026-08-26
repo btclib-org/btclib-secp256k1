@@ -149,29 +149,43 @@ jobs:
       # starts too early tests the *previous* version and reports a pass for
       # it, which is worse than reporting nothing. So the release path waits
       # for the version its tag names, and fails if it never arrives rather
-      # than measuring the wrong thing. Only there: the input is empty on
-      # every other trigger.
+      # than measuring the wrong thing.
       # Twenty attempts fifteen seconds apart, i.e. five minutes: an upload
       # PyPI has accepted is served in seconds, and what this bounds is the
       # case where it is not served at all
+      #
+      # The step itself runs on every trigger and does nothing on most of
+      # them, the input being empty wherever no release is calling. An
+      # `if:` here would make a tag the only thing that ever runs it, and
+      # a step a release is the first to run is a step whose defect ships
+      # with that release -- which has already happened to this script, in
+      # more than one of these repositories. Unguarded, every weekly run
+      # parses it on every cell of the matrix. The empty case is a
+      # condition around the loop rather than an early `exit 0` for that
+      # same reason: bash parses a script as it runs, so an exit at the
+      # top leaves what follows unparsed, where an `if` is parsed whole
+      # before its condition is tested
       - name: Wait for the index to serve the released version
-        if: inputs.version != ''
         shell: bash
         env:
           TAG: ${{ inputs.version }}
         run: |
           version="${TAG#v}"
-          for attempt in $(seq 20); do
-            if curl -sf --max-time 10 -o /dev/null \
-                "https://pypi.org/pypi/btclib_secp256k1/${version}/json"; then
-              echo "the index serves ${version}"
-              exit 0
-            fi
-            echo "attempt ${attempt}: ${version} is not served yet"
-            sleep 15
-          done
-          echo "::error::${version} never appeared on the index"
-          exit 1
+          if [ -z "$version" ]; then
+            echo "no release behind this run: nothing to wait for"
+          else
+            for attempt in $(seq 20); do
+              if curl -sf --max-time 10 -o /dev/null \
+                  "https://pypi.org/pypi/btclib_secp256k1/${version}/json"; then
+                echo "the index serves ${version}"
+                exit 0
+              fi
+              echo "attempt ${attempt}: ${version} is not served yet"
+              sleep 15
+            done
+            echo "::error::${version} never appeared on the index"
+            exit 1
+          fi
 
       # no checkout on purpose: nothing from this repository takes part,
       # which is also what guarantees that the import below resolves to

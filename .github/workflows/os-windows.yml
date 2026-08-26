@@ -7,14 +7,15 @@ name: os-windows
 # wheel.
 #
 # The constraint is a ceiling rather than a wall clock, which is what makes
-# it worth re-deciding a split that was already made once: GitHub Free gives
-# an organization twenty concurrent jobs, shared across every repository in
-# it, and this workflow set asked for seventy-three of them on every commit
-# while btclib asked for thirty-nine and bitcoin-core-rpc for forty-four. On
-# one pull request run the twenty-one Windows suite cells were 27.3 of the
-# 112.9 runner-minutes and the largest single family of jobs in it, ahead of
-# every wheel build; the run's critical path was 1713 seconds, of which the
-# median cell spent 694 queueing. The command that re-derives it:
+# it worth re-deciding a split that was already made once: the plan caps how
+# many jobs the organization may run at once, shared across every repository
+# in it -- REPOSITORY.md's Plan-gated settings has the figure and the command
+# that re-derives it -- and this workflow set asked for seventy-three of them
+# on every commit while btclib asked for thirty-nine and bitcoin-core-rpc for
+# forty-four. On one pull request run the twenty-one Windows suite cells were
+# 27.3 of the 112.9 runner-minutes and the largest single family of jobs in
+# it, ahead of every wheel build; the run's critical path was 1713 seconds, of
+# which the median cell spent 694 queueing. The command that re-derives it:
 #
 #     id=$(gh run list --workflow=test.yml --limit 1 \
 #         --json databaseId --jq '.[0].databaseId')
