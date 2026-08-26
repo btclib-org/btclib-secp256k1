@@ -532,11 +532,18 @@ artifacts already built.
    alone against the artifacts already built, instead of an hour of
    matrix again. That is what published 0.7.1.dev1, three minutes after
    a registration was corrected, and it holds for as long as the
-   artifacts do: ninety days (as of 2026-08-21, GitHub's own default),
-   this repository not having narrowed the retention. Note that a
-   re-run rebuilding the matrix now carries the
-   attempt in its version, so what it uploads is not what the first
-   attempt built under a different name.
+   artifacts do — a window the endpoint answers for the day it is read:
+
+   ```shell
+   gh api repos/{owner}/{repo}/actions/permissions/artifact-and-log-retention
+   ```
+
+   `days` is the window, and `maximum_allowed_days` is the ceiling the
+   organization's own setting puts on what a repository may ask for: the
+   two reading the same is this repository not having narrowed it. Note
+   that a re-run rebuilding the matrix now carries the attempt in its
+   version, so what it uploads is not what the first attempt built under
+   a different name.
    Never tag a rehearsal: the trigger is what picks the index, so a
    `v0.7.1rc1` tag would take the pre-release to PyPI itself and burn it
    there, and `0.7.1rc1` is a version PyPI would then hand to `--pre`

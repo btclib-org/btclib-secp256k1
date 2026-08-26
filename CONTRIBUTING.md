@@ -437,7 +437,7 @@ read by every checkout of this repository.
 Each job of the `lint`, `docs` and `test` workflows, and the local command
 that reproduces it. Two of them cannot be reproduced on a machine that is
 not the runner, and that is worth knowing before trying; `codeql` has no
-command at all, for the reason above, and no longer gates.
+command at all, for the reason below, and nothing requires its result.
 
 - `Lint and type-check`
 
@@ -695,7 +695,7 @@ can act on from a branch is noise.
 | `lint`, `docs` | pull request, push | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
 | `vendored-vectors` | weekly, a change to itself | — |
-| `codeql` | push to main, and weekly | the two scanned languages |
+| `codeql` | pull request, push to main, weekly | the two scanned languages |
 | `os-ubuntu` | weekly, a release | both ubuntu images × every interpreter |
 | `os-macos` | weekly, a release | both macOS images × every interpreter |
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
@@ -751,17 +751,18 @@ linkage from the tree instead. `os-ubuntu.yml`'s header records both
 costs beside each other.
 
 Everything but the first two rows also takes `workflow_dispatch`, which for
-`codeql` and the three platform workflows is the only way to ask about a
-branch at all. `claude-review` is the exception that takes none: both its
-jobs read the pull request or the comment that triggered them, so a manual
-run would start with nothing to read.
+the three platform workflows is the only way to ask about a branch at all.
+`claude-review` is the exception that takes none: both its jobs read the
+pull request or the comment that triggered them, so a manual run would
+start with nothing to read.
 
-`codeql` runs on `main` and on its weekly schedule and not on a pull
-request, which is the same arithmetic as the rows above: three slots held
-while a review waits. What still reads a branch before it merges is
-`zizmor`, a `pre-commit` hook and therefore part of `lint`, which audits
-these workflows for an injected expression; REPOSITORY.md has the trade in
-full. It is also the one workflow with no local command: reproducing it
+`codeql` runs on a pull request as well as on `main` and its weekly
+schedule, and none of the three makes it a gate: nothing requires the
+result, and REPOSITORY.md is where the rule that could is read back from
+the endpoint. What the pull-request trigger buys is that such a rule has a
+name to hold — one aggregate over the matrix rather than one context per
+language — at the price of those cells on every push to a branch.
+It is also the one workflow with no local command: reproducing it
 means the CodeQL CLI, a bundle GitHub distributes rather than a dependency
 `uv.lock` can pin, so what answers a finding is the run itself and the
 Security tab beside it.
