@@ -224,7 +224,11 @@ jobs:
       # declares twice: the tag named in README.md, and the commit the
       # submodule is pinned to. The tag is resolved at the source rather
       # than through the submodule checkout, whose shallow clone carries
-      # no tags
+      # no tags. Why README.md's prose stays the one declared claim, and
+      # the hazard of the sed expression below taking the *first* such
+      # link in the file rather than the "## Versioning" one by name, is
+      # check_submodule_pin.py's module docstring (btclib-org/btclib-secp256k1#429):
+      # this step's sed is that hook's `_NAMED` again, kept in step with it
       - name: Check that README.md names the pinned libsecp256k1
         run: |
           named=$(sed -n 's|.*secp256k1/releases/tag/\(v[0-9][0-9.]*\).*|\1|p' README.md | head -1)

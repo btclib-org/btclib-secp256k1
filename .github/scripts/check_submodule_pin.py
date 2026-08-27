@@ -30,6 +30,30 @@ lint workflow, on every commit rather than on the two paths that can
 break the agreement: pre-commit cannot filter on the gitlink, for the
 reason that hook's own comment gives, and two git invocations are cheap
 enough that it does not have to.
+
+README.md is the one declared value, on purpose: btclib-org/btclib-secp256k1#429
+asked whether the wrapped release should live there or in a fourth,
+machine-written place, and the answer is that README.md stays it. The
+submodule pin is already the machine's ground truth -- what this hook and
+`version-check` both resolve a tag against -- so a fourth file would only
+be one more thing to move in step with the submodule, not a smaller
+number of places that read it. What README.md's prose gives that the pin
+alone cannot is a human-legible claim of which release that commit is,
+which is what `release.yml` and `vendored-vectors.yml` compare it
+against too, each with its own copy of `_NAMED` (the three are named in
+#429; a fix to the parsing is owed to all of them in one campaign).
+
+That leaves one hazard #429 also names: `_NAMED.search` and the two
+workflows' `sed ... | head -1` both take the *first* match in the file,
+not the one under "## Versioning". Today that is the only match README.md
+carries, so first and only coincide; the moment a second matching link
+is added anywhere earlier in the file -- prose about an older release,
+say -- the first-match answer changes to it with nothing going red,
+because a stale claim that still resolves to a real tag is not
+distinguishable from a current one by shape alone. Keeping the
+"## Versioning" link the *only* such link in README.md is what keeps
+first and only the same match; a link added anywhere else in the file
+that also matches `_NAMED` has to stay below it.
 """
 
 from __future__ import annotations
@@ -80,7 +104,9 @@ def named_release(readme: str) -> str | None:
     Returns:
         The first release tag it links to, or None where it links to no
         upstream release at all -- which is a failure of its own and not
-        a check that passes vacuously.
+        a check that passes vacuously. "First" is safe only while the
+        "## Versioning" link is the sole match in the file, per the
+        module docstring's #429 paragraph.
     """
     match = _NAMED.search(readme)
     return match[1] if match else None

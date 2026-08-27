@@ -95,6 +95,22 @@ def test_the_release_is_read_off_the_url() -> None:
     assert check.named_release(f"{_README} up from {older}") == "v0.8.0"
 
 
+def test_a_link_placed_before_the_named_one_wins_instead() -> None:
+    """First is a position, not an identity (btclib-org/btclib-secp256k1#429).
+
+    Nothing here tells a stale link from a current one by shape: both are
+    `secp256k1/releases/tag/vX.Y.Z`, and `named_release` reads whichever
+    comes first in the file. The tree relies on "## Versioning"'s link
+    being the only one, not on it being the right one by some other mark
+    -- so a second, older link placed *before* it silently becomes the
+    release every check compares the submodule against, with no error
+    anywhere. This is the reverse of the case above, which places the
+    older link after and finds it inert.
+    """
+    older = "[v0.7.1](https://github.com/bitcoin-core/secp256k1/releases/tag/v0.7.1)"
+    assert check.named_release(f"{older} came before {_README}") == "v0.7.1"
+
+
 def test_a_pin_matching_the_named_release_passes(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

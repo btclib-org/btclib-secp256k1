@@ -95,6 +95,15 @@ own contract in its docstring.
 
 ## Versioning
 
+<!-- The link below is read by three checks -- check_submodule_pin.py,
+release.yml and vendored-vectors.yml -- each taking the first match of
+the same expression in this file rather than this heading by name
+(btclib-org/btclib-secp256k1#429; check_submodule_pin.py's module
+docstring has the full reasoning). That makes this the only place in
+README.md that may link to a secp256k1 release tag: a second such link
+placed anywhere earlier in the file would silently become the one all
+three read instead, with nothing going red. -->
+
 btclib_secp256k1 version numbers track the wrapped libsecp256k1 version:
 release M.N.P wraps libsecp256k1 vM.N.P, and the vendored library is
 [v0.8.0](https://github.com/bitcoin-core/secp256k1/releases/tag/v0.8.0).
