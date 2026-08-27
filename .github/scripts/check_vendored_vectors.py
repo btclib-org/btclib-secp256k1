@@ -27,10 +27,17 @@ not there any more is the one drift nobody would otherwise notice.
 Two more shapes this script does not attempt, for the same reason
 btclib's does not, present or not in this project's own README today: a
 path carrying a `<name>` placeholder, where one pin serves several
-files at once, and an entry with no `commit` at all. Every heading the
-README carries but this script did not check is listed in its own
-report, so nothing silently reads as "checked and clean" that was not
-checked at all.
+files at once, and an entry with no `commit` at all. A heading owning no
+fenced block of its own is a third, and different in kind from the other
+two: there is no block to read a field out of, so it is listed under its
+own reason rather than folded into "no commit to check against" --
+whether it is a group heading a finer one supersedes, or a pin whose
+block an edit broke, is not for this script to tell apart, only to
+report by name. Every heading the README carries but this script did not
+check is listed in its own report, so nothing silently reads as "checked
+and clean" that was not checked at all -- this copy diverges from
+btclib's here, whose own report does not yet name that third shape
+(btclib-org/btclib#1447).
 
     python .github/scripts/check_vendored_vectors.py tests/README.md
 """
@@ -96,12 +103,16 @@ class Drift:
 def _entries_at_tip(readme: str) -> tuple[list[Entry], list[str]]:
     """Return the checkable entries, and the headings this skips.
 
-    A heading is skippable for any of three reasons: no repo/path/commit
-    triple at all, a path carrying a `<name>` placeholder, or a `behind`
-    already other than 0 -- a gap a human already decided not to close.
+    A heading is skippable for any of four reasons: no fenced block of its
+    own -- a group heading superseded by finer ones, or a pin whose block
+    an edit broke, the two indistinguishable from here -- no
+    repo/path/commit triple, a path carrying a `<name>` placeholder, or a
+    `behind` already other than 0 -- a gap a human already decided not to
+    close.
     """
     entries: list[Entry] = []
     skipped: list[str] = []
+    owned: set[str] = set()
     heading = ""
     pos = 0
     for match in re.finditer(r"```text\n(.*?)\n```", readme, re.DOTALL):
@@ -109,6 +120,7 @@ def _entries_at_tip(readme: str) -> tuple[list[Entry], list[str]]:
         if headings_before:
             heading = headings_before[-1]
         pos = match.end()
+        owned.add(heading)
 
         fields = dict(_FIELD.findall(match.group(1)))
         repo, path, commit = (
@@ -126,6 +138,9 @@ def _entries_at_tip(readme: str) -> tuple[list[Entry], list[str]]:
             skipped.append(f"{heading} (already documented as behind)")
             continue
         entries.append(Entry(heading, repo, path.strip(), commit.split()[0]))
+    skipped.extend(
+        f"{h} (no fenced block)" for h in _HEADING.findall(readme) if h not in owned
+    )
     return entries, skipped
 
 

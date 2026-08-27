@@ -2041,6 +2041,30 @@ release-notes length in the first place, and are still in
   keyserver fetch. The table's row for the workflow says a pull request
   touching what it reads, where it said a change to itself.
 
+### A heading with no block is reported, and the version link names its hazard
+
+- **`check_vendored_vectors.py` lists a `###` heading owning no fenced
+  block under `skipped`, and `README.md`'s prose declaration of the
+  wrapped libsecp256k1 release now says, where the three checks that
+  parse it are, why it is prose and what breaks it** (closes #415, #429).
+  `_entries_at_tip` only ever named a heading from inside the loop over
+  fenced blocks, so a heading with none of its own -- a group heading
+  superseded by finer ones, or a pin whose block an edit broke -- was
+  absent from both `entries` and `skipped`, contradicting the module
+  docstring's own promise; it is now named under `(no fenced block)`,
+  which of the two shapes it is being left for the reader, same as
+  `btclib`'s copy does not yet do (btclib-org/btclib#1447). Separately,
+  `check_submodule_pin.py`'s module docstring records why `README.md`
+  stays the one declared value rather than moving to a fourth,
+  machine-written place -- the submodule pin is already the machine's
+  ground truth the prose is checked against -- and names the hazard left
+  open by that choice: `_NAMED.search` and the two workflows' `sed |
+  head -1` take the *first* matching link in the file, not the one under
+  `Versioning` by name, so a second such link placed earlier would win
+  silently. `release.yml`'s own copy of the expression points back at
+  that paragraph, and `tests/submodule_pin_test.py` gains the reversed
+  case: a link placed *before* the named one wins instead of being inert.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
