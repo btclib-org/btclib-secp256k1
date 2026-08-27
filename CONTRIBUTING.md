@@ -270,6 +270,21 @@ uv sync --locked
 That also builds and installs the extension in editable mode, which is
 the minutes rather than seconds part of it.
 
+A `git worktree` starts with an empty `secp256k1/` however complete the
+checkout it was made from, so the submodule is a precondition of the
+gates below and not of a clone alone:
+
+```shell
+git submodule update --init
+```
+
+The test and documentation gates install this package, and installing it
+compiles libsecp256k1 out of that directory before any `automodule`
+directive imports the result. The lint gate installs no project —
+`--only-group` omits it — and needs the vendored clone all the same:
+`submodule-pin` resolves the release `README.md` names in that clone's
+own refs, which is what lets the check run offline.
+
 Three gates decide a merge, and each command below is the one its
 workflow runs:
 
@@ -280,10 +295,8 @@ uv run --locked --no-default-groups --group docs \
     sphinx-build -n -W --keep-going -b html docs/source docs/build/html
 ```
 
-The documentation build needs the submodule checked out: every
-`automodule` directive imports this package, which means compiling
-libsecp256k1 first. Coverage is measured in branch mode
-and gated by the `fail_under` ratchet in `pyproject.toml`.
+Coverage is measured in branch mode and gated by the `fail_under` ratchet
+in `pyproject.toml`.
 
 The group flags are not decoration. `uv run` syncs the environment
 itself, and without `--no-default-groups --group test` it installs the
@@ -536,12 +549,9 @@ command at all, for the reason below, and nothing requires its result.
   own. What turned it red is one of them, in the run
 
 - `Build the documentation`, the same command `.readthedocs.yaml` runs
-  and `docs/README.rst` documents. Needs the submodule checked out:
-  every `automodule` directive imports this package, which means
-  compiling libsecp256k1 first
+  and `docs/README.rst` documents
 
   ```shell
-  git submodule update --init
   uv run --locked --no-default-groups --group docs \
       sphinx-build -n -W --keep-going -b html docs/source docs/build/html
   ```
@@ -694,8 +704,9 @@ can act on from a branch is noise.
 | `test` | pull request, push | the wheels, the sdist, one suite cell |
 | `lint`, `docs` | pull request, push | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
-| `vendored-vectors` | weekly, a change to itself | — |
+| `vendored-vectors` | weekly, a pull request touching what it reads | — |
 | `codeql` | pull request, push to main, weekly | the two scanned languages |
+| `scorecard` | push to main, weekly | — |
 | `os-ubuntu` | weekly, a release | both ubuntu images × every interpreter |
 | `os-macos` | weekly, a release | both macOS images × every interpreter |
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
@@ -750,11 +761,14 @@ against the dynamic wheel as a package — the sentinels compile that
 linkage from the tree instead. `os-ubuntu.yml`'s header records both
 costs beside each other.
 
-Everything but the first two rows also takes `workflow_dispatch`, which for
-the three platform workflows is the only way to ask about a branch at all.
-`claude-review` is the exception that takes none: both its jobs read the
-pull request or the comment that triggered them, so a manual run would
-start with nothing to read.
+Every workflow here takes `workflow_dispatch`, the gates included, except
+`claude-review` and `scorecard`, and for the three platform workflows it is
+the only way to ask about a branch at all. Both of `claude-review`'s jobs
+read the pull request or the comment that triggered them, so a manual run
+would start with nothing to read. `scorecard`'s triggers are its action's
+rather than this organization's: `ossf/scorecard-action`'s own README names
+push and schedule on the default branch as what it supports, and calls
+`workflow_dispatch` experimental.
 
 `codeql` runs on a pull request as well as on `main` and its weekly
 schedule, and none of the three makes it a gate: nothing requires the
@@ -762,7 +776,15 @@ result, and REPOSITORY.md is where the rule that could is read back from
 the endpoint. What the pull-request trigger buys is that such a rule has a
 name to hold — one aggregate over the matrix rather than one context per
 language — at the price of those cells on every push to a branch.
-It is also the one workflow with no local command: reproducing it
-means the CodeQL CLI, a bundle GitHub distributes rather than a dependency
-`uv.lock` can pin, so what answers a finding is the run itself and the
-Security tab beside it.
+There is no local command for it either: reproducing it means the CodeQL
+CLI, a bundle GitHub distributes rather than a dependency `uv.lock` can
+pin, so what answers a finding is the run itself and the Security tab
+beside it.
+
+`scorecard` gates nothing and could not: it runs on `main` and on its
+weekly schedule, so there is no pull request run for a branch rule to
+name. It has no local command either — the score is the action's, and
+`README.md`'s badge reads it back from the API that serves it — and what
+the run finds arrives as code scanning alerts beside CodeQL's. Which
+repositories of the organization run it at all is section 10 of the
+standard, this one among them.

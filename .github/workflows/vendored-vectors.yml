@@ -53,6 +53,20 @@ on:
     # that under any action
     types: [opened, reopened, synchronize, ready_for_review, closed]
     paths:
+      # what a paths list costs is the wait one run adds to the checks a
+      # pull request already has, which is how section 10 of the standard
+      # weighs a paths-filtered pull_request on a calendar workflow --
+      # not how many branches the list selects. Every path below is one
+      # test.yml's `prose` pattern does not exempt, so a branch selected
+      # here runs the wheel and suite matrix anyway, against a run of this
+      # workflow that is a script and a keyserver fetch. The durations are
+      # read back rather than assumed:
+      #
+      #     gh run list --repo btclib-org/btclib-secp256k1 \
+      #       --workflow vendored-vectors.yml \
+      #       --json createdAt,updatedAt,conclusion
+      #
+      # and the same call for test.yml is what it is compared against
       - .github/workflows/vendored-vectors.yml
       - .github/scripts/check_vendored_vectors.py
       - tests/README.md
