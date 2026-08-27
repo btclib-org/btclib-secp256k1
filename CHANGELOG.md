@@ -1972,6 +1972,36 @@ release-notes length in the first place, and are still in
   of `The name`, the section that names an older release: what each of
   those checks reads is the first link in the file.
 
+### The sentinel schedules are section 10's calendar, in family order
+
+- **Every `cron:` here fires at the instant section 10's calendar gives
+  that workflow and this repository** (issue btclib-org/.github#480). The
+  calendar's rows sit in the order of what they ask about -- the data a
+  tree ships and did not write, the depth its suite is tested to, what it
+  depends on and what it publishes, its platforms, its own health and its
+  security -- so a workflow's day and hour follow its family. The minute
+  is this repository's row in that section's second table, and it does not
+  move. `dependabot.yml` is untouched, section 10 keeping `deps-latest` on
+  the day before Dependabot's own. The comments beside the schedules
+  follow: no header names a day the calendar does not give the workflow it
+  sits in, and `tests/mutation_counts_test.py`'s docstring names no day at
+  all, a weekly session being read whenever it runs.
+
+- **`README.md`'s badge block is section 2's three groups** (issue
+  btclib-org/.github#480). What the software is opens with the release
+  identity as a pair, the PyPI version beside `github/v/release`, which is
+  how section 2 says those two are read: where they disagree, a release
+  reached the forge and not the index. The licence and `wheel` sit in that
+  group, this tree having a `LICENSE` and publishing wheels, and section 2
+  derives the row from such properties rather than curating it. The CI
+  group is the gates in the order a commit meets them, Read the Docs among
+  them because it answers `passing`, `failing` or `unknown` as the
+  workflow badges around it do, and then the sentinels in the calendar's
+  order -- so the badge order is the calendar order over that subset, and
+  the two move together or not at all. The Scorecard badge is the OpenSSF
+  group, and section 2 reads it as the last of the sentinels without being
+  among them, `scorecard` being the calendar's last row.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

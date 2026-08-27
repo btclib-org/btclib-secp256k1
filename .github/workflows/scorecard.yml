@@ -23,10 +23,10 @@ on:
     # the action's, not section 10's general rule
     branches: [main]
   schedule:
-    # Saturday, hour 03: section 10's calendar, decided by
-    # btclib-org/.github#363. The minute is this repository's own row in
-    # that section's second table -- neither is this file's to restate.
-    - cron: "8 3 * * 6"
+    # Sunday, hour 05: section 10's calendar, where scorecard is the
+    # last row. The minute is this repository's own row in that section's
+    # second table -- neither is this file's to restate.
+    - cron: "8 5 * * 0"
 
 # least privilege for the GITHUB_TOKEN at the workflow level, with one
 # elevation on the job below: the analysis reads the tree, requests a

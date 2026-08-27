@@ -74,11 +74,11 @@ name: os-ubuntu
 
 on:
   schedule:
-    # Friday, alone: a platform sentinel is two images times every
+    # Friday, hour 04: a platform sentinel is two images times every
     # interpreter, compiling libsecp256k1 twice a cell, and three of them
     # in one morning is the queue this arrangement exists to avoid.
-    # os-macos.yml and os-windows.yml share Saturday between them; this one
-    # takes the day before.
+    # os-macos.yml has Thursday and os-windows.yml the hour after this
+    # one.
     # The time is the organization grid -- section 10 of
     # btclib-org/.github's README.md -- and not this file's to restate.
     # Only the default branch schedules workflows, so on any other branch
