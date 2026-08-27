@@ -1959,6 +1959,19 @@ release-notes length in the first place, and are still in
   meets this file as the long description an index renders or as the
   `README.md` an unpacked sdist carries.
 
+### `README.md` names the vendored libsecp256k1 release
+
+- **The `Versioning` section names the pinned release as a link to the
+  upstream tag** (closes #428). `check_submodule_pin.py` reads that link
+  out of `README.md` and exits 1 where the file links to no release at
+  all, which fails the `submodule-pin` hook and with it the lint gate, a
+  required check, for every branch; `release.yml`'s `version-check` job
+  and `vendored-vectors.yml`'s `pin` job read the same line with the same
+  expression. It stands where the numbering rule's parenthetical example
+  was, that example naming the same version without linking it, and ahead
+  of `The name`, the section that names an older release: what each of
+  those checks reads is the first link in the file.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -90,9 +90,9 @@ own contract in its docstring.
 
 ## Versioning
 
-btclib_secp256k1 version numbers track the wrapped libsecp256k1
-version: release M.N.P wraps libsecp256k1 vM.N.P
-(e.g. btclib_secp256k1 0.8.0 wraps libsecp256k1 v0.8.0).
+btclib_secp256k1 version numbers track the wrapped libsecp256k1 version:
+release M.N.P wraps libsecp256k1 vM.N.P, and the vendored library is
+[v0.8.0](https://github.com/bitcoin-core/secp256k1/releases/tag/v0.8.0).
 When a new release of the bindings is needed while still wrapping the
 same libsecp256k1 version, a fourth number is appended:
 0.7.1.1, 0.7.1.2, etc.
