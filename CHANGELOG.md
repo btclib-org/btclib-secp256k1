@@ -1873,6 +1873,31 @@ release-notes length in the first place, and are still in
   siblings' own does. `RELEASING.md`'s "Rebuild a release from its tag"
   runs both steps now, and no longer explains their absence.
 
+- **A `documented` job asks read the docs whether it built the tag**
+  (closes #295). It waits for
+  `https://btclib-secp256k1.readthedocs.io/en/<tag>/` to be served and is
+  red if it never is: green means the release has a permanent URL of its
+  own, which is the one to link wherever the version is named.
+  `/en/latest/` answers 200 regardless, serving the last build that
+  succeeded whatever that was, so an eye on the site cannot catch a tag
+  that was never built. The rendered URL rather than the v3 API, which
+  would put a credential in a job that gates nothing; and nothing needs
+  the job in return -- a late documentation build is no reason to
+  withhold a wheel, and the fix for a red run is a build on read the
+  docs' side rather than a moved tag. That property is what made the
+  ordering matter: `github-release` carries the `always()` that keeps a
+  skipped ancestor from swallowing it, so a job able to fail the run is
+  not one more way to lose the GitHub release. What no pull request here
+  can supply is the automation rule that activates a tag on read the
+  docs' side, a dashboard action tracked at btclib-org/.github#26 —
+  which is why this job asks the site rather than asserting anything
+  about the rule: what a run can see is whether a tag is served, and no
+  sentence here states what somebody else's dashboard holds on the day
+  it is read. `RELEASING.md` gains the step that reads
+  the job's verdict, saying what a red there means and what it does not,
+  and `.readthedocs.yaml` names the job instead of calling the check
+  blocked.
+
 ### `notice-rgx` derives from `COPYRIGHT`
 
 - **A test compares them** (#346, btclib-org/.github#135). `CPY` checks
