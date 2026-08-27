@@ -20,7 +20,6 @@ sits. -->
 [![downloads](https://static.pepy.tech/badge/btclib-secp256k1)](https://pepy.tech/project/btclib-secp256k1)
 [![supported Python versions](https://img.shields.io/pypi/pyversions/btclib-secp256k1.svg?logo=python)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![implementation](https://img.shields.io/pypi/implementation/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
-secp256k1/releases)
 [![development status](https://img.shields.io/pypi/status/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
 
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/btclib-secp256k1/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/btclib-secp256k1/main)
