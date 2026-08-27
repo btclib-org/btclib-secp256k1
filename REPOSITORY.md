@@ -93,7 +93,9 @@ reason no pull request introduced. The first three are the ones worth naming
 twice, because they do run the suite: what a merge no longer waits for is
 every cell of it but one, the reasoning being in `os-ubuntu.yml`'s header and
 the numbers in `test.yml`'s, and `release.yml` calls all three so that a
-publication still does.
+publication still does. `scorecard.yml` is outside the rule for a reason of
+its own: it carries no `pull_request` trigger, so it produces no context a
+branch rule could name.
 
 A check can be bound to the app that produces it — `checks` with an
 `app_id` rather than the bare `contexts` list — so that nothing else can
@@ -528,10 +530,27 @@ pull request is a way around the rule that somebody other than the
 author approves, so `can_approve_pull_request_reviews` is read back
 beside the token's own scope and not left to be assumed.
 
-Only `release.yml` asks for more: `contents: write` on `github-release`,
-`id-token: write` on the two publish jobs, which is what Trusted
-Publishing exchanges, and `id-token: write` with `attestations: write` on
-`attest`. One elevation per job is the shape to keep — the job that writes
+What asks for more asks per job, and the declarations are the record of
+it — anchored, so that a comment naming a permission stays out of the
+answer:
+
+```shell
+git grep -n ': write$' -- .github/workflows
+```
+
+`release.yml` takes `contents: write` on `github-release` and `id-token:
+write` on the two publish jobs, which is what Trusted Publishing
+exchanges, with `attestations: write` beside it on `attest`.
+`claude-review.yml` takes `pull-requests: write` and `id-token: write` on
+each of its two jobs. `codeql.yml` and `scorecard.yml` take
+`security-events: write` on the job that files a SARIF as code scanning
+alerts, and `scorecard.yml` takes `id-token: write` besides, for the
+transparency-log entry its published score rests on.
+`vendored-vectors.yml` takes `issues: write` on the job that opens the
+drift issue, and that file's header says why it takes a step the other
+sentinels deliberately do not.
+
+One elevation per job is the shape to keep — the job that writes
 releases holds no OIDC token, and the job that signs writes no release.
 The workflow-level `permissions: contents: read` in every file is belt and
 braces; keep it, it is what makes the intent readable where the job is.

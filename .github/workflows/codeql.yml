@@ -148,9 +148,9 @@ jobs:
     #             | {name, started_at, completed_at}'
     timeout-minutes: 15
     permissions:
-      # what uploads the SARIF and what the alerts are written with; the
-      # only write permission any job in this repository asks for outside
-      # release.yml
+      # what uploads the SARIF and what the alerts are written with.
+      # scorecard.yml's analysis job asks for the same; REPOSITORY.md's
+      # Token permissions is where every elevation here is listed
       security-events: write
       contents: read
       # what CodeQL reads workflow run data with, required for a private

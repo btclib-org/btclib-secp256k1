@@ -2002,6 +2002,45 @@ release-notes length in the first place, and are still in
   group, and section 2 reads it as the last of the sentinels without being
   among them, `scorecard` being the calendar's last row.
 
+### What the workflow table and the `paths` filter name
+
+- **`CONTRIBUTING.md`'s workflow table carries a `scorecard` row, and
+  the sentences around it that claim an exception name it** (closes
+  #413). That workflow runs on `main` and on its weekly schedule and
+  takes no `workflow_dispatch`, its triggers being
+  `ossf/scorecard-action`'s rather than section 10's; it gates nothing
+  and could not, producing no pull request run for a branch rule to
+  name, and what it finds arrives as code scanning alerts beside
+  CodeQL's. `REPOSITORY.md`'s *Token permissions* names every job that
+  asks for more than the read-only default, with the anchored `git grep`
+  that re-derives them beside it, where it had named `release.yml` as
+  the only workflow asking at all, and its *Required checks on main* say
+  why that workflow is outside the rule, it carrying no `pull_request`
+  trigger to produce a context; `codeql.yml`'s own comment stops
+  claiming that same exclusivity for its `security-events: write` and
+  points at the permissions section.
+- **The gate block makes the vendored submodule a precondition of all
+  three gates rather than of the documentation build alone** (closes
+  #422). Installing this package compiles libsecp256k1 out of
+  `secp256k1/`, so the test and documentation commands cannot build the
+  environment without it, and the lint gate, which installs no project,
+  needs the vendored clone all the same: `submodule-pin` resolves the
+  release `README.md` names in that clone's own refs, which is what lets
+  the hook run offline. A `git worktree` starts with that directory
+  empty however complete the checkout it was made from, and a worktree
+  is the path this repository puts a session on. The documentation job's
+  own copy of the command goes with the hoist.
+- **`vendored-vectors.yml`'s `paths` filter is unchanged, and its header
+  now says what weighs it** (closes #424). Section 10 of the standard
+  weighs a `paths`-filtered `pull_request` on a calendar workflow by the
+  wait one run adds to the checks a pull request already has, rather
+  than by how many branches the list selects. Every path in this one is
+  a path `test.yml`'s `prose` pattern does not exempt, `README.md`
+  included, so a branch the filter selects is running the wheel and
+  suite matrix regardless, against a run here that is a script and a
+  keyserver fetch. The table's row for the workflow says a pull request
+  touching what it reads, where it said a change to itself.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
