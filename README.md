@@ -16,13 +16,12 @@ one. btclib-org/.github#363's row has since landed, which does not
 settle #358 -- section 10's own trigger-exemption reasoning for
 Scorecard is about which events it runs on, not about where its badge
 sits. -->
-[![GitHub release](https://img.shields.io/github/v/release/btclib-org/btclib-secp256k1.svg)](https://github.com/btclib-org/btclib-[![PyPI version](https://img.shields.io/pypi/v/btclib-secp256k1.svg?logo=pypi)](https://pypi.python.org/pypi/btclib-secp256k1/)
+[![PyPI version](https://img.shields.io/pypi/v/btclib-secp256k1.svg?logo=pypi)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![downloads](https://static.pepy.tech/badge/btclib-secp256k1)](https://pepy.tech/project/btclib-secp256k1)
 [![supported Python versions](https://img.shields.io/pypi/pyversions/btclib-secp256k1.svg?logo=python)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![implementation](https://img.shields.io/pypi/implementation/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
 secp256k1/releases)
 [![development status](https://img.shields.io/pypi/status/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
-[![license](https://img.shields.io/github/license/btclib-org/btclib-secp256k1.svg)](https://github.com/btclib-org/btclib-secp256k1/blob/main/LICENSE)
 
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/btclib-secp256k1/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/btclib-secp256k1/main)
 [![test workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/test.yml/badge.svg)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/test.yml)
