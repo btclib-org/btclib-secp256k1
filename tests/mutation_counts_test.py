@@ -5,7 +5,7 @@
 """Tests for the mutation session counter of `.github/scripts`.
 
 The script is what the `mutation` workflow prints, and what it prints is
-the only thing anybody reads on a Sunday: a wrong denominator, or an
+the only thing anybody reads of a weekly session: a wrong denominator, or an
 outcome left out of the line, is a session that measured less than it
 appears to. Neither is visible in a green run, so it is tested here
 instead.

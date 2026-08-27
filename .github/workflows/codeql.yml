@@ -87,18 +87,19 @@ on:
     # group's
     types: [opened, reopened, synchronize, ready_for_review, closed]
   schedule:
-    # Tuesday, which the grid gives to this and to nothing else. Weekly,
-    # which is what default setup ran, and it earns the slot: a CodeQL
-    # release can find in unchanged code what the queries of the week
-    # before did not look for, so a repository that sits still is not a
-    # repository that stays clean.
+    # Sunday, with scorecard.yml the hour after: the grid's two security
+    # rows share the day and not the hour. Weekly, which is what default
+    # setup ran, and it earns the slot: a CodeQL release can find in
+    # unchanged code what the queries of the week before did not look
+    # for, so a repository that sits still is not a repository that stays
+    # clean.
     # The time is the organization grid -- section 10 of
     # btclib-org/.github's README.md -- and not this file's to restate.
     # A sibling repository analyses on the same day and not at the same
     # minute, which is the whole of what the grid's minute is for.
     # Only the default branch schedules workflows, so on any other branch
     # this is reachable through the dispatch below alone
-    - cron: "8 4 * * 2"
+    - cron: "8 4 * * 0"
   # the escape hatch: the analysis on demand for a branch whose pull
   # request is not open yet, which the trigger above cannot reach
   workflow_dispatch:

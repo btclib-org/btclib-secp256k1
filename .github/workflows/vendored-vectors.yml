@@ -20,18 +20,17 @@ name: vendored vectors
 
 on:
   schedule:
-    # Monday, the hour after links.yml: the two ask the same question of
-    # different things, whether what this tree points at is still what it
-    # pointed at, and reading them together separates an upstream edit
-    # from a network having a bad morning. Weekly rather than monthly,
-    # which is what the grid has to give: a vector file drifts when
-    # upstream edits it in place, and the sample rate for that was never
-    # derived from the subject.
+    # Monday, hour 03: the calendar opens the week with the data a tree
+    # ships and did not write, and this asks whether what upstream serves
+    # is still what is vendored here. Weekly rather than monthly, which
+    # is what the grid has to give: a vector file drifts when upstream
+    # edits it in place, and the sample rate for that was never derived
+    # from the subject.
     # The time is the organization grid -- section 10 of
     # btclib-org/.github's README.md -- and not this file's to restate.
     # Only the default branch schedules workflows, so on any other branch
     # this is reachable through the dispatch below alone
-    - cron: "8 5 * * 1"
+    - cron: "8 3 * * 1"
   workflow_dispatch:
   pull_request:
     # ready_for_review, so a pull request marked ready gets the run the

@@ -44,13 +44,13 @@ name: os-windows
 
 on:
   schedule:
-    # Saturday, the hour after os-macos.yml: see that file for why the two
-    # platforms share a day and not an hour.
+    # Friday, the hour after os-ubuntu.yml: see os-macos.yml for why the
+    # platforms run apart.
     # The time is the organization grid -- section 10 of
     # btclib-org/.github's README.md -- and not this file's to restate.
     # Only the default branch schedules workflows, so on any other branch
     # this is reachable through the dispatch below alone
-    - cron: "8 5 * * 6"
+    - cron: "8 5 * * 5"
   # lets release.yml gate a publication on this platform too, which is what
   # keeps a weekly sentinel from being the only thing that ever asks
   workflow_call:

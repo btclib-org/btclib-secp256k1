@@ -44,17 +44,16 @@ name: mutation
 
 on:
   schedule:
-    # Sunday, and the grid gives the hour to this alone: a session
-    # measured in minutes gets the day nothing else asks for. What it
+    # Monday, and the grid gives the hour to this alone: a session
+    # measured in minutes gets an hour nothing else asks for. What it
     # asks is on a different axis from every other sentinel here -- the
-    # suite's own quality, not a dependency's or a platform's -- which is
-    # why the answer waits for a morning of its own.
+    # suite's own quality, not a dependency's or a platform's.
     # The time is the organization grid -- section 10 of
     # btclib-org/.github's README.md -- and not this file's to restate.
     # Cron runs from the default branch only, so this file does nothing
     # until it reaches main -- on any other branch it is reachable through
     # the dispatch below and nowhere else
-    - cron: "8 4 * * 0"
+    - cron: "8 5 * * 1"
   # the escape hatch, and the way to re-measure after writing the tests a
   # survivor asked for
   workflow_dispatch:
