@@ -640,6 +640,17 @@ manual bump to the tagged commit. `.github/dependabot.yml` is validated by
 the `check-dependabot` hook, a typo there otherwise updating nothing and
 saying nothing. Dependabot security updates are on.
 
+## Private vulnerability reporting
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1/private-vulnerability-reporting
+# {"enabled":true}
+```
+
+On. It is what puts the *Report a vulnerability* button on the Security
+tab, and `.github/ISSUE_TEMPLATE/config.yml` links
+`/security/advisories/new` on the strength of it.
+
 ## Plan-gated settings
 
 Some settings cannot be enabled and fail silently:
