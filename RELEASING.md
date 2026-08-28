@@ -362,7 +362,7 @@ Then:
    what was installed:
 
    ```shell
-   uv run --isolated --no-project --with btclib_secp256k1==0.7.1 \
+   uv run --isolated --no-project --with btclib-secp256k1==0.7.1 \
      python -c "
    from btclib_secp256k1 import ssa
    msg = bytes(32)
@@ -575,7 +575,7 @@ artifacts already built.
      --index-url https://test.pypi.org/simple/ \
      --extra-index-url https://pypi.org/simple/ \
      --index-strategy unsafe-best-match --prerelease allow \
-     --with btclib_secp256k1==0.7.1.dev1 \
+     --with btclib-secp256k1==0.7.1.dev1 \
      python -c "import btclib_secp256k1 as m; print(m.__version__)"
    ```
 
@@ -671,10 +671,12 @@ field left, and the one hatchling does not fix on its own: unset,
 `1580601600`, neither of which is the tagged commit's date, so the
 script — and the `SOURCE_DATE_EPOCH` step ahead of the build, belt and
 braces against a future hatchling release deciding the variable
-differently — is what makes it that instead. The step is section 12 of
-the organization standard: one process across the three repositories,
-`btclib-org/.github#140`'s decision, rather than one bounded by
-whichever backend happens to need it.
+differently — is what makes it that instead. The property those two
+serve is section 12 of the organization standard's: a published sdist
+reproduces from its tag. The steps between the tag and the archive are
+this file's to name, with the reason beside each, and section 12 refuses
+the reading under which a publisher weighs whether its backend has made
+one of them redundant.
 
 The vendored `secp256k1` submodule is not a source of drift on top of
 that: `.gitmodules` pins it to a commit, and a git checkout of a pinned
