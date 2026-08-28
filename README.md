@@ -122,11 +122,12 @@ Nothing on PyPI bridges the two, deliberately: `btclib_libsecp256k1`
 stops at 0.7.1.3 and stays installable, wrapping libsecp256k1 0.7.1, and
 `pip install btclib_libsecp256k1` keeps resolving to it rather than
 following the rename. Moving means changing the requirement and the
-import, which are the same edit twice:
+import, which spell the new name differently: the requirement takes the
+distribution's hyphen and the import the package's underscore.
 
 ```diff
 -btclib_libsecp256k1>=0.7.1.3
-+btclib_secp256k1>=0.8.0
++btclib-secp256k1>=0.8.0
 ```
 
 ```diff

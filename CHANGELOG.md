@@ -2112,6 +2112,30 @@ release-notes length in the first place, and are still in
   `static.pepy.tech/badge/btclib-secp256k1`, is section 2's own spelling
   and does not move.
 
+### The distribution's name is hyphenated where a requirement writes it
+
+- **`README.md`'s move-off-the-old-name block and the two install
+  commands in `RELEASING.md` spell the distribution `btclib-secp256k1`**
+  (closes btclib-org/.github#524). Section 3 of the organization
+  standard makes the hyphen the canonical spelling and asks a
+  requirement for it wherever it is written, a block somebody is meant
+  to copy included; PEP 503 folds the two spellings before a resolver
+  matches, so what the written form decides is what a reader copies out
+  and types. The sentence introducing that block says which spelling
+  each of the two edits takes, the import package keeping its
+  underscore.
+
+### The normalization step is this file's, the property section 12's
+
+- **`RELEASING.md`'s *Rebuild a release from its tag* names the property
+  — a published sdist reproduces from its tag — as section 12 of the
+  organization standard's, and the steps between the tag and the archive
+  as this file's** (closes #441). That section asks a `RELEASING.md` for
+  those steps with the reason beside each, so replacing one of them is a
+  change here and not there. Its refusal of the other reading stands
+  beside it: a publisher does not weigh whether its backend has made a
+  step redundant.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
