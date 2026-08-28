@@ -2100,6 +2100,18 @@ release-notes length in the first place, and are still in
   ratchet over the directory is a decision about them rather than about
   this one.
 
+### The downloads badge links to the plural pepy URL
+
+- **The downloads badge's link target is
+  `pepy.tech/projects/btclib-secp256k1`** (closes #436). Section 2 of
+  the organization standard fixes the plural; the singular answers `308`
+  and reaches the page only for as long as pepy goes on forwarding it,
+  which is a dependency on somebody else's redirect and is recorded
+  nowhere here. That is the reason that section gives for the Read the
+  Docs host it fixed the same way. The image,
+  `static.pepy.tech/badge/btclib-secp256k1`, is section 2's own spelling
+  and does not move.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
