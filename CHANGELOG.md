@@ -2145,6 +2145,17 @@ release-notes length in the first place, and are still in
   index showing the two fields as one link is cheaper than the field
   tools read for that purpose specifically.
 
+### `REPOSITORY.md` reads private vulnerability reporting back
+
+- **A `Private vulnerability reporting` section carries the `gh api
+  .../private-vulnerability-reporting` call and its `{"enabled":true}`
+  answer** (issue btclib-org/.github#468). The organization standard's
+  *Root files* section makes the setting every tier's regardless of
+  which tier owns `SECURITY.md`, and a record silent about it could not
+  have shown the setting turned off. The topics already carried their
+  own readback, the `diff` against `pyproject.toml`'s `keywords` further
+  up this file.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
