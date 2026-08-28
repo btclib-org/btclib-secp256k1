@@ -648,6 +648,60 @@ run locally.
   that raised, which is Cosmic Ray not having measured rather than a test
   that is missing.
 
+- `vendored-vectors`, whose two jobs ask two unrelated questions and
+  reproduce separately. `check` re-reads every pin in `tests/README.md`
+  against upstream, and `--dry-run` is what the `pull_request` trigger
+  passes so that the run edits no tracking issue — which is what a run
+  by hand wants too:
+
+  ```shell
+  uv run --no-project python \
+      .github/scripts/check_vendored_vectors.py tests/README.md --dry-run
+  ```
+
+  `--no-project` because there is no environment to build for it: the
+  script imports only the standard library and shells out to `gh`, which
+  has to be authenticated. The workflow's own line is a bare `python`,
+  which is setup-python's on the runner and need not be anything on a
+  machine that has uv and no interpreter of its own on `PATH`. Without
+  the flag it is the scheduled run, and it opens, edits or closes the
+  issue it finds.
+
+  `pin` asks the two halves `submodule-pin` cannot ask offline —
+  whether the tag `README.md` names is the one upstream publishes, and
+  whether a libsecp256k1 maintainer signed it:
+
+  ```shell
+  gpg --keyserver hkps://keys.openpgp.org --recv-keys \
+      $(grep -oE '\b[0-9A-F]{40}\b' .github/workflows/vendored-vectors.yml)
+  named=$(sed -n 's|.*secp256k1/releases/tag/\(v[0-9][0-9.]*\).*|\1|p' \
+      README.md | head -1)
+  git -C secp256k1 fetch --force origin "refs/tags/${named}:refs/tags/${named}"
+  git -C secp256k1 tag -v "${named}"
+  git -C secp256k1 rev-parse "${named}^{commit}"  # what upstream tags
+  git ls-tree HEAD secp256k1                      # what this tree pins
+  ```
+
+  the fingerprints are lifted out of the workflow rather than written
+  again here, a second list being one that drifts, and their case is
+  what selects them: the action pins in that same file are hex of the
+  same length in lower case. What the runner never has to care about and
+  a developer does is where the two writes land — `--recv-keys` puts
+  three third-party public keys in whichever keyring it is pointed at,
+  the default one unless `GNUPGHOME` says otherwise, and the
+  `fetch --force` moves the tag `README.md` names in the vendored clone
+  to what upstream serves, which is the question being asked and is also
+  what `submodule-pin` resolves against afterwards.
+
+  `${named}` is braced against this shell rather than against the
+  runner's. zsh reads the `:r` of an unbraced `$named:refs/tags/...` as
+  a history modifier, strips the last dotted component and fetches
+  `refs/tags/v0.8efs/tags/v0.8.0`, which upstream does not have; bash,
+  which is what the workflow runs, reads the same line as written. The
+  same asymmetry as `/usr/bin/grep` above, and in the same direction:
+  what a local shell gets wrong here is the reproduction and not the
+  workflow
+
 ### What a change here has to satisfy
 
 Past the gates above, and past what section 9 of the standard asks of any

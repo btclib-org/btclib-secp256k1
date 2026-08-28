@@ -2065,6 +2065,41 @@ release-notes length in the first place, and are still in
   that paragraph, and `tests/submodule_pin_test.py` gains the reversed
   case: a link placed *before* the named one wins instead of being inert.
 
+### The vendored-vectors sentinel reproduces, and its script has a test
+
+- **`Running what CI runs` gives `vendored-vectors` a bullet, with the
+  command for each of its two jobs** (closes #432). That section's own
+  sentence says every sentinel but `links` runs locally, and this is the
+  one it named nowhere. `check` is the script under the `--dry-run` the
+  `pull_request` trigger passes, which is what a run by hand wants too,
+  and `pin` is the keyserver fetch, the tag verification and the two
+  commits whose agreement is the answer. What the bullet says past the
+  workflow's own lines is where a local run differs from a runner's:
+  `--recv-keys` writes into whichever keyring it is pointed at,
+  `fetch --force` moves the named tag inside the vendored clone, and
+  `${named}` is braced because zsh reads the `:r` of the unbraced form
+  as a history modifier and fetches a ref upstream does not have.
+- **`tests/vendored_vectors_test.py` holds `check_vendored_vectors.py`
+  to the report its module docstring promises** (issue #434). The README
+  sample it parses carries one entry of every shape the parser tells
+  apart, so a shape that stops being recognised moves a heading between
+  `entries` and `skipped` instead of leaving it out of both — a pin the
+  report then reads as checked and clean, which is what #415 was. Each
+  outcome of `report` is asserted as the `gh` subcommand it reaches for,
+  with both subprocess boundaries stubbed: what the script asks upstream
+  and what it writes on an issue are not a suite's to run. The
+  entry-point guard is reached through `runpy` rather than through a
+  subprocess, which would run those lines in an interpreter nothing here
+  measures.
+
+  The other half of that issue stays open, `.github/scripts` being
+  outside `[tool.coverage.run]`'s `source` still.
+  `coverage run --source=.github/scripts` over the whole suite is what
+  says why that is not one diff with this: every line and branch of this
+  script is reached and the scripts beside it fall short, so moving the
+  ratchet over the directory is a decision about them rather than about
+  this one.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
