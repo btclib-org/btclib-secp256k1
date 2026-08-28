@@ -22,7 +22,7 @@ says how the choice is enforced.
 [![GitHub release](https://img.shields.io/github/v/release/btclib-org/btclib-secp256k1.svg)](https://github.com/btclib-org/btclib-secp256k1/releases)
 [![development status](https://img.shields.io/pypi/status/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![license](https://img.shields.io/github/license/btclib-org/btclib-secp256k1.svg)](https://github.com/btclib-org/btclib-secp256k1/blob/main/LICENSE)
-[![downloads](https://static.pepy.tech/badge/btclib-secp256k1)](https://pepy.tech/project/btclib-secp256k1)
+[![downloads](https://static.pepy.tech/badge/btclib-secp256k1)](https://pepy.tech/projects/btclib-secp256k1)
 [![supported Python versions](https://img.shields.io/pypi/pyversions/btclib-secp256k1.svg?logo=python)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![implementation](https://img.shields.io/pypi/implementation/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![wheel](https://img.shields.io/pypi/wheel/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
