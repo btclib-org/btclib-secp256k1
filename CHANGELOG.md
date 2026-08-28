@@ -2136,6 +2136,15 @@ release-notes length in the first place, and are still in
   beside it: a publisher does not weigh whether its backend has made a
   step redundant.
 
+### `pyproject.toml`'s `homepage` names this tree's own documentation
+
+- **`[project.urls] homepage` reads `https://btclib-secp256k1.readthedocs.io`,
+  matching `documentation`** (issue btclib-org/.github#533). A releasing
+  tree provides documentation, and its home is that documentation rather
+  than `btclib.org`, a sibling's project page. `documentation` stays: an
+  index showing the two fields as one link is cheaper than the field
+  tools read for that purpose specifically.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

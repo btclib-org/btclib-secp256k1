@@ -726,3 +726,16 @@ URL anywhere:
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/pages   # 404
 ```
+
+**`.homepage` names the tree's own Read the Docs project instead**, read
+back from the endpoint rather than from `pyproject.toml`'s own copy of it
+(issue btclib-org/.github#533):
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1 --jq '.homepage'
+# https://btclib-secp256k1.readthedocs.io
+```
+
+`[project.urls] homepage` carries the identical string: a releasing tree's
+home is its own documentation, not `btclib.org`, the sibling's project
+page the field named before.

@@ -96,7 +96,7 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://btclib.org"
+homepage = "https://btclib-secp256k1.readthedocs.io"
 # its own readthedocs project, matching btclib's own: an autodoc build
 # of docs/source, the README included in its toctree rather than left as
 # the whole of the documentation
