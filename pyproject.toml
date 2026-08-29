@@ -281,7 +281,9 @@ dev = [
     { include-group = "test" },
     { include-group = "lint" },
     { include-group = "build" },
+    { include-group = "check" },
     { include-group = "docs" },
+    { include-group = "mutation" },
 ]
 
 [tool.uv]

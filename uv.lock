@@ -388,8 +388,10 @@ check = [
 dev = [
     { name = "auditwheel" },
     { name = "build" },
+    { name = "check-wheel-contents" },
     { name = "cibuildwheel", version = "2.23.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "cibuildwheel", version = "4.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "cosmic-ray" },
     { name = "delocate" },
     { name = "furo" },
     { name = "hatchling" },
@@ -397,6 +399,7 @@ dev = [
     { name = "myst-parser", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "myst-parser", version = "5.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pre-commit" },
+    { name = "pyroma" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-randomly" },
@@ -404,6 +407,7 @@ dev = [
     { name = "sphinx", version = "8.1.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
     { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "twine" },
     { name = "types-cffi" },
 ]
 docs = [
@@ -452,18 +456,22 @@ check = [
 dev = [
     { name = "auditwheel" },
     { name = "build" },
+    { name = "check-wheel-contents" },
     { name = "cibuildwheel" },
+    { name = "cosmic-ray" },
     { name = "delocate" },
     { name = "furo" },
     { name = "hatchling" },
     { name = "mypy" },
     { name = "myst-parser" },
     { name = "pre-commit" },
+    { name = "pyroma" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-randomly" },
     { name = "ruff" },
     { name = "sphinx" },
+    { name = "twine" },
     { name = "types-cffi" },
 ]
 docs = [
