@@ -2188,6 +2188,28 @@ release-notes length in the first place, and are still in
   command now says that an empty right-hand side is the `sed` and not
   the `keywords`.
 
+### `REPOSITORY.md` says what it covers, and what it passes over
+
+- **The file states its scope — the settings the organization standard
+  asks about — in place of the blanket claim to be the whole of what is
+  set outside the tree** (issue btclib-org/.github#551). Section 11 of
+  that standard rejects the blanket claim because no command checks it:
+  the repository document answers with fields the standard states no
+  rule about, and telling those from the settings a repository decides
+  is a reading. The perimeter left is section 16's checklist and the
+  sections that state a rule, which the standard fixes rather than the
+  endpoint.
+- **A *What this file passes over* section at the foot says what falls
+  outside that scope**, so that a setting the file is silent about reads
+  as a decision rather than as an omission. It names the
+  repository-document fields no call here quotes and the standard states
+  no rule for, with the `grep` over the standard that shows the absence
+  and the control that makes those zeros readable; the endpoints
+  answering empty, an empty answer recording no decision; and what the
+  scope reaches and this file does not, each with its issue — the
+  default branch, issue btclib-org/.github#549, and the Read the Docs
+  project, issue btclib-org/.github#564.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
