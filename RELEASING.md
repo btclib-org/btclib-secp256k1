@@ -44,10 +44,35 @@ carry a section headed by the tag alone and not empty, and that the
 tagged commit is on `main`. Every invariant a release rests on is
 checked there, before the point of no return.
 
+**Every `gh` call here names the repository**, rather than leaving `gh`
+to resolve its `{owner}/{repo}` placeholder against whatever checkout the
+shell stands in; REPOSITORY.md's opening has the reason at length. A
+release is carried out from a checkout of this repository, so the
+placeholder would answer correctly for whoever follows the steps top to
+bottom, and what it does not survive is a step copied out and run
+somewhere else — the merge call under "Cutting a release" is a `PUT`. A
+block making several calls names the repository once, in `repo`; a call
+standing alone in prose names it in full; a block making one call does
+either, `repo` being what keeps a path too long for the margin off the
+call itself; and a command named without the run or the pull request it
+acts on is being referred to rather than called. That no placeholder is
+left is checkable:
+
+```shell
+grep -n 'repos/{owner}/{repo}' RELEASING.md
+```
+
+which answers with that command's own line and with nothing else. The
+placeholder form is all it reaches. `gh pr merge`, `gh run list` and
+`gh run rerun` take the repository in a `--repo` flag that can simply
+be absent, and a call omitting it leaves nothing for a grep to key on,
+so that half of the convention is held to by reading rather than by
+running anything.
+
 ## Which version string is which
 
-Six strings here look like versions, and three of them are written by
-hand. Telling them apart is most of what can go wrong:
+Six strings here look like versions, and telling them apart is most of
+what can go wrong:
 
 - **`0.7.1`**, in `pyproject.toml`, is *the* version. It is what gets
   published, on either index, and the only one a human edits
@@ -62,7 +87,8 @@ hand. Telling them apart is most of what can go wrong:
   whichever of the two prompted it
 - **`v0.7.1`**, the tag, carries no version of its own: it picks the
   index, PyPI rather than TestPyPI, and `version-check` exists to
-  confirm it says what `pyproject.toml` says
+  confirm it says what `pyproject.toml` says, which is where the tagging
+  step reads it from rather than typing it
 - **`.dev<run><attempt>`** is not a version but what the
   `version-check` job computes, `run_number * 100 + run_attempt`. Only a
   `workflow_dispatch` run computes it, and the build jobs append it to
@@ -231,20 +257,21 @@ Then:
    it moved from `always` to `pull_request` mode, so nothing reaches
    `main` outside a pull request GitHub itself merges.
 
-   `gh pr merge <n> --squash` alone still refuses this pull request —
-   `the base branch policy prohibits the merge`, gh's own client-side
-   mergeable check reading `REVIEW_REQUIRED` and declining before it
-   asks the server at all. `--auto` is the wrong answer to that message:
-   it waits for the same approving review that a solo-maintainer
-   repository cannot produce, so it never fires. `--admin` is gh's own
-   suggestion, asking for the pair REPOSITORY.md's "Branch protection"
-   names — `enforce_admins` `false` together with holding `admin` — and
-   `gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge -f
+   `gh pr merge <n> --repo btclib-org/btclib-secp256k1 --squash` alone
+   still refuses this pull request — `the base branch policy prohibits
+   the merge`, gh's own client-side mergeable check reading
+   `REVIEW_REQUIRED` and declining before it asks the server at all.
+   `--auto` is the wrong answer to that message: it waits for the same
+   approving review that a solo-maintainer repository cannot produce, so
+   it never fires. `--admin` is gh's own suggestion, asking for the pair
+   REPOSITORY.md's "Branch protection" names — `enforce_admins` `false`
+   together with holding `admin` — and `gh api -X PUT
+   repos/btclib-org/btclib-secp256k1/pulls/<n>/merge -f
    merge_method=squash` asks the same question of the endpoint directly,
    bypassing gh's client-side check rather than satisfying it: this is
    the one measured, on 0.8.0.4 (#288), which carried no approving
-   review — only comments — and landed through the direct call after
-   the plain `gh pr merge` refused it locally.
+   review — only comments — and landed through the direct call after the
+   plain `gh pr merge` refused it locally.
 
    The button used to be the wrong landing on this pull request in
    particular: it is the release commit that gets tagged, and
@@ -275,7 +302,8 @@ Then:
    off a branch:
 
    ```shell
-   gh run list --commit "$(git rev-parse origin/main)"
+   gh run list --repo btclib-org/btclib-secp256k1 \
+     --commit "$(git rev-parse origin/main)"
    ```
 
    and worth waiting for rather than assuming: the push the merge makes
@@ -288,10 +316,16 @@ Then:
 1. tag the tip `main` now points at, signed, and push that tag alone:
 
    ```shell
-   git tag -s v0.7.1 -m "btclib_secp256k1 v0.7.1"
-   git tag -v v0.7.1        # Good signature, before anything is pushed
-   git push origin v0.7.1
+   tag=v$(uv version --short)
+   git tag -s "$tag" -m "btclib_secp256k1 $tag"
+   git tag -v "$tag"        # Good signature, before anything is pushed
+   git push origin "$tag"
    ```
+
+   The tag is read from the tree rather than typed: `uv version --short`
+   gives what `pyproject.toml` declares, and `version-check` fails a tag
+   naming anything else, so that is the only tag a release can be cut
+   on.
 
    `-s` rather than a bare `git tag`, which makes a lightweight tag: a
    name pointing at a commit, carrying no signature, no tagger and no
@@ -352,10 +386,11 @@ Then:
    enough to do that silently, and the settings page does not flag a
    `workflow_ref` or `environment` that no longer matches. The matrix had
    already built and only the publish step had failed, so fixing the
-   registration and running `gh run rerun <run id> --failed` republished
-   from the artifacts already there, in minutes rather than the better
-   part of an hour, the tag never touched. Retagging is the right answer
-   only when the failure happened before the artifacts existed
+   registration and running `gh run rerun <run id> --repo
+   btclib-org/btclib-secp256k1 --failed` republished from the artifacts
+   already there, in minutes rather than the better part of an hour, the
+   tag never touched. Retagging is the right answer only when the failure
+   happened before the artifacts existed
 1. check that what was published installs, in an environment of its own
    rather than one that may already hold it, and run something with it —
    installing being weaker than working where a compiled extension is
@@ -373,10 +408,8 @@ Then:
    "
    ```
 
-   The version comes from the tree rather than being typed: `uv version
-   --short` reads what `pyproject.toml` declares, and `version-check`
-   has already refused a tag naming anything else, so this installs the
-   release that was just published.
+   The version comes from the tree as at the tagging step above, so what
+   this installs is the release that was just published.
 
    BIP340 vector 0, the same check `pypi-install` makes below. Then check
    the attestations, the two checks the rehearsal makes and for the same
@@ -403,7 +436,8 @@ Then:
    the index by then (`pypi.org/pypi/<project>/<version>/json` lists it
    in `urls`), so this is `files.pythonhosted.org`'s CDN a step behind
    Warehouse's own database, not a missing wheel. `gh run rerun <run id>
-   --failed` reruns the cell alone and it passes the second time
+   --repo btclib-org/btclib-secp256k1 --failed` reruns the cell alone and
+   it passes the second time
 1. check the GitHub release the workflow created once PyPI had accepted
    the upload — and check that it exists at all before reading anything
    in it: `github-release` was left `skipped` on 0.8.0, 0.8.0.1 and
@@ -434,10 +468,14 @@ Then:
    exactly where it was.
 
    Recreate a skipped release by hand from the run's own artifacts, which
-   is the same thing that step would have done:
+   is the same thing that step would have done. `tag` is typed beside
+   `run` because both name which release is being recreated, rather than
+   what the tree declares now:
 
    ```shell
-   run=<run id>; tag=v0.8.0; repo=btclib-org/btclib-secp256k1
+   run=<run id>
+   tag=v0.8.0
+   repo=btclib-org/btclib-secp256k1
    gh run download "$run" --repo "$repo" --name sdist --dir dist
    gh run download "$run" --repo "$repo" --name attestation --dir attestation
    cp attestation/attestation.jsonl "$tag.attestation.jsonl"
@@ -447,9 +485,11 @@ Then:
      found {print}
    ' RELEASE_NOTES.md > notes.md
    gh release create "$tag" dist/* "$tag.attestation.jsonl" \
-     --repo "$repo" --title "$tag" --notes-file notes.md
+     --repo "$repo" --title "$tag" --notes-file notes.md --verify-tag
    ```
 
+   `--verify-tag` aborts where the tag is not already on the remote,
+   `gh release create` otherwise creating one from the default branch.
    Verify the sdist this produces the same way the step below does: the
    hash has to match the file `pypi.org/pypi/<project>/<version>/json`
    already lists, since nothing rebuilt it. Its notes are the tag's
@@ -540,8 +580,9 @@ registered from here: the run builds the whole matrix, collects every
 artifact, waits for its approval and then stops at the token exchange
 with `invalid-publisher`. Owner rights on that project, and a
 registration matching the claims the failure prints, are the whole of
-what it takes; `gh run rerun <run id> --failed` then publishes from the
-artifacts already built.
+what it takes; `gh run rerun <run id> --repo
+btclib-org/btclib-secp256k1 --failed` then publishes from the artifacts
+already built.
 
 1. run the `release` workflow from the Actions tab, on the branch holding
    it: a manual run builds the full matrix and stops at the `testpypi`
@@ -562,7 +603,8 @@ artifacts already built.
    artifacts do — a window the endpoint answers for the day it is read:
 
    ```shell
-   gh api repos/{owner}/{repo}/actions/permissions/artifact-and-log-retention
+   repo=btclib-org/btclib-secp256k1
+   gh api "repos/$repo/actions/permissions/artifact-and-log-retention"
    ```
 
    `days` is the window, and `maximum_allowed_days` is the ceiling the
@@ -651,14 +693,15 @@ same bytes as what was published — that job's own upload is what
 for the reason CLAUDE.md gives:
 
 ```shell
-git worktree add --detach /tmp/btclib-secp256k1-rebuild v0.8.0.4
+tag=v0.8.0.4
+git worktree add --detach /tmp/btclib-secp256k1-rebuild "$tag"
 cd /tmp/btclib-secp256k1-rebuild
 git submodule update --init --recursive
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 uv run --locked --only-group build python -m build -s
 uv run --no-project --python 3.14 \
   .github/scripts/normalize_sdist.py dist/
-shasum -a 256 dist/btclib_secp256k1-0.8.0.4.tar.gz
+shasum -a 256 "dist/btclib_secp256k1-${tag#v}.tar.gz"
 ```
 
 is the whole of it, `--locked` included for the same reason as before: a
@@ -767,17 +810,7 @@ The rest of this section is here for the next index, or the next fork.
 - `pypi` carries a deployment branch policy besides, a custom rule
   admitting the tag pattern `v*`, that environment being reachable only
   from a tag; `testpypi` has none, being reached from a branch by
-  dispatch. The asymmetry is worth reading rather than assuming, since a
-  policy that admitted branches alone would refuse the deployment after
-  the whole matrix had been built:
-
-  ```shell
-  gh api repos/{owner}/{repo}/environments/pypi/deployment-branch-policies
-  ```
-
-  What that rule constrains is the *name* of the ref, and nothing else: a
-  `v*` tag pushed on a branch head, on a commit `main` has since moved
-  past or on a fork-synced commit satisfies it exactly as the release tag
-  does, and the reviewer approving sees the tag name rather than its
-  ancestry. The ancestry is checked in `version-check` instead, which
-  fails a tag that is not on `main` before the matrix builds anything
+  dispatch. REPOSITORY.md's "Publishing" section reads the policy back
+  and has what the rule constrains, which is the *name* of the ref and
+  nothing else: the reviewer approving sees the tag name rather than its
+  ancestry
