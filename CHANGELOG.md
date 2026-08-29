@@ -2188,6 +2188,30 @@ release-notes length in the first place, and are still in
   command now says that an empty right-hand side is the `sed` and not
   the `keywords`.
 
+### The index wait is a script with a test
+
+- **`pypi-install.yml` waits for the index through
+  `.github/scripts/wait_for_pypi_release.py`, run by a `wait-for-index`
+  job the matrix needs** (issue btclib-org/.github#509). The wait counts
+  against a deadline rather than against attempts, which leaves one
+  number to compare with the job's own `timeout-minutes` where attempts
+  times an interval is a product to multiply out first. What decides the
+  wait is unreachable from every trigger this workflow has — the thing
+  waited on is somebody else's upload, and only a release call passes a
+  version at all — so `tests/wait_for_pypi_release_test.py` substitutes
+  the transport and the clock and is what drives the retry, the deadline
+  and the `::error::` a release would otherwise meet for the first time.
+  Which of those the tests actually pin was settled by mutating the
+  script rather than by reading it: what that found unpinned was
+  `served`'s status comparison, the clamp that keeps a request outlasting
+  the deadline from handing `time.sleep` a negative number, and
+  `DEFAULT_TIMEOUT` itself, no other case's outcome turning on the
+  shipped deadline. The wait job is the only one here that checks
+  anything out, and what lands is `.github/scripts` and the repository
+  root that cone mode always adds with it — no `src/btclib_secp256k1`
+  and no vendored `secp256k1/`, so the job that installs still resolves
+  to what PyPI serves.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
