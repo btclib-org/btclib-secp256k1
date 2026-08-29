@@ -2210,6 +2210,52 @@ release-notes length in the first place, and are still in
   default branch, issue btclib-org/.github#549, and the Read the Docs
   project, issue btclib-org/.github#564.
 
+### Claims that nothing re-derived
+
+- **`REPOSITORY.md`'s `gh api` calls name the repository instead of
+  `gh`'s `{owner}/{repo}` placeholder** (closes #452). The placeholder
+  resolves against whatever repository the shell is standing in, so a
+  command copied out of a file whose whole subject is one repository's
+  settings answers for the checkout it is pasted into, with nothing in
+  the answer saying which one that was; the *Topics* section's `diff`,
+  which reads `pyproject.toml` from disk on its other side, is the
+  sharpest of them. The convention is stated where the calls are
+  introduced, with the `grep` that says the file still holds to it, and
+  `gh pr view` takes `--repo` for the same reason. The shared half of
+  `CONTRIBUTING.md` keeps the placeholder, being the same file in every
+  repository of the organization and able to name none of them.
+- **`RELEASING.md`'s install checks, and the attestation check on the
+  releases page, take the version from the tree** (closes #438). `uv
+  version --short` reads what `pyproject.toml` declares, which
+  `version-check` refuses to let a tag differ from, so the release check
+  installs what was just published; the rehearsal's `.dev<run><attempt>`
+  suffix is the only part of any of those versions still typed. What the
+  install checks replace is `0.7.1`, which PyPI serves under the name
+  this distribution was renamed from and not under this one, so the step
+  that decides whether a release is good could not resolve; the
+  attestation check named a `btclib_secp256k1-0.7.1.tar.gz` that the
+  download beside it does not produce, the v0.7.1 release on this
+  repository carrying the old name's sdist.
+- **The install command in `README.md`, the one the bug form asks for,
+  and the two prose lines naming the distribution spell it
+  `btclib-secp256k1`** (closes #444). Section 3 of the organization
+  standard asks the hyphen of a requirement wherever it is written, a
+  command in a document included. The prose names the releases'
+  versioning and the authors, which are the distribution's and the
+  repository's; the underscore is the import package's, and stays
+  wherever a module path or an artifact name is what is written. Where
+  the name is written and no requirement is — a flag's value in a
+  workflow and in `CONTRIBUTING.md`, a deployment URL, the tag message
+  `RELEASING.md` asks for — it is untouched: whether the canonical
+  spelling reaches those is btclib-org/.github#581.
+- **`.lycheeignore`'s comment keeps its argument without counting the
+  tree, and so does `links.yml`'s** (closes #440). Section 9 of the
+  standard refuses a total nothing re-derives, and neither file could
+  have reported its own going stale: what the ignore list says is prose
+  to lychee, and the count sat beside the retry settings it justified.
+  The weekly run is what answers it, and the comment points at the
+  command that lists it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

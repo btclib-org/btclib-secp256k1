@@ -78,5 +78,5 @@ body:
       label: Anything else
       description: >
         For a build failure, the output of
-        `python -m pip install --verbose btclib_secp256k1` is the
+        `python -m pip install --verbose btclib-secp256k1` is the
         thing that matters most.

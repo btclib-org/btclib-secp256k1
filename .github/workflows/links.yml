@@ -108,8 +108,7 @@ jobs:
           # this sweep without an exclusion: secp256k1/ is not checked out
           # at all here, and its own CHANGELOG and CONTRIBUTING carry links
           # that are upstream's to maintain. Measured before writing this:
-          # the three URLs of the eighty-six that did not answer cleanly
-          # were all three inside that submodule
+          # every URL that did not answer cleanly was inside that submodule
 
       - name: Check the links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
@@ -124,10 +123,10 @@ jobs:
           # those pages are.
           # The retries and the timeout are what keep a slow or throttling
           # host from being reported as a dead one, and the measurement
-          # behind them is this repository's own: of the eighty-six URLs,
-          # one answered 418 to the first request and 200 to the second,
-          # which is a bot-block and not rot. 429 is accepted for the same
-          # reason -- a rate limit is the runner's address being judged,
+          # behind them is this repository's own: a URL here answered 418
+          # to the first request and 200 to the second, which is a bot-block
+          # and not rot. 429 is accepted for the same reason -- a rate
+          # limit is the runner's address being judged,
           # not the link. The accepted list replaces lychee's default
           # rather than adding to it, so the default -- `100..=103,200..=299`,
           # what `lychee --help` prints for the flag -- is spelled out
