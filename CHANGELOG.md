@@ -2156,6 +2156,19 @@ release-notes length in the first place, and are still in
   own readback, the `diff` against `pyproject.toml`'s `keywords` further
   up this file.
 
+### `dev` reaches every group this tree declares
+
+- **`pyproject.toml`'s `dev` group now includes `check` and `mutation`
+  alongside `test`, `lint`, `build` and `docs`** (issue
+  btclib-org/.github#498). Section 1 of the organization standard's
+  dependency-group table gives `dev` as every group above, and neither
+  omission had that rule's own exception on it: `check` is what a
+  scheduled or release job reads distribution files with and `mutation`
+  is the scheduled mutation runner, but nothing about either tool
+  installing conditions its resolution on the platform the way `fuzz`'s
+  marker does, so a developer's `uv sync` reaches both for free. `uv.lock`
+  moves with it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
