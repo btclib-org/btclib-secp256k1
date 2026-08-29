@@ -1,9 +1,10 @@
 # URLs the links workflow does not check. Empty on purpose, and the
-# measurement is why: all eighty-six external URLs this repository owns
-# resolve. The three that did not answer cleanly when it was taken were
-# every one of them inside the vendored secp256k1 tree, which that workflow
-# does not check out at all — upstream's documentation being upstream's to
-# maintain.
+# measurement is why: the external URLs this repository owns resolve, and
+# what did not answer cleanly when that was measured was inside the
+# vendored secp256k1 tree, which that workflow does not check out at
+# all — upstream's documentation being upstream's to maintain. The run is
+# what answers that now, rather than a number written here:
+# `gh run list --workflow links.yml`.
 #
 # The rule for an entry, when one is needed: it goes here with the reason
 # the URL *cannot* be checked, not the reason checking it is inconvenient.

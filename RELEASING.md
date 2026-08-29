@@ -362,7 +362,8 @@ Then:
    what was installed:
 
    ```shell
-   uv run --isolated --no-project --with btclib-secp256k1==0.7.1 \
+   version=$(uv version --short)
+   uv run --isolated --no-project --with "btclib-secp256k1==$version" \
      python -c "
    from btclib_secp256k1 import ssa
    msg = bytes(32)
@@ -371,6 +372,11 @@ Then:
    assert ssa.verify(msg, pub, sig)
    "
    ```
+
+   The version comes from the tree rather than being typed: `uv version
+   --short` reads what `pyproject.toml` declares, and `version-check`
+   has already refused a tag naming anything else, so this installs the
+   release that was just published.
 
    BIP340 vector 0, the same check `pypi-install` makes below. Then check
    the attestations, the two checks the rehearsal makes and for the same
@@ -458,15 +464,20 @@ Then:
 
    ```shell
    repo=btclib-org/btclib-secp256k1
+   tag=v$(uv version --short)
    dir=$(mktemp -d)
-   gh release download v0.7.1 --repo "$repo" --dir "$dir"
-   gh attestation verify "$dir/btclib_secp256k1-0.7.1.tar.gz" \
+   gh release download "$tag" --repo "$repo" --dir "$dir"
+   gh attestation verify "$dir/btclib_secp256k1-${tag#v}.tar.gz" \
      --repo "$repo" --signer-workflow "$repo/.github/workflows/release.yml"
    ```
 
+   PEP 625 escapes the distribution's `-` to `_` in an sdist filename,
+   which is the whole of the difference between the tag and the file it
+   names, so neither is typed here.
+
    `--signer-workflow` is the flag that makes it say *which* workflow
    signed: without it a valid attestation from any workflow in this
-   repository passes. Adding `--bundle "$dir/v0.7.1.attestation.jsonl"`
+   repository passes. Adding `--bundle "$dir/$tag.attestation.jsonl"`
    asks the same question of the statement downloaded beside the file
    rather than of the attestations API, which is the form for whoever
    mirrors the page instead of trusting it live
@@ -571,17 +582,20 @@ artifacts already built.
    deployment attempt rather than once per run:
 
    ```shell
+   version=$(uv version --short)
    uv run --isolated --no-project \
      --index-url https://test.pypi.org/simple/ \
      --extra-index-url https://pypi.org/simple/ \
      --index-strategy unsafe-best-match --prerelease allow \
-     --with btclib-secp256k1==0.7.1.dev1 \
+     --with "btclib-secp256k1==$version.dev<run><attempt>" \
      python -c "import btclib_secp256k1 as m; print(m.__version__)"
    ```
 
    the extra index being needed for `cffi`, which TestPyPI does not have,
    and `--prerelease allow` for the `.dev<run><attempt>` suffix the
-   version installed carries
+   version installed carries. Those two numbers are the run's own and are
+   the whole of what is typed here, the version before the suffix being
+   read from the tree as in the check after a release above
 1. run something with it, installing being weaker than working where a
    compiled extension is what was installed. The check the `pypi-install`
    workflow makes — BIP340 vector 0, and the round trip of a signature

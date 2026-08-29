@@ -49,7 +49,7 @@ says how the choice is enforced.
 To install (and/or upgrade):
 
 ```shell
-python -m pip install --upgrade btclib_secp256k1
+python -m pip install --upgrade btclib-secp256k1
 ```
 
 ## Quickstart
@@ -104,7 +104,7 @@ README.md that may link to a secp256k1 release tag: a second such link
 placed anywhere earlier in the file would silently become the one all
 three read instead, with nothing going red. -->
 
-btclib_secp256k1 version numbers track the wrapped libsecp256k1 version:
+btclib-secp256k1 version numbers track the wrapped libsecp256k1 version:
 release M.N.P wraps libsecp256k1 vM.N.P, and the vendored library is
 [v0.8.0](https://github.com/bitcoin-core/secp256k1/releases/tag/v0.8.0).
 When a new release of the bindings is needed while still wrapping the

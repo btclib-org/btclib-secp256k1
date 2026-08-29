@@ -10,6 +10,26 @@ repository: nothing here can be recovered by reading the tree. Every
 value below was read from the API, and the command that reads it is
 beside it.
 
+**Every call here names the repository in full.** `gh`'s
+`{owner}/{repo}` placeholder resolves against whatever repository the
+shell is standing in, so a command copied out of this file and run from
+a sibling's checkout answers for that sibling, with nothing in the
+answer saying which repository it came from — and a readback of the
+wrong repository is a readback of nothing. That the file holds to it is
+checkable:
+
+```shell
+grep -n 'repos/{owner}/{repo}' REPOSITORY.md
+```
+
+It answers with that command's own line and with nothing else: the hit
+is what says the pattern reaches the file, and a second one is a call
+left for the shell to resolve.
+
+The shared half of `CONTRIBUTING.md` keeps the placeholder, for the same
+reason read the other way round: it is the same file in every repository
+of the organization, so it can name none of them.
+
 What is recorded is the settings the organization standard asks about —
 the ones [section 16's
 checklist](https://github.com/btclib-org/.github#16-checklists) sets on
@@ -216,7 +236,7 @@ and GitHub refuses `"true"` where a boolean is declared:
 
 ```shell
 sub=branches/main/protection/required_status_checks
-gh api "repos/{owner}/{repo}/$sub" -X PATCH -F strict=true \
+gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=true \
   -F 'checks[][context]=test: every job passed' -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=Lint and type-check' -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=Build the documentation' -F 'checks[][app_id]=15368'
@@ -228,7 +248,7 @@ number. Reading the body before sending it is a probe against a path that
 does not exist, which reports a 404 and changes nothing:
 
 ```shell
-gh api --verbose -X POST "repos/{owner}/{repo}/zzz-probe" \
+gh api --verbose -X POST "repos/btclib-org/btclib-secp256k1/zzz-probe" \
   -F 'checks[][context]=A' -F 'checks[][app_id]=15368' \
   | sed -n '/^{/,/^}/p'
 ```
@@ -519,7 +539,7 @@ request is holding is still worth reading, the wait itself being what
 this bypasses:
 
 ```shell
-gh pr view <n> --json autoMergeRequest
+gh pr view <n> --repo btclib-org/btclib-secp256k1 --json autoMergeRequest
 ```
 
 ## Token permissions
@@ -605,7 +625,8 @@ a tag — while `testpypi` has none, being reached from a branch by
 dispatch:
 
 ```shell
-gh api repos/{owner}/{repo}/environments/pypi/deployment-branch-policies
+gh api \
+  repos/btclib-org/btclib-secp256k1/environments/pypi/deployment-branch-policies
 # {"name": "v*", "type": "tag"}
 ```
 
@@ -637,7 +658,7 @@ only branch a change lands on. A setting that names nothing cannot name
 something that is gone, which is what the `dev` it used to name became.
 
 ```shell
-gh api repos/{owner}/{repo}/contents/.github/dependabot.yml \
+gh api repos/btclib-org/btclib-secp256k1/contents/.github/dependabot.yml \
   --jq '.content' | base64 -d | grep -E 'package-ecosystem|target-branch'
 ```
 
@@ -652,7 +673,7 @@ Dependabot security updates are a repository setting rather than a line
 in that file, and they are on:
 
 ```shell
-gh api repos/{owner}/{repo}/automated-security-fixes
+gh api repos/btclib-org/btclib-secp256k1/automated-security-fixes
 # {"enabled":true,"paused":false}
 ```
 
@@ -734,7 +755,7 @@ Nothing in the tree holds the two lists together, so this is the command
 that does: it prints the difference and exits nonzero on one.
 
 ```shell
-diff <(gh api repos/{owner}/{repo} --jq '.topics[]' | sort) \
+diff <(gh api repos/btclib-org/btclib-secp256k1 --jq '.topics[]' | sort) \
      <(sed -n '/^keywords = \[/,/^]/s/^ *"\(.*\)",$/\1/p' pyproject.toml \
        | sort)
 ```
@@ -742,7 +763,9 @@ diff <(gh api repos/{owner}/{repo} --jq '.topics[]' | sort) \
 An empty right-hand side is the `sed` having stopped matching
 `pyproject.toml`'s spelling rather than an empty `keywords`, and it makes
 `diff` name every topic: run the `sed` alone before reading that as
-drift.
+drift. The left-hand side names the repository, and the right-hand side
+is whatever `pyproject.toml` the shell can see, so this one is run from a
+checkout of this repository and not merely from anywhere.
 
 Both sides are sorted because GitHub returns the topics in an order of
 its own rather than the one it was given: a reordering there is not
