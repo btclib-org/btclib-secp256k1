@@ -638,7 +638,15 @@ gh api repos/{owner}/{repo}/contents/.github/dependabot.yml \
 which tracks the upstream *default branch*, so a release still needs a
 manual bump to the tagged commit. `.github/dependabot.yml` is validated by
 the `check-dependabot` hook, a typo there otherwise updating nothing and
-saying nothing. Dependabot security updates are on.
+saying nothing.
+
+Dependabot security updates are a repository setting rather than a line
+in that file, and they are on:
+
+```shell
+gh api repos/{owner}/{repo}/automated-security-fixes
+# {"enabled":true,"paused":false}
+```
 
 ## Private vulnerability reporting
 
@@ -719,9 +727,14 @@ that does: it prints the difference and exits nonzero on one.
 
 ```shell
 diff <(gh api repos/{owner}/{repo} --jq '.topics[]' | sort) \
-     <(sed -n '/^keywords=\[/,/^]/s/^ *"\(.*\)",$/\1/p' pyproject.toml \
+     <(sed -n '/^keywords = \[/,/^]/s/^ *"\(.*\)",$/\1/p' pyproject.toml \
        | sort)
 ```
+
+An empty right-hand side is the `sed` having stopped matching
+`pyproject.toml`'s spelling rather than an empty `keywords`, and it makes
+`diff` name every topic: run the `sed` alone before reading that as
+drift.
 
 Both sides are sorted because GitHub returns the topics in an order of
 its own rather than the one it was given: a reordering there is not
