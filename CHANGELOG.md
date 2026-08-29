@@ -2255,6 +2255,30 @@ release-notes length in the first place, and are still in
   to lychee, and the count sat beside the retry settings it justified.
   The weekly run is what answers it, and the comment points at the
   command that lists it.
+- **`RELEASING.md`'s `gh` calls name the repository, and the `pypi`
+  deployment branch policy is read back in one file rather than two**
+  (closes #455). A release is carried out from a checkout of this
+  repository, so the placeholder resolves correctly for whoever follows
+  the file top to bottom; what it does not survive is a step copied out
+  and run somewhere else, and the sharpest of those is a `PUT` merging a
+  pull request by a number a sibling repository has too. The calls
+  taking a run id or a pull request number named no target at all, which
+  no `{owner}/{repo}` grep would have found; the convention is stated
+  where the file opens, with the `grep` that catches the placeholder
+  form beside it. The policy the one-time setup read back is
+  `REPOSITORY.md`'s *Publishing* section's, that file being where a
+  setting is recorded and this one where the procedure is.
+- **`RELEASING.md`'s tagging step reads the tag from the tree** (closes
+  #456). `uv version --short` gives what `pyproject.toml` declares and
+  `version-check` fails a tag naming anything else, so the tag, its
+  message and the verification before the push come from one reading
+  rather than three substitutions. The two blocks that act on an earlier
+  release — recreating one whose GitHub release was skipped, rebuilding
+  one from its tag — keep typing theirs, that being which release is
+  meant and not something the tree answers, and derive the file names
+  beside it from that. `gh release create --verify-tag` guards the first
+  of the two, aborting on a tag the remote does not carry rather than
+  creating one from the default branch.
 
 ## v0.8.0.4
 
