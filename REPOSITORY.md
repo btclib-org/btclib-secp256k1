@@ -6,9 +6,17 @@ rather than carrying it, so that a session fixing a wrapper does not hold
 it in context.
 
 The branch rules and the repository settings live *outside* the
-repository, so this file is the whole of them: nothing here can be
-recovered by reading the tree. Every value below was read from the API,
-and the command that reads it is beside it.
+repository: nothing here can be recovered by reading the tree. Every
+value below was read from the API, and the command that reads it is
+beside it.
+
+What is recorded is the settings the organization standard asks about —
+the ones [section 16's
+checklist](https://github.com/btclib-org/.github#16-checklists) sets on
+a new repository, and the ones a section of it states a rule for —
+together with whatever a call quoted for one of those answers alongside
+it. That is this file's scope, and *What this file passes over* at the
+foot says what falls outside it.
 
 ## Required checks on main
 
@@ -763,3 +771,86 @@ gh api repos/btclib-org/btclib-secp256k1 --jq '.homepage'
 `[project.urls] homepage` carries the identical string: a releasing tree's
 home is its own documentation, not `btclib.org`, the sibling's project
 page the field named before.
+
+## What this file passes over
+
+The API answers for more than this repository decides, and what is left
+out below is left out by the scope above rather than by oversight —
+except where the last paragraphs name a setting the scope does reach and
+this file has not caught up with.
+
+**What no call sets.** `gh api repos/btclib-org/btclib-secp256k1`
+answers with the repository document, most of which is URLs, counts and
+derived state. The fields of it that are settings here are the ones the
+sections above quote: `delete_branch_on_merge`, the three merge-method
+flags, `allow_auto_merge`, `security_and_analysis`, `topics` and
+`homepage`.
+
+**A facility nobody reached for.** Actions secrets and variables,
+Dependabot secrets, self-hosted runners, webhooks, deploy keys,
+autolinks and custom property values each answer empty, and an empty
+answer records no decision:
+
+```shell
+for e in actions/secrets actions/variables dependabot/secrets \
+         actions/runners hooks keys autolinks properties/values; do
+  printf '%-24s ' "$e"
+  gh api "repos/btclib-org/btclib-secp256k1/$e" \
+    --jq 'if type == "array" then length else .total_count end'
+done
+```
+
+Environments answer non-empty, and *Publishing* above is where they are
+read back. Whichever of the facilities listed here is used one day
+arrives with the section that uses it.
+
+**A field the standard states no rule about, and no call above answers
+alongside one it does.** `allow_forking`, `allow_update_branch`,
+`has_wiki`, `has_projects`, `has_issues`, `has_discussions`,
+`has_downloads` and `web_commit_signoff_required` are in the repository
+document, in none of the `--jq` objects here, and named nowhere in the
+standard:
+
+```shell
+std=$(mktemp)
+gh api repos/btclib-org/.github/contents/README.md \
+  -H 'Accept: application/vnd.github.raw' > "$std"
+for f in allow_forking allow_update_branch has_wiki has_projects \
+         has_issues has_discussions has_downloads \
+         web_commit_signoff_required; do
+  printf '%-30s %s\n' "$f" "$(grep -c "$f" "$std")"
+done
+grep -c delete_branch_on_merge "$std"
+rm "$std"
+```
+
+The `delete_branch_on_merge` count is the control that makes those zeros
+an absence rather than a read of nothing. `has_issues` is the one worth
+pausing on: the standard's sections rely on a repository having an issue
+tracker and state no rule about the field that turns it on, so the test
+that leaves out `has_wiki` leaves it out too. Recording a field on no
+rule grows this file with GitHub's API rather than with the standard,
+and the price is that a change to any of them is invisible here.
+
+**What the scope reaches and this file does not.** What follows is
+inside the perimeter above and read back in no section of this file.
+Each is named here with the issue that will bring it in, so that the
+silence of everything else stays readable as a decision.
+
+The **default branch** is the first setting section 16's checklist puts
+on a new repository, and no section above answers it:
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1 --jq '.default_branch'
+```
+
+That is issue btclib-org/.github#549, which is the same gap in most of
+the organization's copies.
+
+The **Read the Docs project** this tree's `homepage` names is
+configured on `app.readthedocs.org`, and section 11's *Pages and Read
+the Docs* states its rules: `latest` follows the default branch,
+`stable` is the highest release tag, an automation rule activates each
+new tag, and the webhook carries the secret the project's own
+integration page issued. *No website* above reaches the GitHub side
+of that and stops. That is issue btclib-org/.github#564.
