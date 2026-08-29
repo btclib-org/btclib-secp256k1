@@ -22,9 +22,12 @@ checkable:
 grep -n 'repos/{owner}/{repo}' REPOSITORY.md
 ```
 
-It answers with that command's own line and with nothing else: the hit
-is what says the pattern reaches the file, and a second one is a call
-left for the shell to resolve.
+It answers with that command's own line and with nothing else: the hit is
+what says the pattern reaches the file, and a second one is a call left
+for the shell to resolve. The placeholder form is all it reaches: `gh pr
+view` takes the repository in a `--repo` flag that can simply be absent,
+and a call omitting it leaves nothing for a grep to key on, so that half
+of the convention is held to by reading rather than by running anything.
 
 The shared half of `CONTRIBUTING.md` keeps the placeholder, for the same
 reason read the other way round: it is the same file in every repository

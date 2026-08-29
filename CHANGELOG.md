@@ -2279,6 +2279,13 @@ release-notes length in the first place, and are still in
   beside it from that. `gh release create --verify-tag` guards the first
   of the two, aborting on a tag the remote does not carry rather than
   creating one from the default branch.
+- **`REPOSITORY.md`'s probe paragraph says what its `grep` reaches, and
+  what it does not** (closes #459). A `gh api` call carries the
+  repository inside a REST path, which an unqualified one necessarily
+  leaves behind for the placeholder grep to catch; `gh pr view` takes it
+  in a `--repo` flag, which a call omitting the flag leaves nothing
+  behind for that same grep to see. `RELEASING.md`'s own probe paragraph,
+  closed under #455, states the identical pair of shapes.
 
 ## v0.8.0.4
 
