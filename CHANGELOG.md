@@ -2169,6 +2169,25 @@ release-notes length in the first place, and are still in
   marker does, so a developer's `uv sync` reaches both for free. `uv.lock`
   moves with it.
 
+### `REPOSITORY.md`'s Dependabot and topics claims are read back
+
+- **The *Dependabot* section carries the `gh api
+  .../automated-security-fixes` call and its
+  `{"enabled":true,"paused":false}` answer** (closes #448). Dependabot
+  security updates are a repository setting rather than a line in
+  `.github/dependabot.yml`, so nothing in the tree could have shown the
+  sentence claiming them on to be wrong. The *Plan-gated settings*
+  section runs a call whose answer carries the same field and reads only
+  the secret-scanning ones out of it, which is why this readback is the
+  setting's own endpoint rather than a second copy of that call.
+- **The *Topics* section's `sed` range keys on `keywords = [`, which is
+  how `pyproject.toml` spells the assignment** (closes #449). The range
+  read `keywords=[`, matched nothing, and left the `diff`'s right-hand
+  side empty, so every topic came back as drift on every run and whether
+  or not the two lists agreed — which they do. A sentence beside the
+  command now says that an empty right-hand side is the `sed` and not
+  the `keywords`.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
