@@ -2498,6 +2498,40 @@ release-notes length in the first place, and are still in
   API instead, once lychee holds the workflow's token, and
   btclib-org/.github#630 is where that is weighed.
 
+### The index wait is a script with a test
+
+- **`.github/scripts/wait_for_pypi_release.py` is what
+  `pypi-install.yml` waits with, in a `wait-for-index` job the install
+  matrix `needs:`, and `tests/wait_for_pypi_release_test.py` is what
+  drives it** (issue btclib-org/.github#509). A schedule and a dispatch
+  pass no version and take the empty-tag branch, so the retry, the
+  per-request timeout and the `::error::` of the loop this replaces were
+  reachable on a release call and nowhere else. The test substitutes the
+  transport and the clock and advances the clock past the deadline, which
+  is what section 10 of the organization standard asks of a step waiting
+  on something outside the run, btclib-org/.github#466 having decided
+  that shape for this class.
+- **The budget is a deadline and not a count of attempts times an
+  interval**, so what the job's `timeout-minutes` is compared against is
+  the one number the script states, and every request is bounded by what
+  is left of that deadline as well as by its own timeout. No repair is
+  claimed in it: the attempts and intervals of the loop this replaces
+  multiplied out to well inside the timeout of the job that ran them.
+  The deadline itself is the five minutes that loop named as its budget,
+  chosen rather than measured -- nothing here times how long the index
+  takes to serve an upload.
+- **One job ahead of the matrix rather than a step inside every cell.**
+  The question is about the index and not about a platform, so it is
+  asked once; the cells that install still check nothing out, which is
+  what makes the import they verify resolve to what pip installed. The
+  wait job's checkout is sparse and reaches `.github/scripts`, and the
+  script takes the standard library alone under `uv run --no-project`,
+  so nothing of this project is built or installed to run it.
+- **`[tool.ruff.lint.per-file-ignores]` exempts the script from
+  `print`**, as it does every other script under `.github/scripts`: what
+  it prints is what the log of the step running it shows, which is the
+  case that rule is not about.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
