@@ -299,6 +299,29 @@ def test_main_needs_at_least_one_wheel(script: ModuleType) -> None:
     assert script.main(["prog"]) == 2
 
 
+def test_main_prints_the_all_clear_for_every_clean_wheel(
+    script: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A run with nothing to complain about still says so, once per wheel.
+
+    `test_main_reports_every_argument` above pairs a clean wheel with a
+    broken one, so the aggregate complaint list is never empty and this
+    branch of `main` never runs there.
+    """
+    first = write_wheel(
+        tmp_path / f"btclib_secp256k1-{_VERSION}-cp314-cp314-macosx_11_0_arm64.whl"
+    )
+    second = write_wheel(
+        tmp_path / f"btclib_secp256k1-{_VERSION}-py3-none-any.whl", kind="dynamic"
+    )
+
+    assert script.main(["prog", str(first), str(second)]) == 0
+
+    out = capsys.readouterr().out
+    assert f"{first.name}: carries what it may and no more" in out
+    assert f"{second.name}: carries what it may and no more" in out
+
+
 def test_the_main_guard_runs_the_script_as___main__(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -2333,6 +2333,26 @@ release-notes length in the first place, and are still in
   repointed: `0e74c1a`, which introduced `tests/README.md`'s pin
   convention that same day, cites no issue for it either.
 
+### The coverage ratchet reaches `.github/scripts`
+
+- **`[tool.coverage.run]`'s `source` in `pyproject.toml` names
+  `.github/scripts` beside `btclib_secp256k1` and `tests`, so
+  `fail_under = 100` admits nothing short of full coverage there
+  either** (closes #434). `check_submodule_pin.py`'s `pinned_commit` is
+  exercised directly in `tests/submodule_pin_test.py` rather than only
+  through the stub every other test there substitutes for it, and its
+  entry-point guard runs through `runpy.run_path` the way
+  `tests/vendored_vectors_test.py`'s already does. `mutation_counts.py`'s
+  `main` body and `enumerated_mutants` are reached the same way in
+  `tests/mutation_counts_test.py`, alongside its existing subprocess test
+  rather than instead of it: that one is what proves the script still
+  runs the way its own docstring invokes it,
+  `python .github/scripts/mutation_counts.py session.sqlite`, in an
+  interpreter this suite measures nothing in. `verify_wheel_contents.py`'s
+  all-clear branch is reached in `tests/wheel_contents_test.py` by a run
+  over wheels with nothing to complain about, which its existing `main`
+  tests never build.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
