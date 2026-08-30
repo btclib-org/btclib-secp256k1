@@ -212,7 +212,25 @@ Then:
    downstream of it. If the vendored libsecp256k1 moved, update the
    version named at the top of `README.md` too (`grep -n 'wraps
    libsecp256k1' README.md` finds the line without a search through
-   the prose)
+   the prose).
+
+   In the same pull request, open the next version's section in both
+   files, above the one just closed: headed `## v<version> (work in
+   progress, not released yet)` with the fourth number the step that
+   opens the next version will declare, and nothing under it yet. What
+   lands next then has somewhere to be written down as it lands, which
+   is the whole of closing the release notes at the end of the cycle —
+   with one branch and no long-lived release pull request to hold a
+   body, it is also the whole of what giving the pull request its title
+   and body reads the cycle off. Opening it in a pull request of its own
+   after this one, ahead of anything else landing, is the rejected
+   alternative: until that pull request lands the topmost section of
+   each file is the release's, so a branch landing in between files its
+   entry under a release it is not in, and nothing reports it, the
+   release commit having touched only the heading. `version-check` reads
+   the section headed by the tag alone, so a heading above it is nothing
+   it sees, and it is not what the release publishes: the notes are
+   lifted from the section whose heading is the tag's own
 1. give the pull request its title and its body before merging it, not
    after. The title is the version; the body says what the release is —
    what moved, what did not, and which of the two a user would notice.
@@ -223,16 +241,17 @@ Then:
    not have to discover at the button belongs there too.
 
    What the cycle actually contained is not this pull request's diff,
-   which is a version bump and two headings: it is everything merged
-   since the last tag. Read it off the log rather than off the branch,
+   which is a version bump and the headings the previous step closed and
+   opened: it is everything merged since the last tag. Read it off the
+   log rather than off the branch,
 
    ```shell
    git log v<previous version>..main --oneline
    ```
 
-   and against the open sections of `CHANGELOG.md` and
-   `RELEASE_NOTES.md`, which closing the release notes above has just
-   closed and which are where each change was described as it landed.
+   and against the sections of `CHANGELOG.md` and `RELEASE_NOTES.md`
+   which closing the release notes above has just closed, and which are
+   where each change was described as it landed.
    `deps-latest`'s result and the breaking-changes check's griffe findings
    belong here too, a line rather than a screenshot: neither gates
    anything, and a pull request that never
@@ -552,11 +571,10 @@ Then:
    repository can make, tracked at btclib-org/.github#26, so a red run
    with no build attempted at all is that rule missing rather than a
    build failing
-1. open the next version, in a pull request of its own and before
-    anything else lands: bump `pyproject.toml` to a fourth number over
+1. open the next version: bump `pyproject.toml` to a fourth number over
     what was just published — `0.7.1.1` after `0.7.1` — and run `uv
-    lock`. It is a placeholder, and the version-bump step renumbers it if
-    the submodule
+    lock`, through a pull request like any other. It is a placeholder,
+    and the version-bump step renumbers it if the submodule
     moves before the next release; what it buys is a tree that no longer
     claims to be a version it is not. `__version__` reads installed
     metadata, so a checkout a developer installed stops reporting itself
@@ -567,14 +585,13 @@ Then:
     upload PyPI refuses for a version it already carries. A fourth
     number below the published one would be worse than no bump at all:
     `0.7.0.1` sorts *under* `0.7.1`, so nothing would ever resolve it,
-    and `version-check` accepts it, being digits and dots. Open the
-    section for it in `CHANGELOG.md` and in `RELEASE_NOTES.md` at the
-    same time, headed `## v<version> (work in progress, not released yet)`
-    and empty: what lands next then has somewhere to be written down as
-    it lands, which is the whole of closing the release notes — and,
-    with one branch and no long-lived release pull request to hold a
-    body, the whole of what giving the pull request its title and body
-    reads the cycle off at the end of it
+    and `version-check` accepts it, being digits and dots. The sections
+    for it in `CHANGELOG.md` and in `RELEASE_NOTES.md` are already
+    there, closing the release notes above having opened them in the
+    release's own pull request. What stays here is the version, which
+    cannot move earlier with them: `version-check` compares the tag
+    against what `pyproject.toml` declares, so a tree already bumped
+    would offer it the placeholder instead of the version being released
 
 ## Rehearsing on TestPyPI
 
