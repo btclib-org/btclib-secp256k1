@@ -677,6 +677,10 @@ max-complexity = 10
 # what the workflow step that runs it shows in its own log: same
 # exemption, same reason as the three scripts above
 ".github/scripts/normalize_sdist.py" = ["print"]
+# the release wait, whose per-attempt lines and `::error::` annotation
+# are what the workflow step that runs it shows in its own log: same
+# exemption, same reason as the scripts above
+".github/scripts/wait_for_pypi_release.py" = ["print"]
 # one keyword per sdist member field the script and its tests care
 # about; splitting it into a dataclass would move the same seven names
 # one level down rather than removing any of them
