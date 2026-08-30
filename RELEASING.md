@@ -299,11 +299,15 @@ Then:
 
    What has to be green is `lint`, `docs` and `test` on the commit `main`
    ends up at, which is worth asking for by commit rather than reading
-   off a branch:
+   off a branch, and worth fetching before asking — the merge lands on
+   the forge, not in this checkout, and nothing before this step moves
+   `refs/remotes/origin/main` to the commit the merge produced:
 
    ```shell
-   gh run list --repo btclib-org/btclib-secp256k1 \
-     --commit "$(git rev-parse origin/main)"
+   git fetch origin
+   sha=$(git rev-parse origin/main)
+   echo "$sha"
+   gh run list --repo btclib-org/btclib-secp256k1 --commit "$sha"
    ```
 
    and worth waiting for rather than assuming: the push the merge makes
