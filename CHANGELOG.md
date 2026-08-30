@@ -2464,6 +2464,17 @@ release-notes length in the first place, and are still in
   the command, which jobs are expected to read `skipped` or red on a
   given trigger, and that `gh run rerun --failed` does not reach a skip.
 
+### `tests/README.md` declares the hand-rolled property layer
+
+- **`properties_test.py` is declared as section 7's property layer,
+  hand-rolled rather than hypothesis, with the reason** (issue
+  btclib-org/.github#426). Section 7 keys the layer on the property
+  section 10 keys the fuzzer on and asks a tree answering it with
+  hand-rolled properties to say so in `tests/README.md`; the reason is
+  where the suite runs, `[tool.cibuildwheel]`'s `test-requires` and the
+  sdist job installing `pytest` alone, and the cost named beside it is
+  the search a fixed chain does not do.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -348,4 +348,40 @@ What must not be aligned across the organization is where these live or
 what they are called; only which conventions are tested, and that each
 tree says which.
 
+## Property tests
+
+Section 7 of the [organization standard][std] keys a property layer on
+the property section 10 keys the fuzzer on -- nobody standing between a
+parser and an adversary who chooses the bytes -- and section 10's own
+paragraph names this tree among those reading signatures and keys off
+the wire. The layer is `properties_test.py`, hand-rolled rather than the
+hypothesis shape section 7 names, which is what that section asks a
+tree to declare here.
+
+What it states are the bindings' own invariants over a sweep of inputs
+rather than a few chosen ones -- a serialization round trip returning
+what it started from, scalar arithmetic agreeing with the point
+arithmetic it corresponds to, a recoverable signature recovering its
+signer and no other key, two parties reaching one shared secret, a
+tagged hash matching `hashlib` -- and never a second implementation of
+secp256k1; each test's docstring names its own. The inputs are derived,
+a SHA256 chain seeded by a tag per property, so a failure reproduces at
+its exact iteration with nothing installed to generate it, and the
+cases the sweep cannot be relied on to reach are pinned by value at the
+end of the module, which is where section 7 sends what a search finds.
+The malformed half of the domain -- what the parsers refuse -- is
+`core_test.py`'s hand-written list, which the section above already
+declares as input validation this suite does not drive from a walk.
+
+Hand-rolled because of where the suite runs: `[tool.cibuildwheel]`'s
+`test-requires` is `["pytest"]`, and `test.yml`'s sdist job installs
+pip's `pytest` and no lock, so a layer importing a package either joins
+every wheel cell's requirements or fails collection there. What the
+trade costs is the search: a fixed chain of `COUNT` inputs explores no
+further on request and shrinks nothing, where hypothesis's deep profile
+and shrinker do both. Bytes outside the described domain are the
+fuzzer's question and not this layer's; section 10 is where a sentinel
+entry for this tree would be recorded, and btclib-org/.github#342 is
+where whether it gets one is decided.
+
 [std]: https://github.com/btclib-org/.github/blob/main/README.md
