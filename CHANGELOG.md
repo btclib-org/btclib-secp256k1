@@ -2442,6 +2442,28 @@ release-notes length in the first place, and are still in
   the standard declines. Neither side holds in this tree, so the test
   lands green, and it goes red on whichever side moves alone.
 
+### The release's publish jobs opt back in past a red `public-api`
+
+- **`publish-testpypi`, `publish-pypi` and `published` open their `if:`
+  with `always()` and name the results they do require** (issue
+  btclib-org/.github#484). `public-api` exits non-zero on any break in
+  the public surface since the last tag, which is what a cycle with
+  breaking changes produces by design, and a bare `needs:` refuses to
+  start a job whose listed dependency failed: the publish jobs list it,
+  so a red `public-api` leaves the upload unstarted and, behind the
+  upload, everything guarded on its success. `published` lists
+  `publish-pypi` alone and still needs an `always()` of its own, a bare
+  `needs:` reading back through the listed job's `needs:` chain, so the
+  widening on `publish-pypi` does not reach it. Section 12 of the
+  organization standard is the rule, with the rejected alternatives
+  beside it.
+- **`RELEASING.md` reads the release run job by job for `skipped`, as a
+  step of its own** (issue btclib-org/.github#484). A skipped job carries
+  no step and turns nothing red, so a run that lost its post-publish
+  check to the wiring above reads as a run that finished; the step names
+  the command, which jobs are expected to read `skipped` or red on a
+  given trigger, and that `gh run rerun --failed` does not reach a skip.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

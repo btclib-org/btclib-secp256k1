@@ -440,9 +440,23 @@ jobs:
     # the repository condition keeps a fork from attempting an upload it
     # has no publisher for: a fork that pushes a tag, or dispatches this
     # workflow, gets the build and stops there
+    #
+    # public-api stays in `needs` for the ordering -- its own comment
+    # says why the reading is worth having before the upload -- and not
+    # for its result: it exits 1 on any break in the public surface since
+    # the last tag, which is what a cycle with breaking changes produces
+    # by design, and a bare `needs` refuses to start this job when any
+    # listed job failed or was skipped. `always()` is what opts back in,
+    # and the `.result` checks beside it are what keep every other listed
+    # job the gate it is. Section 12 of the organization standard has the
+    # rule; github-release's comment below is this tree's own measurement
+    # of the same refusal, behind a skipped job rather than a failed one
     if: >-
-      github.event_name == 'workflow_dispatch'
+      always() && github.event_name == 'workflow_dispatch'
       && github.repository == 'btclib-org/btclib-secp256k1'
+      && needs.test.result == 'success' && needs.lint.result == 'success'
+      && needs.docs.result == 'success' && needs.ubuntu.result == 'success'
+      && needs.macos.result == 'success' && needs.windows.result == 'success'
     needs: [public-api, test, lint, docs, ubuntu, macos, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -478,8 +492,15 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    # see publish-testpypi for the repository condition
-    if: github.event_name == 'push' && github.repository == 'btclib-org/btclib-secp256k1'
+    # see publish-testpypi for the repository condition, and for the
+    # `always()`: public-api is a need for the ordering and not for its
+    # result on a tag exactly as on a rehearsal
+    if: >-
+      always() && github.event_name == 'push'
+      && github.repository == 'btclib-org/btclib-secp256k1'
+      && needs.test.result == 'success' && needs.lint.result == 'success'
+      && needs.docs.result == 'success' && needs.ubuntu.result == 'success'
+      && needs.macos.result == 'success' && needs.windows.result == 'success'
     needs: [public-api, test, lint, docs, ubuntu, macos, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -697,6 +718,13 @@ jobs:
   published:
     name: Install the published version from PyPI
     needs: publish-pypi
+    # publish-pypi's own `always()` opts it back in past public-api's
+    # designed failure and does not carry this job with it: a bare
+    # `needs` here still reads back through publish-pypi's own `needs`,
+    # and public-api two hops away skips this job although the one
+    # dependency it lists succeeded. The same shape github-release's
+    # comment above measured on v0.8.0.2
+    if: always() && needs.publish-pypi.result == 'success'
     uses: ./.github/workflows/pypi-install.yml
     with:
       version: ${{ github.ref_name }}
