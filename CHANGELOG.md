@@ -2475,6 +2475,14 @@ release-notes length in the first place, and are still in
   sdist job installing `pytest` alone, and the cost named beside it is
   the search a fixed chain does not do.
 
+### The badge row carries the qualifier section 2 asks of it
+
+- **Every workflow-status badge at the head of `README.md` carries
+  `?branch=main`** (issue btclib-org/.github#579): each answers for
+  `main` or answers `no status`, where the unqualified badge falls back
+  to another branch's run when `main` has none. The pre-commit.ci, Read
+  the Docs and Scorecard badges are outside the rule.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
