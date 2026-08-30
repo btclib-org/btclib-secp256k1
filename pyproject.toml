@@ -681,6 +681,11 @@ max-complexity = 10
 # are what the workflow step that runs it shows in its own log: same
 # exemption, same reason as the scripts above
 ".github/scripts/wait_for_pypi_release.py" = ["print"]
+# and the documentation wait, the same shape one service over: one line
+# per answer read the docs gave that was not the page, the page when it
+# comes, or the ::error:: annotation naming the last answer and the
+# builds page that says why
+".github/scripts/wait_for_readthedocs_build.py" = ["print"]
 # one keyword per sdist member field the script and its tests care
 # about; splitting it into a dataclass would move the same seven names
 # one level down rather than removing any of them
