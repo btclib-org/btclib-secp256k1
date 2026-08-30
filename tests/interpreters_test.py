@@ -55,6 +55,13 @@ _CLASSIFIER = re.compile(
     r'^    "Programming Language :: Python :: (?P<version>3\.\d+)",$', re.MULTILINE
 )
 _PYPY_CLASSIFIER = "Programming Language :: Python :: Implementation :: PyPy"
+# PyPI's free-threading classifiers, the bare one and its maturity levels
+# alike: each is a claim about the code under a free-threaded build, and
+# which is claimed is not this module's question
+_FREE_THREADING_CLASSIFIER = re.compile(
+    r'^    "Programming Language :: Python :: Free Threading(?: :: .+)?",$',
+    re.MULTILINE,
+)
 # the `python-version` list of a sentinel's suite matrix. The key has to
 # be alone on its line, which is what leaves out the `exclude:` entries
 # below it: those spell the same key with a value beside it, and an
@@ -63,11 +70,27 @@ _PYPY_CLASSIFIER = "Programming Language :: Python :: Implementation :: PyPy"
 _PYTHONS = re.compile(
     r'^        python-version:\n(?P<block>(?:^          - "\S+"\n)+)', re.MULTILINE
 )
+# the merge gate, which its own header says is one suite cell rather
+# than a matrix: each job writes the interpreter it runs into itself, as
+# `python-version: "3.14"` or `--python 3.14`, so the gate's interpreters
+# are read as tokens off the file rather than out of a matrix block. A
+# free-threaded build there is a "3.14t" of the same shape. Comments go
+# first, so that a sentence about a sentinel's free-threaded cell does
+# not read as the gate running one
+_GATE = _ROOT / ".github/workflows/test.yml"
+_COMMENT = re.compile(r"(?:^|\s)#.*$", re.MULTILINE)
+_INTERPRETER = re.compile(r"\b3\.\d+t?\b")
 
 
 def _versions(pattern: re.Pattern[str], text: str) -> tuple[str, ...]:
     """Return every `version` group `pattern` finds, in order."""
     return tuple(m["version"] for m in pattern.finditer(text))
+
+
+def _gate_interpreters() -> tuple[str, ...]:
+    """Return every interpreter the merge gate names outside its comments."""
+    text = _COMMENT.sub("", _GATE.read_text(encoding="utf-8"))
+    return tuple(sorted(set(_INTERPRETER.findall(text))))
 
 
 def _matrix(text: str) -> tuple[str, ...]:
@@ -161,4 +184,24 @@ def test_pypy_is_classified_exactly_when_it_is_run() -> None:
     assert classified == run, (
         f"the PyPy classifier is {'present' if classified else 'absent'} and"
         f" the matrix {'runs' if run else 'does not run'} a PyPy interpreter"
+    )
+
+
+def test_free_threading_is_classified_exactly_when_the_gate_runs_it() -> None:
+    """The free-threading classifier is a claim about the merge gate.
+
+    The organization standard declares one where the gate exercises the
+    free-threaded build: a gate refuses the landing that breaks that
+    build, where a sentinel runs beside a landing and blocks nothing. So
+    the second side here is test.yml alone and not `_MATRIX` -- the
+    sentinels name "3.14t" as readily as the gate would, and a sentinel
+    passing is the ground the standard declines.
+    """
+    gate = _gate_interpreters()
+    assert gate, "test.yml names no interpreter"
+    classified = bool(_FREE_THREADING_CLASSIFIER.search(_PYPROJECT))
+    run = [v for v in gate if v.endswith("t")]
+    assert classified == bool(run), (
+        f"the free-threading classifier is {'present' if classified else 'absent'}"
+        f" and test.yml names {', '.join(run) or 'no free-threaded interpreter'}"
     )
