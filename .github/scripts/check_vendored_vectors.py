@@ -10,7 +10,7 @@ This automates that procedure and reports drift, rather than fixing it:
 refreshing a vector file is a decision this script does not get to
 make, so what it opens is an issue, never a commit. Ported from
 btclib's own check_vendored_vectors.py, which this package's README
-convention matches by design (issue #397).
+convention matches by design.
 
 Scope is narrower than the README could need, though nothing in this
 project's own entries reaches the narrower part: only
