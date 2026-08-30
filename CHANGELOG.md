@@ -2312,6 +2312,17 @@ release-notes length in the first place, and are still in
   builds ever repeats -- a property of this file today, not a rule the
   parsing above enforces.
 
+### The vendored-vector re-check drops a citation `#397` was never about
+
+- **Neither `check_vendored_vectors.py`'s docstring nor
+  `vendored-vectors.yml`'s header cites `#397` for matching `btclib`'s
+  own copy** (closes #462, closes #465). `f509895` wrote that citation
+  into both on 6 August; this tracker's `#397`, which is what a bare
+  `#397` written here resolves to, was opened on 25 August and is about
+  `ruff format` reformatting `SECURITY.md`. It is dropped rather than
+  repointed: `0e74c1a`, which introduced `tests/README.md`'s pin
+  convention that same day, cites no issue for it either.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
