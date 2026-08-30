@@ -317,19 +317,30 @@ Then:
    sitting beside them are Dependabot's own updater failing to compute an
    update, not a workflow of this repository, and say nothing about the
    tree
-1. tag the tip `main` now points at, signed, and push that tag alone:
+1. tag the commit `main` now points at, signed, and push that tag
+   alone:
 
    ```shell
+   sha=$(git rev-parse origin/main)
    tag=v$(uv version --short)
-   git tag -s "$tag" -m "btclib_secp256k1 $tag"
+   git tag -s "$tag" -m "btclib_secp256k1 $tag" "$sha"
    git tag -v "$tag"        # Good signature, before anything is pushed
    git push origin "$tag"
    ```
 
-   The tag is read from the tree rather than typed: `uv version --short`
-   gives what `pyproject.toml` declares, and `version-check` fails a tag
-   naming anything else, so that is the only tag a release can be cut
-   on.
+   `$sha` rather than the `HEAD` a bare `git tag` would default to:
+   the merge above lands on the forge, and this checkout is still the
+   release branch, which the squash merge never puts on `main`'s own
+   history. Naming it reads the same ref the step above already fetched and
+   checked runs against, rather than trusting a checkout the merge
+   never moved.
+
+   The tag's name is read from the tree rather than typed: `uv version
+   --short` gives what `pyproject.toml` declares here, on the release
+   branch rather than on `$sha`, and the two agree because the version
+   bump is exactly the change the squash carried onto `main` unchanged.
+   `version-check` fails a tag naming anything else, so that is the
+   only tag a release can be cut on.
 
    `-s` rather than a bare `git tag`, which makes a lightweight tag: a
    name pointing at a commit, carrying no signature, no tagger and no

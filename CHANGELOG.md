@@ -2298,6 +2298,16 @@ release-notes length in the first place, and are still in
   commit answered only to a releaser who already knows the subject to
   expect. `git fetch origin` now runs first, and the sha is echoed before
   the `gh run list` call takes it.
+- **`RELEASING.md`'s tagging step tags the commit `origin/main` names
+  rather than `HEAD`** (closes #460). The step before it merges the
+  release pull request on the forge, which moves `main` there and
+  leaves the checkout on the release branch; a bare `git tag` defaults
+  to `HEAD`, so the pushed tag named a commit the squash merge never
+  puts on `main`'s own history, caught only by `release.yml`'s ancestry
+  check after the push already ran. The tag now takes the same ref the
+  step above already fetched, and its name still comes from this
+  checkout's own `pyproject.toml` -- the two agree because the version
+  bump is exactly the change that squash carried onto `main` unchanged.
 
 ### `check_vendored_vectors.py` no longer cites a closed `btclib` divergence
 
