@@ -2532,6 +2532,39 @@ release-notes length in the first place, and are still in
   it prints is what the log of the step running it shows, which is the
   case that rule is not about.
 
+### The documentation wait is a script with a test too
+
+- **`.github/scripts/wait_for_readthedocs_build.py` is what
+  `release.yml`'s `documented` job waits with, and
+  `tests/wait_for_readthedocs_build_test.py` is what drives it** (issue
+  btclib-org/.github#573). A tag push is the only trigger that reaches
+  the wait, so a loop kept in the workflow file is first executed on the
+  day a release depends on it, the same reasoning that moved the index
+  wait beside it. The job checks out `.github/scripts` alone and runs
+  the script under `--no-project`, the shape `pypi-install.yml`'s wait
+  job already has.
+- **The request carries a `User-Agent`.** The Cloudflare zone in front
+  of read the docs bans the interpreter's own default
+  (`Python-urllib/3.14`) outright, so a request sent without one is a
+  403 against a tag that is in fact served, and the wait would burn its
+  whole deadline and annotate an error on every release. `curl`, which
+  the loop this replaces called, is not banned, so the loop never needed
+  one.
+- **The budget is a deadline rather than a count of attempts**, compared
+  against the job's own `timeout-minutes` as one number against one
+  number. The loop this replaces already fitted inside that timeout, so
+  the deadline is chosen against the job's figure rather than to repair
+  an overrun.
+- **This takes no empty tag as nothing to wait for**, which is where it
+  parts from the release wait beside it: that one runs on every schedule
+  and dispatch and takes an empty version as nothing to do, while
+  `documented` is guarded by the event and a branch ref would spend the
+  whole deadline on a URL that answers 404 by construction.
+- **No trigger reaches this from a GitHub runner.** `documented` has no
+  rehearsal, so what the script does against read the docs was measured
+  from outside a runner, and Cloudflare can weigh address reputation
+  alongside the user agent on a request the runner actually sends.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
