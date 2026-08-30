@@ -6,9 +6,14 @@ rather than carrying it, so that a session fixing a wrapper does not hold
 it in context.
 
 The branch rules and the repository settings live *outside* the
-repository: nothing here can be recovered by reading the tree. Every
-value below was read from the API, and the command that reads it is
-beside it.
+repository. Every value below was read from the API, and the command
+that reads it is beside it.
+
+The topics and `.homepage` have a second form in the tree —
+`pyproject.toml`'s `keywords` and its `[project.urls]` field of that
+name — so each is read back here for comparison rather than as the only
+place the answer lives, which is what *Topics* and *No website* say of
+them. Nothing else here is recoverable by reading the tree.
 
 **Every call here names the repository in full.** `gh`'s
 `{owner}/{repo}` placeholder resolves against whatever repository the
@@ -36,10 +41,11 @@ of the organization, so it can name none of them.
 What is recorded is the settings the organization standard asks about —
 the ones [section 16's
 checklist](https://github.com/btclib-org/.github#16-checklists) sets on
-a new repository, and the ones a section of it states a rule for —
-together with whatever a call quoted for one of those answers alongside
-it. That is this file's scope, and *What this file passes over* at the
-foot says what falls outside it.
+a new repository, the ones a section of the standard states a rule for,
+and the ones a behaviour it describes rests on — together with whatever
+a call quoted for one of those answers alongside it. That is this file's
+scope, and *What this file passes over* at the foot says what falls
+outside it.
 
 ## Required checks on main
 
@@ -309,7 +315,14 @@ would change the answer.
 
 ## Branch protection
 
-`main`, all of it read from the endpoint above: `strict` with the three
+`main` is the repository's default branch:
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1 --jq '.default_branch'
+# main
+```
+
+Its protection is all read from the endpoint above: `strict` with the three
 checks already described, one approving review with
 `dismiss_stale_reviews`, **required signatures**, linear history, no force
 pushes, no deletions, `required_conversation_resolution`, and
@@ -479,10 +492,19 @@ the convention CONTRIBUTING.md states:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 \
-  --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge}'
+  --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge,
+         squash_merge_commit_title, squash_merge_commit_message}'
+# {"allow_merge_commit":false,"allow_rebase_merge":false,
+#  "allow_squash_merge":true,"squash_merge_commit_message":"COMMIT_MESSAGES",
+#  "squash_merge_commit_title":"COMMIT_OR_PR_TITLE"}
 ```
 
-answers `true` for the first and `false` for the other two.
+The two `squash_merge_commit_*` fields shape the commit the button
+writes, and section 11 states what they are set to: `COMMIT_OR_PR_TITLE`
+lands a single-commit branch under its own subject and a longer one
+under the pull request's title, and `COMMIT_MESSAGES` makes the branch's
+commit messages the body — never the pull request's description, which
+`PR_BODY` would take with nothing here to show the flip.
 
 **It is also how a pull request lands here**, auto-merge below being
 what presses it once the review and the checks are in. The commit that
@@ -744,6 +766,22 @@ on their own commits too. Whether that is worth three seats is a question
 for whoever pays for them, and it is recorded here so that it is asked
 with the second column in view.
 
+## Features
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1 --jq '{visibility, has_issues}'
+# {"has_issues":true,"visibility":"public"}
+```
+
+Section 10's `scorecard` sentinel rests on the first answer: public is
+what it reads at all, so a flip to private leaves `scorecard.yml` and
+`README.md`'s badge standing while the run stops producing a score, and
+`.visibility` above is what puts that flip one command from being seen.
+
+`has_issues` is what `CONTRIBUTING.md`'s *The issue tracker* rests on —
+an issue about this tree alone stays here — and so does the
+`.github/ISSUE_TEMPLATE/` section 16's checklist gives every repository.
+
 ## Topics
 
 The topics are `pyproject.toml`'s `keywords`, entry for entry: one list
@@ -798,28 +836,99 @@ gh api repos/btclib-org/btclib-secp256k1 --jq '.homepage'
 home is its own documentation, not `btclib.org`, the sibling's project
 page the field named before.
 
+## Read the Docs, which is btclib-secp256k1.readthedocs.io
+
+The project's slug is `btclib-secp256k1`, and its public API answers
+without a token for what section 11 asks of the project — `latest`
+follows the default branch, `stable` is the highest release tag, and an
+automation rule activates each new tag:
+
+```shell
+p=https://app.readthedocs.org/api/v3/projects/btclib-secp256k1
+curl -s "$p/" | jq -c '{default_branch, repository: .repository.url}'
+# {"default_branch":"main",
+#  "repository":"https://github.com/btclib-org/btclib-secp256k1.git"}
+curl -s "$p/versions/?active=true" \
+  | jq -c '.results[] | select(.slug == "latest" or .slug == "stable")
+           | [.slug, .type, .ref]'
+# ["stable","tag","v0.8.0.4"]
+# ["latest","branch",null]
+git tag --list 'v*' --sort=version:refname | tail -1
+# v0.8.0.4
+```
+
+`repository.url` says which repository the slug serves. `latest` is a
+branch, and the branch it follows is the project's `default_branch`;
+`stable` is a tag, and its `ref` is the one `git tag` sorts highest. The
+tags beside those two in the same answer are the automation rule's
+result rather than the rule, which that API does not expose —
+`automation-rules/` answers 404 where an endpoint needing a token, such
+as `redirects/`, answers 401.
+
+**What connects this repository to Read the Docs is the organization-wide
+`read-the-docs-community` GitHub App, not a per-repository webhook.**
+
+```shell
+gh api orgs/btclib-org/installations \
+  --jq '.installations[] | select(.app_slug == "read-the-docs-community")
+        | [.app_slug, .repository_selection]'
+# ["read-the-docs-community","all"]
+```
+
+`repository_selection: all` is what makes that the connection for every
+repository of the organization at once, this one included, rather than a
+setting this repository carries on its own. The repository itself carries
+no hook:
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1/hooks --jq length
+# 0
+```
+
+A hook that command finds is stale and is deleted rather than repaired:
+that is section 11's rule, and the secret is its reason — Read the Docs
+issues it on the project's own integration page and GitHub returns it
+masked, so nothing read back from the repository says whether a hook
+still carries the right one.
+
 ## What this file passes over
 
 The API answers for more than this repository decides, and what is left
-out below is left out by the scope above rather than by oversight —
-except where the last paragraphs name a setting the scope does reach and
-this file has not caught up with.
+out below is left out by the scope above rather than by oversight.
 
 **What no call sets.** `gh api repos/btclib-org/btclib-secp256k1`
 answers with the repository document, most of which is URLs, counts and
 derived state. The fields of it that are settings here are the ones the
-sections above quote: `delete_branch_on_merge`, the three merge-method
-flags, `allow_auto_merge`, `security_and_analysis`, `topics` and
-`homepage`.
+sections above quote.
 
-**A facility nobody reached for.** Actions secrets and variables,
-Dependabot secrets, self-hosted runners, webhooks, deploy keys,
-autolinks and custom property values each answer empty, and an empty
-answer records no decision:
+**A credential this repository spends and does not hold.**
+`claude-review.yml` reads `secrets.CLAUDE_CODE_OAUTH_TOKEN`, and both
+secret stores here answer empty for it:
 
 ```shell
-for e in actions/secrets actions/variables dependabot/secrets \
-         actions/runners hooks keys autolinks properties/values; do
+gh api repos/btclib-org/btclib-secp256k1/actions/secrets --jq .total_count
+gh api repos/btclib-org/btclib-secp256k1/dependabot/secrets \
+  --jq .total_count
+# 0, both
+gh api orgs/btclib-org/actions/secrets \
+  --jq '.secrets[] | [.name, .visibility]'
+gh api orgs/btclib-org/dependabot/secrets \
+  --jq '.secrets[] | [.name, .visibility]'
+# ["CLAUDE_CODE_OAUTH_TOKEN","all"], both
+```
+
+Those two zeros record a decision, and it is section 11's: the token is
+an organization secret at `visibility=all`, in both stores, so a
+repository adopting the workflow configures nothing for it, and a copy
+of it in a store here would be that decision undone.
+
+**A facility nobody reached for.** Actions variables, self-hosted
+runners, deploy keys, autolinks and custom property values each answer
+empty, and an empty answer there records no decision:
+
+```shell
+for e in actions/variables actions/runners keys autolinks \
+         properties/values; do
   printf '%-24s ' "$e"
   gh api "repos/btclib-org/btclib-secp256k1/$e" \
     --jq 'if type == "array" then length else .total_count end'
@@ -827,23 +936,22 @@ done
 ```
 
 Environments answer non-empty, and *Publishing* above is where they are
-read back. Whichever of the facilities listed here is used one day
-arrives with the section that uses it.
+read back; the webhook list answers empty, and *Read the Docs* above is
+where that zero is read. Whichever of the facilities listed here is used
+one day arrives with the section that uses it.
 
 **A field the standard states no rule about, and no call above answers
 alongside one it does.** `allow_forking`, `allow_update_branch`,
-`has_wiki`, `has_projects`, `has_issues`, `has_discussions`,
-`has_downloads` and `web_commit_signoff_required` are in the repository
-document, in none of the `--jq` objects here, and named nowhere in the
-standard:
+`has_discussions`, `has_downloads` and `web_commit_signoff_required`
+are in the repository document, in none of the `--jq` objects here, and
+named nowhere in the standard:
 
 ```shell
 std=$(mktemp)
 gh api repos/btclib-org/.github/contents/README.md \
   -H 'Accept: application/vnd.github.raw' > "$std"
-for f in allow_forking allow_update_branch has_wiki has_projects \
-         has_issues has_discussions has_downloads \
-         web_commit_signoff_required; do
+for f in allow_forking allow_update_branch has_discussions \
+         has_downloads web_commit_signoff_required; do
   printf '%-30s %s\n' "$f" "$(grep -c "$f" "$std")"
 done
 grep -c delete_branch_on_merge "$std"
@@ -851,32 +959,11 @@ rm "$std"
 ```
 
 The `delete_branch_on_merge` count is the control that makes those zeros
-an absence rather than a read of nothing. `has_issues` is the one worth
-pausing on: the standard's sections rely on a repository having an issue
-tracker and state no rule about the field that turns it on, so the test
-that leaves out `has_wiki` leaves it out too. Recording a field on no
-rule grows this file with GitHub's API rather than with the standard,
-and the price is that a change to any of them is invisible here.
+an absence rather than a read of nothing. Recording a field on no rule
+grows this file with GitHub's API rather than with the standard, and the
+price is that a change to any of them is invisible here.
 
-**What the scope reaches and this file does not.** What follows is
-inside the perimeter above and read back in no section of this file.
-Each is named here with the issue that will bring it in, so that the
-silence of everything else stays readable as a decision.
-
-The **default branch** is the first setting section 16's checklist puts
-on a new repository, and no section above answers it:
-
-```shell
-gh api repos/btclib-org/btclib-secp256k1 --jq '.default_branch'
-```
-
-That is issue btclib-org/.github#549, which is the same gap in most of
-the organization's copies.
-
-The **Read the Docs project** this tree's `homepage` names is
-configured on `app.readthedocs.org`, and section 11's *Pages and Read
-the Docs* states its rules: `latest` follows the default branch,
-`stable` is the highest release tag, an automation rule activates each
-new tag, and the webhook carries the secret the project's own
-integration page issued. *No website* above reaches the GitHub side
-of that and stops. That is issue btclib-org/.github#564.
+`has_wiki` and `has_projects` are outside the perimeter by section 11's
+own sentence, which states no rule about either, so this file neither
+reads them back nor explains an answer to them. That sentence is what
+the grep above would find, which is why the pair is not in its list.

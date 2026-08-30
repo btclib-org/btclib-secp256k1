@@ -2385,6 +2385,50 @@ release-notes length in the first place, and are still in
   *Plan-gated settings* for the ceiling's figure (issue
   btclib-org/.github#412).
 
+### `REPOSITORY.md`'s perimeter is section 11's
+
+- **The scope statement carries section 11's three limbs in the
+  standard's own words** (issue btclib-org/.github#582): the pronoun
+  whose nearest antecedent was section 16's checklist now names the
+  standard, and the third limb -- the settings a behaviour the standard
+  describes rests on -- is what admits `has_issues` and `.visibility`
+  below.
+- **The opening no longer claims that nothing in the file is recoverable
+  by reading the tree** (issue btclib-org/.github#571): the topics and
+  `.homepage` have a copy in `pyproject.toml`, which *Topics* and *No
+  website* already said, so the clause names those two and holds of the
+  rest.
+- **`.visibility` and `has_issues` are read back, under *Features***
+  (issue btclib-org/.github#584, issue btclib-org/.github#550): section
+  10's `scorecard` sentinel reads a public repository and nothing else,
+  and `CONTRIBUTING.md`'s tracker rule rests on the issues switch. The
+  foot stops listing `has_issues` among the fields the standard states
+  no rule about.
+- **`has_wiki` and `has_projects` are outside the perimeter** (issue
+  btclib-org/.github#550), by section 11's sentence rather than by a
+  grep of the standard, which no longer answers zero for either.
+- **`squash_merge_commit_title` and `squash_merge_commit_message` are
+  read back with the merge-method flags** (issue
+  btclib-org/.github#568), with what section 11 sets them to beside the
+  answer.
+- **`.default_branch` is read back** (issue btclib-org/.github#549),
+  under *Branch protection*, and the foot stops naming it as a gap; the
+  Pages read-back was already in place.
+- **The Read the Docs project is read back from its own API, under a
+  section of its own** (closes btclib-org/.github#564): `latest` a
+  branch following `main`, `stable` the tag `git tag` sorts highest, the
+  active tags the automation rule's result, and the organization-wide
+  GitHub App as the connection, with the repository's own hook list
+  empty. The foot's paragraph quoting the retired webhook rule goes with
+  it.
+- **The Actions and Dependabot secret stores answer empty by the
+  standard's decision, not for want of use** (issue
+  btclib-org/.github#572): the token is the organization's, at
+  `visibility=all`, so the two stores leave the facility bullet and get
+  the organization store read back beside them.
+- **The foot no longer lists which fields of the repository document
+  the sections quote**, the sections being what says so.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
