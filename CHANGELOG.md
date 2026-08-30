@@ -2429,6 +2429,19 @@ release-notes length in the first place, and are still in
 - **The foot no longer lists which fields of the repository document
   the sections quote**, the sections being what says so.
 
+### The free-threading classifier is a claim about the merge gate
+
+- **`tests/interpreters_test.py` gates the `Free Threading` classifier
+  on the merge gate running a free-threaded build** (closes #476, issue
+  btclib-org/.github#577). Section 3 of the organization standard
+  declares the classifier where the gate exercises that build and names
+  the enforcement: the biconditional that gates the PyPy classifier,
+  with the gate's own interpreters as its second side. That side is
+  `test.yml` and not the platform sentinels, whose `3.14t` cell runs
+  beside a landing and blocks nothing — a sentinel passing is the ground
+  the standard declines. Neither side holds in this tree, so the test
+  lands green, and it goes red on whichever side moves alone.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
