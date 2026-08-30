@@ -266,6 +266,19 @@ Do not use Fable unless explicitly instructed.
   ruleset's `bypass_actors` entry grants covers the review requirement,
   not those checks. `gh pr checks <n>` naming the three, not a retried
   merge call, is what says whether it is time to try again
+- **A `###` in the open section names one entry, never a theme several
+  entries share** (issue btclib-org/.github#586). Section 9's
+  `CHANGELOG.md and RELEASE_NOTES.md` makes grouping by theme the
+  rejected alternative, and this tree's open section carries headings
+  from before that rule which do group several entries under one theme.
+  Such a heading is landed text and stays exactly as it is (*Nothing
+  already written is rewritten*, same subsection); a new entry never
+  joins one, but takes its own `###` at the end of the open section,
+  naming only that entry. Which of the headings there are themes and
+  which are one entry whose bullets cite separately is a reading of what
+  sits under them, not a list to be kept here: section 9 says an entry's
+  bullets are separate facts and cite separately, so several citations
+  under one `###` are no evidence of a theme
 
 ## Conventions to match
 
