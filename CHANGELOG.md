@@ -2287,6 +2287,19 @@ release-notes length in the first place, and are still in
   behind for that same grep to see. `RELEASING.md`'s own probe paragraph,
   closed under #455, states the identical pair of shapes.
 
+### `check_vendored_vectors.py` no longer cites a closed `btclib` divergence
+
+- **The module docstring drops the sentence claiming `btclib`'s own copy
+  does not yet report a heading owning no fenced block, and states
+  instead why the identical-skip-line collapse `btclib-org/btclib#1451`
+  gave that copy is declined here** (closes #445). `btclib-org/btclib#1447`
+  gave `btclib`'s copy the report this script's own docstring already
+  promised; once it landed, citing it as still open made the sentence
+  false. The collapse is declined because `tests/README.md` gives every
+  heading here exactly one fenced block, so no skip line this script
+  builds ever repeats -- a property of this file today, not a rule the
+  parsing above enforces.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

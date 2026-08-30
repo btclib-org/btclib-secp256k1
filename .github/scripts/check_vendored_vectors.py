@@ -35,9 +35,14 @@ whether it is a group heading a finer one supersedes, or a pin whose
 block an edit broke, is not for this script to tell apart, only to
 report by name. Every heading the README carries but this script did not
 check is listed in its own report, so nothing silently reads as "checked
-and clean" that was not checked at all -- this copy diverges from
-btclib's here, whose own report does not yet name that third shape
-(btclib-org/btclib#1447).
+and clean" that was not checked at all.
+
+btclib's own copy also collapses skip lines that repeat one heading and
+one reason, a shape that only a heading owning several fenced blocks
+can produce. tests/README.md gives every heading here exactly one
+block, so no skip line this script builds ever repeats today -- a
+property of this file, not a shape the parsing above forbids, and not
+carried here for that reason.
 
     python .github/scripts/check_vendored_vectors.py tests/README.md
 """
