@@ -167,7 +167,9 @@ Then:
    of confirming what is already declared, or of renumbering it if the
    submodule has moved since
 1. check the breaking-changes list against the API itself, which
-   nothing else here does:
+   nothing else here does before the tag -- the run's own `public-api`
+   job asks it again, red on a break and gating nothing, `release.yml`'s
+   comment on that job saying why:
 
    ```shell
    uv run --isolated --no-project --with griffe \
@@ -425,6 +427,35 @@ Then:
    already there, in minutes rather than the better part of an hour, the
    tag never touched. Retagging is the right answer only when the failure
    happened before the artifacts existed
+1. read the run job by job once it has ended, for `skipped` rather than
+   for red. A failed job is loud; a skipped one carries no step, starts
+   and completes in the same second, and leaves the run looking finished
+   with a job missing from it, which is what a bare `needs:` behind a
+   red `public-api` produces -- section 12 of the organization standard
+   has the rule, and the `skipped` `github-release` of 0.8.0.2 below is
+   this tree's own instance of the mechanism:
+
+   ```shell
+   run=<run id>
+   gh api --paginate \
+     "repos/btclib-org/btclib-secp256k1/actions/runs/$run/jobs?per_page=100" \
+     --jq '.jobs[] | [.conclusion, (.steps|length), .name] | @tsv'
+   ```
+
+   On a tag `Publish to TestPyPI` is `skipped`, its trigger being the
+   dispatch, and `public-api` is red on any cycle with breaking changes
+   in it, being the griffe step above run again. Every other job reads
+   `success`, the ones behind `public-api` included: each of them opens
+   its `if:` with `always()` and names the results it does require, so
+   a red `public-api` costs the release nothing, and a `skipped` among
+   them is a defect in `release.yml` rather than a red to look past. A
+   rehearsal is the mirror image, `Publish to PyPI` skipped and with it
+   whatever is guarded on its success, and `documented` skipped on its
+   own account, its guard being the push. `gh run rerun --failed` does not
+   reach a skipped job -- that flag reruns `failure`, and a skip is
+   neither a failure nor within its blast radius -- so what recovers one
+   is doing by hand what it would have done, the way the GitHub release
+   step below shows for that job
 1. check that what was published installs, in an environment of its own
    rather than one that may already hold it, and run something with it —
    installing being weaker than working where a compiled extension is
