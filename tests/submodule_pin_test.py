@@ -11,11 +11,13 @@ What cannot be answered that way is how it behaves when the answer is no
 submodule nobody initialized -- because a tree in any of those states is
 a tree the gate refuses. Those are the cases here, built by hand.
 
-There is deliberately no test that the real tree passes: that is the
-hook's own job, it runs on every commit, and a copy of it here would have
-to be skipped wherever the suite runs outside a git checkout -- the sdist
-jobs, which unpack a tarball with no `.git` in it -- which is a test
-reporting success on the strength of having not run.
+There is deliberately no test that the real tree passes the check
+itself: that is the hook's own job, and it runs on every commit. The
+entry-point guard below is built by hand too, `check.subprocess.run`
+stubbed to fail every call the way the rest of this file already stubs
+`_git` or `check.subprocess.run` directly, so the guard's own run is as
+independent of the checkout's actual state -- submodule included -- as
+every other test here.
 
 The script is loaded by path, `.github/scripts` being no package, and
 once: `monkeypatch` undoes what each test does to it.
@@ -24,6 +26,7 @@ once: `monkeypatch` undoes what each test does to it.
 from __future__ import annotations
 
 import importlib.util
+import runpy
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -272,8 +275,9 @@ def test_the_submodule_is_read_with_the_hook_environment_off(
     monkeypatch.setenv("GIT_INDEX_FILE", "/elsewhere/.git/index")
     monkeypatch.setattr(check.subprocess, "run", fake_run)
     # this test is about the environment a real git call is made with, not
-    # about whether the submodule is checked out -- true in a git checkout,
-    # false in the sdist jobs, which unpack a tarball with no .git in it
+    # about whether the submodule is checked out -- true in the job that
+    # gates coverage on this file, false in the sdist install jobs, which
+    # check this repository out in full but the submodule not at all
     monkeypatch.setattr(check, "_checked_out", lambda _path: True)
 
     check.commit_of("v0.8.0")
@@ -286,3 +290,60 @@ def test_the_submodule_is_read_with_the_hook_environment_off(
 
     check.pinned_commit()
     assert captured[-1] is None, "the pin is read from the index git names"
+
+
+def test_pinned_commit_reads_the_gitlink_line_git_prints(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The four-field, mode-160000 line is what tells a submodule from a file.
+
+    Every other test stubs `pinned_commit` itself, so nothing above ever
+    runs its own parsing of the `git ls-files --stage` line. Both shapes
+    are exercised here: the gitlink `git` actually prints for a submodule,
+    and a same-named ordinary file, which the mode alone tells apart.
+
+    Args:
+        monkeypatch: the fixture `_git` is replaced through.
+    """
+    gitlink = f"160000 {_PINNED} 0\tsecp256k1"
+    monkeypatch.setattr(check, "_git", lambda *_args, **_kwargs: gitlink)
+    assert check.pinned_commit() == _PINNED
+
+    ordinary_file = f"100644 {_PINNED} 0\tsecp256k1"
+    monkeypatch.setattr(check, "_git", lambda *_args, **_kwargs: ordinary_file)
+    assert check.pinned_commit() is None
+
+
+def test_the_entry_point_guard_runs_the_check_as___main__(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The guard turns `main`'s return value into the process exit status.
+
+    `runpy.run_path` executes the file again in this interpreter with
+    `__name__` bound to `"__main__"`, which is what puts the guard's own
+    line under test; a subprocess would run it in an interpreter this
+    suite measures nothing in. `check.subprocess` is the real stdlib
+    module the freshly executed copy also imports, the way
+    `tests/vendored_vectors_test.py`'s own guard test stubs the same
+    module, so failing every call through it here makes `pinned_commit`
+    answer `None` and pins both the exit code and the message -- with no
+    real `git` process run and no dependence on whether the environment
+    running this test has the submodule checked out.
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+        capsys: the captured streams.
+    """
+    path = Path(__file__).parents[1] / ".github" / "scripts" / "check_submodule_pin.py"
+
+    class _Result:
+        returncode = 1
+        stdout = ""
+
+    monkeypatch.setattr(check.subprocess, "run", lambda *_args, **_kwargs: _Result())
+
+    with pytest.raises(SystemExit) as raised:
+        runpy.run_path(str(path), run_name="__main__")
+
+    assert raised.value.code == 1
+    assert "no secp256k1 submodule in this tree" in capsys.readouterr().err

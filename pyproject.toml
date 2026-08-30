@@ -718,13 +718,14 @@ filterwarnings = ["error"]
 xfail_strict = true
 
 [tool.coverage.run]
-# both trees are named, rather than left to --cov's default of "whatever
+# every tree is named, rather than left to --cov's default of "whatever
 # got imported": a module no test imports is then reported at 0% instead
 # of being absent from the table, which is the miss worth catching. tests
 # is measured for the same reason it is written -- a helper nothing calls
 # and a fixture branch nothing takes are dead code carrying the authority
-# of a test, and only a measured suite says so
-source = ["btclib_secp256k1", "tests"]
+# of a test, and only a measured suite says so. .github/scripts is not an
+# importable package, and coverage measures it by path all the same
+source = ["btclib_secp256k1", "tests", ".github/scripts"]
 # the interesting misses are the guard clauses of a wrapper: statement
 # coverage alone would call a half-tested if fully covered
 branch = true

@@ -22,6 +22,7 @@ The script is loaded by path, `.github/scripts` being no package.
 from __future__ import annotations
 
 import importlib.util
+import runpy
 import sqlite3
 import subprocess
 import sys
@@ -225,3 +226,52 @@ def test_the_script_reads_a_session_and_exits_on_an_unsound_one(
     )
     assert failed.returncode == 1
     assert "exception 1" in failed.stdout
+
+
+def test_the_entry_point_guard_runs_the_script_as___main___when_sound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The guard itself, and the body of `main` and `enumerated_mutants`.
+
+    Kept beside the subprocess test above rather than instead of it: that
+    one is what proves the script actually runs the way its own docstring
+    calls it, `python .github/scripts/mutation_counts.py session.sqlite`,
+    in a real interpreter this suite measures nothing in.
+    `runpy.run_path` executes the file again in this one, with `__name__`
+    bound to `"__main__"`, which is what puts `main`'s own body under
+    test. The session carries two mutants beyond the three results, so
+    `enumerated_mutants` answering anything other than 5 changes the
+    printed line rather than only being called.
+
+    Args:
+        tmp_path: where the session is written.
+        monkeypatch: the fixture `sys.argv` is set through.
+        capsys: the captured streams.
+    """
+    sound = session(tmp_path / "sound.sqlite", [("KILLED", "NORMAL")] * 3, pending=2)
+    monkeypatch.setattr(sys, "argv", ["mutation_counts.py", str(sound)])
+
+    runpy.run_path(str(_SCRIPT), run_name="__main__")
+
+    out = capsys.readouterr().out
+    assert "killed 3, survived 0, skipped 0, never run 2" in out
+
+
+def test_the_entry_point_guard_runs_the_script_as___main___when_unsound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The label argument, and the exit status the workflow reads.
+
+    Args:
+        tmp_path: where the session is written.
+        monkeypatch: the fixture `sys.argv` is set through.
+        capsys: the captured streams.
+    """
+    broken = session(tmp_path / "broken.sqlite", [(None, "EXCEPTION")])
+    monkeypatch.setattr(sys, "argv", ["mutation_counts.py", str(broken), "weekly"])
+
+    with pytest.raises(SystemExit) as raised:
+        runpy.run_path(str(_SCRIPT), run_name="__main__")
+
+    assert raised.value.code == 1
+    assert capsys.readouterr().out.startswith("weekly: ")
