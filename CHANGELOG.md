@@ -2353,6 +2353,20 @@ release-notes length in the first place, and are still in
   over wheels with nothing to complain about, which its existing `main`
   tests never build.
 
+### The release pull request opens the next version's sections
+
+- **`RELEASING.md`'s release pull request closes the "work in progress"
+  sections of `CHANGELOG.md` and `RELEASE_NOTES.md` and opens the next
+  version's above them, in the one pull request** (closes
+  btclib-org/.github#528). Opened in a pull request of their own after
+  the release's, the sections were absent from `main` for as long as
+  that pull request took to land, and a branch landing in between would
+  have had nowhere but a release it is not in to file its entry, with
+  nothing to say so. The version bump to the placeholder stays in the
+  pull request that opens the next version, `version-check` comparing
+  the tag against what `pyproject.toml` declares. Section 12 of the
+  organization standard is the decision; this is its port.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
