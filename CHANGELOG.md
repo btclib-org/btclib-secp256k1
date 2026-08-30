@@ -2286,6 +2286,18 @@ release-notes length in the first place, and are still in
   in a `--repo` flag, which a call omitting the flag leaves nothing
   behind for that same grep to see. `RELEASING.md`'s own probe paragraph,
   closed under #455, states the identical pair of shapes.
+- **`RELEASING.md`'s merge step fetches before it reads `origin/main`,
+  and prints the commit it asks about** (closes #458). A merge pressed
+  on GitHub moves the branch on the forge and leaves the checkout's
+  `refs/remotes/origin/main` at the pull request's own base until
+  something fetches, so `gh run list --commit "$(git rev-parse
+  origin/main)"` asked about that base. What answers is the base's own
+  `push` runs, green and carrying the same workflow names as the runs the
+  step is waiting for. `gh run list` prints no column for the commit, and
+  the title it does print is that commit's own subject, which says which
+  commit answered only to a releaser who already knows the subject to
+  expect. `git fetch origin` now runs first, and the sha is echoed before
+  the `gh run list` call takes it.
 
 ### `check_vendored_vectors.py` no longer cites a closed `btclib` divergence
 
