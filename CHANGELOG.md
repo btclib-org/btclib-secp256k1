@@ -2483,6 +2483,21 @@ release-notes length in the first place, and are still in
   to another branch's run when `main` has none. The pre-commit.ci, Read
   the Docs and Scorecard badges are outside the rule.
 
+### `links.yml` asks lychee for the fragment too
+
+- **`.github/workflows/links.yml` passes `--include-fragments`** (issue
+  btclib-org/.github#583). A link into a heading is then checked as an
+  anchor and not only as a page, where the forge serves the page and
+  drops a fragment it cannot resolve, so a heading renamed in the tree a
+  link here points into is red in this run rather than nowhere. The check
+  reads the page already fetched for the link and adds no request, and no
+  fragment this tree links to fails it today. The
+  `blob/main/README.md#<heading>` anchor `REPOSITORY.md` carries is read;
+  the bare `github.com/btclib-org/.github#<heading>` shape that file and
+  `CONTRIBUTING.md` cite the standard by is answered by the repositories
+  API instead, once lychee holds the workflow's token, and
+  btclib-org/.github#630 is where that is weighed.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
