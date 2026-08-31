@@ -2762,6 +2762,25 @@ release-notes length in the first place, and are still in
   defect. `CONTRIBUTING.md`'s workflow table says a pull request
   touching what it builds.
 
+### `zizmor`'s `self-repository` audit is declined, and `pyroma` holds at 5.0.1
+
+- **Bumping the `zizmor-pre-commit` hook to v1.30.0 turns on the
+  `self-repository` audit, which flags the workspace-relative
+  `uses: ./...` sites in `release.yml` and `test.yml`; `.github/zizmor.yml`
+  now ignores those findings rather than adopting GitHub's `$/...` form**
+  (closes #512). `$/` is what the audit recommends and what the runner
+  accepts, but actionlint -- the hook holding these same workflows to a
+  zero-finding bar -- has no released version that parses it: v1.7.12
+  predates GitHub's introduction of the syntax, and
+  [rhysd/actionlint#711](https://github.com/rhysd/actionlint/issues/711)
+  is still open asking for support. Adopting `$/` now would trade a
+  zizmor finding for an actionlint one on each of the same lines.
+- The same bump moves `ruff-pre-commit` to v0.16.5 and `uv-pre-commit` to
+  0.12.7, neither surfacing a new finding. `pyroma`'s own bump to `5.1b1`
+  is not taken: PyPI's latest stable release is still `5.0.1`, and
+  `pyroma --min 10` runs in the gate that rates every release's sdist, not
+  a place for a packaging linter's prerelease score to move the floor.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
