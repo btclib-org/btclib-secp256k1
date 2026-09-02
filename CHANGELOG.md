@@ -2602,6 +2602,25 @@ release-notes length in the first place, and are still in
   issue cites it `(closes #N)`; this one is left as the record of a tree
   that, at the time, did not.
 
+### The mypy hook's `types-cffi` pin is `2.1.0.20260827`, matching `uv.lock`
+
+- **`.pre-commit-config.yaml`'s mypy hook and `uv.lock` both carry
+  `types-cffi==2.1.0.20260827`, replacing `2.0.0.20260518`** (closes
+  #478). `deps-latest.yml` resolves every dependency at latest, so the
+  two disagreed there and `tests/hook_pins_test.py`'s
+  `test_every_pin_is_the_locked_version` failed on every suite cell of
+  that sentinel. mypy type-checks this package clean against the newer
+  stubs.
+
+### `deps-latest.yml`'s `lint-latest` job checks out the submodule and its tags
+
+- **The `lint-latest` job's checkout step now carries `submodules: true`
+  and `fetch-depth: 0`, the two keys `lint.yml`'s own checkout step
+  carries for the same hook** (closes #487). Without them,
+  `submodule-pin` failed with "the submodule is not checked out" and
+  `check-sdist` failed with "Git only: secp256k1", on every run of that
+  job regardless of what any dependency resolved to at latest.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
