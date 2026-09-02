@@ -3176,14 +3176,14 @@ wheels = [
 
 [[package]]
 name = "types-cffi"
-version = "2.0.0.20260518"
+version = "2.1.0.20260827"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-setuptools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/0b/b352742758a6054d1053783887bf8cfb739deda1102fda8722294bdc01f7/types_cffi-2.0.0.20260518.tar.gz", hash = "sha256:f9707e66c13454789a58f8843d1ded4a66f1e9c8b10bd24d5eb5e0f25c0c5472", size = 17790, upload-time = "2026-05-18T06:06:50.672Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/bb/dbb844365103e4dc6ea52cdae0946c3ca55a7b8587e6f351710d7ee5bb78/types_cffi-2.1.0.20260827.tar.gz", hash = "sha256:53d1604771ad4ff09a1a90d6f6980ab36bebb6c39476dcc5bbf4896fa510d736", size = 18150, upload-time = "2026-08-27T12:07:21.754Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/44/d3b4aafa20a3f76384ba19a513d39272add13746dcfe0409d8d4974fd464/types_cffi-2.0.0.20260518-py3-none-any.whl", hash = "sha256:5b68a215a95d0eac4203b58e766ff7fe40c2e091b1fa1a9e54111f04cc560084", size = 20198, upload-time = "2026-05-18T06:06:49.83Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/fc/690c243ddac627901f1448f5cb29ca3b5463774a00ac932862c60d7ce5cf/types_cffi-2.1.0.20260827-py3-none-any.whl", hash = "sha256:851b6ffa5b962c577a2330b98ac0b60c56c904d086726276946388f58a0cffaf", size = 20525, upload-time = "2026-08-27T12:07:20.836Z" },
 ]
 
 [[package]]

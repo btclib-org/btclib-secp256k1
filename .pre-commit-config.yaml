@@ -547,7 +547,7 @@ repos:
         # to 3.9 for the package and pin older versions of these there
         additional_dependencies:
           - cffi==2.1.1
-          - types-cffi==2.0.0.20260518
+          - types-cffi==2.1.0.20260827
           - hatchling==1.32.0
           - pytest==9.1.1
           # hyphenated as uv.lock spells it, hook_pins_test.py keying
