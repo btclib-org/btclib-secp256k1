@@ -2831,6 +2831,57 @@ release-notes length in the first place, and are still in
   the one thing the diagnostic step added beyond that -- naming which
   field -- is a question this entry now answers.
 
+### The sentinel builds each platform on two images and diffs the pair
+
+- **`wheel-reproducibility.yml` carries a second GitHub image for every
+  platform it measures, each job keeps the wheel it built as an
+  artifact, and an `across-images` job downloads the pair and diffs the
+  two archives member by member** (closes #514). #439's exemption, which
+  `RELEASING.md` and section 12 of the organization standard both state,
+  names the compiler, its version and the toolchain the runner happened
+  to have as the inputs nothing pins: that is a claim about two
+  environments, and everything measured under #439 until now is two
+  builds inside one. The second image of each pair is a different OS
+  release rather than another label for the same one -- Ubuntu 22.04
+  against 24.04 on both architectures, macOS 15 against macOS 26 on
+  both, Windows Server 2022 against 2025 -- and the Windows arm64 pair
+  is the one whose images share an OS build and differ in the Visual
+  Studio they carry, which is the compiler moving with nothing else.
+  Each image still builds twice, so a difference between two images is
+  attributable to the image rather than to either one's own drift --
+  on every platform whose own two builds agree, which #522 is Linux not
+  yet doing.
+- `check_wheel_reproducibility.py` grows the two entry points that
+  separation needs: `--keep-wheel` saves the first build's wheel before
+  the two are compared, so an image whose own builds disagree still
+  hands its half over, and `--across-images` compares the wheels the
+  images left without building anything. A filename that differs between
+  two images is one line of that comparison and not the end of it: a
+  macOS runner's deployment target reaches the platform tag, so
+  `macosx_15_0` against `macosx_26_0` renames the wheel while saying
+  nothing yet about the members inside it, and the members are compared
+  either way.
+- `tests/wheel_reproducibility_platforms_test.py` held the sentinel's
+  image list equal to `build-cibuildwheel`'s, which a second image per
+  platform makes impossible to keep. The invariant it asserts is now the
+  containment -- an image the release builds a wheel on that the
+  sentinel does not is a wheel nothing measures -- together with the
+  pairing, since a platform down to one image is one whose across-images
+  comparison has nothing to compare.
+- **The answer is that no platform's two images build one wheel**, run
+  [33693367257](https://github.com/btclib-org/btclib-secp256k1/actions/runs/33693367257):
+  the compiled extension differs on every pair, and on both macOS pairs
+  the wheel is named differently as well -- `macosx_15_0` against
+  `macosx_26_0` -- with `WHEEL`, which carries that tag, differing with
+  it. The Windows arm64 pair is the cleanest of them, its two images
+  sharing the OS build `10.0.26200` and differing in the Visual Studio
+  they carry: `_btclib_secp256k1.cp314-win_arm64.pyd` is 1512960 bytes
+  off the 2022 toolset and 1521664 off the 2026 one, the compiler moving
+  with nothing else around it. So the exemption `RELEASING.md` states is
+  confirmed rather than narrowed, and pinning the image by digest, the
+  Xcode and the MSVC toolset is #524. That run's Linux cells are red
+  within one image too, which is #522 and not this.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

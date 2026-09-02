@@ -1,0 +1,15 @@
+---
+# actionlint knows which runner labels GitHub offers from a list compiled
+# into it, and rejects one it does not carry. windows-11-vs2026-arm is
+# GitHub-hosted and current -- actions/runner-images' own README lists it
+# beside windows-11-arm, the two differing in the Visual Studio they
+# carry -- and no actionlint release names it: the x64 counterpart,
+# windows-2025-vs2026, is in the compiled list and the arm64 one is not.
+# self-hosted-runner.labels is what actionlint's own error message points
+# at for a label it does not know, and declaring it here is what keeps
+# the hook at zero findings without pinning the workflow to a runner that
+# cannot answer #514's question for this platform: it is the only second
+# image GitHub offers for Windows arm64.
+self-hosted-runner:
+  labels:
+    - windows-11-vs2026-arm

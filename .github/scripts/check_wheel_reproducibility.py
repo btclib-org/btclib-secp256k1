@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-r"""Build one commit's wheel twice, from two directories, and diff them.
+r"""Compare the wheels one commit builds, in one environment or across two.
 
 `btclib-org/btclib-secp256k1#439` asks whether a wheel this project
 builds reproduces byte for byte. `#497` and `#498` answered that for
@@ -32,27 +32,45 @@ deliberate change from the first version: an uncommitted edit sitting in
 the checkout is not part of what either build sees, since it is not
 part of the commit the question is about.
 
+Two directories are still one environment, and `#514` is the other
+half: `RELEASING.md` and section 12 of the organization standard both
+say the wheels do not reproduce because the compiler, its version and
+the toolchain the runner happened to have are unpinned inputs, which is
+a claim about two environments and not about two directories.
+`--across-images` is the entry point that asks it. The comparison
+cannot happen where either build does, the two builds being on two
+machines, so each `--keep-wheel` run saves its first build's wheel and
+a later run compares the saved wheels: `wheel-reproducibility.yml`
+carries them between the two as artifacts.
+
 A whole-archive digest says two wheels differ and nothing past that.
 `#497`'s own reading of a difference this coarse -- which byte, in which
 member, and why -- took a person an evening once the digests alone had
-already said "no". This compares the two archives member by member
-instead: which members are present, in which order, and for every
+already said "no". `diff_wheels` compares the two archives member by
+member instead: which members are present, in which order, and for every
 member both sides share, whether its bytes agree and whether its stored
 `mtime`, permission bits and compression method do. A red run therefore
 names a member and a field rather than a wheel.
 
-Building twice needs no cleanup step of its own between the two calls.
-`scripts/hatch_build.py`'s build hook removes `build/` wholesale before
-it starts compiling, for every wheel target it is asked to build, and
-each build now runs in its own copy of the tree besides, so the second
-`uv build --wheel` below starts from a directory the first build never
-touched.
+The wheel's own filename is one of those lines and not a reason to stop
+comparing. Two images of one platform can tag the wheel differently
+without a byte of the build having moved -- a macOS runner's deployment
+target reaches the platform tag, so `macosx_15_0` against `macosx_26_0`
+is a name difference that says nothing yet about the members underneath
+it. Reporting it as its own line and then comparing the members anyway
+is what keeps a name difference from reading as a byte difference, and a
+byte difference from hiding behind a name that agreed.
 
 Run it from a checkout with the submodule initialized, and with the
 commit under test the current `HEAD`:
 
     uv run --no-project python \\
         .github/scripts/check_wheel_reproducibility.py
+
+`--keep-wheel <dir>` adds a copy of the first build's wheel under
+`<dir>`, and `--across-images <dir>` compares wheels already built:
+`<dir>` holds one directory per platform, each holding one directory
+per image, each of those holding that image's wheel.
 """
 
 from __future__ import annotations
@@ -174,19 +192,32 @@ def build_wheel(source_dir: Path, out_dir: Path) -> Path:
     return wheels[0]
 
 
-def diff_wheels(first: Path, second: Path) -> list[str]:
+def diff_wheels(
+    first: Path, second: Path, *, first_label: str, second_label: str
+) -> list[str]:
     """Return one line per way the two wheels disagree, member by member.
 
     Args:
         first: one build's wheel.
         second: another build's wheel of the same commit.
+        first_label: what to call `first` where a line has to say which
+            side it is about -- which of two builds, or which image.
+        second_label: the same, for `second`. Two wheels of one commit
+            usually carry the same filename, which is why the label is
+            the caller's to give rather than read off the path.
 
     Returns:
-        An empty list where the two archives are indistinguishable member
-        for member; otherwise one entry per difference, naming the member
-        and, for a metadata disagreement, the field and both values.
+        An empty list where the two archives are indistinguishable, their
+        filename included; otherwise one entry per difference, naming the
+        member and, for a metadata disagreement, the field and both
+        values.
     """
     complaints: list[str] = []
+    if first.name != second.name:
+        complaints.append(
+            f"the wheel is named {first.name} on {first_label} and "
+            f"{second.name} on {second_label}"
+        )
     with zipfile.ZipFile(first) as za, zipfile.ZipFile(second) as zb:
         names_a = [info.filename for info in za.infolist()]
         names_b = [info.filename for info in zb.infolist()]
@@ -196,15 +227,15 @@ def diff_wheels(first: Path, second: Path) -> list[str]:
         only_in_a = [name for name in names_a if name not in by_name_b]
         only_in_b = [name for name in names_b if name not in by_name_a]
         if only_in_a:
-            complaints.append(f"only in {first.name}: {only_in_a}")
+            complaints.append(f"only in {first_label}: {only_in_a}")
         if only_in_b:
-            complaints.append(f"only in {second.name}: {only_in_b}")
+            complaints.append(f"only in {second_label}: {only_in_b}")
 
         shared = [name for name in names_a if name in by_name_b]
         if not only_in_a and not only_in_b and names_a != names_b:
             complaints.append(
-                f"member order differs: {names_a} in {first.name}, "
-                f"{names_b} in {second.name}"
+                f"member order differs: {names_a} on {first_label}, "
+                f"{names_b} on {second_label}"
             )
 
         for name in shared:
@@ -223,12 +254,94 @@ def diff_wheels(first: Path, second: Path) -> list[str]:
     return complaints
 
 
-def main(argv: list[str]) -> int:
-    """Build one commit's wheel twice, from two directories, and compare."""
-    if len(argv) != 1:
-        print(f"usage: {argv[0]}", file=sys.stderr)
-        return 2
+def compare_one_platform(platform: Path) -> list[str]:
+    """Return one line per way one platform's images disagree.
 
+    Args:
+        platform: a directory holding one subdirectory per image that
+            built this platform's wheel, each with that wheel in it. The
+            first image in sorted order is the one every other is
+            compared against, so that a platform built on more than two
+            images still yields one line per disagreeing pair.
+
+    Returns:
+        An empty list where every image's wheel matches the first one's.
+        A directory that does not hold exactly one wheel is a line here
+        too, and so is a platform left with fewer than two of them: the
+        comparison this directory exists for did not happen, which is
+        not the same answer as the wheels agreeing and must not print
+        like it.
+    """
+    complaints: list[str] = []
+    wheels: dict[str, Path] = {}
+    for image in sorted(path for path in platform.iterdir() if path.is_dir()):
+        found = sorted(image.glob("*.whl"))
+        if len(found) == 1:
+            wheels[image.name] = found[0]
+        else:
+            complaints.append(
+                f"{image.name} left {[wheel.name for wheel in found]}, not one wheel"
+            )
+    if len(wheels) < 2:
+        complaints.append(
+            f"a wheel came back from {sorted(wheels)} alone, so no two images"
+            " were compared"
+        )
+        return complaints
+    reference, *others = sorted(wheels)
+    for other in others:
+        complaints += diff_wheels(
+            wheels[reference],
+            wheels[other],
+            first_label=reference,
+            second_label=other,
+        )
+    return complaints
+
+
+def compare_across_images(root: Path) -> int:
+    """Compare, platform by platform, the wheels its images built.
+
+    Args:
+        root: a directory holding one subdirectory per platform, in the
+            shape `compare_one_platform` reads.
+
+    Returns:
+        The process exit code: zero where every platform's images agree.
+        An empty `root` is not agreement either -- a run whose builds all
+        failed downloads nothing and would otherwise print no line at
+        all and exit green.
+    """
+    platforms = sorted(path for path in root.iterdir() if path.is_dir())
+    if not platforms:
+        print(f"::error::no platform built a wheel under {root}", file=sys.stderr)
+        return 1
+
+    failed = False
+    for platform in platforms:
+        complaints = compare_one_platform(platform)
+        if complaints:
+            failed = True
+            for complaint in complaints:
+                print(f"::error::{platform.name}: {complaint}", file=sys.stderr)
+        else:
+            print(f"{platform.name}: its images agree, member for member")
+    return 1 if failed else 0
+
+
+def build_twice_and_compare(keep_wheel: Path | None) -> int:
+    """Build this commit's wheel twice, from two directories, and compare.
+
+    Args:
+        keep_wheel: a directory to copy the first build's wheel into, or
+            `None` to keep neither. The copy is taken before the second
+            build runs, so that a build or a comparison that fails still
+            leaves this image's half of an `--across-images` comparison
+            behind.
+
+    Returns:
+        The process exit code: zero where the two builds agree.
+    """
     with tempfile.TemporaryDirectory(prefix="wheel-reproducibility-") as tmp:
         root = Path(tmp)
         # two directories, differing in name length as well as content --
@@ -240,25 +353,41 @@ def main(argv: list[str]) -> int:
         copy_source_tree(_ROOT, second_source)
 
         first = build_wheel(first_source, root / "out-a")
+        if keep_wheel is not None:
+            keep_wheel.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(first, keep_wheel / first.name)
         second = build_wheel(second_source, root / "out-b")
 
-        if first.name != second.name:
-            print(
-                f"::error::two builds of one commit named the wheel "
-                f"differently: {first.name} vs {second.name}",
-                file=sys.stderr,
-            )
-            return 1
-
-        complaints = diff_wheels(first, second)
+        name = first.name
+        complaints = diff_wheels(
+            first,
+            second,
+            first_label="the first build",
+            second_label="the second build",
+        )
 
     if complaints:
         for complaint in complaints:
             print(f"::error::{complaint}", file=sys.stderr)
         return 1
 
-    print(f"{first.name}: two builds of this commit agree, member for member")
+    print(f"{name}: two builds of this commit agree, member for member")
     return 0
+
+
+def main(argv: list[str]) -> int:
+    """Run whichever of the two comparisons the command line names."""
+    if len(argv) == 3 and argv[1] == "--across-images":
+        return compare_across_images(Path(argv[2]))
+    if len(argv) == 3 and argv[1] == "--keep-wheel":
+        return build_twice_and_compare(Path(argv[2]))
+    if len(argv) != 1:
+        print(
+            f"usage: {argv[0]} [--keep-wheel DIR | --across-images DIR]",
+            file=sys.stderr,
+        )
+        return 2
+    return build_twice_and_compare(None)
 
 
 if __name__ == "__main__":

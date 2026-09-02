@@ -8,13 +8,29 @@ name: wheel-reproducibility
 # same measurement, through .github/scripts/check_wheel_reproducibility.py,
 # on every platform build-cibuildwheel in test.yml builds a wheel on.
 #
-# The os: list below is a hand-kept copy of that job's, GitHub Actions
-# giving one workflow no way to read another's strategy.matrix short of
-# workflow_call, which neither file uses and which wiring this sentinel
-# into the gate would defeat the point of. A test holds the two equal
-# instead -- tests/wheel_reproducibility_platforms_test.py -- so the
-# two files can still drift for a moment but not silently: the suite
-# goes red the moment only one of them is edited.
+# It asks #439's stage 3 as well, which is #514: two builds in one job
+# share an image, and the exemption in RELEASING.md and in section 12 of
+# the organization standard rests on what happens across two of them --
+# it names the compiler, its version and the toolchain the runner
+# happened to have as inputs nothing pins. So every platform below
+# carries a second image, chosen to differ in the toolchain it carries
+# -- a different OS release for all but the Windows arm64 pair, whose
+# two images share an OS build and differ in Visual Studio alone. Each
+# job keeps the wheel it already built, and across-images downloads the
+# pair and compares them. The second image costs a job and no extra
+# build: the double build each one already does is what makes a
+# difference between two images attributable to the image rather than to
+# either build's own drift.
+#
+# The first image of each pair below is hand-kept against that job's own
+# list, GitHub Actions giving one workflow no way to read another's
+# strategy.matrix short of workflow_call, which neither file uses and
+# which wiring this sentinel into the gate would defeat the point of. A
+# test holds the two together instead --
+# tests/wheel_reproducibility_platforms_test.py -- so the two files can
+# still drift for a moment but not silently: the suite goes red the
+# moment an image build-cibuildwheel builds on is missing here, which is
+# the direction that matters now that the lists are no longer equal.
 #
 # It is a sentinel and not a gate. The property this asks about does not
 # hold on every platform yet -- #439's own record of where the four
@@ -29,9 +45,9 @@ name: wheel-reproducibility
 # alone made a fix unmeasurable before it landed, because both are inert
 # off the default branch -- whoever writes #510's Windows fix has to see
 # whether it worked before merging it. The paths filter is what keeps
-# every other pull request from paying for six double builds: everything
-# in it is something this job depends on -- the build scripts, the
-# version and the build backend's own configuration, the vendored
+# every other pull request from paying for a double build on every image:
+# everything in it is something this job depends on -- the build scripts,
+# the version and the build backend's own configuration, the vendored
 # library this compiles, the script the last step runs, and this
 # workflow's own matrix -- and nothing outside that list is.
 
@@ -107,8 +123,9 @@ jobs:
     # above for the same reason. A closed pull request spends none
     # either -- the trigger above takes the closed event only to let
     # cancel-in-progress supersede a run still holding in this ref's
-    # group. Six double builds are expensive enough that this is not a
-    # convention followed for its own sake here
+    # group. A double build on every image of every platform is
+    # expensive enough that this is not a convention followed for its
+    # own sake here
     if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
     runs-on: ${{ matrix.os }}
     # two full builds of the vendored library and the extension, from a
@@ -121,17 +138,49 @@ jobs:
       # answer, and stopping at the first one hides the rest
       fail-fast: false
       matrix:
-        # the platforms build-cibuildwheel in test.yml builds a wheel
-        # on, kept here as its own copy and held equal to that job's by
-        # tests/wheel_reproducibility_platforms_test.py -- see this
-        # file's own header for why it is a copy rather than a read
-        os:
-          - ubuntu-latest
-          - ubuntu-24.04-arm
-          - macos-26-intel
-          - macos-latest
-          - windows-latest
-          - windows-11-arm
+        # each platform build-cibuildwheel in test.yml builds a wheel
+        # on, twice: on the image that job names, and on a second one
+        # GitHub offers for the same platform and architecture. The
+        # first of each pair is the copy of that job's own list, held
+        # against it by tests/wheel_reproducibility_platforms_test.py --
+        # see this file's own header for why it is a copy rather than a
+        # read. The platform key is what pairs them for across-images
+        # below, and what a wheel's own tag cannot do: a macOS runner's
+        # deployment target reaches that tag, so two images of one
+        # platform can name their wheels differently.
+        # The second of each pair is a different OS release rather than
+        # another label for the same one, that being what carries a
+        # different compiler: 22.04 against 24.04 on both Ubuntu
+        # architectures, macOS 15 against macOS 26 on both Apple ones,
+        # Windows Server 2022 against 2025 on x64. The Windows arm64
+        # pair is the one whose two images share an OS build and differ
+        # in the Visual Studio they carry, which is the compiler on its
+        # own with nothing else moving.
+        include:
+          - platform: linux-x86-64
+            os: ubuntu-latest
+          - platform: linux-x86-64
+            os: ubuntu-22.04
+          - platform: linux-aarch64
+            os: ubuntu-24.04-arm
+          - platform: linux-aarch64
+            os: ubuntu-22.04-arm
+          - platform: macos-x86-64
+            os: macos-26-intel
+          - platform: macos-x86-64
+            os: macos-15-intel
+          - platform: macos-arm64
+            os: macos-latest
+          - platform: macos-arm64
+            os: macos-15
+          - platform: windows-x86-64
+            os: windows-latest
+          - platform: windows-x86-64
+            os: windows-2022
+          - platform: windows-arm64
+            os: windows-11-arm
+          - platform: windows-arm64
+            os: windows-11-vs2026-arm
 
     steps:
       - name: Checkout code
@@ -154,6 +203,75 @@ jobs:
       # command and runs identically under either shell today
       - name: Build the wheel twice and diff the two archives
         shell: bash
+        env:
+          # one directory per platform and one per image inside it, which
+          # is the shape --across-images reads once the artifacts are
+          # merged back together; RUNNER_TEMP rather than the workspace
+          # so that check-sdist's own question about untracked files is
+          # never asked of a wheel
+          KEEP_WHEEL: ${{ runner.temp }}/wheel/${{ matrix.platform }}/${{ matrix.os }}
         run: >
           uv run --no-project python
           .github/scripts/check_wheel_reproducibility.py
+          --keep-wheel "$KEEP_WHEEL"
+
+      # !cancelled(), not the default success(): the step above exits
+      # non-zero when this one image's own two builds disagree, and the
+      # wheel it saved before comparing them is still the half
+      # across-images needs. A build that produced no wheel at all
+      # uploads nothing and warns, which across-images reports as a
+      # platform it could not compare rather than as one that agreed
+      - name: Keep this image's wheel for the across-images comparison
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: wheel-${{ matrix.platform }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/wheel/
+
+  across-images:
+    name: Compare the wheels two images of one platform built
+    needs: rebuild
+    # !cancelled() rather than success(), for the same reason the upload
+    # step above carries it: a platform whose images disagree is what
+    # this job exists to name, and one image's red must not take the
+    # comparison with it. The draft and closed conditions are rebuild's
+    # own -- a skipped rebuild leaves nothing to download, and this job
+    # would go red for the absence rather than for a difference
+    if: >-
+      ${{ !cancelled() && !github.event.pull_request.draft
+      && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    # a download and a member-by-member diff of archives already built:
+    # nothing here compiles
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the script is all this job needs, and it compiles nothing:
+          # the vendored library would be a submodule clone for nothing
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      # merge-multiple, so every artifact lands in one tree: each holds
+      # its own platform and image directories already, and the pair of
+      # them under one platform is what the comparison is
+      - name: Download every image's wheel
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: wheel-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/wheels
+
+      - name: Diff the wheels two images of one platform built
+        env:
+          WHEELS: ${{ runner.temp }}/wheels
+        run: >
+          uv run --no-project python
+          .github/scripts/check_wheel_reproducibility.py
+          --across-images "$WHEELS"
