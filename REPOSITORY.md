@@ -739,32 +739,25 @@ gh api orgs/btclib-org --jq .plan.name        # free
 ```
 
 [GitHub's own table](https://docs.github.com/en/actions/reference/limits)
-is the authority, and two of its columns matter here (as of 2026-08-21,
-GitHub free to move the numbers without notice):
+is the authority, and two of its numbers matter here: on the free plan
+they are twenty concurrent jobs, of which five may be macOS runners.
 
-| plan | concurrent jobs | of which macOS |
-| --- | --- | --- |
-| Free | 20 | 5 |
-| Pro | 40 | 5 |
-| Team | 60 | 5 |
-| Enterprise | 500 | 50 |
-
-**Read the second column before spending anything on the first.** The
-twenty is what `os-windows.yml`'s header measured against, and paying for
-Team would triple it; the five is the ceiling behind the macOS queue
-`test.yml`'s header measures, and Team does not move it at all. A macOS
-column that queued for tens of minutes was far more jobs than five slots
-could clear at once, and only Enterprise changes that arithmetic. So the
-split that took those cells out of the merge gate is not a workaround
-for a plan — on this repository it is the answer, and the plan below
-Enterprise that would undo it does not exist.
+**Read the second number before spending anything on the first.** The
+twenty is what `os-windows.yml`'s header measured against, and a paid plan
+raises it well before it moves the second. The five is the ceiling behind
+the macOS queue `test.yml`'s header measures — a macOS column that queued
+for tens of minutes was far more jobs than five slots could clear at once,
+and only Enterprise changes that arithmetic. So the split that took those
+cells out of the merge gate is not a workaround for a plan — on this
+repository it is the answer, and the plan below Enterprise that would undo
+it does not exist.
 
 What Team would buy is the rest: the Linux and Windows crowding, and the
 contention with the other repositories of the organization,
 `bitcoin-core-rpc` and one more each asking for well more than the twenty
 on their own commits too. Whether that is worth three seats is a question
 for whoever pays for them, and it is recorded here so that it is asked
-with the second column in view.
+with the second number in view.
 
 ## Features
 
