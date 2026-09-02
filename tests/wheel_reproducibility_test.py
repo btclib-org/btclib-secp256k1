@@ -6,11 +6,20 @@
 
 `diff_wheels` is exercised against archives built by hand, one member
 disagreeing at a time, so that each assertion names the one thing that
-changed. `build_wheel` and `main` never invoke the real `uv build`: what
-they are asked to build is a fake, `check.subprocess.run` replaced the
-way `tests/submodule_pin_test.py` and `tests/check_vendored_vectors.py`
-replace it, so the suite measures this script rather than a real
-compile.
+changed. `_extract_archive` and `copy_source_tree` are exercised against
+real git repositories built by hand instead: what makes `#509`'s own
+fix worth trusting is that a commit and an uncommitted edit come out
+differently, and a mock of `subprocess.run` cannot tell the two apart --
+it would have to reimplement `git archive` to do so, at which point the
+test measures the mock rather than the script. `build_wheel` and `main`
+never invoke the real `uv build`, though: what they are asked to build
+is a fake, `check.subprocess.run` replaced the way
+`tests/submodule_pin_test.py` and `tests/check_vendored_vectors.py`
+replace it, so the suite measures this script's plumbing rather than a
+real compile. The fake answers a `git archive` call too, now that `main`
+calls `copy_source_tree` before every build, with a real, empty tar
+archive -- `_extract_archive`'s own `tarfile.open` still runs unmocked
+against that, extracting nothing rather than being skipped.
 
 The script is loaded by path, `.github/scripts` being no package, as the
 other scripts under it are tested.
@@ -19,8 +28,12 @@ other scripts under it are tested.
 from __future__ import annotations
 
 import importlib.util
+import io
 import runpy
+import shutil
+import subprocess
 import sys
+import tarfile
 import zipfile
 import zlib
 from pathlib import Path
@@ -32,6 +45,10 @@ import pytest
 _SCRIPT = (
     Path(__file__).parents[1] / ".github" / "scripts" / "check_wheel_reproducibility.py"
 )
+# resolved once, the same way check_wheel_reproducibility.py itself
+# resolves it, so a bare "git" in a subprocess list is never what makes
+# this file's own real-git tests trip ruff's S607
+_GIT = shutil.which("git") or "git"
 
 
 @pytest.fixture
@@ -69,6 +86,70 @@ def write_wheel(
             archive.writestr(info, content)
 
 
+def run_git(*args: str, cwd: Path) -> None:
+    """Run git with `args` in `cwd`, raising if it exits non-zero.
+
+    The one place this file's real-git tests shell out, so `# noqa: S603`
+    is written once rather than beside every call site.
+    """
+    subprocess.run([_GIT, *args], cwd=cwd, check=True)  # noqa: S603
+
+
+def init_repo(path: Path, files: dict[str, bytes]) -> None:
+    """Stand up a real, one-commit git repository at `path`.
+
+    Args:
+        path: created if it does not exist.
+        files: each path relative to `path`, and the bytes to commit there.
+            Parent directories are created as needed.
+    """
+    path.mkdir(parents=True, exist_ok=True)
+    run_git("init", "-q", "-b", "main", cwd=path)
+    run_git("config", "user.email", "test@example.invalid", cwd=path)
+    run_git("config", "user.name", "test", cwd=path)
+    for name, content in files.items():
+        file_path = path / name
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_bytes(content)
+    run_git("add", "-A", cwd=path)
+    run_git("commit", "-q", "-m", "init", cwd=path)
+
+
+def _empty_tar_bytes() -> bytes:
+    """Return the bytes of a valid, empty tar archive.
+
+    What a faked `git archive` call answers with below: `_extract_archive`
+    still runs its own `tarfile.open`/`extractall` against this, for real,
+    rather than having that call skipped the way a mock returning `None`
+    would force it to.
+    """
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w"):
+        pass
+    return buffer.getvalue()
+
+
+def dispatching_run(build_call: Any) -> Any:
+    """Return a `subprocess.run` stand-in that fakes `git archive` calls.
+
+    `main` now runs `copy_source_tree` -- two `git archive` calls -- ahead
+    of every `build_wheel`, and both go through the same `subprocess.run`
+    a test here replaces. `--out-dir` is what only a `uv build` call
+    carries, so its absence is what marks a `git archive` call, answered
+    with an empty archive rather than reaching `build_call`, which does
+    not expect one; `args[0]` is not what tells the two apart, since it
+    names `_GIT`'s own resolved, and possibly absolute, path rather than
+    the literal string "git".
+    """
+
+    def fake_run(args: list[str], **kwargs: Any) -> Any:
+        if "--out-dir" not in args:
+            return subprocess.CompletedProcess(args, 0, stdout=_empty_tar_bytes())
+        return build_call(args, **kwargs)
+
+    return fake_run
+
+
 def fake_run_writing(wheels: dict[str, list[tuple[str, bytes]]]) -> Any:
     """Return a `subprocess.run` stand-in that writes a canned wheel.
 
@@ -88,6 +169,52 @@ def fake_run_writing(wheels: dict[str, list[tuple[str, bytes]]]) -> Any:
     return fake_run
 
 
+def test_extract_archive_copies_head_and_not_an_uncommitted_edit(
+    check: ModuleType, tmp_path: Path
+) -> None:
+    """`git archive HEAD` is a commit's content, not the working tree's.
+
+    `#509`'s own reason for building from an archive rather than the
+    checkout in place: two builds sharing a working directory would share
+    whatever is sitting there uncommitted too. This is the property that
+    makes the sentinel measure a commit rather than a checkout, and it is
+    real git commands answering it, not a stand-in for them.
+    """
+    source = tmp_path / "source"
+    init_repo(source, {"tracked.py": b"committed"})
+    (source / "tracked.py").write_bytes(b"edited-but-not-committed")
+    (source / "untracked.py").write_bytes(b"never added")
+
+    dest = tmp_path / "dest"
+    check._extract_archive(source, dest)
+
+    assert (dest / "tracked.py").read_bytes() == b"committed"
+    assert not (dest / "untracked.py").exists()
+
+
+def test_copy_source_tree_extracts_the_submodule_from_its_own_repository(
+    check: ModuleType, tmp_path: Path
+) -> None:
+    """The submodule is a gitlink, and its own commit is archived on its own.
+
+    `root`'s own `git archive` never descends into a gitlink -- it leaves
+    an empty directory at that path instead -- so `copy_source_tree`'s
+    second `git archive`, against `root/secp256k1` itself, is what a real
+    submodule checkout actually needs and what this asserts landed.
+    """
+    root = tmp_path / "root"
+    init_repo(root, {"pyproject.toml": b"[project]\n"})
+    init_repo(root / "secp256k1", {"CMakeLists.txt": b"vendored\n"})
+    run_git("add", "-A", cwd=root)
+    run_git("commit", "-q", "-m", "pin submodule", cwd=root)
+
+    dest = tmp_path / "dest"
+    check.copy_source_tree(root, dest)
+
+    assert (dest / "pyproject.toml").read_bytes() == b"[project]\n"
+    assert (dest / "secp256k1" / "CMakeLists.txt").read_bytes() == b"vendored\n"
+
+
 def test_build_wheel_returns_the_one_wheel_uv_left(
     check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -98,7 +225,7 @@ def test_build_wheel_returns_the_one_wheel_uv_left(
         fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]}),
     )
 
-    wheel = check.build_wheel(tmp_path / "out")
+    wheel = check.build_wheel(tmp_path / "source", tmp_path / "out")
 
     assert wheel == tmp_path / "out" / "pkg-1.0-py3-none-any.whl"
 
@@ -110,7 +237,7 @@ def test_build_wheel_refuses_an_empty_out_dir(
     monkeypatch.setattr(check.subprocess, "run", fake_run_writing({}))
 
     with pytest.raises(RuntimeError, match="expected exactly one wheel"):
-        check.build_wheel(tmp_path / "out")
+        check.build_wheel(tmp_path / "source", tmp_path / "out")
 
 
 def test_build_wheel_refuses_more_than_one_wheel(
@@ -127,7 +254,7 @@ def test_build_wheel_refuses_more_than_one_wheel(
     )
 
     with pytest.raises(RuntimeError, match="expected exactly one wheel"):
-        check.build_wheel(tmp_path / "out")
+        check.build_wheel(tmp_path / "source", tmp_path / "out")
 
 
 def test_diff_wheels_reports_nothing_for_identical_archives(
@@ -233,6 +360,38 @@ def test_main_says_how_to_be_called_when_it_is_not(
     assert capsys.readouterr().err == "usage: prog\n"
 
 
+def test_main_builds_from_two_differently_named_directories(
+    check: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`#509`: the two builds run from two directories, not one.
+
+    `copy_source_tree` is where `main` names the two directories, so a
+    spy on it, rather than on `subprocess.run`, is what can see the two
+    names `main` actually chose and check the property the issue asks
+    for: not merely two directories, but two of different lengths, since
+    a same-length pair could still hide a path-dependent difference a
+    real one would expose.
+    """
+    seen_dests: list[Path] = []
+
+    def fake_copy(_root: Path, dest: Path) -> None:
+        seen_dests.append(dest)
+        dest.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(check, "copy_source_tree", fake_copy)
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]}),
+    )
+
+    assert check.main(["prog"]) == 0
+
+    assert len(seen_dests) == 2
+    assert seen_dests[0] != seen_dests[1]
+    assert len(seen_dests[0].name) != len(seen_dests[1].name)
+
+
 def test_main_reports_success_when_the_two_builds_agree(
     check: ModuleType,
     capsys: pytest.CaptureFixture[str],
@@ -242,7 +401,9 @@ def test_main_reports_success_when_the_two_builds_agree(
     monkeypatch.setattr(
         check.subprocess,
         "run",
-        fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]}),
+        dispatching_run(
+            fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]})
+        ),
     )
 
     assert check.main(["prog"]) == 0
@@ -260,14 +421,14 @@ def test_main_reports_a_content_difference_and_exits_nonzero(
     """A real divergence between the two builds is what turns main() red."""
     calls = {"n": 0}
 
-    def fake_run(args: list[str], **_kwargs: Any) -> None:
+    def build_call(args: list[str], **_kwargs: Any) -> None:
         out_dir = Path(args[args.index("--out-dir") + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
         calls["n"] += 1
         content = b"first" if calls["n"] == 1 else b"second"
         write_wheel(out_dir / "pkg-1.0-py3-none-any.whl", [("pkg/a.py", content)])
 
-    monkeypatch.setattr(check.subprocess, "run", fake_run)
+    monkeypatch.setattr(check.subprocess, "run", dispatching_run(build_call))
 
     assert check.main(["prog"]) == 1
 
@@ -285,7 +446,7 @@ def test_main_names_two_builds_that_disagree_on_the_wheel_name(
     """A platform tag that moves between the two builds is named, not diffed."""
     calls = {"n": 0}
 
-    def fake_run(args: list[str], **_kwargs: Any) -> None:
+    def build_call(args: list[str], **_kwargs: Any) -> None:
         out_dir = Path(args[args.index("--out-dir") + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
         calls["n"] += 1
@@ -296,7 +457,7 @@ def test_main_names_two_builds_that_disagree_on_the_wheel_name(
         )
         write_wheel(out_dir / name, [("pkg/a.py", b"x")])
 
-    monkeypatch.setattr(check.subprocess, "run", fake_run)
+    monkeypatch.setattr(check.subprocess, "run", dispatching_run(build_call))
 
     assert check.main(["prog"]) == 1
 
@@ -321,7 +482,9 @@ def test_the_main_guard_runs_the_script_as___main__(
     monkeypatch.setattr(
         check.subprocess,
         "run",
-        fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]}),
+        dispatching_run(
+            fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]})
+        ),
     )
     monkeypatch.setattr(sys, "argv", ["prog"])
 

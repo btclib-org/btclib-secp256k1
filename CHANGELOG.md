@@ -2781,6 +2781,30 @@ release-notes length in the first place, and are still in
   `pyroma --min 10` runs in the gate that rates every release's sdist, not
   a place for a packaging linter's prerelease score to move the floor.
 
+### `check_wheel_reproducibility.py` builds its two halves from two directories
+
+- **The sentinel now extracts `HEAD` twice, with `git archive`, into two
+  freshly named directories of different lengths as well as different
+  names, and builds and diffs the wheel from each, rather than building
+  twice inside the one checkout it runs in** (closes #509). #439's own
+  record of the four stages named the gap precisely: the comparison
+  #497 and #500 grew into answers "does this checkout build the same
+  wheel twice", not #439's own question, "does this commit build the
+  same wheel", and #503 was exactly the class of difference invisible to
+  a one-directory comparison -- a build directory two builds sharing one
+  checkout hold constant by construction. `copy_source_tree` closes that
+  gap with two `git archive` calls per copy, one for the checkout and
+  one for the `secp256k1` submodule, since a gitlink names a commit
+  rather than a tree and the outer archive does not walk into it.
+  Reverting #503's own fix in a scratch copy and rerunning the
+  two-directory comparison turns the extension's own member red again,
+  its content differing between the two builds; with the fix in place
+  the two builds go back to agreeing, member for member. Building from
+  `HEAD` rather than from the checkout in place is a side effect worth
+  naming on its own: an uncommitted edit sitting in the checkout is no
+  longer part of what either build sees, since it is not part of the
+  commit the question is about.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
