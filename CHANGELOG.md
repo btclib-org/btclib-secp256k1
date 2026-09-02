@@ -2730,6 +2730,22 @@ release-notes length in the first place, and are still in
   platform yet, and which platform answers green is the workflow's own
   output on the Actions tab rather than a list kept in this file.
 
+### `compile_static_unix` strips the build directory from the debug map's stabs
+
+- **On Darwin, `compile_static_unix` now compiles with
+  `-fdebug-compilation-dir=.` and links with `-Wl,-oso_prefix,.`, so the
+  debug map's `N_SO` and `N_OSO` stabs name the object's bare filename
+  instead of the directory the build ran in** (closes #503). Issue #497
+  corrected #439's own first measurement: `strings` finds no debug map
+  at all, while `nm -pa`'s `OSO` stab and a raw `grep -a` over the
+  linked object both surface the worktree's absolute path, which
+  `cee5f6d`'s mtime pin left untouched, that pin addressing the stab's
+  mtime rather than its path. Two static wheel builds of one checkout,
+  each from a differently named directory, now produce one digest,
+  member for member. CMake's own build of the dynamic wheel's
+  `libsecp256k1.dylib` carries no `-g` and attaches no debug map at all,
+  which repeated builds of it confirmed rather than assumed.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
