@@ -231,12 +231,33 @@ class FFIExtension:
         so_path = build_dir / so_filename
 
         ffi.emit_c_code(str(c_path))
+        # ld64 attaches a debug map to the binary it links whenever the
+        # compile carries -g, as this interpreter's own CFLAGS always
+        # does below: one N_SO/N_OSO stab pair per object, the first
+        # naming the directory the compile ran in and the second the
+        # object's own path -- both absolute, both this build's own
+        # worktree, neither touched by cee5f6d's mtime pin, which
+        # addresses the mtime the N_OSO stab also carries rather than
+        # the path. -fdebug-compilation-dir=. stops the compiler
+        # recording the first at compile time; -oso_prefix . asks ld64
+        # to strip its own cwd from the second at link time, and passing
+        # "." rather than a literal path is what makes it strip whatever
+        # directory this build happens to run in rather than naming one.
+        # Measured with two builds of one checkout from two differently
+        # named directories: nm -pa's OSO stab and a raw grep -a over
+        # the linked object name only the bare filename with both flags,
+        # where either alone leaves the other stab carrying the absolute
+        # path (btclib-org/btclib-secp256k1#503)
+        darwin_debug_map_flags = (
+            ["-fdebug-compilation-dir=."] if platform.system() == "Darwin" else []
+        )
         compile_command = [
             *shlex.split(get_config_var("CC")),
             *shlex.split(get_config_var("CFLAGS") or ""),
             *shlex.split(get_config_var("CCSHARED") or ""),
             f"-I{get_path('include')}",
             f"-I{get_path('platinclude')}",
+            *darwin_debug_map_flags,
             "-c",
             str(c_filename),
             "-o",
@@ -249,6 +270,7 @@ class FFIExtension:
             *ldshared[1:],
             *[f"-L{libs_dir}" for libs_dir in self.library_dirs],
             *[f"-l{lib}" for lib in self.libraries],
+            *(["-Wl,-oso_prefix,."] if platform.system() == "Darwin" else []),
             "-o",
             str(so_filename),
         ]
