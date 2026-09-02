@@ -1,0 +1,102 @@
+---
+name: wheel-reproducibility
+
+# btclib-org/btclib-secp256k1#439's stage 1: does a wheel this project
+# builds reproduce byte for byte, on the platforms the release actually
+# builds one on. #497 and #498 answered that for macOS by building twice
+# in one checkout and diffing the two archives by hand; this runs the
+# same measurement, through .github/scripts/check_wheel_reproducibility.py,
+# on every platform build-cibuildwheel in test.yml builds a wheel on.
+#
+# The os: list below is a hand-kept copy of that job's, GitHub Actions
+# giving one workflow no way to read another's strategy.matrix short of
+# workflow_call, which neither file uses and which wiring this sentinel
+# into the gate would defeat the point of. A test holds the two equal
+# instead -- tests/wheel_reproducibility_platforms_test.py -- so the
+# two files can still drift for a moment but not silently: the suite
+# goes red the moment only one of them is edited.
+#
+# It is a sentinel and not a gate. The property this asks about does not
+# hold on every platform yet -- #439's own record of where the four
+# stages stand says which do -- so a required check here would be one a
+# pull request could never pass for a reason nothing on that pull request
+# caused. Which platform is red is this workflow's own output, on the
+# Actions tab, and not a list kept in this file: a list here would be a
+# line every future fix has to edit, and nothing would fail when it was
+# not edited.
+#
+# schedule and workflow_dispatch are both inert off the default branch,
+# so this answers nothing about Linux or Windows until it lands on main
+# and is dispatched once there.
+
+on:
+  schedule:
+    # Tuesday: every other weekday of the grid already carries a sentinel
+    # -- section 10 of btclib-org/.github's README.md is the calendar,
+    # and not this file's to restate. Only the default branch schedules
+    # workflows, so on any other branch this is reachable through the
+    # dispatch below alone
+    - cron: "8 5 * * 2"
+  # the escape hatch, and the only way to ask before the first Tuesday
+  # after this lands
+  workflow_dispatch:
+
+# least privilege for the GITHUB_TOKEN: everything running in a job can
+# read it, and nothing here writes
+permissions:
+  contents: read
+
+concurrency:
+  group: wheel-reproducibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    name: Build the wheel twice on ${{ matrix.os }} and diff them
+    runs-on: ${{ matrix.os }}
+    # two full builds of the vendored library and the extension, from a
+    # cache that is cold whenever the lock moved: well above what either
+    # build needs, so what this bounds is a hung job rather than a slow
+    # one
+    timeout-minutes: 40
+    strategy:
+      # every image to the end: which platform disagrees is the whole
+      # answer, and stopping at the first one hides the rest
+      fail-fast: false
+      matrix:
+        # the platforms build-cibuildwheel in test.yml builds a wheel
+        # on, kept here as its own copy and held equal to that job's by
+        # tests/wheel_reproducibility_platforms_test.py -- see this
+        # file's own header for why it is a copy rather than a read
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-26-intel
+          - macos-latest
+          - windows-latest
+          - windows-11-arm
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the vendored library is compiled twice here
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      # no project dependency: the script imports only the standard
+      # library and shells out to the very `uv` this step just installed.
+      # shell: bash for the two Windows images, whose default is
+      # PowerShell -- see os-windows.yml's own comment on the hazard a
+      # POSIX-only step hits there unnoticed; this step is one plain
+      # command and runs identically under either shell today
+      - name: Build the wheel twice and diff the two archives
+        shell: bash
+        run: >
+          uv run --no-project python
+          .github/scripts/check_wheel_reproducibility.py
