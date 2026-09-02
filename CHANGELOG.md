@@ -2805,6 +2805,32 @@ release-notes length in the first place, and are still in
   longer part of what either build sees, since it is not part of the
   commit the question is about.
 
+### `compile_static_msvc` links the Windows extension with `/Brepro`
+
+- **The static extension's own link, on native Windows, now carries
+  `/Brepro`** (closes #510). Issue #439's Windows stage measured two
+  builds of one checkout producing two `.pyd` files that agreed in
+  every respect but one field, `link.exe`'s own `TimeDateStamp`, and one
+  debug directory entry (`IMAGE_DEBUG_TYPE_POGO`) whose own timestamp
+  mirrors it, with no CodeView entry present at all -- so the other
+  candidate the issue named, the CodeView debug directory's GUID, was
+  never in play. `/Brepro` asks the linker to derive the `TimeDateStamp`
+  from the content instead of the moment it ran, and the same two
+  builds now agree, the debug directory carrying a new entry in its
+  place, `IMAGE_DEBUG_TYPE_REPRO`, a content hash rather than a
+  timestamp. `cl.exe`'s own `/Brepro` is not added beside it: that one
+  addresses an *object* file's own embedded timestamp, which nothing
+  downstream of this build reads, the final image's `TimeDateStamp`
+  being `link.exe`'s alone to set. The vendored library CMake builds
+  ahead of it needed nothing of its own: it carries no `/Zi` under the
+  `Release` configuration `scripts/cffi_build.py` actually builds,
+  checked against the build's own configure summary rather than
+  assumed. The Windows-only diagnostic step added to measure which
+  field moved is not kept: `.github/scripts/check_wheel_reproducibility.py`'s
+  own byte and crc32 comparison already catches a regression here, and
+  the one thing the diagnostic step added beyond that -- naming which
+  field -- is a question this entry now answers.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
