@@ -83,6 +83,12 @@ if(NOT DEFINED BTCLIB_CALLBACKS_ADDED)
 endif()
 """
 
+# hatchling's own get_reproducible_timestamp() fallback (2020-02-02
+# 00:00 UTC), already the stamp every member of the wheel's own archive
+# carries -- reused here, for the same reason, on the one file this
+# build compiles that a linker later reads the mtime of
+_FIXED_MTIME = 1580601600
+
 
 # every subprocess call below drives the vendored CMake build with
 # argument lists assembled here: no shell, no untrusted input. The
@@ -221,6 +227,7 @@ class FFIExtension:
         o_filename = f"{self.name}.o"
         so_filename = self.name + get_config_var("EXT_SUFFIX")
         c_path = build_dir / c_filename
+        o_path = build_dir / o_filename
         so_path = build_dir / so_filename
 
         ffi.emit_c_code(str(c_path))
@@ -247,6 +254,24 @@ class FFIExtension:
         ]
 
         subprocess.run(compile_command, cwd=build_dir, check=True)
+        if platform.system() == "Darwin":
+            # ld64 attaches a debug map to the binary it links whenever
+            # the compile carries -g, as this interpreter's own CFLAGS
+            # always does above: one N_OSO stab per object, recording
+            # that object's own mtime. A fresh compile of the same source
+            # therefore links a different object every time, seconds
+            # apart being enough to change it -- and ld64's own default
+            # UUID, a hash of the linked output's content rather than a
+            # value it invents, changes right along with the input it
+            # hashes. `-Wl,-no_uuid` reads like the fix and instead
+            # trades one non-determinism for a binary dyld refuses to
+            # load at all: "missing LC_UUID load command", measured on
+            # this machine's dyld against a minimal bundle built the same
+            # way. Pinning the object's mtime addresses what actually
+            # varies; nothing reads it once the object it names is gone,
+            # which is before the wheel ships
+            # (btclib-org/btclib-secp256k1#498, #502)
+            os.utime(o_path, (_FIXED_MTIME, _FIXED_MTIME))
         subprocess.run(link_command, cwd=build_dir, check=True)
         return [so_path]
 
@@ -477,6 +502,18 @@ class Secp256k1CFFIExtension(FFIExtension):
         # pass, which is the `x86_64;arm64` target_architecture_options
         # names above. Pinning an architecture here would contradict it.
         # #211 records the values, and why they are left alone
+        #
+        # Also not in that list: anything pinning the mtime of an object
+        # for the shared libsecp256k1 this configuration links in the
+        # dynamic build, the way compile_static_unix pins the mtime of
+        # the object it compiles by hand. This configure's own summary
+        # carries no -g -- CMake's Release type is -O2 alone -- so the
+        # objects it produces carry no debug map for ld64 to build one
+        # from, and repeated builds of this -dynamiclib target, from one
+        # worktree, produced one digest every time, LC_UUID included --
+        # measured rather than assumed, and the reason a fix for the
+        # other link does not follow this one
+        # (btclib-org/btclib-secp256k1#498, #502)
 
         if cross_compile:
             # the toolchain file is the vendored one, upstream tested

@@ -2668,6 +2668,27 @@ release-notes length in the first place, and are still in
   prose between the two fences saying why the first closes early, so a
   reader reaches it only by pasting it on purpose.
 
+### `compile_static_unix` pins the mtime of the object it links on macOS
+
+- **On Darwin, `compile_static_unix` sets the intermediate object's mtime
+  to hatchling's own fixed epoch before linking it, replacing the mtime a
+  fresh compile always gave it** (closes #498, closes #502). ld64
+  attaches a debug map to the extension it links whenever the compile
+  carries `-g`, as this interpreter's own `CFLAGS` does, and that debug
+  map's `N_OSO` stab records the object's own mtime; ld64's own default
+  `LC_UUID` is a hash of the linked output's content, so a fresh mtime on
+  every compile carried into a fresh `LC_UUID` on every link -- the
+  divergence issue #497 measured and the one byte issue #439's own first
+  measurement found outside it and could not place. Issue #498's own
+  proposal, `-Wl,-no_uuid`, asks ld64 to drop the load command instead of
+  fixing what varies, and dyld on this measurement's machine refuses to
+  load a bundle missing one at all, "missing LC_UUID load command";
+  pinning the mtime instead addresses the varying input, and two static
+  wheel builds of one checkout, cleared between them, now produce one
+  digest. CMake's own build of the dynamic wheel's `libsecp256k1.dylib`
+  carries no `-g` and needed no equivalent, which repeated builds of it
+  confirmed rather than assumed.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
