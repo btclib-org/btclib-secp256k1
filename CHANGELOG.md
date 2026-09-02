@@ -2689,6 +2689,29 @@ release-notes length in the first place, and are still in
   carries no `-g` and needed no equivalent, which repeated builds of it
   confirmed rather than assumed.
 
+### `REPOSITORY.md` reads both variable stores back for the review switch
+
+- **The file records `vars.CLAUDE_REVIEW_ENABLED`, the switch
+  `claude-review.yml` guards its jobs with** (issue
+  btclib-org/.github#682). Both variable stores are read back: the
+  repository's because a variable set here would take precedence over
+  one of the same name set on the organization, and the organization's
+  for the empty name list section 11 reads as the switch's off state --
+  with a `total_count` beside it, a store that prints nothing at all
+  when it answers needing one to show the call reached it. The
+  repository's `actions/variables` leaves the facilities whose empty
+  answer records no decision, from that block's prose list and from its
+  loop alike, that zero now being half of what records this one.
+
+### `REPOSITORY.md` names `is_template` among the fields no rule reaches
+
+- **`is_template` is named among the fields of the repository document
+  `REPOSITORY.md` passes over** (issue btclib-org/.github#691). It is in
+  that document, in none of that file's `--jq` objects and named nowhere
+  in the standard, which is the class the block enumerates; a field of
+  that class it does not name is silent in both places at once, and
+  reads as one nobody looked at rather than as one weighed and left out.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

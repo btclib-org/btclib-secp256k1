@@ -915,13 +915,36 @@ an organization secret at `visibility=all`, in both stores, so a
 repository adopting the workflow configures nothing for it, and a copy
 of it in a store here would be that decision undone.
 
-**A facility nobody reached for.** Actions variables, self-hosted
-runners, deploy keys, autolinks and custom property values each answer
-empty, and an empty answer there records no decision:
+**A switch this repository does not set.** `claude-review.yml` guards
+its jobs with `vars.CLAUDE_REVIEW_ENABLED`, and neither variable store
+holds it:
 
 ```shell
-for e in actions/variables actions/runners keys autolinks \
-         properties/values; do
+gh api repos/btclib-org/btclib-secp256k1/actions/variables --jq .total_count
+# 0
+gh api orgs/btclib-org/actions/variables --jq '.variables[].name'
+# (nothing)
+gh api orgs/btclib-org/actions/variables --jq .total_count
+# 0
+```
+
+The organization secret above answering with a name is what makes these
+zeros absences rather than an endpoint that answers empty for everyone.
+The variable store prints nothing at all when it answers, so its own
+`total_count` of `0` is what shows the call reached it: one that does not
+reach it prints an error and exits non-zero. Section 11 reads that empty
+name list as `vars.CLAUDE_REVIEW_ENABLED`'s off state, an undefined
+`vars.X` being the empty string. Both stores are read because a variable
+set here would take precedence over one of the same name set on the
+organization, so the organization's answer alone would not show the
+switch off for this tree.
+
+**A facility nobody reached for.** Self-hosted runners, deploy keys,
+autolinks and custom property values each answer empty, and an empty
+answer there records no decision:
+
+```shell
+for e in actions/runners keys autolinks properties/values; do
   printf '%-24s ' "$e"
   gh api "repos/btclib-org/btclib-secp256k1/$e" \
     --jq 'if type == "array" then length else .total_count end'
@@ -930,21 +953,23 @@ done
 
 Environments answer non-empty, and *Publishing* above is where they are
 read back; the webhook list answers empty, and *Read the Docs* above is
-where that zero is read. Whichever of the facilities listed here is used
-one day arrives with the section that uses it.
+where that zero is read; the repository's variable store answers empty,
+and *A switch this repository does not set* above is what reads it.
+Whichever of the facilities listed here is used one day arrives with the
+section that uses it.
 
 **A field the standard states no rule about, and no call above answers
 alongside one it does.** `allow_forking`, `allow_update_branch`,
-`has_discussions`, `has_downloads` and `web_commit_signoff_required`
-are in the repository document, in none of the `--jq` objects here, and
-named nowhere in the standard:
+`has_discussions`, `has_downloads`, `is_template` and
+`web_commit_signoff_required` are in the repository document, in none of
+the `--jq` objects here, and named nowhere in the standard:
 
 ```shell
 std=$(mktemp)
 gh api repos/btclib-org/.github/contents/README.md \
   -H 'Accept: application/vnd.github.raw' > "$std"
 for f in allow_forking allow_update_branch has_discussions \
-         has_downloads web_commit_signoff_required; do
+         has_downloads is_template web_commit_signoff_required; do
   printf '%-30s %s\n' "$f" "$(grep -c "$f" "$std")"
 done
 grep -c delete_branch_on_merge "$std"
