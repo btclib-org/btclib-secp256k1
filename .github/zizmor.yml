@@ -1,0 +1,29 @@
+---
+# zizmor 1.30.0 added the self-repository audit, which flags every
+# workspace-relative `uses: ./...` in this tree and recommends GitHub's
+# `$/...` form instead (issue #512). That form is declined here rather
+# than adopted: actionlint -- the other hook this repository holds at
+# zero findings -- does not parse `$/`. v1.7.12, the latest released
+# actionlint, predates GitHub's introduction of the syntax;
+# rhysd/actionlint#711 asks for support and rhysd/actionlint#732 is its
+# open, unmerged pull request. Adopting `$/` now would trade a zizmor
+# finding for an actionlint one on the same lines. Revisit once a
+# released actionlint parses it, and drop this file's ignores together
+# with the migration.
+#
+# Ignored by file rather than by file:line:column: both files move --
+# release.yml and test.yml each carry commits after this one landed --
+# and a line-keyed entry stops matching, silently, the moment an edit
+# shifts what sits above it. The coarser form's cost is not merely that
+# a new `uses: ./...` added to either file goes unflagged: the hook here
+# is judged by exit code alone, and zizmor reports how many findings it
+# ignored only in its own text output, which nothing reads. A new site
+# added beside the ones this file already declines therefore still
+# passes at exit 0, indistinguishable from the sites already here, and
+# the only backstop is a person reading the diff of these two files in
+# review.
+rules:
+  self-repository:
+    ignore:
+      - release.yml
+      - test.yml
