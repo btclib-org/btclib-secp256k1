@@ -2712,6 +2712,24 @@ release-notes length in the first place, and are still in
   that class it does not name is silent in both places at once, and
   reads as one nobody looked at rather than as one weighed and left out.
 
+### `wheel-reproducibility.yml` builds a wheel twice, member by member
+
+- **`.github/scripts/check_wheel_reproducibility.py` builds this
+  project's wheel twice from one checkout and compares the two archives
+  member by member, and `wheel-reproducibility.yml` runs it on every
+  platform the release builds a wheel on** (closes #500). Issue #439's
+  stage 1 asks whether a wheel this project builds reproduces byte for
+  byte; issue #497 answered that for macOS by building twice and
+  comparing the archives by hand, and this is the same measurement made
+  repeatable and reaching the platforms that measurement could not. A
+  whole-archive digest says two wheels differ and nothing past that,
+  which is why the new script compares member by member instead: it
+  names which member disagrees and, for it, whether the bytes match and
+  whether the stored `mtime`, permission bits and compression method do.
+  It is a sentinel rather than a gate, the property not holding on every
+  platform yet, and which platform answers green is the workflow's own
+  output on the Actions tab rather than a list kept in this file.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

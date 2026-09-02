@@ -677,6 +677,10 @@ max-complexity = 10
 # what the workflow step that runs it shows in its own log: same
 # exemption, same reason as the three scripts above
 ".github/scripts/normalize_sdist.py" = ["print"]
+# the wheel reproducibility check, whose usage message and per-member
+# `::error::` annotations are what the workflow step that runs it shows
+# in its own log: same exemption, same reason as the scripts above
+".github/scripts/check_wheel_reproducibility.py" = ["print"]
 # the release wait, whose per-attempt lines and `::error::` annotation
 # are what the workflow step that runs it shows in its own log: same
 # exemption, same reason as the scripts above
