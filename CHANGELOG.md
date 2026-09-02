@@ -2574,6 +2574,34 @@ release-notes length in the first place, and are still in
   `requires-python` as the other half of what uv reads to pick the
   interpreter.
 
+### RELEASING.md's rebuild section verifies the attestation, not the index
+
+- **`Rebuild a release from its tag` verifies the rebuilt sdist with
+  `gh attestation verify --repo --signer-workflow`, replacing the digest
+  comparison against the index** (closes #470). Both sibling publishers
+  verify the rebuilt file against its attestation rather than against
+  what the index serves, and only the sdist reproduces in this tree, the
+  limit issue #439 tracks, so the wheels stay outside what this section
+  checks.
+
+### The retitle comment in release.yml names the step, not its position
+
+- **The comment above `release.yml`'s "Check that the release notes are
+  retitled for the tag" step now names RELEASING.md's `close the release
+  notes` step, replacing a reference to "Step 2"** (closes #471).
+  `close the release notes` is the third numbered item of *Cutting a
+  release*, not the second, and naming a step rather than counting it is
+  the shape RELEASING.md already uses for "the step that opens the next
+  version".
+
+### The `.python-version` entry at `3141333` cites `(issue #469)` on a closed issue
+
+- **The `.python-version` entry, landed at `3141333`, cites
+  `(issue #469)` for an issue that same commit's own subject closes, and
+  stays exactly as landed** (closes #491). The next entry to close an
+  issue cites it `(closes #N)`; this one is left as the record of a tree
+  that, at the time, did not.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
