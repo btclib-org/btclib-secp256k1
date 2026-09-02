@@ -2882,6 +2882,40 @@ release-notes length in the first place, and are still in
   Xcode and the MSVC toolset is #524. That run's Linux cells are red
   within one image too, which is #522 and not this.
 
+### The Linux extension no longer records the directory it was built in
+
+- **`compile_static_unix`'s compile carries `-ffile-prefix-map=<the build
+  directory>=.` wherever it is not the Darwin branch's
+  `-fdebug-compilation-dir=.`** (closes #522). The interpreter's own `CFLAGS`
+  carries `-g`, so the compiler records the directory that compile ran in as
+  the compile unit's `DW_AT_comp_dir`, whose string the link copies into the
+  extension's own `.debug_line_str`: two builds of one commit from two
+  differently named directories differ there by exactly the difference between
+  the two names. What the wheel member's own byte counts show need not equal
+  that, the sections after `.debug_line_str` being realigned behind it: in
+  this measurement the eight-byte alignment of `.symtab` needed one byte less
+  padding after the longer path, so the member differed by one byte less than
+  the string did. #509's two-directory comparison is what surfaced it, on
+  every Linux cell and on no other platform, which is the gap that comparison
+  was built to close. Both compilers take `-ffile-prefix-map`, where
+  `-fdebug-compilation-dir` is clang's alone: gcc, which is `/usr/bin/cc` on
+  the Linux images, rejects that one as an unrecognized option.
+  `-fdebug-prefix-map` would serve here too and is taken by both as well;
+  `-ffile-prefix-map` is preferred to it because gcc's own manual defines it
+  as equivalent to specifying all the individual `-f*-prefix-map` options,
+  `__FILE__` and the profile paths along with the debug information. It is
+  also a floor a non-Darwin build did not carry before: an option a compiler
+  does not have is an error rather than a warning, so a toolchain older than
+  this flag fails the build outright instead of quietly reproducing the
+  difference. The vendored library CMake builds beside it needs nothing of its
+  own: that configure runs `Release`, whose own summary prints `-O2` and no
+  `-g`, so its objects carry no debug information for a directory to sit in.
+  Both halves were measured on both Linux images: without the flag `readelf`
+  reads each extension's `DW_AT_comp_dir` as the directory that build ran in
+  and the two wheels disagree, and with it both read `.`, a raw scan of either
+  extension finds neither directory, and the two wheels agree member for
+  member.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
