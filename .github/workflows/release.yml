@@ -174,8 +174,8 @@ jobs:
       # it matches github-release's heading regex too, the tag being
       # followed by a space, so a forgotten retitle publishes the
       # work-in-progress text as the release notes and nothing says a
-      # word. Step 2 of RELEASING.md is what drops those five words, and
-      # until now nothing checked that it had been done.
+      # word. RELEASING.md's `close the release notes` step is what drops
+      # those five words, and this step checks that it did.
       #
       # CHANGELOG.md is checked beside it because RELEASING.md retitles
       # the two together, and RELEASE_NOTES.md's section points at

@@ -764,17 +764,21 @@ export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 uv run --locked --only-group build python -m build -s
 uv run --no-project --python 3.14 \
   .github/scripts/normalize_sdist.py dist/
-shasum -a 256 "dist/btclib_secp256k1-${tag#v}.tar.gz"
+repo=btclib-org/btclib-secp256k1
+gh attestation verify "dist/btclib_secp256k1-${tag#v}.tar.gz" \
+  --repo "$repo" --signer-workflow "$repo/.github/workflows/release.yml"
 ```
 
 is the whole of it, `--locked` included for the same reason as before: a
 rebuild from a released tag has nothing rewriting the version, so the
 lock and `pyproject.toml` already agree, and the flag asserts that the
 lock is the one the tag committed rather than taking `uv.lock` as it
-finds it. Compare the digest against
-`pypi.org/pypi/btclib-secp256k1/<version>/json`'s own, or against the
-`sdist` artifact `gh run download` pulls from the release's run; both
-name the file this reproduces.
+finds it. Verifying the *rebuilt* file this way rather than comparing
+its digest against the index's is one command short of the "verify the
+sdist on the releases page" step above: it can only pass if the file
+`gh attestation verify` hashes is the one the signed statement covers,
+where a digest compared against the index only says PyPI serves what it
+always served.
 
 **What the script rewrites here, and what it leaves alone.** This
 repository's `build-system.build-backend` is `hatchling.build`, unlike
