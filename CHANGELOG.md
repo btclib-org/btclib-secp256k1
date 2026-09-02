@@ -2746,6 +2746,22 @@ release-notes length in the first place, and are still in
   `libsecp256k1.dylib` carries no `-g` and attaches no debug map at all,
   which repeated builds of it confirmed rather than assumed.
 
+### `wheel-reproducibility.yml` also runs on a pull request touching the build
+
+- **A `pull_request` trigger joins `schedule` and `workflow_dispatch`,
+  scoped by `paths` to `scripts/**`, `pyproject.toml`, the `secp256k1`
+  submodule pointer, `.github/scripts/check_wheel_reproducibility.py`
+  and the workflow file itself** (closes #508). Both existing triggers
+  are inert off the default branch, so a change answering issue #510 --
+  issue #439's Windows stage -- could only be dispatched and measured
+  after landing; this trigger lets that branch be measured first.
+  `REPOSITORY.md`'s required-checks rule still excludes the workflow,
+  now for a reason of its own rather than the one every other excluded
+  sentinel shares: Windows does not reproduce yet, so requiring the
+  check would fail a pull request for that platform's own standing
+  defect. `CONTRIBUTING.md`'s workflow table says a pull request
+  touching what it builds.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
