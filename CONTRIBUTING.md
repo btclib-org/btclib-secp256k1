@@ -801,6 +801,8 @@ excepted for the reason its own header gives, because each is expected to
 go red for something no pull request introduced and a red check nobody
 can act on from a branch is noise.
 
+<!-- markdownlint-disable MD013 -->
+
 | workflow | when | what it varies |
 | --- | --- | --- |
 | `test` | pull request, push | the wheels, the sdist, one suite cell |
@@ -814,9 +816,11 @@ can act on from a branch is noise.
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
 | `deps-latest` | weekly | the dependencies, at their newest |
 | `links`, `mutation` | weekly | — |
-| `wheel-reproducibility` | weekly | the six wheel platforms, each built twice |
+| `wheel-reproducibility` | weekly, a pull request touching what it builds | the six wheel platforms, each built twice |
 | `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
+
+<!-- markdownlint-enable MD013 -->
 
 The first two rows are what a merge waits for, and the suite cell among them
 is one: `ubuntu-latest` on the interpreter `.python-version` pins, measured
