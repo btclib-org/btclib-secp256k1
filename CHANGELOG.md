@@ -2565,6 +2565,15 @@ release-notes length in the first place, and are still in
   from outside a runner, and Cloudflare can weigh address reputation
   alongside the user agent on a request the runner actually sends.
 
+### `.gitignore` no longer tells a reader `.python-version` is ignored
+
+- **The `# python` / `.python-version` pair is replaced with a comment
+  saying the file is tracked** (issue #469). git applies no ignore rule
+  to a path this tree already tracks, so the entry said the opposite of
+  what the tree does; the comment names `pyproject.toml`'s
+  `requires-python` as the other half of what uv reads to pick the
+  interpreter.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
