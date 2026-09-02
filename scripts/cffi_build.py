@@ -193,6 +193,34 @@ class FFIExtension:
             library_dirs=[str(d) for d in self.library_dirs],
             libraries=self.libraries,
             define_macros=[("SECP256K1_STATIC", "1")],
+            # link.exe's own TimeDateStamp for the PE it emits is the
+            # moment that link ran, freshly generated on every
+            # invocation regardless of what any input object or archive
+            # carries: two builds of one checkout produced two `.pyd`
+            # files identical in every other respect, differing only in
+            # that field and in the one debug directory entry
+            # (IMAGE_DEBUG_TYPE_POGO, signature GCTL) whose own
+            # TimeDateStamp mirrors it -- measured directly, PE header
+            # against PE header, rather than assumed from #510's two
+            # candidates. /Brepro tells
+            # link.exe to derive that field from the linked content
+            # instead. It is a linker option and not a compiler one --
+            # cl.exe's own /Brepro instead stops it stamping the wall
+            # clock into an *object* file's own COFF header, which
+            # nothing downstream of this build ever reads: the final
+            # image's TimeDateStamp is link.exe's alone to set, never
+            # copied from an input .obj or from the static
+            # libsecp256k1.lib CMake produces, so extra_compile_args
+            # carries nothing here. The second candidate #510 named, the
+            # CodeView debug directory's GUID, is not in play either:
+            # this link carries no /DEBUG and emits no CodeView entry at
+            # all, on this extension or on the vendored library CMake
+            # builds ahead of it -- CMake's own summary prints
+            # RelWithDebInfo's /Zi purely as one of several supported
+            # configurations, and `build_c` below actually builds
+            # `--config Release`, which carries no such flag
+            # (btclib-org/btclib-secp256k1#510)
+            extra_link_args=["/Brepro"],
         )
         return [pathlib.Path(ffi.compile(tmpdir=str(build_dir)))]
 
