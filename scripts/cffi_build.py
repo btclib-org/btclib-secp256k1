@@ -501,6 +501,60 @@ class Secp256k1CFFIExtension(FFIExtension):
             return [f"-DCMAKE_OSX_ARCHITECTURES={arch}"]
         return []
 
+    def macos_deployment_target_options(self) -> list[str]:
+        """CMake option pinning the *static* build to the interpreter's floor.
+
+        `build_c` runs for both linkages, but only a static build feeds
+        its result into a second, separate toolchain:
+        `compile_static_unix` links CMake's own archive into an
+        extension compiled by the interpreter's own `cc`, whose CFLAGS
+        already carry `-mmacosx-version-min`. Where CMake's own
+        `CMAKE_OSX_DEPLOYMENT_TARGET` was never given a value, that
+        archive was instead compiled for whatever the build machine
+        runs, and `ld` warned on every member of it built newer than
+        the extension's own floor (btclib-org/btclib-secp256k1#526). A
+        dynamic build compiles nothing this extension links against --
+        the shared object it produces is `dlopen`ed at import, by a
+        process whose own toolchain never touches it -- so guarding to
+        `self.static` is what keeps this from reaching that path at
+        all, leaving `dynamic_platform_tag`'s own coupling between the
+        environment variable and the library CMake builds (see
+        scripts/README.md) exactly as it was.
+
+        Where `MACOSX_DEPLOYMENT_TARGET` is already exported --
+        `cibuildwheel` sets it itself for every static release wheel --
+        that value is left to CMake's own initialization of
+        `CMAKE_OSX_DEPLOYMENT_TARGET` from the environment, and nothing
+        is returned here: an explicit `-D` on the configure's command
+        line would instead define the cache entry unconditionally,
+        ahead of and regardless of that initialization, so passing one
+        derived from `sysconfig` whenever `cibuildwheel`'s own is also
+        present would silently override it rather than agree with it.
+        `sysconfig.get_config_var` -- fixed at interpreter-build time,
+        unmoved by what the calling process's environment holds -- is
+        read only as the fallback for the unexported case, which is
+        what a bare `uv build --wheel` is and what
+        btclib-org/btclib-secp256k1#526 was filed against. Deferring
+        this way is not exhaustive: an export that disagrees with the
+        interpreter's own floor still reaches CMake unchallenged, and
+        the warning this closes can still fire -- measured with
+        `MACOSX_DEPLOYMENT_TARGET=13.0` against an 11.0 interpreter.
+        """
+        # self.static is already False under cross-compilation (see
+        # __init__), so this needs no separate cross_compile check the
+        # way target_architecture_options above does for its own flags,
+        # which apply to a cross-compiled build too
+        if not self.static or platform.system() != "Darwin":
+            return []
+        if os.environ.get("MACOSX_DEPLOYMENT_TARGET"):
+            return []
+        deployment_target = get_config_var("MACOSX_DEPLOYMENT_TARGET")
+        return (
+            [f"-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}"]
+            if deployment_target
+            else []
+        )
+
     @override
     def build_c(self) -> None:
         """Build the vendored library with CMake, on every platform."""
@@ -572,6 +626,7 @@ class Secp256k1CFFIExtension(FFIExtension):
             "-DSECP256K1_BUILD_EXAMPLES=OFF",
             "-DSECP256K1_INSTALL=OFF",
             *self.target_architecture_options(),
+            *self.macos_deployment_target_options(),
         ]
         # not in that list, and deliberately: SECP256K1_ASM,
         # SECP256K1_ECMULT_WINDOW_SIZE and SECP256K1_ECMULT_GEN_KB are

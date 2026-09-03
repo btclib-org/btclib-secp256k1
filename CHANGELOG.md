@@ -3496,6 +3496,23 @@ release-notes length in the first place, and are still in
   `btclib_libsecp256k1`, and the job's nearest-tag resolution never
   reaches back to them.
 
+### A static macOS build's configure targets the interpreter's own floor
+
+- **`Secp256k1CFFIExtension.build_c`'s CMake configure now passes
+  `CMAKE_OSX_DEPLOYMENT_TARGET`, read from the interpreter's own
+  `sysconfig` `MACOSX_DEPLOYMENT_TARGET`, for a static build with
+  nothing already exported** (closes #526). Where nothing is exported,
+  the vendored library compiled for whatever macOS version the build
+  machine runs, while the extension linking it targeted the
+  interpreter's floor instead, and `ld` warned on every member of the
+  archive built newer than that floor; a bare `uv build --wheel`, with
+  no `MACOSX_DEPLOYMENT_TARGET` exported, now links a static extension
+  whose single `LC_BUILD_VERSION` load command names that floor
+  throughout. An already-exported value is left to CMake's own
+  initialization from it, untouched by this, and a dynamic build --
+  which links nothing this extension compiles -- never receives the
+  option at all.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
