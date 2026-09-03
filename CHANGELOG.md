@@ -3645,6 +3645,19 @@ release-notes length in the first place, and are still in
   that against `_URL` is what makes the constant the argument's own
   consequence rather than a link chosen beside it.
 
+### A test holds `cancel-in-progress` against the workflow's push trigger
+
+- **`tests/cancel_in_progress_test.py` fails a workflow that takes the
+  `closed` pull request type, carries no `push` trigger on `main` and
+  sets `cancel-in-progress` to a bare `true`** (closes #585). That
+  combination is #523's defect, and `yamllint`, `actionlint` and
+  `zizmor` each exit 0 on it: the rule relates two keys, so no line hook
+  reaches it.
+- **A workflow with a reason to cancel unconditionally under both keys
+  changes the test rather than marking itself exempt.** A marker in the
+  workflow would be one more line a copy carries along, which is the
+  failure the test exists to catch.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
