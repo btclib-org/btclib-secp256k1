@@ -38,11 +38,11 @@ on:
     # would wait for its next push to be checked at all.
     # closed joins them for a different reason: merging or closing a pull
     # request is neither a push nor a synchronize, so a run still held in
-    # this pull request's own concurrency group survives it --
-    # cancel-in-progress only fires when a new run lands in that group,
-    # and nothing otherwise does. Landing the closed event there is what
-    # lets it supersede the stale run instead of leaving it to finish on
-    # a branch nobody is going to look at again. "This pull request's
+    # this pull request's own concurrency group survives it unless the
+    # closed event's own run also lands there. The concurrency block
+    # below is what decides whether that landing cancels it or only
+    # queues behind it (#523) -- this trigger only supplies the event the
+    # two cases are told apart by. "This pull request's
     # own group" is the part github.ref alone gets wrong: for a closed,
     # merged pull request it resolves to the base branch's ref, which
     # this workflow has no push trigger to collide with, but the weekly
@@ -87,7 +87,10 @@ concurrency:
   # workflow_dispatch carries pull_request context, so github.ref is
   # still what groups either, unchanged
   group: vendored-vectors-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # true everywhere but one event -- a pull request closed by a merge --
+  # for the reason links.yml gives at this key, this workflow having no
+  # push trigger either: nothing runs it on the commit a merge creates
+  cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
 
 jobs:
   check:
@@ -95,9 +98,9 @@ jobs:
     # a draft pull request is work in progress and spends no runner
     # here either: the same condition lint.yml and test.yml carry, and
     # ready_for_review is a trigger type above for the same reason.
-    # A closed pull request spends none either -- the trigger above
-    # takes the closed event only to let cancel-in-progress supersede a
-    # run still holding in this ref's group
+    # A closed pull request spends none either, merged or not -- the
+    # concurrency block above is what stops a merged one's own run from
+    # cancelling the run this condition already let finish (#523)
     if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
