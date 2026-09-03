@@ -37,8 +37,10 @@ brings along -- this defect one level up.
 `cancel-in-progress` is read wherever it appears rather than in the
 top-level `concurrency:` block alone. `claude-review.yml` writes one per
 job, so that a push cancelling a superseded review leaves an @claude
-question running beside it, and a job-level group takes the closed event
-exactly as a workflow-level one does.
+question running beside it, and a job-level group resolves its key on a
+closed event exactly as a workflow-level one does. Whether the event
+reaches such a group when the job's own `if` declines it is #593's
+question, and neither answer changes which values are read here.
 
 Read with a regex rather than parsed, for the reason
 `interpreters_test.py` gives: a workflow is yaml, and the `test` group
@@ -121,17 +123,28 @@ _CANCELS = {
 _UNMEASURED_AFTER_MERGE = tuple(
     name for name in _TEXTS if _CLOSES[name] and not _PUSHES_MAIN[name]
 )
+# and the exception the docstring above leaves room for: a workflow
+# asking a question about the pull request rather than measuring the
+# commit a merge lands. What the closed event cancels there is a verdict
+# on a pull request that has stopped taking changes, so cancelling it
+# loses nothing and is what the closed type is taken for (#591)
+_ANSWERS_ABOUT_THE_PULL_REQUEST = ("claude-review.yml",)
 
 
 def test_each_trigger_shape_was_read() -> None:
-    """One workflow per shape the two patterns tell apart is found.
+    """One case per shape the two patterns tell apart is found.
 
     A trigger reindented, a `types:` list rewritten one entry per line,
     or a `branches:` key spelled another way would each leave every
     workflow reading as neither closing nor pushing, and the check below
-    with nothing to ask about. Naming a workflow on each side of both
+    with nothing to ask about. Naming a case on each side of both
     patterns is what turns a pattern that has stopped matching red
     rather than leaving a workflow silently exempt.
+
+    `_CLOSED`'s negative case is a trigger rather than a workflow:
+    every `pull_request` trigger here takes the closed type, and the
+    `issue_comment` list beside one of them is the list a pattern
+    matching any list would match.
     """
     assert _CLOSES["codeql.yml"], "codeql.yml takes the closed type"
     assert _PUSHES_MAIN["codeql.yml"], "codeql.yml pushes on main"
@@ -139,9 +152,10 @@ def test_each_trigger_shape_was_read() -> None:
     assert "links.yml" in _UNMEASURED_AFTER_MERGE, (
         "links.yml takes the closed type and has no push trigger"
     )
-    assert not _CLOSES["claude-review.yml"], (
-        "claude-review.yml carries a types: list without the closed type,"
-        " and reads as taking it: the pattern matches any list"
+    assert not _CLOSED.search(_TRIGGERS["claude-review.yml"]["issue_comment"]), (
+        "claude-review.yml's issue_comment trigger carries a types: list"
+        " without the closed type, and reads as taking it: the pattern"
+        " matches any list"
     )
     assert not _PUSHES_MAIN["release.yml"], (
         "release.yml pushes on a tag and reads as pushing on main: the"
@@ -174,12 +188,37 @@ def test_a_job_level_value_is_read() -> None:
     )
 
 
+def test_each_excepted_workflow_is_one_the_check_would_name() -> None:
+    """The exception exempts a workflow the check otherwise reaches.
+
+    An exception covering nothing -- a workflow that has since gained a
+    push trigger on main, dropped the closed type, or replaced its bare
+    `true` -- still reads as a decision somebody took about a live
+    check, and the next reader spends a round rediscovering that it is
+    inert. Turning that red is cheaper than leaving it to be read.
+    """
+    for name in _ANSWERS_ABOUT_THE_PULL_REQUEST:
+        assert name in _UNMEASURED_AFTER_MERGE, (
+            f"{name} is excepted and is no workflow the check reaches: it"
+            " either pushes on main or does not take the closed type"
+        )
+        assert any(_UNCONDITIONAL.match(value) for value in _CANCELS[name]), (
+            f"{name} is excepted and cancels conditionally, so the"
+            " exception holds nothing off"
+        )
+
+
 def test_a_merged_pull_request_does_not_cancel_the_run_measuring_it() -> None:
-    """No workflow a merge leaves unmeasured cancels unconditionally."""
+    """No workflow measuring a merged commit cancels unconditionally.
+
+    `_ANSWERS_ABOUT_THE_PULL_REQUEST` is what separates the workflows a
+    merge leaves unmeasured from the ones with nothing to measure.
+    """
     cancelling = [
         name
         for name in _UNMEASURED_AFTER_MERGE
-        if any(_UNCONDITIONAL.match(value) for value in _CANCELS[name])
+        if name not in _ANSWERS_ABOUT_THE_PULL_REQUEST
+        and any(_UNCONDITIONAL.match(value) for value in _CANCELS[name])
     ]
     assert not cancelling, (
         f"{', '.join(cancelling)} takes the closed pull request event with"
