@@ -63,10 +63,10 @@ name: wheel-reproducibility
 # from either job here, which is the direction that matters now that
 # rebuild's list and that job's are no longer equal.
 #
-# It is a sentinel and not a gate. The property this asks about does not
-# hold on every platform yet -- #439's own record of where the four
-# stages stand says which do -- so a required check here would be one a
-# pull request could never pass for a reason nothing on that pull request
+# It is a sentinel and not a gate. Two images of one platform do not
+# build one wheel yet -- pinning the image, the Xcode and the MSVC
+# toolset is #524 -- so a required check here would be one a pull
+# request could never pass for a reason nothing on that pull request
 # caused. Which platform is red is this workflow's own output, on the
 # Actions tab, and not a list kept in this file: a list here would be a
 # line every future fix has to edit, and nothing would fail when it was
