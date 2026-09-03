@@ -174,12 +174,14 @@ jobs:
 
       # the command CONTRIBUTING.md gives a developer, and the one the
       # coverage job of test.yml runs: a static build, where `_load_lib`
-      # returns the extension's own `lib`. No --cov here, against the
-      # --cov that job passes: what a cell asks is whether an (image,
+      # returns the extension's own `lib`. --no-cov against the --cov
+      # addopts carries: what a cell asks is whether an (image,
       # interpreter) pair passes, and coverage is measured and gated once,
-      # there, on lines no interpreter here walks differently
+      # there, on lines no interpreter here walks differently. Section 8
+      # of the organization standard names that flag as a sentinel's own,
+      # one of the two a job may pass beyond what pyproject.toml holds
       - name: Run pytest against a static build
-        run: uv run --locked --no-default-groups --group test pytest
+        run: uv run --locked --no-default-groups --group test pytest --no-cov
 
       # the other branch of `_load_lib`: cffi in ABI mode, dlopening the
       # shared object beside the module.
@@ -192,4 +194,4 @@ jobs:
           BTCLIB_LIBSECP256K1_DYNAMIC: "true"
         run: >
           uv run --locked --no-default-groups --group test
-          --reinstall-package btclib_secp256k1 --no-cache pytest
+          --reinstall-package btclib_secp256k1 --no-cache pytest --no-cov

@@ -34,7 +34,7 @@ A claim about the build matrix is measurable too: `gh run view <id>
      explain rather than hide. See CONTRIBUTING.md. -->
 
 - [ ] `uv run pre-commit run --all-files` passes
-- [ ] `uv run pytest --cov` passes, the coverage ratchet included
+- [ ] `uv run pytest` passes, the coverage ratchet included
 - [ ] new wrapped functionality is validated against vectors published
       elsewhere, not against these bindings' own output
 - [ ] comments that this change makes untrue have been updated, in the

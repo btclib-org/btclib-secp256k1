@@ -122,9 +122,11 @@ jobs:
 
       # the command CONTRIBUTING.md gives a developer, and the one the
       # coverage job of test.yml runs on ubuntu: a static build, where
-      # `_load_lib` returns the extension's own `lib`
+      # `_load_lib` returns the extension's own `lib`. --no-cov against
+      # the --cov addopts carries, os-ubuntu.yml's header having the
+      # reason a sentinel measures nothing
       - name: Run pytest against a static build
-        run: uv run --locked --no-default-groups --group test pytest
+        run: uv run --locked --no-default-groups --group test pytest --no-cov
 
       # the other branch of `_load_lib`, and the only thing that exercises
       # the dynamic macOS wheel now that test.yml does not: cffi in ABI
@@ -138,4 +140,4 @@ jobs:
           BTCLIB_LIBSECP256K1_DYNAMIC: "true"
         run: >
           uv run --locked --no-default-groups --group test
-          --reinstall-package btclib_secp256k1 --no-cache pytest
+          --reinstall-package btclib_secp256k1 --no-cache pytest --no-cov

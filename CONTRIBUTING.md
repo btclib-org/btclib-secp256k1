@@ -325,13 +325,18 @@ workflow runs:
 
 ```shell
 uv run --locked --only-group lint pre-commit run --all-files
-uv run --locked --no-default-groups --group test pytest --cov
+uv run --locked --no-default-groups --group test pytest
 uv run --locked --no-default-groups --group docs \
     sphinx-build -n -W -b html docs/source docs/build/html
 ```
 
 Coverage is measured in branch mode and gated by the `fail_under` ratchet
-in `pyproject.toml`.
+in `pyproject.toml`: `--cov` is in `addopts`, so the second command above
+is the ratchet and nothing has to be typed after `pytest` to reach it. A
+run that asks for less than the suite — a path leaving part of `tests`
+out, `-k`, `-m`, `--deselect`, `--ignore`, `--ignore-glob` or `--lf` —
+reports its coverage and is gated at nothing, `tests/conftest.py` being
+where that is decided and why.
 
 The group flags are not decoration. `uv run` syncs the environment
 itself, and without `--no-default-groups --group test` it installs the
@@ -522,11 +527,28 @@ command at all, for the reason below, and nothing requires its result.
   wrong here is the reproduction and not the workflow
   (<https://github.com/btclib-org/btclib-secp256k1/issues/242>)
 
-- `Measure coverage, gated at 100%`
+- `Measure coverage, gated at 100%`, which is the suite against each
+  linkage and the union of the two gated at the ratchet
 
   ```shell
-  uv run --locked --no-default-groups --group test pytest --cov
+  COVERAGE_FILE=coverage-data-static \
+      uv run --locked --no-default-groups --group test pytest
+  BTCLIB_LIBSECP256K1_DYNAMIC=true COVERAGE_FILE=coverage-data-dynamic \
+      uv run --locked --no-default-groups --group test \
+      --reinstall-package btclib_secp256k1 --no-cache pytest \
+      --cov-fail-under=0
+  uv run --locked --no-default-groups --group test \
+      coverage combine coverage-data-static coverage-data-dynamic
+  uv run --locked --no-default-groups --group test coverage report
   ```
+
+  the dynamic run is gated at nothing because the linked-in branch of
+  `_load_lib` is the line it cannot execute; what answers for that line
+  is the static run, and what answers for a line neither of them reaches
+  is the combined report, which takes its threshold from
+  `[tool.coverage.report]` like the first run does. The data files are
+  written where the command runs and `.gitignore` names them, `combine`
+  consuming both and leaving `.coverage`, which it names too
 
 - `Build wheels on <os>`, for this platform only
 
@@ -632,21 +654,23 @@ run locally.
 - `os-ubuntu`, `os-macos` and `os-windows`, the suite on both images of
   a platform and on every interpreter, so only the row matching the
   machine at hand reproduces. A cell is these two commands in this order —
-  the coverage job's own command without `--cov`, run once against each
-  linkage, with `--python` standing for the interpreter the row names:
+  the suite run once against each linkage, with `--python` standing for
+  the interpreter the row names:
 
   ```shell
-  uv run --locked --no-default-groups --group test --python 3.10 pytest
+  uv run --locked --no-default-groups --group test --python 3.10 \
+      pytest --no-cov
   BTCLIB_LIBSECP256K1_DYNAMIC=true uv run --locked --no-default-groups \
       --group test --python 3.10 --reinstall-package btclib_secp256k1 \
-      --no-cache pytest
+      --no-cache pytest --no-cov
   ```
 
   the second re-installs rather than reusing what the first built,
   because neither the environment nor the build cache is keyed on the
-  variable that chooses the linkage. `--cov` is not in either: what a cell
-  asks is whether an (image, interpreter) pair passes, and coverage is
-  measured and gated once, on the gate's cell
+  variable that chooses the linkage. `--no-cov` is in both, against the
+  `--cov` `addopts` carries: what a cell asks is whether an (image,
+  interpreter) pair passes, and coverage is measured and gated once, on
+  the gate's cell
 
 - `deps-latest`, which resolves every dependency at its newest before
   running the suite. The upgrade rewrites `uv.lock`, so restore it

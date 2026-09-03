@@ -1213,8 +1213,9 @@ Against it:
   but a system library is built with the abort()ing defaults, so a
   context created through `lib` could take the process down, which is
   what `tests/core_test.py` asserts cannot happen
-- the test suite would become conditional on the library it finds, while
-  the coverage ratchet is measured on one configuration
+- the test suite would become conditional on the library it finds, where
+  the ratchet is measured on the two linkages this tree builds from the
+  vendored source and on nothing whose vintage it does not know
 - it is a second build path, which unifying on CMake removed, and a
   support surface: reports about a libsecp256k1 this project did not
   build, possibly patched downstream, in consensus critical code

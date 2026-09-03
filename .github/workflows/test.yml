@@ -222,7 +222,16 @@ jobs:
 
   # coverage is a property of the python wrapper layer, not of the
   # platform: measuring it once is enough, and the fail_under ratchet in
-  # pyproject.toml is what makes the number mean something
+  # pyproject.toml is what makes the number mean something.
+  # Once per platform, and once per linkage: `_load_lib` has a branch
+  # per linkage and any given build has one of them, so this job runs
+  # the suite against a static extension and against a dynamic one,
+  # names each run's data file, and gates the union of the two beside
+  # the static run's own 100%. That is section 8 of the organization
+  # standard, at "where an optional native dependency splits the code",
+  # and the alternative it rejects is an exclude_also naming the
+  # linked-in branch -- honest only where the dynamic build is not
+  # shipped, and this repository ships both
   coverage:
     name: Measure coverage, gated at 100%
     # a draft pull request is work in progress: every push to one spends
@@ -245,9 +254,11 @@ jobs:
     # is six hours, and with tens of jobs compiling C a single hang is
     # measured in runner days rather than minutes. The values sit well
     # above what these jobs are observed to take — nine minutes for a
-    # wheel build, under three for everything else — so a slow runner is
-    # not a failure, while a hung one is
-    timeout-minutes: 15
+    # wheel build, under three for a job that compiles the extension
+    # once — so a slow runner is not a failure, while a hung one is.
+    # This one compiles it per linkage, as a cell of os-ubuntu.yml does
+    # under a cap of 40
+    timeout-minutes: 30
 
     needs: changes
     steps:
@@ -266,17 +277,65 @@ jobs:
           # way. What this saves is the download, keyed on uv.lock
           enable-cache: true
 
-      # a static build, i.e. the worst case for coverage: the dlopen
-      # fallback of __init__.py stays unreachable. The interpreter comes
-      # from .python-version, as it does for a developer.
+      # the static extension, which is what a CPython wheel carries and
+      # what a bare `uv run pytest` builds: `_load_lib` returns
+      # `module.lib` there. The interpreter comes from .python-version,
+      # as it does for a developer, and --cov comes from addopts, so
+      # this step is the ratchet with nothing typed after the command.
       # One command, not a sync followed by a run: uv run syncs the
       # environment itself, and with the flags left off it did so against
       # the default groups, installing the twenty-nine packages of dev
       # right after the sync had deliberately installed ten.
       # --locked asserts that uv.lock matches pyproject.toml, which a
       # plain sync would quietly fix by re-locking instead
-      - name: Test with coverage
-        run: uv run --locked --no-default-groups --group test pytest --cov
+      - name: Run the suite against a static build
+        run: uv run --locked --no-default-groups --group test pytest
+        env:
+          # not the default `.coverage`: the step below writes its own
+          # run beside this one and the two are combined afterwards, so
+          # a shared name would leave each overwriting the other.
+          # COVERAGE_FILE is --data-file's environment variable,
+          # coverage's own, so pytest writes here without a second flag
+          # naming what [tool.coverage.run] already decides
+          COVERAGE_FILE: coverage-data-static
+
+      # the other branch of `_load_lib`: cffi in ABI mode, dlopening the
+      # shared object shipped beside the module. --cov-fail-under=0 and
+      # not --no-cov, this run's data being half of the union below: the
+      # linked-in branch the step above takes is the one line it cannot
+      # execute, so it is short of 100 by construction, and zero is what
+      # leaves it reporting rather than failing on that.
+      # tests/conftest.py hands an explicit threshold back untouched,
+      # which is what lets this flag reach the report at all.
+      # --reinstall-package with --no-cache because the extension the
+      # step above installed is the other linkage, and neither the
+      # environment nor the build cache is keyed on the variable that
+      # chooses between them
+      - name: Run the suite against a dynamic build
+        env:
+          BTCLIB_LIBSECP256K1_DYNAMIC: "true"
+          COVERAGE_FILE: coverage-data-dynamic
+        run: >
+          uv run --locked --no-default-groups --group test
+          --reinstall-package btclib_secp256k1 --no-cache pytest
+          --cov-fail-under=0
+
+      # what the two data files are for: a line neither linkage executes
+      # is what the union reports, where each run on its own reports the
+      # other's branch as a miss. combine writes the default `.coverage`,
+      # which is what report then reads
+      - name: Combine the two runs
+        run: >
+          uv run --locked --no-default-groups --group test
+          coverage combine coverage-data-static coverage-data-dynamic
+
+      # no --fail-under here: coverage reads [tool.coverage.report]'s
+      # own, which is the ratchet the static run above already met, and a
+      # copy of the number in this file is one a maintainer never runs
+      - name: Report the union, gated at 100% too
+        run: >
+          uv run --locked --no-default-groups --group test
+          coverage report
 
   build-cibuildwheel:
     name: Build wheels on ${{ matrix.os }}
@@ -675,21 +734,28 @@ jobs:
       # filterwarnings = error makes a pytest release able to fail this
       # job on a day nothing here changed; that is the same signal the
       # published workflow carries, a fact about what a user hits, and it
-      # surfaces in a pull request
+      # surfaces in a pull request.
+      # pytest-cov beside pytest for the reason [tool.cibuildwheel]'s
+      # test-requires names: addopts carries --cov, and an interpreter
+      # without the plugin answers "unrecognized arguments: --cov" and
+      # collects nothing
       - name: Install from sdist
         shell: bash
         run: |
-          python -m pip install -U pip pytest
+          python -m pip install -U pip pytest pytest-cov
           python -m pip install --verbose dist/*.tar.gz
 
       # this job's matrix carries windows-latest and windows-11-arm, the
-      # same reason the step above already declares shell: bash. `pytest`
-      # alone has no POSIX-only syntax and runs identically under
+      # same reason the step above already declares shell: bash. `pytest
+      # --no-cov` has no POSIX-only syntax and runs identically under
       # PowerShell today; the hazard is the next edit that adds some
-      # (issue btclib-org/btclib#1148)
+      # (issue btclib-org/btclib#1148).
+      # --no-cov because what this job asks is whether an sdist installs
+      # and its suite passes, which is a question about pip and the
+      # build: coverage is measured and gated once, on the coverage job
       - name: Test
         shell: bash
-        run: pytest
+        run: pytest --no-cov
 
   build-windows:
     name: "Build on Linux for Windows"
