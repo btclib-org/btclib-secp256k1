@@ -128,7 +128,35 @@ def _extract_archive(source: Path, dest: Path) -> None:
     )
     dest.mkdir(parents=True, exist_ok=True)
     with tarfile.open(fileobj=io.BytesIO(archived.stdout)) as archive:
-        archive.extractall(dest, filter="data")
+        # PEP 706's data filter is set on the TarFile rather than passed
+        # as extractall(filter="data"): that keyword is a TypeError on
+        # Python 3.10.11, which is what cibuildwheel pins cp310 to on the
+        # macOS and Windows images -- one patch release below the 3.10.12
+        # that backported the feature, and older than the 3.10 a manylinux
+        # image carries, so the same call is fine on Linux and fatal on
+        # the other two. An assignment is one statement on every
+        # interpreter, where hasattr or sys.version_info is a branch no
+        # single interpreter takes both ways and .github/scripts is
+        # measured under the fail_under = 100 coverage floor. Setting
+        # nothing at all is the other shape and costs a different red:
+        # 3.12 and 3.13 raise a DeprecationWarning where no filter is set,
+        # and pyproject.toml's filterwarnings = ["error"] makes that a
+        # failing test. getattr with a default is what the tarfile
+        # documentation gives for spanning versions with and without the
+        # feature, and is an expression rather than a branch for the same
+        # reason as above. Where data_filter is absent the fallback is
+        # fully_trusted: a member named ../x is extracted outside dest,
+        # which is CPython's own behaviour before the filter existed. What
+        # makes that acceptable is the archive -- `git archive HEAD` over
+        # this repository, from a checkout the caller is about to build --
+        # and tests/wheel_reproducibility_test.py asserts it, no
+        # interpreter the local gate runs having a fallback to take. S202
+        # reads the extractall call rather than the attribute set beside
+        # it, which is what the suppression on that line answers
+        archive.extraction_filter = getattr(
+            tarfile, "data_filter", (lambda member, _path: member)
+        )
+        archive.extractall(dest)  # noqa: S202
 
 
 def copy_source_tree(root: Path, dest: Path) -> None:

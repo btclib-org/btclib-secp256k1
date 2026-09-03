@@ -15,7 +15,10 @@ makes `#509`'s own fix worth trusting is that a commit and an
 uncommitted edit come out differently, and a mock of `subprocess.run`
 cannot tell the two apart -- it would have to reimplement `git archive`
 to do so, at which point the test measures the mock rather than the
-script. `build_wheel` and `main` never invoke the real `uv build`,
+script. The extraction filter's fallback is the one exception: the
+archive that tells a filter is in force names a parent directory, which
+`git archive` does not produce, so that one is handed over directly.
+`build_wheel` and `main` never invoke the real `uv build`,
 though: what they are asked to build is a fake, `check.subprocess.run`
 replaced the way `tests/submodule_pin_test.py` and
 `tests/check_vendored_vectors.py` replace it, so the suite measures this
@@ -168,6 +171,23 @@ def _empty_tar_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def _escaping_tar_bytes() -> bytes:
+    """Return a tar archive whose one member names a parent directory.
+
+    What `git archive` never produces and a hostile archive does, so it
+    is what tells whether an extraction filter is in force: `data_filter`
+    refuses this member, and the fallback the script falls back to
+    extracts it where its name points.
+    """
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        content = b"escaped"
+        info = tarfile.TarInfo("../escaped.txt")
+        info.size = len(content)
+        archive.addfile(info, io.BytesIO(content))
+    return buffer.getvalue()
+
+
 def dispatching_run(build_call: Any) -> Any:
     """Return a `subprocess.run` stand-in that fakes `git archive` calls.
 
@@ -245,6 +265,37 @@ def test_extract_archive_copies_head_and_not_an_uncommitted_edit(
 
     assert (dest / "tracked.py").read_bytes() == b"committed"
     assert not (dest / "untracked.py").exists()
+
+
+def test_extract_archive_is_fully_trusted_without_the_data_filter(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without `tarfile.data_filter` the extraction is `fully_trusted`.
+
+    The interpreter that has no `data_filter` is Python 3.10.11, which is
+    what cibuildwheel pins `cp310` to on the macOS and Windows images,
+    and no interpreter the local gate runs is one -- so the fallback of
+    `_extract_archive`'s `getattr` is asserted here or nowhere. What it
+    reverts to is CPython's own behaviour before the filter existed: the
+    member below is extracted where its name points, outside the
+    destination the caller named. That is acceptable because
+    `_extract_archive` reads `git archive HEAD` over this repository and
+    nothing else, which is also why the archive here is built by hand.
+    """
+    monkeypatch.delattr(check.tarfile, "data_filter", raising=False)
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        lambda args, **_kwargs: subprocess.CompletedProcess(
+            args, 0, stdout=_escaping_tar_bytes()
+        ),
+    )
+
+    dest = tmp_path / "outer" / "dest"
+    check._extract_archive(tmp_path / "source", dest)
+
+    assert (tmp_path / "outer" / "escaped.txt").read_bytes() == b"escaped"
+    assert not (dest / "escaped.txt").exists()
 
 
 def test_copy_source_tree_extracts_the_submodule_from_its_own_repository(

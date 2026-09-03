@@ -2916,6 +2916,35 @@ release-notes length in the first place, and are still in
   extension finds neither directory, and the two wheels agree member for
   member.
 
+### `.github/scripts` extracts with a filter every interpreter accepts
+
+- **`check_wheel_reproducibility.py` sets `TarFile.extraction_filter`
+  rather than passing `extractall(filter="data")`** (closes #529). That
+  keyword is a `TypeError` on Python 3.10.11, which is what cibuildwheel
+  pins `cp310` to on the macOS and Windows images — one patch release
+  below the 3.10.12 that backported PEP 706 — where a manylinux image
+  carries a current patch instead: in run
+  [33698474828](https://github.com/btclib-org/btclib-secp256k1/actions/runs/33698474828)
+  those images ran 3.10.20 and their wheel jobs were the green ones. An
+  assignment is one statement on every interpreter, where a
+  `sys.version_info` branch is one no single interpreter takes both ways
+  and `.github/scripts` is measured under `fail_under = 100`. Setting no
+  filter at all is the other shape and trades this red for another: 3.12
+  and 3.13 raise a `DeprecationWarning` where nothing sets one, which
+  `filterwarnings = ["error"]` makes a failing test.
+- Where `tarfile.data_filter` is absent the fallback is `fully_trusted`,
+  CPython's own behaviour before the filter existed, and what makes that
+  acceptable is that `_extract_archive` reads `git archive HEAD` over
+  this repository and nothing else. `wheel_reproducibility_test.py`
+  asserts it against a hand-built archive naming a parent directory,
+  since no interpreter the local gate runs takes the fallback at all.
+- `CONTRIBUTING.md` records what these scripts run under, the keyword
+  being an instance of a class: mypy's `python_version` is a minor
+  version and refuses a patch, so no static check tells 3.10.11 from
+  3.10.12, and the wheel jobs that run the suite under `cp310` are
+  narrowed on a pull request to one interpreter per image — which leaves
+  a script reaching past the floor to go red on the push to `main`.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
