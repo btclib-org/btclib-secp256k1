@@ -446,6 +446,21 @@ jobs:
       # never pull_request -- so the interpreter this does not reach on a
       # branch is reached by the run that follows the merge, and the
       # release publishes nothing this shortcut has touched
+      #
+      # cp310 is the floor requires-python declares, and building it is
+      # what lets a pull request reach Python 3.10.11's own standard
+      # library. Building the newest interpreter instead, as this step
+      # once did, shares the gate's own suite cell interpreter, so a
+      # branch built nothing older -- #529 is what that cost: a keyword
+      # absent from 3.10.11 landed green here and failed only once the
+      # push to main built cp310 for the first time.
+      #
+      # windows-11-arm cannot build cp310 at all: the skip entry in
+      # [tool.cibuildwheel] excludes cp310-win_arm64 on every trigger,
+      # there being no interpreter on that native arm64 runner to build
+      # it with. Its own oldest interpreter is cp311, which the second
+      # pattern below selects there and matches nothing on any other
+      # image
       - name: Build one interpreter where a pull request only asks whether it builds
         if: github.event_name == 'pull_request'
         # bash, and the two Windows images are the whole of the reason:
@@ -455,7 +470,7 @@ jobs:
         # green, the log showing cp310 through cp314t, and only the
         # unchanged job duration to say so
         shell: bash
-        run: echo "CIBW_BUILD=cp314-*" >> "$GITHUB_ENV"
+        run: echo "CIBW_BUILD=cp310-* cp311-win_arm64" >> "$GITHUB_ENV"
 
       # what every member of the wheels this uploads carries as its
       # timestamp. hatchling stamps the members it writes at a constant
