@@ -228,9 +228,22 @@ jobs:
         with:
           enable-cache: true
 
+      # the archive this job diffs carries the timestamps the published
+      # wheel carries: build-cibuildwheel in test.yml pins the same
+      # value the same way, and its comment has the reason. `uv build`
+      # stops before the repair, and hatchling's own fallback would make
+      # this pair agree without the step, so what it buys here is that
+      # this measurement and the build the release runs do not differ in
+      # an exported variable.
+      # shell: bash for the Windows images of this matrix, whose default
+      # shell is PowerShell and reads "$GITHUB_ENV" as a literal
+      - name: Pin the build timestamp to the commit
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
       # no project dependency: the script imports only the standard
       # library and shells out to the very `uv` this step just installed.
-      # shell: bash for the two Windows images, whose default is
+      # shell: bash for the Windows images, whose default is
       # PowerShell -- see os-windows.yml's own comment on the hazard a
       # POSIX-only step hits there unnoticed; this step is one plain
       # command and runs identically under either shell today
@@ -312,6 +325,17 @@ jobs:
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
+
+      # the repair is what reads this: auditwheel and delocate take the
+      # timestamp of every member they write from the variable, and from
+      # the clock of the moment where it is unset. build-cibuildwheel in
+      # test.yml pins the same value the same way for the wheels the
+      # release uploads, so what this diffs is that build rather than
+      # one differing from it in an exported variable.
+      # shell: bash for the Windows images -- see rebuild's own step
+      - name: Pin the build timestamp to the commit
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
 
       # --only-group build, so the environment is cibuildwheel and the
       # tools it needs and no extension of this project's own; --locked,

@@ -837,6 +837,18 @@ command -v ccache \
 ccache --version || true
 '''
 environment = { CMAKE_C_COMPILER_LAUNCHER = "ccache" }
+# how SOURCE_DATE_EPOCH reaches the Linux build, and the only way it
+# can: the compile and the auditwheel repair after it both run inside a
+# container, which inherits none of the runner's environment. auditwheel
+# repacks the wheel from an extracted directory and reads the variable
+# for every member it writes, so without this each of them carries the
+# container's clock instead. The value is the workflow's -- the job
+# building the wheel exports it, and cibuildwheel passes a variable that
+# is unset as nothing rather than as empty, so a build with none set is
+# the build it would be without this line. macOS and Windows compile on
+# the host and read the exported variable directly; cibuildwheel applies
+# environment-pass on Linux alone
+environment-pass = ["SOURCE_DATE_EPOCH"]
 
 [tool.cibuildwheel.macos]
 # the runner image ships ccache; asking first is what keeps this from

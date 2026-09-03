@@ -3050,6 +3050,57 @@ release-notes length in the first place, and are still in
 - The comments in `docs.yml` and `.readthedocs.yaml` credit `-W` with
   reporting every warning a build raises before failing at the end of it.
 
+### Every build of a distribution pins `SOURCE_DATE_EPOCH`
+
+- **Every job of `test.yml` that builds a wheel exports
+  `SOURCE_DATE_EPOCH` from the commit date, as `build-sdist` does
+  for the sdist, and `[tool.cibuildwheel.linux]`'s
+  `environment-pass` carries it into the container the Linux build and
+  its repair run in** (closes #539). `hatchling` stamps the members it
+  writes at a constant of its own where the variable is unset, and the
+  repair a wheel build is followed by does not: `auditwheel` repacks
+  from a directory it extracted the wheel into and gives every member
+  the clock of the moment, and `delocate` gives it to the members it
+  rewrites. That timestamp is the whole of what separates a published
+  static wheel from a rebuild of its own commit in the image that built
+  it, which is #439's property within one environment; the compiler and
+  the toolchain, which that issue and section 12 of the organization
+  standard both name, are what the across-image half still turns on.
+  The `py3-none-*` wheels `build-dynamic` and `build-windows` publish
+  beside them carry the same pin and no measurement, nothing building
+  one of them twice.
+- The commit date rather than `hatchling`'s constant, which is the
+  other candidate and the one that would have needed no value from
+  outside the tree. `hatchling` reads the variable for a wheel as it
+  does for an sdist, so the archive carries one instant under either
+  choice and the archive does not decide it. What decides it is the
+  release: the sdist is stamped at the commit, so a constant would
+  publish files disagreeing about when they were built, and section 12
+  asks for the epoch exported from the tagged commit. A rebuilder
+  recovers it with the `git log -1 --pretty=%ct` that `RELEASING.md`
+  already names for the sdist.
+- `wheel-reproducibility.yml`'s `rebuild` and `repaired` jobs export it
+  too, so what the sentinel diffs is the build the release runs rather
+  than one differing from it in an exported variable. `repaired` is the
+  job the pin turns green: `uv build` leaves the repair out, and
+  `hatchling`'s fallback made `rebuild` agree without it.
+- `tests/build_timestamp_test.py` reads both workflows, asks which jobs
+  run a build frontend, and requires the export of each, the value
+  included. The export is per job, so a wheel job written by copying a
+  neighbour is how one arrives without it, and a wheel that reproduces
+  on one trigger and not another is worse than one that reproduces on
+  neither: it looks fixed.
+- `RELEASING.md`'s *Rebuild a release from its tag* says what the static
+  wheels reproduce within, that the `py3-none-*` ones have no
+  measurement behind their bytes, and which job measures which.
+- `CONTRIBUTING.md`'s *Running what CI runs* gives the export to the
+  three wheel recipes there: the section promises the command that
+  reproduces a job, and a wheel built without it differs from that job's
+  in every member's timestamp. `check_wheel_reproducibility.py`'s
+  docstring reads `RELEASING.md` for the across-image claim alone, that
+  file no longer being one of the two that say a wheel does not
+  reproduce at all.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

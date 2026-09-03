@@ -398,6 +398,25 @@ jobs:
         shell: bash
         run: echo "CIBW_BUILD=cp314-*" >> "$GITHUB_ENV"
 
+      # what every member of the wheels this uploads carries as its
+      # timestamp. hatchling stamps the members it writes at a constant
+      # of its own where this is unset, and the repair cibuildwheel runs
+      # after each build reads it for the members it rewrites --
+      # auditwheel, which repacks from a directory it extracted the
+      # wheel into, rewrites every one of them, and takes the clock of
+      # the moment where the variable is unset. The commit date rather
+      # than hatchling's constant, which is the value and the reason
+      # build-sdist below pins for the sdist: one release's files then
+      # agree on when they were built, and a rebuild recovers the date
+      # from the tag it rebuilds. [tool.cibuildwheel.linux]'s
+      # environment-pass carries it into the container, which inherits
+      # nothing from this job
+      - name: Pin the build timestamp to the commit
+        # bash, for the Windows images of this matrix: see the step
+        # above, whose comment has what PowerShell does with "$GITHUB_ENV"
+        shell: bash
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
       # this job's own matrix carries windows-latest and windows-11-arm,
       # the same reason the step above already declares shell: bash --
       # see its comment. This step is one plain command and runs
@@ -476,6 +495,13 @@ jobs:
           TARGET: ${{ matrix.os == 'macos-26-intel' && '10.13' || '11.0' }}
         run: |
           echo "MACOSX_DEPLOYMENT_TARGET=$TARGET" >> "$GITHUB_ENV"
+
+      # the wheel this uploads is repaired too, by the auditwheel or
+      # delocate step below rather than by cibuildwheel: see
+      # build-cibuildwheel, whose step this is and whose comment has the
+      # reason
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
 
       # the build group and --locked: see build-cibuildwheel
       - name: Build wheel
@@ -702,6 +728,14 @@ jobs:
 
       - name: Install dependencies
         run: sudo apt install -y mingw-w64
+
+      # nothing repairs this wheel, so hatchling writes every member of
+      # it and the constant it falls back to would be deterministic on
+      # its own: what the pin buys here is that the file this uploads
+      # carries the same instant as the rest of the release rather than
+      # that constant. See build-cibuildwheel
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
 
       # the build group and --locked: see build-cibuildwheel. The `wheel`
       # this used to install with it is a setuptools-era requirement:
