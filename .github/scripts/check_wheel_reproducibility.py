@@ -61,6 +61,20 @@ it. Reporting it as its own line and then comparing the members anyway
 is what keeps a name difference from reading as a byte difference, and a
 byte difference from hiding behind a name that agreed.
 
+`uv build` is not what the release uploads, and `#515` is that gap.
+`cibuildwheel` runs the same `scripts/cffi_build.py` and then repairs
+the wheel with the tool it defaults to on the platform -- `auditwheel`
+on Linux, `delocate` on macOS, `delvewheel` on Windows, since
+`[tool.cibuildwheel]` names no `repair-wheel-command` of its own. What
+that hands back is the repair's own file rather than the build's.
+`--repaired` is the entry point that builds through `cibuildwheel`
+instead, so that the archive PyPI receives is the one compared. It is
+the same two directories and the same member-by-member
+diff; what differs is that one build can leave more than one wheel,
+Linux producing a `manylinux` and a `musllinux` wheel from the one
+interpreter, so the two sides are paired by filename rather than taken
+as one wheel each.
+
 Run it from a checkout with the submodule initialized, and with the
 commit under test the current `HEAD`:
 
@@ -70,11 +84,22 @@ commit under test the current `HEAD`:
 `--keep-wheel <dir>` adds a copy of the first build's wheel under
 `<dir>`, and `--across-images <dir>` compares wheels already built:
 `<dir>` holds one directory per platform, each holding one directory
-per image, each of those holding that image's wheel.
+per image, each of those holding that image's wheel. `--repaired` takes
+no argument and needs `cibuildwheel` on `PATH`, which is the `build`
+dependency group:
+
+    uv run --locked --only-group build python \\
+        .github/scripts/check_wheel_reproducibility.py --repaired
+
+Which interpreters that builds is `cibuildwheel`'s own to decide, and
+`CIBW_BUILD` in the caller's environment is what narrows it;
+`wheel-reproducibility.yml` sets that and the reasoning is there, this
+script imposing no policy on a matrix it does not own.
 """
 
 from __future__ import annotations
 
+import contextlib
 import io
 import shutil
 import subprocess
@@ -82,12 +107,18 @@ import sys
 import tarfile
 import tempfile
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 
 _UV = shutil.which("uv") or "uv"
 # resolved once: a bare "git" in a subprocess list is what S607 is about,
 # the same way .github/scripts/check_submodule_pin.py resolves it
 _GIT = shutil.which("git") or "git"
+# the same resolution, and the fallback matters more here: cibuildwheel
+# is in the build dependency group and not in the test one, so the suite
+# importing this module finds nothing to resolve and the literal is what
+# a test then sees on a faked command line
+_CIBUILDWHEEL = shutil.which("cibuildwheel") or "cibuildwheel"
 _ROOT = Path(__file__).resolve().parents[2]
 
 # what #497 checked by hand -- order, permissions, compression and every
@@ -220,6 +251,46 @@ def build_wheel(source_dir: Path, out_dir: Path) -> Path:
     return wheels[0]
 
 
+def build_repaired_wheels(source_dir: Path, out_dir: Path) -> list[Path]:
+    """Build `source_dir`'s repaired wheels into `out_dir`, and return them.
+
+    `cibuildwheel` is invoked with `source_dir` as both the working
+    directory and the package directory, which is the one shape it
+    accepts: it refuses a package directory that is not inside the
+    directory it was started in. Resolving the executable to an absolute
+    path is what lets the working directory be the copy rather than the
+    checkout the environment was built in.
+
+    Args:
+        source_dir: the copy of the checkout to build from.
+        out_dir: where `cibuildwheel` should leave the repaired wheels.
+            Each call gets its own, so that a failure on the second
+            build leaves the first build's wheels to compare by hand.
+
+    Returns:
+        Every wheel `out_dir` holds afterwards, sorted by path. More
+        than one is the ordinary Linux answer -- one interpreter there
+        builds a `manylinux` wheel and a `musllinux` one, in two
+        containers.
+
+    Raises:
+        subprocess.CalledProcessError: `cibuildwheel` itself failed.
+        RuntimeError: it exited zero having written no wheel, which
+            `--allow-empty` and a `skip` covering every identifier would
+            both produce and neither is something to compare.
+    """
+    subprocess.run(  # noqa: S603
+        [_CIBUILDWHEEL, "--output-dir", str(out_dir), "."],
+        cwd=source_dir,
+        check=True,
+    )
+    wheels = sorted(out_dir.glob("*.whl"))
+    if not wheels:
+        msg = f"cibuildwheel left no wheel in {out_dir}"
+        raise RuntimeError(msg)
+    return wheels
+
+
 def diff_wheels(
     first: Path, second: Path, *, first_label: str, second_label: str
 ) -> list[str]:
@@ -279,6 +350,57 @@ def diff_wheels(
                 value_a, value_b = getattr(info_a, field), getattr(info_b, field)
                 if value_a != value_b:
                     complaints.append(f"{name}: {field} {value_a!r} vs {value_b!r}")
+    return complaints
+
+
+def pair_wheels_by_name(
+    first: list[Path], second: list[Path], *, first_label: str, second_label: str
+) -> list[str]:
+    """Return one line per way two builds' sets of wheels disagree.
+
+    Args:
+        first: one build's wheels.
+        second: another build's wheels, of the same commit.
+        first_label: what to call `first` where a line has to say which
+            side it is about.
+        second_label: the same, for `second`.
+
+    Returns:
+        An empty list where the two builds produced the same wheels,
+        name for name and member for member; otherwise one entry per
+        difference, each prefixed with the wheel it is about. A wheel
+        only one side built is a line of its own: the two are then not
+        comparable, which is a different answer from their disagreeing
+        and must not print like one.
+
+        The prefix is what `diff_wheels` alone cannot supply and what
+        one build leaving several wheels makes necessary: on Linux a
+        single interpreter yields a `manylinux` wheel and a `musllinux`
+        one, so every member of the package appears in this list twice
+        and the two entries are otherwise the same words. That is the
+        reason `compare_across_images` prefixes its own lines with the
+        platform, and the same reason applies one level down.
+    """
+    by_name_first = {wheel.name: wheel for wheel in first}
+    by_name_second = {wheel.name: wheel for wheel in second}
+    complaints = [
+        f"only {first_label} built {name}"
+        for name in sorted(set(by_name_first) - set(by_name_second))
+    ]
+    complaints += [
+        f"only {second_label} built {name}"
+        for name in sorted(set(by_name_second) - set(by_name_first))
+    ]
+    for name in sorted(set(by_name_first) & set(by_name_second)):
+        complaints += [
+            f"{name}: {complaint}"
+            for complaint in diff_wheels(
+                by_name_first[name],
+                by_name_second[name],
+                first_label=first_label,
+                second_label=second_label,
+            )
+        ]
     return complaints
 
 
@@ -357,6 +479,30 @@ def compare_across_images(root: Path) -> int:
     return 1 if failed else 0
 
 
+@contextlib.contextmanager
+def two_source_copies() -> Iterator[tuple[Path, Path]]:
+    """Yield two fresh copies of this commit, under a directory of their own.
+
+    Both entry points that build want the same pair, and the pair is
+    what carries `#503`'s property, so the two names are decided here
+    rather than once per caller.
+
+    Yields:
+        The two source directories, in the order they are to be built.
+        They differ in name length as well as in name -- see this
+        module's own docstring for why a same-length pair would not
+        do -- and they share a parent, which is where a caller puts its
+        own output directories.
+    """
+    with tempfile.TemporaryDirectory(prefix="wheel-reproducibility-") as tmp:
+        root = Path(tmp)
+        first = root / "a"
+        second = root / "a-second-directory-with-a-much-longer-name"
+        copy_source_tree(_ROOT, first)
+        copy_source_tree(_ROOT, second)
+        yield first, second
+
+
 def build_twice_and_compare(keep_wheel: Path | None) -> int:
     """Build this commit's wheel twice, from two directories, and compare.
 
@@ -370,15 +516,8 @@ def build_twice_and_compare(keep_wheel: Path | None) -> int:
     Returns:
         The process exit code: zero where the two builds agree.
     """
-    with tempfile.TemporaryDirectory(prefix="wheel-reproducibility-") as tmp:
-        root = Path(tmp)
-        # two directories, differing in name length as well as content --
-        # see this module's own docstring for why a same-length pair
-        # would not do
-        first_source = root / "a"
-        second_source = root / "a-second-directory-with-a-much-longer-name"
-        copy_source_tree(_ROOT, first_source)
-        copy_source_tree(_ROOT, second_source)
+    with two_source_copies() as (first_source, second_source):
+        root = first_source.parent
 
         first = build_wheel(first_source, root / "out-a")
         if keep_wheel is not None:
@@ -403,15 +542,46 @@ def build_twice_and_compare(keep_wheel: Path | None) -> int:
     return 0
 
 
+def build_repaired_twice_and_compare() -> int:
+    """Build this commit through `cibuildwheel` twice, and compare.
+
+    Returns:
+        The process exit code: zero where the two builds produced the
+        same wheels, name for name and member for member.
+    """
+    with two_source_copies() as (first_source, second_source):
+        root = first_source.parent
+        first = build_repaired_wheels(first_source, root / "out-a")
+        second = build_repaired_wheels(second_source, root / "out-b")
+
+        names = ", ".join(wheel.name for wheel in first)
+        complaints = pair_wheels_by_name(
+            first,
+            second,
+            first_label="the first build",
+            second_label="the second build",
+        )
+
+    if complaints:
+        for complaint in complaints:
+            print(f"::error::{complaint}", file=sys.stderr)
+        return 1
+
+    print(f"{names}: two repaired builds of this commit agree, member for member")
+    return 0
+
+
 def main(argv: list[str]) -> int:
-    """Run whichever of the two comparisons the command line names."""
+    """Run whichever of the comparisons the command line names."""
     if len(argv) == 3 and argv[1] == "--across-images":
         return compare_across_images(Path(argv[2]))
     if len(argv) == 3 and argv[1] == "--keep-wheel":
         return build_twice_and_compare(Path(argv[2]))
+    if len(argv) == 2 and argv[1] == "--repaired":
+        return build_repaired_twice_and_compare()
     if len(argv) != 1:
         print(
-            f"usage: {argv[0]} [--keep-wheel DIR | --across-images DIR]",
+            f"usage: {argv[0]} [--keep-wheel DIR | --across-images DIR | --repaired]",
             file=sys.stderr,
         )
         return 2

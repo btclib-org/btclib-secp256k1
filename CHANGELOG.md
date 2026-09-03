@@ -3002,6 +3002,45 @@ release-notes length in the first place, and are still in
   of the organization standard, where a bare placeholder is required to
   end its command.
 
+### The sentinel diffs the wheel the release uploads
+
+- **`wheel-reproducibility.yml` carries a `repaired` job, and
+  `check_wheel_reproducibility.py` a `--repaired` entry point, that
+  build through `cibuildwheel` twice and diff the pair** (closes #515).
+  What every other job here builds is `uv build`'s wheel, which stops
+  at the archive `hatchling` writes; `cibuildwheel` runs the same
+  `scripts/cffi_build.py` and then repairs the wheel with the tool it
+  defaults to on that platform — `auditwheel` on Linux, `delocate` on
+  macOS, `delvewheel` on Windows, `[tool.cibuildwheel]` naming no
+  `repair-wheel-command` of its own. What that hands back is the
+  repair's own file rather than the build's, and it is what PyPI
+  receives.
+- One interpreter and no test command, on the images
+  `build-cibuildwheel` builds a release wheel on. `rebuild` has only
+  ever measured one interpreter, `uv build` leaving one wheel for the
+  interpreter uv resolves for the project, so an unnarrowed job would
+  answer a question this file asks nowhere else — and, unlike on the
+  gate, no later run reaches the identifiers it skips, which the
+  workflow's header states as a limit rather than covers. The test
+  command is dropped because what this asks is whether two archives are
+  the same bytes; and a second image per platform would ask the
+  across-images question a second time, which the `uv build` wheel is
+  already asked.
+- `tests/wheel_reproducibility_platforms_test.py` holds the new list
+  against `build-cibuildwheel`'s as an equality, where `rebuild`'s is a
+  containment: a job asking whether the uploaded wheel reproduces has
+  to ask it of the images that upload one, and an image it builds that
+  the release does not is runner-minutes spent on a wheel nobody
+  installs.
+- `two_source_copies` is where both entry points now name the two build
+  directories, so `#503`'s property — two paths differing in length as
+  well as in name — is stated once rather than per caller. A repaired
+  build can leave more than one wheel, Linux compiling a `manylinux`
+  and a `musllinux` one from a single interpreter, so `--repaired`
+  pairs the two sides by filename and reports a wheel only one side
+  built as its own line: that is the pair never having been compared,
+  which must not print like agreement.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
