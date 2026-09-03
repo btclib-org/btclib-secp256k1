@@ -3579,6 +3579,24 @@ release-notes length in the first place, and are still in
   the deployment's `environment_url`, where it is a link a reader
   follows.
 
+### The workflows without a push trigger keep the run a merge would cancel
+
+- **`links.yml` and `vendored-vectors.yml` queue a merged pull
+  request's `closed` event behind the run measuring it rather than
+  cancelling it, taking the expression `wheel-reproducibility.yml`
+  already carries** (closes #571). Neither has a `push` trigger, so
+  nothing runs either on the commit a merge creates, and the schedule
+  is the next reading a merged change gets: that is the shape #523
+  measured, where the cancelled run reads in the run list as an
+  ordinary superseded run rather than as a measurement that never
+  happened.
+- **`codeql.yml`, `docs.yml`, `lint.yml` and `test.yml` keep
+  `cancel-in-progress: true`.** Each triggers on a push to `main`, so
+  the commit a merge creates gets a run of its own and the cancelled
+  pull request run is superseded rather than lost. Which of them backs
+  a required check is not what decides it: `codeql.yml` backs none and
+  keeps `true` for the same reason `lint.yml` does.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
