@@ -3195,6 +3195,32 @@ release-notes length in the first place, and are still in
   holds no file called `run`; with one there, the line creates a file
   named `--repo` and the `gh attestation verify` below it runs.
 
+### `RELEASING.md` names the gap a pin closes and the two it does not
+
+- **The section on rebuilding a release from its tag gives the Linux
+  half as the one a pin closes and the macOS and Windows halves as
+  declined, where its sentence sent a reader to #524 for all three**
+  (closes #554). A rebuild is a check only where the environment it
+  needs is something the person running it can obtain: the container
+  the Linux build compiles in is addressed by the digest of its content
+  and `docker pull`able by anyone, which is #524, where `xcode-select`
+  and `-vcvars_ver` choose among what a runner image GitHub retires
+  already carries and a verifier without a Mac cannot run the check at
+  all. What the macOS and Windows wheels carry instead is the PEP 740
+  attestation `publish-pypi` uploads with every file, which says who
+  built one and where rather than what is in it.
+- A verifier who rebuilds a released static wheel outside the image
+  that built it and gets other bytes reads there that this is the
+  expected outcome and not a defect, and that on those two platforms it
+  is the end state rather than a fix that is coming. #439 asked for
+  exactly that sentence: an attestation reads as one guarantee over
+  every file it covers, and nothing in the release told a verifier
+  which outcome to expect from which file.
+- `wheel-reproducibility.yml`'s header carries the same correction, and
+  says why every platform keeps its row in `across-images`: a platform
+  that is not expected to pass is what would say so if it started
+  passing.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -64,13 +64,16 @@ name: wheel-reproducibility
 # rebuild's list and that job's are no longer equal.
 #
 # It is a sentinel and not a gate. Two images of one platform do not
-# build one wheel yet -- pinning the image, the Xcode and the MSVC
-# toolset is #524 -- so a required check here would be one a pull
-# request could never pass for a reason nothing on that pull request
-# caused. Which platform is red is this workflow's own output, on the
-# Actions tab, and not a list kept in this file: a list here would be a
-# line every future fix has to edit, and nothing would fail when it was
-# not edited.
+# build one wheel: pinning the container the Linux build compiles in is
+# #524, and pinning the Xcode and the MSVC toolset is declined, for the
+# reason RELEASING.md's rebuild section gives -- so a required check
+# here would be one a pull request could never pass for a reason
+# nothing on that pull request caused. The declined two stay in
+# across-images below with the rest: a platform that is not expected to
+# pass is still what would say so if it started passing. Which platform
+# is red is this workflow's own output, on the Actions tab, and not a
+# list kept in this file: a list here would be a line every future fix
+# has to edit, and nothing would fail when it was not edited.
 #
 # The pull_request trigger below is #508: schedule and workflow_dispatch
 # alone made a fix unmeasurable before it landed, because both are inert
