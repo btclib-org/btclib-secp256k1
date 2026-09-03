@@ -3783,6 +3783,34 @@ release-notes length in the first place, and are still in
   a write at the root of the filesystem instead of a parse error at the
   shell.
 
+### `CLAUDE.md` names what this session measured of its gates and API
+
+- **`wheel-reproducibility.yml`'s `across-images` job is now named as
+  red by design on Linux's `rebuild` half, with the Linux-repaired half
+  named as the one a red run still has to keep green.** `rebuild`
+  builds through a plain `uv build` entering no container, so its half
+  of `across-images` measures the host image's own toolchain rather
+  than this tree; the repaired half, added by #524, builds inside the
+  pinned container and is what the sentinel actually claims.
+- **`CLAUDE.md` now names the invocation that reaches
+  `markdownlint-cli2` directly** — `uv run --locked --only-group lint
+  pre-commit run markdownlint-cli2 --files <file>` — the hook being a
+  node dependency outside the `lint` group and unreachable through
+  `uv run --only-group lint markdownlint-cli2` on its own.
+- **`CLAUDE.md` now names `pre-commit`'s log spelling of the sdist
+  hook, `check sdist`, against the `check-sdist` id
+  `.pre-commit-config.yaml` gives it**, so a grep for the wrong
+  spelling no longer reads as the hook not having run.
+- **`CLAUDE.md` now names the organization Actions endpoint as the
+  control for this repository's own empty variable and secret
+  stores**, since both of the repository's own endpoints answer
+  `total_count: 0` and neither can tell a real absence from a store
+  nobody has populated at either level.
+- **`CLAUDE.md` now names how the `merge=union` driver's blank-line
+  damage to `CHANGELOG.md` escapes both `git diff --numstat` and
+  `git rebase`'s own exit code**, and that reconstructing the file
+  from the new base's blob is what catches it where those two do not.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
