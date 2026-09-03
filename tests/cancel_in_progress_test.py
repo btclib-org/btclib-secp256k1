@@ -35,12 +35,14 @@ reason, where a marker in the workflow would be one more line a copy
 brings along -- this defect one level up.
 
 `cancel-in-progress` is read wherever it appears rather than in the
-top-level `concurrency:` block alone. `claude-review.yml` writes one per
-job, so that a push cancelling a superseded review leaves an @claude
-question running beside it, and a job-level group resolves its key on a
-closed event exactly as a workflow-level one does. Whether the event
-reaches such a group when the job's own `if` declines it is #593's
-question, and neither answer changes which values are read here.
+top-level `concurrency:` block alone: GitHub accepts the key on a job's
+own `concurrency:` block too, and nothing here assumes a workflow keeps
+its group at one level rather than the other. No workflow in this tree
+does that today -- `claude-review.yml` moved its own group from the
+review job to the workflow (#593), which is what lets the closed event
+reach it before either job's own `if` is read, rather than leave that
+reliant on whether a job-level group ever claims anything for a job an
+`if` skips, a question #593 leaves open.
 
 Read with a regex rather than parsed, for the reason
 `interpreters_test.py` gives: a workflow is yaml, and the `test` group
@@ -72,8 +74,9 @@ _CLOSED = re.compile(r"^ +types: \[[^\]]*\bclosed\b[^\]]*\]$", re.MULTILINE)
 # lands on: a push trigger restricted to tags runs on no merge commit,
 # so the key alone would exempt a workflow that has no second reading
 _MAIN = re.compile(r"^ +branches: \[[^\]]*\bmain\b[^\]]*\]$", re.MULTILINE)
-# the value, at whatever indent it is written: a job's own concurrency
-# block puts it four columns further in than a workflow's
+# the value, at whatever indent it is written: GitHub accepts the key on
+# a job's own concurrency block as well as on a workflow's, and nothing
+# here is to assume which of the two a workflow uses
 _CANCEL = re.compile(r"^ *cancel-in-progress: (?P<value>.*)$", re.MULTILINE)
 # a value that cancels every event alike, in either spelling GitHub
 # accepts for it
@@ -176,15 +179,6 @@ def test_a_bare_true_is_still_recognised() -> None:
     assert any(_UNCONDITIONAL.match(value) for value in _CANCELS["test.yml"]), (
         "test.yml's concurrency block sets cancel-in-progress to true and"
         " is not read as unconditional, so nothing here detects one"
-    )
-
-
-def test_a_job_level_value_is_read() -> None:
-    """`claude-review.yml` puts its value in a job, and it is read."""
-    assert _CANCELS["claude-review.yml"], (
-        "claude-review.yml sets cancel-in-progress on its job and the"
-        " value is not read, so a workflow grouping per job could carry"
-        " a bare true unseen"
     )
 
 

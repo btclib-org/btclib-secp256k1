@@ -44,11 +44,15 @@ on:
     # declines the review itself, a pull request that has stopped taking
     # changes being none to write a verdict on.
     #
-    # What is not measured is whether the closed event reaches a group
-    # held on a job rather than on the workflow: every neighbour taking
-    # this type holds its group at the workflow level, where the run
-    # enters it before any job's `if` is read, and the group below is
-    # the job's. #593 has the reading and the command that answers it
+    # The group is at the workflow level (see concurrency: below), not on
+    # the review job, so the closed run above enters it when the run is
+    # created and before the job's own if is read -- the same mechanism
+    # docs.yml's own comment records working, a closed run there having
+    # landed in its group and cancelled the run building a merge commit's
+    # documentation. Whether a job-level group -- what this file carried
+    # until #593 -- ever claims it for a job an if skips stays open there;
+    # moving the group up removes this file's dependence on that answer
+    # rather than supplying one
     types: [opened, reopened, synchronize, ready_for_review, closed]
   # the on-demand half: somebody writes @claude in a comment on a pull
   # request, or on a line of its diff, and asks for something the automatic
@@ -63,13 +67,45 @@ on:
 permissions:
   contents: read
 
+# named literally rather than through github.workflow, as everywhere else
+# here. At the workflow level rather than per job: a job-level group is
+# claimed only when that job is queued, and the review job's own if
+# declines the closed event, so a job-level group here could leave a
+# closed run claiming nothing at all -- untested, because
+# vars.CLAUDE_REVIEW_ENABLED is off throughout the organization and no
+# run is ever in flight to measure it against (#593). A workflow-level
+# group is claimed when the run is created, before any job's if is read,
+# which is the mechanism docs.yml's own comment records working for its
+# own closed event, and does not depend on the switch above being on.
+#
+# One key has to serve pull_request (the review, and the closed event
+# above) and issue_comment/pull_request_review_comment (the mention)
+# without letting either land in the other's group: a
+# pull_request_review_comment event carries
+# github.event.pull_request.number too, so the number alone would put a
+# mention answer in the review's own group and let either cancel the
+# other. github.event_name tells them apart -- true only for a
+# pull_request event, which keeps the review's own group exactly what the
+# job used to carry. Every other event falls back to github.run_id,
+# unique to that run: no two runs can ever share it, which is what a job
+# with no concurrency block at all -- the mention job, before this change
+# -- already gave every run. cancel-in-progress below is therefore inert
+# for the mention, and one @claude answer still runs to completion
+# alongside another rather than cancelling it, exactly as before.
+concurrency:
+  group: >-
+    claude-review-${{ github.event_name == 'pull_request'
+    && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   review:
     name: Claude review
     # a draft is work its author is not asking anyone to read yet, a
     # closed pull request has stopped taking the changes a verdict would
     # be about, and a comment event is the other job's. The trigger above
-    # takes the closed event only to land it in this job's group.
+    # takes the closed event only to land it in the workflow's group,
+    # declined here.
     #
     # The fork condition is not a policy but a fact about secrets: "with
     # the exception of GITHUB_TOKEN, secrets are not passed to the runner
@@ -113,13 +149,6 @@ jobs:
     # the runner's own line saying it timed out, and the guard below it
     # then runs and says what that means for the verdict
     timeout-minutes: 20
-    # per job rather than per workflow, so that a push cancelling a
-    # superseded review does not also cancel somebody's @claude question
-    # running beside it. Named literally rather than through
-    # github.workflow, as everywhere else here
-    concurrency:
-      group: claude-review-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
     permissions:
       contents: read
       # what posting the review takes

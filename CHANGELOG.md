@@ -3749,6 +3749,20 @@ release-notes length in the first place, and are still in
   `cibuildwheel` run leaves a `manylinux` wheel and a `musllinux` one
   from the one interpreter.
 
+### `claude-review.yml`'s concurrency group moves to the workflow level
+
+- **`claude-review.yml` groups per workflow rather than per job now, so
+  a closed pull request event lands in the group when the run is
+  created, before either job's `if` is read** (closes #593). Whether a
+  job-level group -- what the review job carried until now -- ever
+  claimed anything for a job an `if` skipped was never established, and
+  stays that way; moving the group removes this file's dependence on
+  that answer rather than supplying one. The key discriminates by
+  `github.event_name` so the review's own group and an `@claude`
+  mention's never collide, a mention falling back to `github.run_id`,
+  unique to its own run, which is what an absent concurrency block left
+  every mention with before.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
