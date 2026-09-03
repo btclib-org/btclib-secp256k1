@@ -2945,6 +2945,32 @@ release-notes length in the first place, and are still in
   narrowed on a pull request to one interpreter per image — which leaves
   a script reaching past the floor to go red on the push to `main`.
 
+### A test repository does no line-ending translation
+
+- **`init_repo` writes `* -text` into each repository's
+  `.git/info/attributes`** (closes #535). The GitHub Windows images set
+  `core.autocrlf` in the global configuration and a fresh `git init`
+  inherits it, so `git archive` handed back `[project]\r\n` where the
+  commit holds `[project]\n`, and
+  `test_copy_source_tree_extracts_the_submodule_from_its_own_repository`
+  went red on the Windows jobs of `test` that install from the sdist —
+  run
+  [33698474828](https://github.com/btclib-org/btclib-secp256k1/actions/runs/33698474828),
+  under Python 3.14 and so nothing to do with #529's `TypeError`. An
+  attribute rather than `core.autocrlf = false` in the repository's own
+  configuration, which a global `core.attributesFile` marking files text
+  overrides in turn where `-text` is not overridden; and in `.git/info`
+  rather than a committed `.gitattributes`, so that what a test asks to
+  be committed stays the whole of what the archive holds.
+- A test asks the question from any platform, pointing
+  `GIT_CONFIG_GLOBAL` at a configuration git itself writes: `autocrlf`,
+  `core.eol`, and an attributes file marking every path text. The first
+  key alone reproduces the runner and pins only the symptom — a
+  repository of its own saying `core.autocrlf = false` survives it, so a
+  test carrying that key alone stays green against the alternative this
+  entry declines. The other two are what make the test fail when
+  somebody reaches for it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
