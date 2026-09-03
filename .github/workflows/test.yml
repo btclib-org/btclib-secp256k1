@@ -283,9 +283,8 @@ jobs:
       # as it does for a developer, and --cov comes from addopts, so
       # this step is the ratchet with nothing typed after the command.
       # One command, not a sync followed by a run: uv run syncs the
-      # environment itself, and with the flags left off it did so against
-      # the default groups, installing the twenty-nine packages of dev
-      # right after the sync had deliberately installed ten.
+      # environment itself, so the flags belong on this line — left off,
+      # it syncs the default groups, which are wider than test's own.
       # --locked asserts that uv.lock matches pyproject.toml, which a
       # plain sync would quietly fix by re-locking instead
       - name: Run the suite against a static build

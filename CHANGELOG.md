@@ -3357,6 +3357,17 @@ release-notes length in the first place, and are still in
   container is #524, and pinning the Xcode and the MSVC toolset macOS
   and Windows builds use is declined instead.
 
+### The group-flag comments state the argument, not a snapshot count
+
+- **`test.yml`'s coverage step comment and `CONTRIBUTING.md`'s `The
+  environment and the gates` justify `--no-default-groups --group test`
+  by the shape of the difference -- `uv run` syncs the environment
+  itself, and leaving the flags off syncs the wider default groups --
+  rather than by the two package counts neither file re-derives**
+  (closes #549). The step comment's clause naming what a prior sync had
+  installed also described a two-step sync-then-run setup this workflow
+  no longer runs.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -340,8 +340,7 @@ where that is decided and why.
 
 The group flags are not decoration. `uv run` syncs the environment
 itself, and without `--no-default-groups --group test` it installs the
-whole dev set, which is how the coverage job came to install twenty-nine
-packages after deliberately installing ten. After touching
+whole dev set, wider than what the suite needs. After touching
 `pyproject.toml`, `uv lock` — the `uv-lock` hook does it too, and then the
 gate is a second run.
 
