@@ -16,6 +16,7 @@ but that a directory not holding one is reported instead of being
 mistaken for one.
 """
 
+import importlib.metadata
 import pathlib
 import re
 import shutil
@@ -63,6 +64,36 @@ def test_no_such_attribute() -> None:
     """
     with pytest.raises(AttributeError, match="no attribute 'nonesuch'"):
         _ = btclib_secp256k1.nonesuch  # type: ignore[attr-defined]
+
+
+def test_wheel_tag_names_an_interpreter_or_a_platform() -> None:
+    """The installed `WHEEL`'s `Tag:` line is never `py3-none-any`.
+
+    A regression against #534: `scripts/hatch_build.py` decides this
+    build's tag by reaching into `hatchling.builders.wheel.WheelBuilder`
+    for the one call its own editable target makes unconditionally
+    (`get_default_tag`), because hatchling 1.32.0 gives an editable
+    install no other way to see `infer_tag` or a hook-set `tag`. A
+    hatchling release that keeps that method's name but changes what
+    calls it, or what an editable build does with its return value,
+    would put the universal tag back with nothing here rewritten -- a
+    rename or removal fails `mypy` instead, against hatchling's own
+    `py.typed` types, and is not what this checks.
+
+    Reading the distribution this interpreter's own `uv sync --locked`
+    already installed, rather than driving a second build, is what
+    keeps this at gate speed and off a mock: the tag it asserts on is
+    whatever the real, unmocked editable-install dispatch actually
+    produced for the build the rest of this suite is already running
+    against, static or dynamic, on whichever interpreter and platform
+    invoke it -- `py3-none-any` is the one string neither branch of
+    `scripts/hatch_build.py` ever chooses, a static build inferring an
+    interpreter-specific tag and a dynamic one naming a platform.
+    """
+    wheel = importlib.metadata.distribution("btclib-secp256k1").read_text("WHEEL")
+    assert wheel is not None
+    tag_line = next(line for line in wheel.splitlines() if line.startswith("Tag:"))
+    assert tag_line != "Tag: py3-none-any"
 
 
 def _imported_modules(name: str) -> set[str]:

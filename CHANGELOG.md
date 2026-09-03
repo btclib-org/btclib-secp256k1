@@ -3440,6 +3440,24 @@ release-notes length in the first place, and are still in
   griffe step carries the same pair, with the same reason written at
   it.
 
+### `tests/extension_test.py` reads the installed `WHEEL`'s own tag back
+
+- **A new test asserts the currently-installed distribution's `WHEEL`
+  never carries `Tag: py3-none-any`** (closes #564). #534's fix reaches
+  into an undocumented hatchling property to make an editable install
+  see the tag `scripts/hatch_build.py` already decided, and nothing
+  ran that path against anything but a hand-run reproduction; a
+  hatchling release keeping `get_default_tag` and `get_best_matching_tag`
+  by name while changing what calls the former, or what an editable
+  build does with its return value, would regress silently to the
+  universal tag with `mypy` unaffected, since a rename or removal is
+  the one failure mode strict type-checking against hatchling's own
+  `py.typed` types already catches. The test reads the distribution
+  the suite's own interpreter already has installed rather than
+  driving a second build, so it exercises the real, unmocked editable
+  dispatch at gate speed instead of a mock of it, on every interpreter
+  and every linkage the existing matrix already runs.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
