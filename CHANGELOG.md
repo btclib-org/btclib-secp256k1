@@ -3630,6 +3630,21 @@ release-notes length in the first place, and are still in
   object requires: the `manylinux` in those file names is a
   compatibility tag rather than an image.
 
+### The release wait's test names the distribution as its caller does
+
+- **`tests/wait_for_pypi_release_test.py` invokes
+  `wait_for_pypi_release.py` with `btclib-secp256k1`, the name
+  `pypi-install.yml` passes it** (closes #586). Section 3 of the
+  organization standard spells the distribution with the hyphen
+  wherever a person writes the name for somebody to copy out, and the
+  script's usage line is written that way; a test standing in for that
+  call is one of those places.
+- **`_URL` carries the same spelling because the script builds the
+  request from the argument.** `f"{INDEX}/{package}/{version}/json"` is
+  what the substituted transport records, and the assertion comparing
+  that against `_URL` is what makes the constant the argument's own
+  consequence rather than a link chosen beside it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

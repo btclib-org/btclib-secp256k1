@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from contextlib import AbstractContextManager
 
 _SCRIPT = Path(__file__).parents[1] / ".github" / "scripts" / "wait_for_pypi_release.py"
-_URL = "https://pypi.org/pypi/btclib_secp256k1/0.8.0.5/json"
+_URL = "https://pypi.org/pypi/btclib-secp256k1/0.8.0.5/json"
 
 
 class _Clock:
@@ -162,7 +162,7 @@ def test_an_empty_tag_is_nothing_to_wait_for(
     """
     index = _index(script, monkeypatch, [])
 
-    assert script.main(["btclib_secp256k1", ""]) == 0
+    assert script.main(["btclib-secp256k1", ""]) == 0
 
     assert index.asked == []
     assert "nothing to wait for" in capsys.readouterr().out
@@ -177,7 +177,7 @@ def test_the_version_asked_for_is_the_one_the_tag_names(
     """The `v` of a tag is no part of the version the index serves."""
     index = _index(script, monkeypatch, [True])
 
-    assert script.main(["btclib_secp256k1", "v0.8.0.5"]) == 0
+    assert script.main(["btclib-secp256k1", "v0.8.0.5"]) == 0
 
     assert index.asked == [(_URL, 10.0)]
     assert clock.slept == []
@@ -193,7 +193,7 @@ def test_a_version_not_served_yet_is_waited_for(
     """An index that has not caught up yet costs an interval, not the run."""
     index = _index(script, monkeypatch, [False, False, True])
 
-    assert script.main(["btclib_secp256k1", "0.8.0.5", "--interval", "15"]) == 0
+    assert script.main(["btclib-secp256k1", "0.8.0.5", "--interval", "15"]) == 0
 
     assert [url for url, _ in index.asked] == [_URL, _URL, _URL]
     assert clock.slept == [15.0, 15.0]
@@ -209,7 +209,7 @@ def test_a_version_that_never_arrives_is_the_deadline_speaking(
     """The wait ends where its deadline is, and names what never came."""
     index = _index(script, monkeypatch, [])
 
-    assert script.main(["btclib_secp256k1", "0.8.0.5", "--timeout", "300"]) == 1
+    assert script.main(["btclib-secp256k1", "0.8.0.5", "--timeout", "300"]) == 1
 
     assert clock.now == pytest.approx(300.0)
     assert len(index.asked) == 20
@@ -223,7 +223,7 @@ def test_the_last_wait_is_cut_to_what_is_left_of_the_deadline(
     """A deadline that is no multiple of the interval is still the deadline."""
     index = _index(script, monkeypatch, [])
 
-    arguments = ["btclib_secp256k1", "0.8.0.5", "--timeout", "20", "--interval", "15"]
+    arguments = ["btclib-secp256k1", "0.8.0.5", "--timeout", "20", "--interval", "15"]
 
     assert script.main(arguments) == 1
 
@@ -257,7 +257,7 @@ def test_a_request_outlasting_the_deadline_leaves_no_negative_sleep(
 
     monkeypatch.setattr(script, "served", slow)
 
-    assert script.main(["btclib_secp256k1", "0.8.0.5", "--timeout", "30"]) == 1
+    assert script.main(["btclib-secp256k1", "0.8.0.5", "--timeout", "30"]) == 1
 
     assert asked == [(_URL, 10.0)]
     assert clock.slept == [0.0]
@@ -279,7 +279,7 @@ def test_the_defaults_are_the_budget_a_release_actually_gets(
     """
     index = _index(script, monkeypatch, [])
 
-    assert script.main(["btclib_secp256k1", "0.8.0.5"]) == 1
+    assert script.main(["btclib-secp256k1", "0.8.0.5"]) == 1
 
     assert clock.now == pytest.approx(300.0)
     assert clock.slept == [15.0] * 20
@@ -353,7 +353,7 @@ def test_the_main_guard_runs_the_script_as___main__(
     empty tag, which is the one argument that asks the index nothing.
     """
     monkeypatch.setattr(
-        sys, "argv", ["wait_for_pypi_release.py", "btclib_secp256k1", ""]
+        sys, "argv", ["wait_for_pypi_release.py", "btclib-secp256k1", ""]
     )
 
     with pytest.raises(SystemExit) as excinfo:
