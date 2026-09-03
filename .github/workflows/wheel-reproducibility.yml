@@ -106,18 +106,18 @@ on:
     # would wait for its next push to be checked at all.
     # closed joins them for a different reason: merging or closing a pull
     # request is neither a push nor a synchronize, so a run still held in
-    # this pull request's own concurrency group survives it --
-    # cancel-in-progress only fires when a new run lands in that group,
-    # and nothing otherwise does. Landing the closed event there is what
-    # lets it supersede the stale run instead of leaving it to finish on
-    # a branch nobody is going to look at again. "This pull request's
-    # own group" is the part github.ref alone gets wrong: for a closed,
-    # merged pull request it resolves to the base branch's ref, which
-    # this workflow has no push trigger to collide with, but the weekly
-    # schedule and a workflow_dispatch both also run on the default
-    # branch and would resolve to that same ref. The concurrency block
-    # below groups by the pull request's own number instead, immune to
-    # that under any action
+    # this pull request's own concurrency group survives it unless the
+    # closed event's own run also lands there. The concurrency block
+    # below is what decides whether that landing cancels it or only
+    # queues behind it (#523) -- this trigger only supplies the event
+    # the two cases are told apart by. "This pull request's own group"
+    # is the part github.ref alone gets wrong: for a closed, merged pull
+    # request it resolves to the base branch's ref, which this workflow
+    # has no push trigger to collide with, but the weekly schedule and a
+    # workflow_dispatch both also run on the default branch and would
+    # resolve to that same ref. The concurrency block below groups by
+    # the pull request's own number instead, immune to that under any
+    # action
     types: [opened, reopened, synchronize, ready_for_review, closed]
     paths:
       # the build backend and the compiled extension's own sources
@@ -149,7 +149,19 @@ concurrency:
   # workflow_dispatch carries pull_request context, so github.ref is
   # still what groups either, unchanged
   group: wheel-reproducibility-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # true is right for a new push, and for a pull request closed without
+  # merging: neither leaves anything worth finishing, so superseding
+  # whatever the group already holds is the point. A closed, merged pull
+  # request is the one event this does not hold for -- #523 measured
+  # what a cancel does there: the run in flight was the only measurement
+  # its head was ever going to get before the next scheduled run, a week
+  # away, and it read in the run list as an ordinary superseded run
+  # rather than as a measurement that never happened. So the expression
+  # is false there and true everywhere else: the closed, merged run
+  # still lands in the group and still queues behind whatever is
+  # running, but no longer cancels it, leaving that run free to finish
+  # against the head that landed
+  cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
 
 jobs:
   rebuild:
@@ -158,11 +170,11 @@ jobs:
     # here either: the same condition lint.yml, test.yml and
     # vendored-vectors.yml carry, and ready_for_review is a trigger type
     # above for the same reason. A closed pull request spends none
-    # either -- the trigger above takes the closed event only to let
-    # cancel-in-progress supersede a run still holding in this ref's
-    # group. A double build on every image of every platform is
-    # expensive enough that this is not a convention followed for its
-    # own sake here
+    # either, merged or not -- the concurrency block above is what stops
+    # a merged one's own run from cancelling the run this condition
+    # already let finish (#523). A double build on every image of every
+    # platform is expensive enough that this is not a convention
+    # followed for its own sake here
     if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
     runs-on: ${{ matrix.os }}
     # two full builds of the vendored library and the extension, from a
