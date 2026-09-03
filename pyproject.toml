@@ -845,6 +845,32 @@ skip = "pp*-win* cp310-win_arm64"
 # a C build is a second way to be wrong for a saving already had
 
 [tool.cibuildwheel.linux]
+# the environment a released static Linux wheel is compiled in, named
+# by the digest of the image's content. A digest is `docker pull`able by
+# anyone and outlives the runner image that hosted the build, so it
+# states that environment to somebody who was never on the machine,
+# which is what RELEASING.md's rebuild section leans on. cibuildwheel
+# resolves its own `manylinux_2_28` and `musllinux_1_2` aliases to
+# these same objects, through a table inside the version uv.lock pins;
+# what naming them here buys is that the image is a line in this file,
+# so a cibuildwheel release moving it is a diff.
+#
+# Nothing updates these. The ecosystems .github/dependabot.yml declares
+# are github-actions, uv and gitsubmodule, and none of them reads a
+# [tool.cibuildwheel] key, so the value moves by hand. What says the
+# time has come is a build failing on an interpreter the pinned image
+# does not carry.
+#
+# x86_64 and aarch64 are what archs = "auto64" above selects on the
+# Linux runners build-cibuildwheel names, and a PyPy identifier's
+# platform tag is `manylinux_x86_64` like a CPython one's, so it reads
+# the key below rather than the `pypy_x86_64` one cibuildwheel also
+# offers.
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64@sha256:012f4a50472412f18bb2b450c1cce7158434cfae4ae878591c2748a13a30c2be"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64@sha256:52e4da6e9348db7cd0b529a827623b62b7c1fe867ba515ae752fa13d41f7f46e"
+musllinux-x86_64-image = "quay.io/pypa/musllinux_1_2_x86_64@sha256:f130bd3e3aebb39abcdec28a89f987f0d31b52d74bac5852318303698e9a5033"
+musllinux-aarch64-image = "quay.io/pypa/musllinux_1_2_aarch64@sha256:1fa8dcacab5e13769abb36028f98bd2c0a1af4dbde492505f774d7f0ce01e87f"
+
 # the musllinux images are Alpine and the manylinux ones RHEL-derived,
 # where ccache is in EPEL rather than in the base repository and the
 # image itself ships no ccache at all -- so the chain is longer than a
