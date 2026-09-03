@@ -899,19 +899,31 @@ on when they were built. The sentinel below builds each of them twice
 in one image and diffs the pair, so what they reproduce to is that
 workflow's output rather than a sentence here.
 
-What is not settled is two *environments*. The compiler, its version and
-the toolchain the runner happened to have are inputs neither
-cibuildwheel nor this repository pins, so a wheel rebuilt on another
-image is other bytes and is not claimed to be anything else. That is one
-measurement across the platforms and not one decision: a rebuild is a
-check only where the environment it needs is something the person
-running it can obtain, and that holds on one of them.
+What is not settled is two *environments*. A wheel compiled on the
+runner carries the compiler, its version and the toolchain that image
+happened to have, and nothing pins any of the three, so such a wheel
+rebuilt on another image is other bytes and is not claimed to be
+anything else. That is one measurement across the platforms and not one
+decision: a rebuild is a check only where the environment it needs is
+something the person running it can obtain, and that holds on one of
+them.
 
-On Linux it does. The release compiles inside a manylinux or musllinux
-container, which is addressed by the digest of its content, `docker
-pull`able by anyone and outliving the runner image that hosted it, so
-naming that digest states the environment to somebody who was never on
-the machine. That is btclib-org/btclib-secp256k1#524.
+On Linux it holds for the static wheels. `build-cibuildwheel` compiles
+those inside a manylinux or a musllinux container, and
+`[tool.cibuildwheel.linux]` names that container by the digest of its
+content: `docker pull`able by anyone, outliving the runner image that
+hosted it, so the digest states the environment to somebody who was
+never on the machine. What no job compares is one commit built through
+that container on two host images, which is
+btclib-org/btclib-secp256k1#584.
+
+The `py3-none-manylinux*` wheels are outside it. `build-dynamic`
+compiles them on the runner in no container, so
+`[tool.cibuildwheel.linux]` is not read by the job that builds them at
+all, and `auditwheel` names what it repairs for the glibc the compiled
+object requires — the `manylinux` in those file names is a
+compatibility tag rather than an image. Their environment is the
+runner's own, which is the paragraph above.
 
 On macOS and Windows the pin is declined rather than pending.
 `xcode-select` and `-vcvars_ver` choose among what the runner image
@@ -926,8 +938,10 @@ says who built it and where rather than what is in it.
 
 A verifier who rebuilds a released static wheel outside the image that
 built it and gets other bytes therefore has the expected outcome and not
-a defect to report, and on macOS and Windows that expectation is the end
-state rather than something a fix is coming for.
+a defect to report. On Linux the image is obtainable, so the rebuild
+inside it is a check a stranger can run; on macOS and Windows there is
+no image to rebuild in, and that is the end state rather than something
+a fix is coming for.
 btclib-org/btclib-secp256k1#439 is the umbrella over both halves, and
 what section 12 of the organization standard's exemption for a compiled
 wheel cites.
@@ -935,12 +949,12 @@ wheel cites.
 `wheel-reproducibility.yml` is what measures any of the above rather
 than leaving it asserted. Its `rebuild`, `repaired`, `dynamic` and
 `cross-windows` jobs each build one commit twice in one image and name
-the members that differ, and `across-images` compares what two images
-of one platform built. `repaired`, `dynamic` and `cross-windows` take
-the frontend and the repair from the job that uploads the wheel each is
-about, so
-the file under measurement is the one PyPI receives; `build-windows`
-runs no repair, so `cross-windows` runs none either. Two images differ
+the members that differ, and `across-images` compares `rebuild`'s
+wheels from two images of one platform. `repaired`, `dynamic` and
+`cross-windows` take the frontend and the repair from the job that
+uploads the wheel each is about, so the file under measurement is the
+one PyPI receives; `build-windows` runs no repair, so `cross-windows`
+runs none either. Two images differ
 in more than one input at a time, so which input reached a member is a
 question that output poses rather than answers. `rebuild` and
 `repaired` narrow to one interpreter, so whether a wheel of another ABI

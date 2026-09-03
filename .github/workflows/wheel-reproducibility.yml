@@ -60,9 +60,14 @@ name: wheel-reproducibility
 # same bytes, which running the wheel does not answer.
 #
 # On the release images alone, where rebuild carries two per platform:
-# whether two images agree is the across-images question below, and it
-# is already asked of the uv build wheel. Asking it again here would
-# double this job for an answer the run already carries.
+# whether two images agree is the across-images question below, and
+# that job reads rebuild, whose Linux build runs on the runner. The
+# answer it carries is about the runner's own toolchain and not about
+# the container this job compiles a Linux wheel in, which the digest
+# [tool.cibuildwheel.linux] pins is what names. Asking it of this job
+# is #584: a second image per platform here, and a comparison taking a
+# set of wheels per image rather than one, a Linux cibuildwheel run
+# leaving a manylinux wheel and a musllinux one.
 #
 # The first image of each pair below is hand-kept against that job's own
 # list, and repaired's own list is that same copy: GitHub Actions gives
@@ -76,10 +81,11 @@ name: wheel-reproducibility
 # rebuild's list and that job's are no longer equal.
 #
 # It is a sentinel and not a gate. Two images of one platform do not
-# build one wheel: pinning the container the Linux build compiles in is
-# #524, and pinning the Xcode and the MSVC toolset is declined, for the
-# reason RELEASING.md's rebuild section gives -- so a required check
-# here would be one a pull request could never pass for a reason
+# build one wheel: rebuild below compiles on the runner, so the
+# container digest [tool.cibuildwheel.linux] pins does not reach its
+# Linux pair, and pinning the Xcode and the MSVC toolset is declined,
+# for the reason RELEASING.md's rebuild section gives -- so a required
+# check here would be one a pull request could never pass for a reason
 # nothing on that pull request caused. The declined two stay in
 # across-images below with the rest: a platform that is not expected to
 # pass is still what would say so if it started passing. Which platform

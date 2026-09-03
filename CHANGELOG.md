@@ -3597,6 +3597,39 @@ release-notes length in the first place, and are still in
   a required check is not what decides it: `codeql.yml` backs none and
   keeps `true` for the same reason `lint.yml` does.
 
+### The Linux container the static wheels compile in is named by digest
+
+- **`[tool.cibuildwheel.linux]` names the manylinux and the musllinux
+  image by the digest of its content** (issue #524). A digest is
+  `docker pull`able by anyone and outlives the runner image that hosted
+  the build, so it states the environment of a released static Linux
+  wheel to somebody who was never on the machine. `cibuildwheel`
+  resolves its own `manylinux_2_28` and `musllinux_1_2` aliases to
+  those same objects, through a table inside the version `uv.lock`
+  pins; what naming them in `pyproject.toml` buys is that the image is
+  a line there, so a `cibuildwheel` release moving it is a diff.
+- **Nothing updates the digests, and the comment beside them says so.**
+  The ecosystems `.github/dependabot.yml` declares are
+  `github-actions`, `uv` and `gitsubmodule`, none of which reads a
+  `[tool.cibuildwheel]` key. What says the value has to move is a build
+  failing on an interpreter the pinned image does not carry.
+- **`RELEASING.md` and `wheel-reproducibility.yml`'s header say that no
+  job builds one commit through that container on two host images**
+  (issue #584). `across-images` reads `rebuild`, which compiles with
+  `uv build` on the runner, and `repaired`, the job that builds through
+  `cibuildwheel`, carries one image per platform.
+
+### `RELEASING.md` says which Linux wheels the container digest covers
+
+- **The *Rebuild a release from its tag* section separates the static
+  wheels `build-cibuildwheel` compiles inside the container from the
+  `py3-none-manylinux*` wheels `build-dynamic` compiles on the runner**
+  (closes #579). The second job runs `python -m build` with no
+  container, so `[tool.cibuildwheel.linux]` is not read by it at all,
+  and `auditwheel` names what it repairs for the glibc the compiled
+  object requires: the `manylinux` in those file names is a
+  compatibility tag rather than an image.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
