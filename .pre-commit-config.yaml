@@ -35,10 +35,10 @@ ci:
   # key to ask that service for, so the key bought a clone nothing can use
   # and is not kept. REPOSITORY.md records the residual gap.
   #
-  # The lint workflow runs this same file with what the hook needs --
+  # lint.yml runs this same file with what the hook needs --
   # `submodules: true` and `fetch-depth: 0` -- so what is skipped here is
-  # one of two runners rather than the hook: it still gates a commit on
-  # this machine and a pull request in that workflow, which is the
+  # pre-commit.ci rather than the hook: it still gates a commit on this
+  # machine and the pull request check lint.yml runs, which is the
   # required check. An entry may join it for a reason of that kind and no
   # other
   skip: [submodule-pin]
