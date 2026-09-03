@@ -118,7 +118,7 @@ once, which the ordinary sequence avoids by each removing its own.
 
 ```shell
 WT=<scratchpad>/wt-<tracker>-<issue>-<repo>-<role>  # wt-github-255-btclib-coder
-git worktree add -b <branch> "$WT" origin/main
+git worktree add "$WT" origin/main -b <branch>
 cd "$WT"
 git submodule update --init secp256k1  # a worktree isolates files, and a
                                        # submodule is a checkout of its
@@ -129,6 +129,12 @@ uv sync --locked                       # a second venv, and a second build
 # edit, gate and commit here, then
 git push origin HEAD:refs/heads/<branch>
 ```
+
+`-b <branch>` sits after the path and the commit-ish so that the
+placeholder ends the command, which is section 9 of the organization
+standard's rule. With the placeholder ahead of `"$WT"` the `>` closing
+it takes that path as its target, and a path with no directory at it is
+a file the paste creates.
 
 Removing the worktree is part of finishing, and it stands in a block of
 its own: the block above ends in a placeholder, and a shell that
