@@ -6,20 +6,28 @@
 
 `diff_wheels` is exercised against archives built by hand, one member
 disagreeing at a time, so that each assertion names the one thing that
-changed. `_extract_archive` and `copy_source_tree` are exercised against
-real git repositories built by hand instead: what makes `#509`'s own
-fix worth trusting is that a commit and an uncommitted edit come out
-differently, and a mock of `subprocess.run` cannot tell the two apart --
-it would have to reimplement `git archive` to do so, at which point the
-test measures the mock rather than the script. `build_wheel` and `main`
-never invoke the real `uv build`, though: what they are asked to build
-is a fake, `check.subprocess.run` replaced the way
-`tests/submodule_pin_test.py` and `tests/check_vendored_vectors.py`
-replace it, so the suite measures this script's plumbing rather than a
-real compile. The fake answers a `git archive` call too, now that `main`
-calls `copy_source_tree` before every build, with a real, empty tar
-archive -- `_extract_archive`'s own `tarfile.open` still runs unmocked
-against that, extracting nothing rather than being skipped.
+changed. Both sides carry the same filename, in two directories, which
+is what two builds of one commit produce and what makes the label a
+caller passes -- rather than the path -- the only thing a complaint can
+name the sides by. `_extract_archive` and `copy_source_tree` are
+exercised against real git repositories built by hand instead: what
+makes `#509`'s own fix worth trusting is that a commit and an
+uncommitted edit come out differently, and a mock of `subprocess.run`
+cannot tell the two apart -- it would have to reimplement `git archive`
+to do so, at which point the test measures the mock rather than the
+script. `build_wheel` and `main` never invoke the real `uv build`,
+though: what they are asked to build is a fake, `check.subprocess.run`
+replaced the way `tests/submodule_pin_test.py` and
+`tests/check_vendored_vectors.py` replace it, so the suite measures this
+script's plumbing rather than a real compile. The fake answers a `git
+archive` call too, now that `main` calls `copy_source_tree` before every
+build, with a real, empty tar archive -- `_extract_archive`'s own
+`tarfile.open` still runs unmocked against that, extracting nothing
+rather than being skipped.
+
+`--across-images` needs no build at all: what it reads is a directory of
+wheels two jobs already built, so its tests write that directory by hand
+and the wheels in it are the same hand-built archives `diff_wheels` gets.
 
 The script is loaded by path, `.github/scripts` being no package, as the
 other scripts under it are tested.
@@ -49,6 +57,10 @@ _SCRIPT = (
 # resolves it, so a bare "git" in a subprocess list is never what makes
 # this file's own real-git tests trip ruff's S607
 _GIT = shutil.which("git") or "git"
+# what two builds of one commit call the wheel, and what these tests
+# call it on both sides of a comparison unless the filename is the
+# subject
+_WHEEL = "pkg-1.0-py3-none-any.whl"
 
 
 @pytest.fixture
@@ -76,14 +88,41 @@ def write_wheel(
 
     Every member gets the same metadata unless the caller overrides it,
     which is what lets a test change one field of one member and nothing
-    else.
+    else. The parent directory is created, so that two wheels sharing a
+    filename can be written side by side under their own directories.
     """
+    path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(path, "w") as archive:
         for name, content in members:
             info = zipfile.ZipInfo(name, date_time=date_time)
             info.external_attr = external_attr
             info.compress_type = compress_type
             archive.writestr(info, content)
+
+
+def two_wheels(
+    tmp_path: Path,
+    first: list[tuple[str, bytes]],
+    second: list[tuple[str, bytes]],
+    **kwargs: Any,
+) -> tuple[Path, Path]:
+    """Write one wheel per side, same filename, and return the two paths.
+
+    `kwargs` reaches `write_wheel` for the second side alone, which is
+    how a test moves one metadata field without touching the first.
+    """
+    paths = (tmp_path / "one" / _WHEEL, tmp_path / "other" / _WHEEL)
+    write_wheel(paths[0], first)
+    write_wheel(paths[1], second, **kwargs)
+    return paths
+
+
+def diff(check: ModuleType, first: Path, second: Path) -> list[str]:
+    """Call `diff_wheels` with the labels these tests assert against."""
+    complaints: list[str] = check.diff_wheels(
+        first, second, first_label="one-image", second_label="other-image"
+    )
+    return complaints
 
 
 def run_git(*args: str, cwd: Path) -> None:
@@ -169,6 +208,22 @@ def fake_run_writing(wheels: dict[str, list[tuple[str, bytes]]]) -> Any:
     return fake_run
 
 
+def build_writing_in_turn(contents: list[bytes]) -> Any:
+    """Return a build stand-in writing a different wheel on each call.
+
+    One entry per build, in order, so that a test says what the second
+    build produces without reaching for a counter of its own.
+    """
+    remaining = list(contents)
+
+    def build_call(args: list[str], **_kwargs: Any) -> None:
+        out_dir = Path(args[args.index("--out-dir") + 1])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        write_wheel(out_dir / _WHEEL, [("pkg/a.py", remaining.pop(0))])
+
+    return build_call
+
+
 def test_extract_archive_copies_head_and_not_an_uncommitted_edit(
     check: ModuleType, tmp_path: Path
 ) -> None:
@@ -220,14 +275,12 @@ def test_build_wheel_returns_the_one_wheel_uv_left(
 ) -> None:
     """The success path: one call, one wheel, its path comes back."""
     monkeypatch.setattr(
-        check.subprocess,
-        "run",
-        fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]}),
+        check.subprocess, "run", fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]})
     )
 
     wheel = check.build_wheel(tmp_path / "source", tmp_path / "out")
 
-    assert wheel == tmp_path / "out" / "pkg-1.0-py3-none-any.whl"
+    assert wheel == tmp_path / "out" / _WHEEL
 
 
 def test_build_wheel_refuses_an_empty_out_dir(
@@ -248,7 +301,7 @@ def test_build_wheel_refuses_more_than_one_wheel(
         check.subprocess,
         "run",
         fake_run_writing({
-            "pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")],
+            _WHEEL: [("pkg/a.py", b"x")],
             "pkg-0.9-py3-none-any.whl": [("pkg/a.py", b"x")],
         }),
     )
@@ -262,44 +315,47 @@ def test_diff_wheels_reports_nothing_for_identical_archives(
 ) -> None:
     """Two builds that agree, member for member, complain about nothing."""
     members = [("pkg/a.py", b"one"), ("pkg/b.py", b"two")]
-    write_wheel(tmp_path / "a.whl", members)
-    write_wheel(tmp_path / "b.whl", members)
 
-    assert check.diff_wheels(tmp_path / "a.whl", tmp_path / "b.whl") == []
+    assert diff(check, *two_wheels(tmp_path, members, members)) == []
 
 
 def test_diff_wheels_names_a_member_only_the_first_carries(
     check: ModuleType, tmp_path: Path
 ) -> None:
     """A member absent from the other side is named, not folded into a count."""
-    write_wheel(tmp_path / "a.whl", [("pkg/a.py", b"one"), ("pkg/extra.py", b"x")])
-    write_wheel(tmp_path / "b.whl", [("pkg/a.py", b"one")])
+    first, second = two_wheels(
+        tmp_path,
+        [("pkg/a.py", b"one"), ("pkg/extra.py", b"x")],
+        [("pkg/a.py", b"one")],
+    )
 
-    complaints = check.diff_wheels(tmp_path / "a.whl", tmp_path / "b.whl")
+    complaints = diff(check, first, second)
 
-    assert any("only in a.whl" in c and "pkg/extra.py" in c for c in complaints)
+    assert any("only in one-image" in c and "pkg/extra.py" in c for c in complaints)
 
 
 def test_diff_wheels_names_a_member_only_the_second_carries(
     check: ModuleType, tmp_path: Path
 ) -> None:
     """The same check from the other side: a member the second build added."""
-    write_wheel(tmp_path / "a.whl", [("pkg/a.py", b"one")])
-    write_wheel(tmp_path / "b.whl", [("pkg/a.py", b"one"), ("pkg/extra.py", b"x")])
+    first, second = two_wheels(
+        tmp_path,
+        [("pkg/a.py", b"one")],
+        [("pkg/a.py", b"one"), ("pkg/extra.py", b"x")],
+    )
 
-    complaints = check.diff_wheels(tmp_path / "a.whl", tmp_path / "b.whl")
+    complaints = diff(check, first, second)
 
-    assert any("only in b.whl" in c and "pkg/extra.py" in c for c in complaints)
+    assert any("only in other-image" in c and "pkg/extra.py" in c for c in complaints)
 
 
 def test_diff_wheels_reports_content_with_size_and_crc(
     check: ModuleType, tmp_path: Path
 ) -> None:
     """A content mismatch names both sizes and both CRCs, not just "differs"."""
-    write_wheel(tmp_path / "a.whl", [("pkg/a.py", b"one")])
-    write_wheel(tmp_path / "b.whl", [("pkg/a.py", b"two!")])
-
-    (complaint,) = check.diff_wheels(tmp_path / "a.whl", tmp_path / "b.whl")
+    (complaint,) = diff(
+        check, *two_wheels(tmp_path, [("pkg/a.py", b"one")], [("pkg/a.py", b"two!")])
+    )
 
     assert "pkg/a.py" in complaint
     assert "content differs" in complaint
@@ -327,12 +383,13 @@ def test_diff_wheels_reports_a_metadata_field_by_name(
     value_b: object,
 ) -> None:
     """Each of the fields #497 checked by hand is named when it disagrees."""
-    kwargs_a = {field: value_a}
-    kwargs_b = {field: value_b}
-    write_wheel(tmp_path / "a.whl", [("pkg/a.py", b"same")], **kwargs_a)  # type: ignore[arg-type]
-    write_wheel(tmp_path / "b.whl", [("pkg/a.py", b"same")], **kwargs_b)  # type: ignore[arg-type]
+    member = [("pkg/a.py", b"same")]
+    first = tmp_path / "one" / _WHEEL
+    second = tmp_path / "other" / _WHEEL
+    write_wheel(first, member, **{field: value_a})  # type: ignore[arg-type]
+    write_wheel(second, member, **{field: value_b})  # type: ignore[arg-type]
 
-    (complaint,) = check.diff_wheels(tmp_path / "a.whl", tmp_path / "b.whl")
+    (complaint,) = diff(check, first, second)
 
     assert f"pkg/a.py: {field}" in complaint
     assert repr(value_a) in complaint
@@ -341,10 +398,14 @@ def test_diff_wheels_reports_a_metadata_field_by_name(
 
 def test_diff_wheels_reports_member_order(check: ModuleType, tmp_path: Path) -> None:
     """Two archives holding the same members in a different order are named."""
-    write_wheel(tmp_path / "a.whl", [("pkg/a.py", b"x"), ("pkg/b.py", b"y")])
-    write_wheel(tmp_path / "b.whl", [("pkg/b.py", b"y"), ("pkg/a.py", b"x")])
-
-    complaints = check.diff_wheels(tmp_path / "a.whl", tmp_path / "b.whl")
+    complaints = diff(
+        check,
+        *two_wheels(
+            tmp_path,
+            [("pkg/a.py", b"x"), ("pkg/b.py", b"y")],
+            [("pkg/b.py", b"y"), ("pkg/a.py", b"x")],
+        ),
+    )
 
     assert any("member order differs" in c for c in complaints)
     # the two members agree in content and metadata, so order is the only
@@ -352,12 +413,38 @@ def test_diff_wheels_reports_member_order(check: ModuleType, tmp_path: Path) -> 
     assert len(complaints) == 1
 
 
+def test_diff_wheels_names_the_filename_and_compares_the_members_anyway(
+    check: ModuleType, tmp_path: Path
+) -> None:
+    """A tag that moves between two images is one line, and not the last.
+
+    #514's own case: a macOS runner's deployment target reaches the
+    platform tag, so the two wheels can be named differently while the
+    question about their members is still open. Stopping at the name
+    would answer it with the name.
+    """
+    first = tmp_path / "one" / "pkg-1.0-cp314-cp314-macosx_15_0_x86_64.whl"
+    second = tmp_path / "other" / "pkg-1.0-cp314-cp314-macosx_26_0_x86_64.whl"
+    write_wheel(first, [("pkg/a.py", b"one")])
+    write_wheel(second, [("pkg/a.py", b"two!")])
+
+    named, content = diff(check, first, second)
+
+    assert "macosx_15_0_x86_64" in named
+    assert "macosx_26_0_x86_64" in named
+    assert "one-image" in named
+    assert "other-image" in named
+    assert "pkg/a.py: content differs" in content
+
+
 def test_main_says_how_to_be_called_when_it_is_not(
     check: ModuleType, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """An argument on the command line is the usage message, not a crash."""
+    """An argument the script does not take is a usage message, not a crash."""
     assert check.main(["prog", "unexpected"]) == 2
-    assert capsys.readouterr().err == "usage: prog\n"
+    assert capsys.readouterr().err == (
+        "usage: prog [--keep-wheel DIR | --across-images DIR]\n"
+    )
 
 
 def test_main_builds_from_two_differently_named_directories(
@@ -380,9 +467,7 @@ def test_main_builds_from_two_differently_named_directories(
 
     monkeypatch.setattr(check, "copy_source_tree", fake_copy)
     monkeypatch.setattr(
-        check.subprocess,
-        "run",
-        fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]}),
+        check.subprocess, "run", fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]})
     )
 
     assert check.main(["prog"]) == 0
@@ -401,15 +486,13 @@ def test_main_reports_success_when_the_two_builds_agree(
     monkeypatch.setattr(
         check.subprocess,
         "run",
-        dispatching_run(
-            fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]})
-        ),
+        dispatching_run(fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]})),
     )
 
     assert check.main(["prog"]) == 0
 
     out = capsys.readouterr().out
-    assert "pkg-1.0-py3-none-any.whl" in out
+    assert _WHEEL in out
     assert "agree, member for member" in out
 
 
@@ -419,16 +502,11 @@ def test_main_reports_a_content_difference_and_exits_nonzero(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A real divergence between the two builds is what turns main() red."""
-    calls = {"n": 0}
-
-    def build_call(args: list[str], **_kwargs: Any) -> None:
-        out_dir = Path(args[args.index("--out-dir") + 1])
-        out_dir.mkdir(parents=True, exist_ok=True)
-        calls["n"] += 1
-        content = b"first" if calls["n"] == 1 else b"second"
-        write_wheel(out_dir / "pkg-1.0-py3-none-any.whl", [("pkg/a.py", content)])
-
-    monkeypatch.setattr(check.subprocess, "run", dispatching_run(build_call))
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dispatching_run(build_writing_in_turn([b"first", b"second"])),
+    )
 
     assert check.main(["prog"]) == 1
 
@@ -438,33 +516,116 @@ def test_main_reports_a_content_difference_and_exits_nonzero(
     assert "content differs" in err
 
 
-def test_main_names_two_builds_that_disagree_on_the_wheel_name(
-    check: ModuleType,
-    capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
+def test_main_keeps_the_first_builds_wheel_where_it_is_asked_to(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A platform tag that moves between the two builds is named, not diffed."""
-    calls = {"n": 0}
+    """`--keep-wheel` leaves this image's half of the later comparison."""
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dispatching_run(fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]})),
+    )
+    kept = tmp_path / "wheel" / "linux-x86-64" / "ubuntu-latest"
 
-    def build_call(args: list[str], **_kwargs: Any) -> None:
-        out_dir = Path(args[args.index("--out-dir") + 1])
-        out_dir.mkdir(parents=True, exist_ok=True)
-        calls["n"] += 1
-        name = (
-            "pkg-1.0-py3-none-any.whl"
-            if calls["n"] == 1
-            else "pkg-1.0-py3-none-other.whl"
-        )
-        write_wheel(out_dir / name, [("pkg/a.py", b"x")])
+    assert check.main(["prog", "--keep-wheel", str(kept)]) == 0
 
-    monkeypatch.setattr(check.subprocess, "run", dispatching_run(build_call))
+    with zipfile.ZipFile(kept / _WHEEL) as archive:
+        assert archive.read("pkg/a.py") == b"x"
 
-    assert check.main(["prog"]) == 1
+
+def test_main_keeps_the_wheel_even_where_the_two_builds_disagree(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The copy is taken before the comparison, and a red run still leaves it.
+
+    An image whose own two builds disagree is one whose wheel the
+    across-images comparison still wants: that comparison is a different
+    question, and the workflow's upload step runs on `!cancelled()` for
+    this reason.
+    """
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dispatching_run(build_writing_in_turn([b"first", b"second"])),
+    )
+    kept = tmp_path / "kept"
+
+    assert check.main(["prog", "--keep-wheel", str(kept)]) == 1
+
+    with zipfile.ZipFile(kept / _WHEEL) as archive:
+        assert archive.read("pkg/a.py") == b"first"
+
+
+def test_across_images_is_green_where_both_images_built_one_wheel(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#514's green answer: the environment did not reach the bytes."""
+    member = [("pkg/a.py", b"same")]
+    write_wheel(tmp_path / "linux-x86-64" / "ubuntu-latest" / _WHEEL, member)
+    write_wheel(tmp_path / "linux-x86-64" / "ubuntu-22.04" / _WHEEL, member)
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 0
+
+    assert (
+        "linux-x86-64: its images agree, member for member" in capsys.readouterr().out
+    )
+
+
+def test_across_images_names_the_image_and_the_member_that_differ(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#514's red answer names which member moved and between which images."""
+    write_wheel(
+        tmp_path / "macos-x86-64" / "macos-15-intel" / _WHEEL, [("pkg/_ext.so", b"aa")]
+    )
+    write_wheel(
+        tmp_path / "macos-x86-64" / "macos-26-intel" / _WHEEL, [("pkg/_ext.so", b"bbb")]
+    )
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
 
     err = capsys.readouterr().err
-    assert "named the wheel differently" in err
-    assert "pkg-1.0-py3-none-any.whl" in err
-    assert "pkg-1.0-py3-none-other.whl" in err
+    assert "::error::macos-x86-64: pkg/_ext.so: content differs" in err
+    assert "2 vs 3 bytes" in err
+
+
+def test_across_images_refuses_a_platform_only_one_image_built(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """One image left is a comparison that did not happen, not agreement."""
+    write_wheel(
+        tmp_path / "windows-arm64" / "windows-11-arm" / _WHEEL, [("pkg/a.py", b"x")]
+    )
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
+
+    err = capsys.readouterr().err
+    assert "no two images" in err
+    assert "windows-11-arm" in err
+
+
+def test_across_images_names_an_image_that_left_no_wheel(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A build that produced nothing is named by the image it ran on."""
+    member = [("pkg/a.py", b"x")]
+    write_wheel(tmp_path / "linux-aarch64" / "ubuntu-24.04-arm" / _WHEEL, member)
+    write_wheel(tmp_path / "linux-aarch64" / "ubuntu-22.04-arm" / _WHEEL, member)
+    (tmp_path / "linux-aarch64" / "ubuntu-26.04-arm").mkdir()
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
+
+    err = capsys.readouterr().err
+    assert "ubuntu-26.04-arm left [], not one wheel" in err
+
+
+def test_across_images_refuses_a_directory_no_platform_reached(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Every build failing downloads nothing, which is not an agreement."""
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
+
+    assert "no platform built a wheel" in capsys.readouterr().err
 
 
 def test_the_main_guard_runs_the_script_as___main__(
@@ -482,9 +643,7 @@ def test_the_main_guard_runs_the_script_as___main__(
     monkeypatch.setattr(
         check.subprocess,
         "run",
-        dispatching_run(
-            fake_run_writing({"pkg-1.0-py3-none-any.whl": [("pkg/a.py", b"x")]})
-        ),
+        dispatching_run(fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]})),
     )
     monkeypatch.setattr(sys, "argv", ["prog"])
 

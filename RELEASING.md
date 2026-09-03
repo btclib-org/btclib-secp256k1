@@ -807,20 +807,28 @@ that: `.gitmodules` pins it to a commit, and a git checkout of a pinned
 commit is the same bytes wherever and whenever it happens, the
 recursive `submodule update` above included.
 
-Only the sdist reproduces this way; the wheels do not, and are not
-worth chasing to make them. They are `cibuildwheel` output over that
-same vendored C library, one build per platform and interpreter, and
-pinning a timestamp would not be enough to make two builds of one the
-same bytes: the compiler, its version, and the toolchain the runner
-happened to have are inputs neither cibuildwheel nor this repository
-pins. Making them reproducible is a different and much larger project
-than this section — compiler output, toolchain versions, the vendored
-source's own build — for a guarantee the attestation every wheel
-already carries mostly already gives. Both siblings ship one
-pure-Python wheel each, and `uv build` builds it directly from the very
-sdist that already reproduces there too, no compiled step in between —
-which is why neither sibling's file draws this line. This repository's
-wheels are compiled, and that is the whole of the asymmetry.
+Only the sdist reproduces this way; the wheels do not, and are not worth
+chasing to make them. They are `cibuildwheel` output over that same
+vendored C library, one build per platform and interpreter, and pinning
+a timestamp would not be enough to make two builds of one the same
+bytes: the compiler, its version, and the toolchain the runner happened
+to have are inputs neither cibuildwheel nor this repository pins.
+`wheel-reproducibility.yml` measures that rather than leaving it
+asserted: it builds each platform on two GitHub images and names the
+members of the two wheels that differ. Two images differ in more than
+one input at a time, so which input reached a member is a question that
+output poses rather than answers. And what it builds is `uv build` on
+the runner, not cibuildwheel's own output: the Linux wheels ship from a
+container this repository pins no digest for, and the runner's image
+does not decide that container's toolchain. Making them reproducible is
+a different and much larger project than this section — compiler output,
+toolchain versions, the vendored source's own build — for a guarantee
+the attestation every wheel already carries mostly already gives. Both
+siblings ship one pure-Python wheel each, and `uv build` builds it
+directly from the very sdist that already reproduces there too, no
+compiled step in between — which is why neither sibling's file draws
+this line. This repository's wheels are compiled, and that is the whole
+of the asymmetry.
 
 ## When a release turns out to be broken
 

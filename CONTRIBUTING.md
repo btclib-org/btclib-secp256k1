@@ -737,8 +737,9 @@ run locally.
   what a local shell gets wrong here is the reproduction and not the
   workflow
 
-- `wheel-reproducibility`, which builds this project's wheel twice from
-  one checkout and diffs the two archives member by member:
+- `wheel-reproducibility`, which builds this commit's wheel twice, from
+  two directories it extracts `HEAD` into, and diffs the two archives
+  member by member:
 
   ```shell
   uv run --no-project python \
@@ -747,8 +748,9 @@ run locally.
 
   `--no-project` for the same reason as `check_vendored_vectors.py`
   above: the script imports only the standard library and shells out to
-  `uv` itself to run each build. Only the platform the command runs on
-  is answered locally; the workflow's own matrix is what asks the rest
+  `uv` itself to run each build. Only the environment the command runs
+  in is answered locally; the workflow's own matrix is what asks the
+  rest, the second image it builds each platform on included
 
 ### What a change here has to satisfy
 
@@ -816,7 +818,7 @@ can act on from a branch is noise.
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
 | `deps-latest` | weekly | the dependencies, at their newest |
 | `links`, `mutation` | weekly | — |
-| `wheel-reproducibility` | weekly, a pull request touching what it builds | the six wheel platforms, each built twice |
+| `wheel-reproducibility` | weekly, a pull request touching what it builds | every wheel platform, on two images, built twice on each |
 | `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
 
