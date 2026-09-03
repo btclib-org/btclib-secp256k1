@@ -31,9 +31,21 @@ not a chore.
 
 ## Re-checking a pin
 
+The commit takes a fence of its own with nothing under it to reach:
+written into the path, `trees/<commit>:bip-0340` is a `<commit`
+redirection that creates a file named `:bip-0340` wherever the reader's
+directory holds a file called `commit`. `${commit:?}` answers the other
+paste, the second fence alone, where the value is merely unset:
+unguarded, the call asks upstream for a tree at no commit and is
+answered `404 Not Found`, which reads as an answer about the pin.
+
+```shell
+commit=<commit>
+```
+
 ```shell
 git hash-object tests/bip340_test_vectors.csv
-gh api repos/bitcoin/bips/git/trees/<commit>:bip-0340 \
+gh api "repos/bitcoin/bips/git/trees/${commit:?}:bip-0340" \
     --jq '.tree[] | select(.path == "test-vectors.csv") | .sha'
 ```
 

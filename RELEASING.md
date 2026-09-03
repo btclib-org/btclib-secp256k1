@@ -173,15 +173,22 @@ Then:
 
    ```shell
    uv run --isolated --no-project --with griffe \
-       griffe check btclib_secp256k1 -a <previous release tag> -s .
+       griffe check btclib_secp256k1 -s . -s src -a <previous release tag>
    ```
 
    `uv run` alone syncs the project first, which builds the bindings —
    cmake, the `secp256k1` submodule, the whole C library — and fails
    before griffe is ever reached in a fresh clone; griffe is static, it
    reads Python source and needs nothing built, so `--isolated
-   --no-project` skips that build and `-s .` points griffe at the
-   package in the working tree instead of an installed one. It reports
+   --no-project` skips that build and `-s . -s src` points griffe at the
+   package in the working tree instead of an installed one. Both search
+   paths are wanted: `src` is where this tree keeps the package and `.`
+   is where a release from before it moved under `src/` keeps it, so a
+   comparison against such a tag loads neither side without the other —
+   `release.yml`'s own griffe step carries the same pair and the same
+   reason. The tag stands last, where the `>` closing it has nothing to
+   open, which is what section 9 of the organization standard asks of a
+   bare placeholder. It reports
    breakage alone — a public object removed, a parameter that changed
    kind or default or moved — and says nothing about an addition, so
    every line it prints wants an entry in `RELEASE_NOTES.md`. Discount
@@ -245,15 +252,29 @@ Then:
    What the cycle actually contained is not this pull request's diff,
    which is a version bump and the headings the previous step closed and
    opened: it is everything merged since the last tag. Read it off the
-   log rather than off the branch,
+   log rather than off the branch, and against the sections of
+   `CHANGELOG.md` and `RELEASE_NOTES.md` which closing the release notes
+   above has just closed, and which are where each change was described
+   as it landed.
+
+   The previous version takes a fence of its own with nothing under it
+   to reach, the way the run id does below: written into the range,
+   `v<previous version>..main` is a `<previous` redirection that creates
+   a file named `..main` wherever the reader's directory holds a file
+   called `previous`. `${tag:?}` answers the other paste, the second
+   fence alone, where the value is merely unset: unguarded it asks for
+   `..main`, which is `HEAD..main` and empty on a release branch up to
+   date with `main`, and an empty log reads as a cycle that contained
+   nothing.
 
    ```shell
-   git log v<previous version>..main --oneline
+   tag=v<previous version>
    ```
 
-   and against the sections of `CHANGELOG.md` and `RELEASE_NOTES.md`
-   which closing the release notes above has just closed, and which are
-   where each change was described as it landed.
+   ```shell
+   git log "${tag:?}"..main --oneline
+   ```
+
    `deps-latest`'s result and the breaking-changes check's griffe findings
    belong here too, a line rather than a screenshot: neither gates
    anything, and a pull request that never
