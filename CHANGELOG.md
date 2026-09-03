@@ -2989,6 +2989,19 @@ release-notes length in the first place, and are still in
   calendar puts between those two, is a workflow this repository does
   not schedule.
 
+### The worktree recipe ends `git worktree add` in its placeholder
+
+- **`CLAUDE.md`'s worktree recipe puts `-b <branch>` last, so the
+  command ends in its placeholder** (issue btclib-org/.github#687).
+  With the placeholder ahead of `"$WT"`, a paste made before it is
+  filled in has `<` open a file named `branch` for reading and `>`
+  create a file at the path `$WT` holds. The recipe's last line removes
+  the worktree, so the path a second paste starts from has no directory
+  at it and the redirection has nothing to fail on.
+- The paragraph under the fence carries that reason and cites section 9
+  of the organization standard, where a bare placeholder is required to
+  end its command.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
