@@ -3381,6 +3381,19 @@ release-notes length in the first place, and are still in
   `.github/zizmor.yml`'s own comment now points at the pin rather than
   restating the argument.
 
+### `check_wheel_reproducibility.py`'s `--repaired` needs the timestamp pinned
+
+- **`build_repaired_twice_and_compare` returns 1 and prints
+  `SOURCE_DATE_EPOCH is not set` before either build runs, rather than
+  building twice and comparing** (closes #559). Left unset, `auditwheel`
+  and `delocate` stamp every member they rewrite at the moment they ran,
+  so two sequential builds of one unchanged commit disagree on
+  `date_time` and the script reports a wheel that reproduces as one
+  that does not. The module's own docstring's `--repaired` example now
+  exports the variable first, matching the dedicated step
+  `wheel-reproducibility.yml`'s `repaired` job already runs before the
+  same command.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
