@@ -355,13 +355,18 @@ jobs:
       # both sides of every comparison, `stubs/_btclib_secp256k1.pyi`
       # included on the search path or not, measured both ways.
       #
-      # -s . -s src covers both layouts this repository has published
-      # under: every tag through v0.8.0.4 has btclib_secp256k1/ at the
-      # repository root, and CHANGELOG.md's "## v0.8.0.5" section moved
-      # it under src/ -- a search path that finds nothing in one
-      # reference is skipped in favour of the other, measured clean
-      # across that exact move (v0.8.0.4 against a src-layout tree
-      # reports no break).
+      # -s . and -s src each serve one end of the comparison: v0.8.0.4,
+      # the tag the step above resolves, keeps btclib_secp256k1/ at the
+      # repository root, and this tree keeps it under src/. griffe reads
+      # the package through whichever of the two holds it at that end,
+      # and errors where neither does rather than reporting no break:
+      # measured across that exact move, the pair passes v0.8.0.4
+      # against a src-layout tree, and either path alone raises
+      # ModuleNotFoundError at the end the other one serves. -s . comes
+      # off the day the tag resolved above carries src/ itself. That
+      # resolution never reaches back past v0.8.0.4, so the tags naming
+      # the package btclib_libsecp256k1 are neither end of this
+      # comparison.
       #
       # No base ref on a rehearsal: workflow_dispatch has no tag to check
       # a public surface at, so the comparison falls back to griffe's own
