@@ -3261,6 +3261,51 @@ release-notes length in the first place, and are still in
   `lint-latest` job now runs the same file too, so the count had
   already moved; naming the required check is the fact that does not.
 
+### `CONTRIBUTING.md`'s lint entry reproduces the gate the lint workflow runs
+
+- **The `Lint and type-check` entry gives `uv run --locked --only-group
+  lint pre-commit run --all-files`, the command `lint.yml`'s own step
+  runs and the one `Three gates decide a merge` already names two
+  screens earlier** (closes #506). `uvx pre-commit run --all-files`
+  resolves whatever `pre-commit` version the index holds the day it
+  runs, not the one `uv.lock` pins, so it reproduced a different gate
+  than the one that decides a merge.
+
+### `CONTRIBUTING.md`'s workflow table gives `links` its own trigger
+
+- **The workflow table splits `links` and `mutation` into their own
+  rows, `links`'s `when` column naming the `pull_request` trigger
+  scoped to its own configuration** (closes #513). `mutation.yml`
+  carries no such trigger, so the one row the two shared read as true
+  of both where it was only true of `links`.
+
+### `CONTRIBUTING.md` names `wheel-reproducibility`'s `repaired` job
+
+- **The `wheel-reproducibility` bullet gives the `repaired` job's own
+  local command, pinning `SOURCE_DATE_EPOCH` first, and the table row's
+  `what it varies` column names its matrix too** (closes #547).
+  `repaired` builds the file PyPI actually receives -- the wheel
+  `cibuildwheel` repairs with `auditwheel`, `delocate` or `delvewheel`
+  -- where `rebuild` stops at the archive `hatchling` writes; without
+  the pin, `auditwheel` and `delocate` stamp the moment they ran, so two
+  sequential local builds disagree and the command reports a wheel that
+  reproduces as one that does not. `rebuild`'s own recipe in the same
+  bullet gains the identical export, since `hatchling`'s own fallback
+  constant would keep its two local builds agreeing either way and what
+  the pin buys there is agreement with the wheel a release actually
+  builds. The `repaired` command needs `cibuildwheel` on `PATH` and, for
+  the Linux platform, a container runtime.
+
+### `CONTRIBUTING.md`'s `Build sdist` entry pins the timestamp and normalizes
+
+- **The `Build sdist` entry runs `python -m build -s` under the build
+  group, exports `SOURCE_DATE_EPOCH` first and runs
+  `.github/scripts/normalize_sdist.py` after, matching what `test.yml`'s
+  `build-sdist` job runs** (closes #548). The normalizer refuses to run
+  without the variable set and rewrites every member's `mtime` after
+  the build, which is what decides whether the local archive's bytes
+  match a published sdist.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
