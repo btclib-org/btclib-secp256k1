@@ -22,9 +22,10 @@ import shutil
 import sys
 import sysconfig
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+from hatchling.builders.wheel import WheelBuilder
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -89,6 +90,21 @@ class CustomBuildHook(BuildHookInterface[Any]):
         platform and broken on most of them. Nothing downstream could
         notice, and no configuration CI builds can produce it -- which is
         why it is refused here rather than reported and shipped.
+
+        An editable install (`hatchling.build.build_editable`, which
+        `uv sync` runs) never reads `build_data["infer_tag"]` or
+        `build_data["tag"]`: `WheelBuilder.build_editable_detection` and
+        `build_editable_explicit` (hatchling 1.32.0,
+        `hatchling/builders/wheel.py`) each overwrite
+        `build_data["tag"]` from `self.get_default_tag()` as their first
+        statement, whatever this method already put there, so an
+        editable wheel carrying a `cpNN` extension came out
+        `py3-none-any` regardless. `get_default_tag` is the call both
+        editable paths make in place of the check above, so it is
+        rebound on the live `WheelBuilder` instance to return the same
+        tag this method already decided for a standard build -- the
+        only point `hatchling.build.build_editable` leaves open to a
+        hook.
         """
         if self.target_name != "wheel":
             return
@@ -129,10 +145,17 @@ class CustomBuildHook(BuildHookInterface[Any]):
                 f"or there are none: {modes}"
             )
 
+        # the same object build_standard would decide this tag on, reached
+        # through the one public path in from a hook: see the docstring
+        # above for why a standard build's build_data is not enough
+        builder = cast(WheelBuilder, self.build_config.builder)
         if modes.pop():
             build_data["infer_tag"] = True
+            builder.get_default_tag = builder.get_best_matching_tag  # type: ignore[method-assign]
         else:
-            build_data["tag"] = f"py3-none-{self.dynamic_platform_tag()}"
+            tag = f"py3-none-{self.dynamic_platform_tag()}"
+            build_data["tag"] = tag
+            builder.get_default_tag = lambda: tag  # type: ignore[method-assign]
 
     def dynamic_platform_tag(self) -> str:
         """Platform tag of a dynamic (cffi ABI mode) wheel.
