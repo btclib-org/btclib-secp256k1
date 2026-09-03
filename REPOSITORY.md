@@ -158,15 +158,26 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
   --jq '[.required_status_checks.checks[] | {context, app_id}]'
 ```
 
-Which app reported what is read from the commit rather than assumed:
+Which app reported what is read from the commit rather than assumed. The
+sha takes a fence of its own with nothing under it to reach: the
+endpoint's path continues past it, so `commits/<sha>/check-runs` gives
+the `>` closing the placeholder the target `/check-runs`, at the root of
+the filesystem rather than in the directory the reader is standing in.
+`${sha:?}` answers the other paste, a command fence alone, where the
+value is merely unset: it stops the call before it asks the endpoint
+about a commit nobody named.
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/commits/<sha>/check-runs \
+sha=<sha>
+```
+
+```shell
+gh api "repos/btclib-org/btclib-secp256k1/commits/${sha:?}/check-runs" \
   --jq '.check_runs[] | {name, app: .app.slug, app_id: .app.id}'
 ```
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/commits/<sha>/check-runs \
+gh api "repos/btclib-org/btclib-secp256k1/commits/${sha:?}/check-runs" \
   --jq '[.check_runs[] | {name, app: .app.slug}] | unique_by(.app)'
 ```
 

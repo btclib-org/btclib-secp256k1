@@ -3687,6 +3687,22 @@ release-notes length in the first place, and are still in
   type, so what shows the pattern does not match any `types:` list is
   `claude-review.yml`'s own `issue_comment` list.
 
+### The check-run reads take the commit sha from a fence of their own
+
+- **`REPOSITORY.md`'s two `check-runs` calls take the sha from a fence
+  of their own** (closes btclib-org/.github#777). The endpoint's path
+  continues past the placeholder, so the `>` closing `<sha>` takes
+  `/check-runs` as its target and a paste made before the value is
+  filled in reaches for a file at the root of the filesystem rather than
+  in the directory the reader is standing in, which is where a sweep for
+  what a paste created looks. Section 9 of the organization standard
+  leaves a fence of its own to a placeholder whose command's own shape
+  refuses the end position, which is the shape `SECURITY.md`'s
+  attestation check and `tests/README.md`'s pin re-check already carry.
+- Both command fences write `${sha:?}`, so that either of them pasted on
+  its own stops before asking the endpoint about a commit nobody named.
+  This pair is `btclib-org/.github#725`'s shape in this tree.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
