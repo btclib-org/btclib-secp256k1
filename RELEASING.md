@@ -433,13 +433,27 @@ Then:
    with a job missing from it, which is what a bare `needs:` behind a
    red `public-api` produces -- section 12 of the organization standard
    has the rule, and the `skipped` `github-release` of 0.8.0.2 below is
-   this tree's own instance of the mechanism:
+   this tree's own instance of the mechanism.
+
+   The run id stands in a fence of its own, with nothing under it to
+   reach: an interactive shell discards a line ending in a placeholder
+   as a parse error and reads the next line of the same fence as a
+   fresh command. Each fence that takes a value from one of these
+   writes it `${name:?}`, and chains its commands with `&&` where it
+   holds more than one, against the other paste -- the second fence
+   alone, where the value is merely unset and no parse error discards
+   anything. Unguarded here, the run id asks for `runs//jobs`, whose
+   404 reads as an answer about the run rather than as a line nobody
+   filled in.
 
    ```shell
    run=<run id>
+   ```
+
+   ```shell
    gh api --paginate \
-     "repos/btclib-org/btclib-secp256k1/actions/runs/$run/jobs?per_page=100" \
-     --jq '.jobs[] | [.conclusion, (.steps|length), .name] | @tsv'
+     --jq '.jobs[] | [.conclusion, (.steps|length), .name] | @tsv' \
+     "repos/btclib-org/btclib-secp256k1/actions/runs/${run:?}/jobs?per_page=100"
    ```
 
    On a tag `Publish to TestPyPI` is `skipped`, its trigger being the
@@ -535,22 +549,33 @@ Then:
    Recreate a skipped release by hand from the run's own artifacts, which
    is the same thing that step would have done. `tag` is typed beside
    `run` because both name which release is being recreated, rather than
-   what the tree declares now:
+   what the tree declares now.
+
+   Both are placeholders and take a fence with nothing under them, and
+   the block below guards each of them: unguarded, its `awk` writes
+   `notes.md` wherever the reader is standing and `gh release create` is
+   one line further down.
 
    ```shell
    run=<run id>
-   tag=v0.8.0
-   repo=btclib-org/btclib-secp256k1
-   gh run download "$run" --repo "$repo" --name sdist --dir dist
-   gh run download "$run" --repo "$repo" --name attestation --dir attestation
-   cp attestation/attestation.jsonl "$tag.attestation.jsonl"
-   awk -v tag="$tag" '
+   tag=v<version>
+   ```
+
+   ```shell
+   repo=btclib-org/btclib-secp256k1 &&
+   gh run download "${run:?}" --repo "${repo:?}" \
+     --name sdist --dir dist &&
+   gh run download "${run:?}" --repo "${repo:?}" \
+     --name attestation --dir attestation &&
+   cp attestation/attestation.jsonl "${tag:?}.attestation.jsonl" &&
+   awk -v tag="${tag:?}" '
      $0 ~ "^## " tag "( |$)" {found=1; next}
      /^## / && found {exit}
      found {print}
-   ' RELEASE_NOTES.md > notes.md
-   gh release create "$tag" dist/* "$tag.attestation.jsonl" \
-     --repo "$repo" --title "$tag" --notes-file notes.md --verify-tag
+   ' RELEASE_NOTES.md > notes.md &&
+   gh release create "${tag:?}" dist/* "${tag:?}.attestation.jsonl" \
+     --repo "${repo:?}" --title "${tag:?}" \
+     --notes-file notes.md --verify-tag
    ```
 
    `--verify-tag` aborts where the tag is not already on the remote,
@@ -717,14 +742,24 @@ already built.
 1. check the statement the `attest` job signed, which on this path has no
    release to be attached to: it went to the attestations API all the
    same, keyed by the digest of the file, so the sdist the run built is
-   what asks for it.
+   what asks for it. The run id is assigned rather than written into the
+   `gh run download` line: inline it is a `<run` redirection, guarding
+   only while the reader's directory holds no file called `run`, where
+   an assignment ending in a placeholder is a parse error whatever the
+   directory holds.
 
    ```shell
-   repo=btclib-org/btclib-secp256k1
-   dir=$(mktemp -d)
-   gh run download <run id> --repo "$repo" --name sdist --dir "$dir"
-   gh attestation verify "$dir"/*.tar.gz \
-     --repo "$repo" --signer-workflow "$repo/.github/workflows/release.yml"
+   run=<run id>
+   ```
+
+   ```shell
+   repo=btclib-org/btclib-secp256k1 &&
+   dir=$(mktemp -d) &&
+   gh run download "${run:?}" --repo "${repo:?}" \
+     --name sdist --dir "${dir:?}" &&
+   gh attestation verify "${dir:?}"/*.tar.gz \
+     --repo "${repo:?}" \
+     --signer-workflow "${repo:?}/.github/workflows/release.yml"
    ```
 
    This is the whole reason `attest` runs in a rehearsal at all: the
@@ -753,20 +788,33 @@ version comparison, the `RELEASE_NOTES.md` section, and the ancestry on
 date and normalizes the sdist, so a rebuild of a released tag is the
 same bytes as what was published — that job's own upload is what
 `publish-pypi` publishes, unchanged. A worktree and not `git checkout`,
-for the reason CLAUDE.md gives:
+for the reason CLAUDE.md gives.
+
+The tag is the reader's, so it is a placeholder rather than a version
+spelled out, and it stands in a fence of its own. The block below guards
+it and chains its lines: unguarded, a paste of that block alone reaches
+`git submodule update` and the `uv` build with the reader's own
+directory as their working directory, the `cd` above them having had no
+worktree to enter. The chain is the run-time guard as well, a rebuild
+that carries on past a failed `uv build` normalizing and verifying
+whatever `dist/` already held.
 
 ```shell
-tag=v0.8.0.4
-git worktree add --detach /tmp/btclib-secp256k1-rebuild "$tag"
-cd /tmp/btclib-secp256k1-rebuild
-git submodule update --init --recursive
-export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
-uv run --locked --only-group build python -m build -s
+tag=v<version>
+```
+
+```shell
+git worktree add --detach /tmp/btclib-secp256k1-rebuild "${tag:?}" &&
+cd /tmp/btclib-secp256k1-rebuild &&
+git submodule update --init --recursive &&
+export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) &&
+uv run --locked --only-group build python -m build -s &&
 uv run --no-project --python 3.14 \
-  .github/scripts/normalize_sdist.py dist/
-repo=btclib-org/btclib-secp256k1
+  .github/scripts/normalize_sdist.py dist/ &&
+repo=btclib-org/btclib-secp256k1 &&
 gh attestation verify "dist/btclib_secp256k1-${tag#v}.tar.gz" \
-  --repo "$repo" --signer-workflow "$repo/.github/workflows/release.yml"
+  --repo "${repo:?}" \
+  --signer-workflow "${repo:?}/.github/workflows/release.yml"
 ```
 
 is the whole of it, `--locked` included for the same reason as before: a

@@ -3156,6 +3156,45 @@ release-notes length in the first place, and are still in
   issue cited for what it asked is the record rather than a place to
   look next.
 
+### A `RELEASING.md` placeholder takes its own fence, and the next guards it
+
+- **The run id, and the tag of the release being recreated, stand in a
+  fence with nothing under them, and the fence that consumes either
+  writes it `${name:?}` and chains its commands with `&&` where it
+  holds more than one** (issue btclib-org/.github#745). Section 9 of
+  the organization standard puts a line that writes in a fence of its
+  own, the parse error guarding only the line it sits on: an
+  interactive shell discards a line ending in a placeholder and reads
+  the next line of the same fence as a fresh command. The split and the
+  guard answer two different pastes. The split answers the passage
+  taken whole, where the placeholder line is discarded and what stands
+  under it runs; the guard answers the second fence taken alone, where
+  the value is merely unset and there is no parse error to discard
+  anything. Pasted unfilled and on its own, each of these fences runs
+  no command and creates no file, under `zsh`, `bash` and `sh` alike,
+  interactively and read as a script.
+- The chain is a run-time guard as well, which is why it stays where it
+  serves both: a rebuild that carries on past a failed `uv build`
+  normalizes and verifies whatever `dist/` already held.
+- A paste of the block that recreates a skipped release wrote
+  `notes.md` into whatever directory the reader was standing in and
+  reached `gh release create` under it; the block that reads a run job
+  by job asked the API for `runs//jobs`, whose 404 reads as an answer
+  about the run; and the rebuild block reached `git submodule update`
+  and the `uv` build with the reader's own directory as their working
+  directory.
+- The tag of the recreate block and of the rebuild section is
+  `v<version>` rather than a released version spelled out. A version
+  spelled out is a value the reader never had to supply, so it
+  satisfies `${tag:?}` and the block acts on whatever release the file
+  happened to name.
+- The rehearsal's attestation check assigns the run id instead of
+  writing it into the `gh run download` line (issue
+  btclib-org/.github#740). Inline, `<run id>` is a redirection rather
+  than a parse error, so it guards only while the reader's directory
+  holds no file called `run`; with one there, the line creates a file
+  named `--repo` and the `gh attestation verify` below it runs.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
