@@ -149,6 +149,18 @@ def init_repo(path: Path, files: dict[str, bytes]) -> None:
     run_git("init", "-q", "-b", "main", cwd=path)
     run_git("config", "user.email", "test@example.invalid", cwd=path)
     run_git("config", "user.name", "test", cwd=path)
+    # no line-ending translation in the repositories these tests read
+    # back from, whatever the machine's git is set to do: the GitHub
+    # Windows images set core.autocrlf globally, a fresh `git init`
+    # inherits it, and `git archive` then hands back CRLF where the
+    # commit holds LF -- so an assertion on the bytes measures the
+    # runner's policy rather than what the script does. An attribute and
+    # not `git config core.autocrlf false`, which a global
+    # core.attributesFile marking files text overrides in turn where
+    # `-text` is not overridden; and in .git/info rather than a
+    # committed .gitattributes, so that what a test asks to be committed
+    # is the whole of what the archive holds
+    (path / ".git" / "info" / "attributes").write_text("* -text\n", encoding="utf-8")
     for name, content in files.items():
         file_path = path / name
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -296,6 +308,55 @@ def test_extract_archive_is_fully_trusted_without_the_data_filter(
 
     assert (tmp_path / "outer" / "escaped.txt").read_bytes() == b"escaped"
     assert not (dest / "escaped.txt").exists()
+
+
+def test_extract_archive_ignores_the_machines_line_ending_policy(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A committed LF comes back an LF, whatever the machine's git says.
+
+    The GitHub Windows images set `core.autocrlf` in the global
+    configuration and a repository `init_repo` stands up inherits it, so
+    `git archive` handed back CRLF where the commit holds LF and
+    `test_copy_source_tree_extracts_the_submodule_from_its_own_repository`
+    measured the runner rather than the script. Pointing
+    `GIT_CONFIG_GLOBAL` at a configuration saying the same thing is what
+    asks that question from any platform: without it the property holds
+    only where the machine's git is already set the other way, which is
+    how the failure reached `main`.
+
+    The other two keys are what make this a test of `init_repo`'s
+    *choice* and not only of the symptom. A repository of its own saying
+    `core.autocrlf = false` survives the first key alone, so a test
+    carrying that key alone stays green against the weaker fix and goes
+    red only on somebody's laptop; an attributes file marking every path
+    text, with `core.eol`, is the configuration that tells the two apart,
+    because `-text` overrides it and a repository's own `core.autocrlf`
+    does not.
+
+    Written by `git config --file` rather than by hand: a value is
+    escape-processed when it is read, so a Windows `tmp_path` written
+    literally is `fatal: bad config line`, and this way the escaping is
+    git's to get right.
+    """
+    attributes = tmp_path / "global-attributes"
+    attributes.write_text("* text=auto\n", encoding="utf-8")
+    hostile = tmp_path / "gitconfig"
+    for key, value in (
+        ("core.autocrlf", "true"),
+        ("core.eol", "crlf"),
+        ("core.attributesFile", str(attributes)),
+    ):
+        run_git("config", "--file", str(hostile), key, value, cwd=tmp_path)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(hostile))
+
+    source = tmp_path / "source"
+    init_repo(source, {"pyproject.toml": b"[project]\n"})
+
+    dest = tmp_path / "dest"
+    check._extract_archive(source, dest)
+
+    assert (dest / "pyproject.toml").read_bytes() == b"[project]\n"
 
 
 def test_copy_source_tree_extracts_the_submodule_from_its_own_repository(
