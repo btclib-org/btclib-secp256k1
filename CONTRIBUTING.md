@@ -447,7 +447,7 @@ wheels are.
 
 Beware that this replaces `.venv` with an environment built on that
 interpreter, and leaves it there. Going back is another `uv sync`, and
-`--reinstall-package btclib_secp256k1 --no-cache` if the extension it
+`--reinstall-package btclib-secp256k1 --no-cache` if the extension it
 finds in the cache is the one of the ABI just left behind. Requesting a
 free-threaded interpreter (`--python 3.14t`) has a second effect: it
 installs it as a managed one, and `uv sync` then prefers it to a system
@@ -541,7 +541,7 @@ command at all, for the reason below, and nothing requires its result.
       uv run --locked --no-default-groups --group test pytest
   BTCLIB_LIBSECP256K1_DYNAMIC=true COVERAGE_FILE=coverage-data-dynamic \
       uv run --locked --no-default-groups --group test \
-      --reinstall-package btclib_secp256k1 --no-cache pytest \
+      --reinstall-package btclib-secp256k1 --no-cache pytest \
       --cov-fail-under=0
   uv run --locked --no-default-groups --group test \
       coverage combine coverage-data-static coverage-data-dynamic
@@ -673,7 +673,7 @@ run locally.
   uv run --locked --no-default-groups --group test --python 3.10 \
       pytest --no-cov
   BTCLIB_LIBSECP256K1_DYNAMIC=true uv run --locked --no-default-groups \
-      --group test --python 3.10 --reinstall-package btclib_secp256k1 \
+      --group test --python 3.10 --reinstall-package btclib-secp256k1 \
       --no-cache pytest --no-cov
   ```
 

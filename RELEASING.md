@@ -365,7 +365,7 @@ Then:
    ```shell
    sha=$(git rev-parse origin/main)
    tag=v$(uv version --short)
-   git tag -s "$tag" -m "btclib_secp256k1 $tag" "$sha"
+   git tag -s "$tag" -m "btclib-secp256k1 $tag" "$sha"
    git tag -v "$tag"        # Good signature, before anything is pushed
    git push origin "$tag"
    ```
