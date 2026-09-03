@@ -881,11 +881,35 @@ is btclib-org/btclib-secp256k1#540.
 What is not settled is two *environments*. The compiler, its version and
 the toolchain the runner happened to have are inputs neither
 cibuildwheel nor this repository pins, so a wheel rebuilt on another
-image is other bytes and is not claimed to be anything else; pinning the
-image by digest, the Xcode and the MSVC toolset is what would close it,
-and that is btclib-org/btclib-secp256k1#524, under the umbrella
-btclib-org/btclib-secp256k1#439 that section 12 of the organization
-standard's exemption for a compiled wheel cites.
+image is other bytes and is not claimed to be anything else. That is one
+measurement across the platforms and not one decision: a rebuild is a
+check only where the environment it needs is something the person
+running it can obtain, and that holds on one of them.
+
+On Linux it does. The release compiles inside a manylinux or musllinux
+container, which is addressed by the digest of its content, `docker
+pull`able by anyone and outliving the runner image that hosted it, so
+naming that digest states the environment to somebody who was never on
+the machine. That is btclib-org/btclib-secp256k1#524.
+
+On macOS and Windows the pin is declined rather than pending.
+`xcode-select` and `-vcvars_ver` choose among what the runner image
+already carries, so a version recorded here describes nothing to a
+reader who does not have that image; GitHub retires the images, so the
+one a given wheel was built on stops being available; and rebuilding a
+macOS wheel needs a Mac and a Windows wheel needs Windows, where the
+container runs wherever `docker` does. Pinning there narrows the drift
+and leaves the check unrunnable, so what those two wheels carry instead
+is the PEP 740 attestation `publish-pypi` uploads with every file, which
+says who built it and where rather than what is in it.
+
+A verifier who rebuilds a released static wheel outside the image that
+built it and gets other bytes therefore has the expected outcome and not
+a defect to report, and on macOS and Windows that expectation is the end
+state rather than something a fix is coming for.
+btclib-org/btclib-secp256k1#439 is the umbrella over both halves, and
+what section 12 of the organization standard's exemption for a compiled
+wheel cites.
 
 `wheel-reproducibility.yml` is what measures any of the above rather
 than leaving it asserted. Its `rebuild` and `repaired` jobs build one
