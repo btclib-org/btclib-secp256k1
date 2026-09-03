@@ -807,24 +807,54 @@ that: `.gitmodules` pins it to a commit, and a git checkout of a pinned
 commit is the same bytes wherever and whenever it happens, the
 recursive `submodule update` above included.
 
-Only the sdist reproduces this way; the wheels do not, and are not worth
-chasing to make them. They are `cibuildwheel` output over that same
-vendored C library, one build per platform and interpreter, and pinning
-a timestamp would not be enough to make two builds of one the same
-bytes: the compiler, its version, and the toolchain the runner happened
-to have are inputs neither cibuildwheel nor this repository pins.
-`wheel-reproducibility.yml` measures that rather than leaving it
-asserted: it builds each platform on two GitHub images and names the
-members of the two wheels that differ. Two images differ in more than
-one input at a time, so which input reached a member is a question that
-output poses rather than answers. And what it builds is `uv build` on
-the runner, not cibuildwheel's own output: the Linux wheels ship from a
-container this repository pins no digest for, and the runner's image
-does not decide that container's toolchain. Making them reproducible is
-a different and much larger project than this section — compiler output,
-toolchain versions, the vendored source's own build — for a guarantee
-the attestation every wheel already carries mostly already gives. Both
-siblings ship one pure-Python wheel each, and `uv build` builds it
+The static wheels reproduce too, and within narrower bounds than the
+sdist: one image rather than anywhere. They are `cibuildwheel` output
+over that same vendored C library, one build per platform and
+interpreter, and two builds of one commit in one image are one archive,
+member for member. The timestamp is what makes that true, and it is
+pinned the way the sdist's is — every job of `test.yml` that builds a
+distribution exports `SOURCE_DATE_EPOCH` from the commit, and
+`[tool.cibuildwheel.linux]`'s `environment-pass` carries it into the
+container the Linux build and its `auditwheel` repair run in, which
+inherits nothing from the runner. Without it the repair is what writes
+the clock into the archive: `auditwheel` repacks from a directory it
+extracted the wheel into and stamps every member, and `delocate` stamps
+the members it rewrites.
+
+The `py3-none-*` wheels the release publishes beside them are outside
+that: `build-dynamic` and `build-windows` build them with `python -m
+build` on the runner, `publish-pypi` uploads them with the rest under
+the `*-wheels-*` pattern, and nothing builds one of them twice. They
+carry the same pinned timestamp, for the reason above and so that one
+release's files agree on when they were built, and what they reproduce
+to is unmeasured — the sentinel below builds neither job's wheel, which
+is btclib-org/btclib-secp256k1#540.
+
+What is not settled is two *environments*. The compiler, its version and
+the toolchain the runner happened to have are inputs neither
+cibuildwheel nor this repository pins, so a wheel rebuilt on another
+image is other bytes and is not claimed to be anything else; pinning the
+image by digest, the Xcode and the MSVC toolset is what would close it,
+and that is btclib-org/btclib-secp256k1#524, under the umbrella
+btclib-org/btclib-secp256k1#439 that section 12 of the organization
+standard's exemption for a compiled wheel cites.
+
+`wheel-reproducibility.yml` is what measures any of the above rather
+than leaving it asserted. Its `rebuild` and `repaired` jobs build one
+commit twice in one image and name the members that differ — `repaired`
+through `cibuildwheel`, so the file under measurement is the one PyPI
+receives — and `across-images` compares what two images of one platform
+built. Two images differ in more than one input at a time, so which
+input reached a member is a question that output poses rather than
+answers. Both jobs narrow to one interpreter, so whether a wheel of
+another ABI tag reproduces is outside what either measures, which that
+workflow's own header states.
+
+So a rebuild of a released static wheel is a rebuild in the image that
+built it, from the tag, with `SOURCE_DATE_EPOCH` exported from the
+commit as the workflow exports it.
+
+Both siblings ship one pure-Python wheel each, and `uv build` builds it
 directly from the very sdist that already reproduces there too, no
 compiled step in between — which is why neither sibling's file draws
 this line. This repository's wheels are compiled, and that is the whole

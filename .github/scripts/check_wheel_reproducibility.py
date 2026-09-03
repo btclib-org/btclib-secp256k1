@@ -33,10 +33,11 @@ the checkout is not part of what either build sees, since it is not
 part of the commit the question is about.
 
 Two directories are still one environment, and `#514` is the other
-half: `RELEASING.md` and section 12 of the organization standard both
-say the wheels do not reproduce because the compiler, its version and
-the toolchain the runner happened to have are unpinned inputs, which is
-a claim about two environments and not about two directories.
+half: section 12 of the organization standard says the wheels do not
+reproduce because the compiler, its version and the toolchain the
+runner happened to have are unpinned inputs, and `RELEASING.md` says
+the same of a rebuild on a second image -- which is a claim about two
+environments and not about two directories.
 `--across-images` is the entry point that asks it. The comparison
 cannot happen where either build does, the two builds being on two
 machines, so each `--keep-wheel` run saves its first build's wheel and

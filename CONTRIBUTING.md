@@ -534,6 +534,21 @@ command at all, for the reason below, and nothing requires its result.
   uv run --locked --only-group build cibuildwheel
   ```
 
+  the job pins the build timestamp first, and reproducing the wheel
+  means pinning the same one:
+
+  ```shell
+  export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+  ```
+
+  every member of the archive carries it: `hatchling` stamps the members
+  it writes at a constant of its own without it, and `auditwheel` or
+  `delocate` gives the clock of the moment to the members the repair
+  rewrites, which is what makes two builds of one commit differ where
+  nothing else does. `[tool.cibuildwheel.linux]` passes the variable into
+  the container; the reasoning is in `test.yml`, next to the step that
+  exports it.
+
   The Linux wheels of that job are built in a manylinux container, so
   reproducing them needs a container runtime (`colima` on macOS)
 
@@ -557,7 +572,16 @@ command at all, for the reason below, and nothing requires its result.
   would in fact have loaded on. CMake reads the same variable, so the
   vendored library is built for the floor the tag then claims; the two
   values and the reasoning behind them are in `test.yml`, next to the
-  step that exports them
+  step that exports them.
+
+  On every platform of that job the build timestamp is pinned as well,
+  as in `Build wheels on <os>` above -- `auditwheel` and `delocate` run
+  here as steps of the job rather than inside `cibuildwheel`, and read
+  it the same way:
+
+  ```shell
+  export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+  ```
 
 - `Build sdist`, and `Install from the sdist and run the suite on <os>`
   after it
@@ -576,7 +600,14 @@ command at all, for the reason below, and nothing requires its result.
   ```
 
 - `Build on Linux for Windows` needs `mingw-w64`, and a Linux host to be
-  faithful: the cross-compilation CI does is from ubuntu, not from macOS
+  faithful: the cross-compilation CI does is from ubuntu, not from macOS.
+  That job pins the build timestamp too, and nothing repairs its wheel,
+  so `hatchling` alone writes the members and this is what decides their
+  timestamp:
+
+  ```shell
+  export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+  ```
 
 - `test: every job passed` reproduces as nothing, and is here because it
   is the required check and therefore the one a contributor sees red: it
