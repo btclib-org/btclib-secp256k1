@@ -3306,6 +3306,20 @@ release-notes length in the first place, and are still in
   the build, which is what decides whether the local archive's bytes
   match a published sdist.
 
+### A pull request builds `cp310`, the floor `requires-python` declares
+
+- **`build-cibuildwheel`'s pull-request narrowing sets `CIBW_BUILD` to
+  `cp310-* cp311-win_arm64` rather than `cp314-*`** (closes #533). cp310
+  is the interpreter `requires-python` declares as the floor, and the
+  second pattern is windows-11-arm's own floor: `[tool.cibuildwheel]`'s
+  skip line excludes `cp310-win_arm64` on every trigger, there being no
+  interpreter on that native arm64 runner to build it with. The
+  previous choice, `cp314-*`, shared the gate's own suite cell
+  interpreter, so a branch built nothing older, which is what #529
+  cost: a keyword absent from Python 3.10.11 landed green on a pull
+  request and failed only once the push to main built `cp310` for the
+  first time.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
