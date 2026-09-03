@@ -366,22 +366,28 @@ findings are recorded as reviewed rather than excluded, in two baselines
 that differ only in whether the entropy detectors run. Adding a hex
 constant to a test module, or a vector to a file under `tests/` matching
 `*.csv` or `*.json`, fails the corresponding hook until its baseline is
-regenerated:
+regenerated.
+
+The first command regenerates `.secrets.baseline`, over the tree with entropy
+detectors on. `--slim` omits `line_number` and `generated_at`, so the
+file stops changing when a flagged line moves; the scan is fresh rather
+than `--baseline`, which writes the full form whatever it read —
+`--slim` reaches `format_for_output` only on the branch that prints to
+stdout — so the exclusion is spelled out rather than read back from the
+baseline's own filter:
 
 ```shell
-# the tree, entropy detectors on. --slim omits `line_number` and
-# `generated_at`, so the file stops changing when a flagged line
-# moves; a fresh scan rather than `--baseline`, which writes the full
-# form whatever it read -- `--slim` reaches `format_for_output` only on
-# the branch that prints to stdout -- and therefore the exclusion
-# spelled out rather than read back from the baseline's own filter
 uvx --from detect-secrets detect-secrets scan --slim \
     --exclude-files '^(\.secrets\..*baseline|tests/.*\.(csv|json))$' \
     > .secrets.baseline
+```
 
-# the vendored vector data, entropy detectors off: these files are
-# 64-character hex and nothing else, so a new vector would read as a
-# new secret. The paths are the hook's `files` pattern spelled out
+The second command regenerates `.secrets.vectors.baseline`, over the
+vendored vector data with entropy detectors off: these files are
+64-character hex and nothing else, so a new vector would read as a new
+secret. The paths are the hook's `files` pattern spelled out:
+
+```shell
 uvx --from detect-secrets detect-secrets scan --slim \
     --disable-plugin HexHighEntropyString \
     --disable-plugin Base64HighEntropyString \
@@ -586,11 +592,12 @@ command at all, for the reason below, and nothing requires its result.
   BTCLIB_LIBSECP256K1_DYNAMIC=true uv build --wheel
   ```
 
-  on macOS the job exports a deployment target first, and reproducing it
-  means exporting the same one:
+  on macOS the job exports a deployment target first — 11.0, or 10.13
+  on x86_64, the floor cibuildwheel gives the static x86_64 wheels — and
+  reproducing it means exporting the same one:
 
   ```shell
-  export MACOSX_DEPLOYMENT_TARGET=11.0    # 10.13 on x86_64
+  export MACOSX_DEPLOYMENT_TARGET=11.0
   ```
 
   a dynamic wheel compiles no extension, so nothing derives its platform
@@ -615,14 +622,17 @@ command at all, for the reason below, and nothing requires its result.
   after it. The build timestamp is pinned as in `Build wheels on <os>`
   above, and the normalizer that follows the build reads that same
   variable to rewrite every member's `mtime`, refusing to run without
-  it -- its own docstring has the reasoning:
+  it -- its own docstring has the reasoning. That job installs with pip
+  rather than uv, its subject being pip resolving the published artifact
+  rather than uv reading the lock, so reproducing the install wants a
+  fresh venv rather than the project's own:
 
   ```shell
   export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
   uv run --locked --only-group build python -m build -s
   uv run --no-project --python 3.14 \
       .github/scripts/normalize_sdist.py dist/
-  python -m pip install --verbose dist/*.tar.gz   # in a fresh venv
+  python -m pip install --verbose dist/*.tar.gz
   ```
 
 - `Inspect the distribution files and install one`
@@ -771,7 +781,10 @@ run locally.
 
   `pin` asks the two halves `submodule-pin` cannot ask offline —
   whether the tag `README.md` names is the one upstream publishes, and
-  whether a libsecp256k1 maintainer signed it:
+  whether a libsecp256k1 maintainer signed it. The last two lines below
+  are the comparison itself: the first prints what upstream's tag
+  resolves to and the second what this tree's gitlink pins, and the pin
+  is correct where the two commits agree:
 
   ```shell
   gpg --keyserver hkps://keys.openpgp.org --recv-keys \
@@ -780,8 +793,8 @@ run locally.
       README.md | head -1)
   git -C secp256k1 fetch --force origin "refs/tags/${named}:refs/tags/${named}"
   git -C secp256k1 tag -v "${named}"
-  git -C secp256k1 rev-parse "${named}^{commit}"  # what upstream tags
-  git ls-tree HEAD secp256k1                      # what this tree pins
+  git -C secp256k1 rev-parse "${named}^{commit}"
+  git ls-tree HEAD secp256k1
   ```
 
   the fingerprints are lifted out of the workflow rather than written

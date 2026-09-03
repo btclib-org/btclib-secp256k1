@@ -3763,6 +3763,26 @@ release-notes length in the first place, and are still in
   unique to its own run, which is what an absent concurrency block left
   every mention with before.
 
+### Section 9's comment and placeholder rules land in this tree's markdown
+
+- **Every trailing `#` comment on a command line inside a `shell` fence
+  moves to prose above the fence, `CLAUDE.md`'s `WT=` line loses the
+  trailing example that gave its mid-path placeholder a word to redirect
+  into, `REVIEWING.md`'s standalone placeholders go bare, and the
+  whole-line `#` comments opening `CONTRIBUTING.md`'s `detect-secrets`
+  fence -- two of them carrying an apostrophe -- move to prose the same
+  way** (closes btclib-org/.github#789) (issue btclib-org/.github#771,
+  issue btclib-org/.github#786, issue btclib-org/.github#772). `zsh`
+  leaves `INTERACTIVE_COMMENTS` unset, so a trailing comment's words
+  reach the command as arguments, and an apostrophe among them opens a
+  quote the fence never closes -- which is what killed the
+  `detect-secrets` fence under an interactive `zsh` and is fixed the
+  same way section 9 fixes a trailing comment. `CLAUDE.md`'s comment
+  additionally sat after the `WT=` line's own placeholder, giving its
+  closing `>` a word to redirect into and turning an unfilled paste into
+  a write at the root of the filesystem instead of a parse error at the
+  shell.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
