@@ -3703,6 +3703,15 @@ release-notes length in the first place, and are still in
   its own stops before asking the endpoint about a commit nobody named.
   This pair is `btclib-org/.github#725`'s shape in this tree.
 
+### The merge-cancellation entry cites `(issue #509)` without acting on it
+
+- **The *A merge no longer cancels the sentinel run measuring it* entry,
+  landed at `def38ee`, cites `(issue #509)` for an issue it does not act
+  on, and stays exactly as landed** (closes #577). Pull request #520
+  closed #509, so what that bullet says is true and its parentheses are
+  the defect. An issue an entry only names belongs in the sentence; this
+  one is left as the record of an entry that put it in the parentheses.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
