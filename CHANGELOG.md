@@ -3458,6 +3458,18 @@ release-notes length in the first place, and are still in
   dispatch at gate speed instead of a mock of it, on every interpreter
   and every linkage the existing matrix already runs.
 
+### `CONTRIBUTING.md` names what a plain `uv sync` does not rebuild
+
+- **`CONTRIBUTING.md`'s `The environment and the gates` gains a
+  paragraph saying that a `git pull` changing `scripts/hatch_build.py`
+  is not itself enough to reach a `.venv` a `uv sync --locked` already
+  considers satisfied, and names the flag that forces the rebuild**
+  (closes #561). `uv sync --locked` there reports the package
+  `Checked`, not rebuilt, measured against the exact editable install
+  #534's fix corrected: `--reinstall-package btclib-secp256k1` forces
+  it, and `--refresh-package btclib-secp256k1` alone does not, which
+  the paragraph beside it does not say either.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
