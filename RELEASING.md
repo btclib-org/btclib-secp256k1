@@ -890,14 +890,14 @@ the clock into the archive: `auditwheel` repacks from a directory it
 extracted the wheel into and stamps every member, and `delocate` stamps
 the members it rewrites.
 
-The `py3-none-*` wheels the release publishes beside them are outside
-that: `build-dynamic` and `build-windows` build them with `python -m
-build` on the runner, `publish-pypi` uploads them with the rest under
-the `*-wheels-*` pattern, and nothing builds one of them twice. They
-carry the same pinned timestamp, for the reason above and so that one
-release's files agree on when they were built, and what they reproduce
-to is unmeasured — the sentinel below builds neither job's wheel, which
-is btclib-org/btclib-secp256k1#540.
+The `py3-none-*` wheels the release publishes beside them are built
+another way again: `build-dynamic` and `build-windows` build them with
+`python -m build` on the runner, and `publish-pypi` uploads them with
+the rest under the `*-wheels-*` pattern. They carry the same pinned
+timestamp, for the reason above and so that one release's files agree
+on when they were built. The sentinel below builds each of them twice
+in one image and diffs the pair, so what they reproduce to is that
+workflow's output rather than a sentence here.
 
 What is not settled is two *environments*. The compiler, its version and
 the toolchain the runner happened to have are inputs neither
@@ -933,15 +933,22 @@ what section 12 of the organization standard's exemption for a compiled
 wheel cites.
 
 `wheel-reproducibility.yml` is what measures any of the above rather
-than leaving it asserted. Its `rebuild` and `repaired` jobs build one
-commit twice in one image and name the members that differ — `repaired`
-through `cibuildwheel`, so the file under measurement is the one PyPI
-receives — and `across-images` compares what two images of one platform
-built. Two images differ in more than one input at a time, so which
-input reached a member is a question that output poses rather than
-answers. Both jobs narrow to one interpreter, so whether a wheel of
-another ABI tag reproduces is outside what either measures, which that
-workflow's own header states.
+than leaving it asserted. Its `rebuild`, `repaired`, `dynamic` and
+`cross-windows` jobs each build one commit twice in one image and name
+the members that differ, and `across-images` compares what two images
+of one platform built. `repaired`, `dynamic` and `cross-windows` take
+the frontend and the repair from the job that uploads the wheel each is
+about, so
+the file under measurement is the one PyPI receives; `build-windows`
+runs no repair, so `cross-windows` runs none either. Two images differ
+in more than one input at a time, so which input reached a member is a
+question that output poses rather than answers. `rebuild` and
+`repaired` narrow to one interpreter, so whether a wheel of another ABI
+tag reproduces is outside what either measures, which that workflow's
+own header states. `dynamic` and `cross-windows` have no interpreter
+axis to narrow, the jobs they follow building one wheel per platform;
+what they leave unasked instead is the environment, neither carrying a
+second image.
 
 So a rebuild of a released static wheel is a rebuild in the image that
 built it, from the tag, with `SOURCE_DATE_EPOCH` exported from the

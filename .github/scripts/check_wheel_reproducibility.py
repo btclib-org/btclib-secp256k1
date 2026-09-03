@@ -76,6 +76,17 @@ Linux producing a `manylinux` and a `musllinux` wheel from the one
 interpreter, so the two sides are paired by filename rather than taken
 as one wheel each.
 
+The release uploads wheels neither of those builds produces, and
+`#540` is that gap. `build-dynamic` in `test.yml` builds the ABI-mode
+wheel of the platform it runs on with `python -m build` and repairs it
+in the job itself, with `auditwheel` on Linux and `delocate` on macOS;
+`build-windows` cross-compiles the `win_amd64` one on a Linux runner
+and repairs nothing. `--dynamic` and `--cross-windows` are the entry
+points that build each twice and compare, `_DYNAMIC_ENV` and
+`_CROSS_WINDOWS_ENV` being what selects the linkage. Nothing there is
+`cibuildwheel`'s, so neither is `--repaired` with a variable moved: the
+frontend, the repair and the platform tag are all the job's own.
+
 Run it from a checkout with the submodule initialized, and with the
 commit under test the current `HEAD`:
 
@@ -98,6 +109,17 @@ Which interpreters that builds is `cibuildwheel`'s own to decide, and
 `CIBW_BUILD` in the caller's environment is what narrows it;
 `wheel-reproducibility.yml` sets that and the reasoning is there, this
 script imposing no policy on a matrix it does not own.
+
+`--dynamic` and `--cross-windows` take no argument either and want the
+same variable and the same group, `build`, `auditwheel` and `delocate`
+being in it too. Each builds for the machine it is on: `--dynamic` for
+that platform, and `--cross-windows` for Windows from anywhere a
+`mingw-w64` toolchain is installed. Neither has an interpreter to
+narrow, the frontend building one wheel per run.
+
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+    uv run --locked --only-group build python \\
+        .github/scripts/check_wheel_reproducibility.py --dynamic
 """
 
 from __future__ import annotations
@@ -111,7 +133,8 @@ import sys
 import tarfile
 import tempfile
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Mapping
+from functools import partial
 from pathlib import Path
 
 _UV = shutil.which("uv") or "uv"
@@ -123,7 +146,24 @@ _GIT = shutil.which("git") or "git"
 # importing this module finds nothing to resolve and the literal is what
 # a test then sees on a faked command line
 _CIBUILDWHEEL = shutil.which("cibuildwheel") or "cibuildwheel"
+# the two repair tools, resolved for the same reason and with the same
+# fallback: they are the build group's as well, and `repair_wheel` picks
+# between them by the platform it runs on
+_AUDITWHEEL = shutil.which("auditwheel") or "auditwheel"
+_DELOCATE = shutil.which("delocate-wheel") or "delocate-wheel"
 _ROOT = Path(__file__).resolve().parents[2]
+
+# the environment each of the two `python -m build` paths runs under,
+# held here rather than left to the caller: an entry point named for a
+# linkage and a job that forgot to export the variable would build the
+# static wheel, agree with itself and report green, which is the one
+# failure a sentinel cannot afford. scripts/cffi_build.py reads both
+# names, and its own module docstring says what each selects
+_DYNAMIC_ENV = {"BTCLIB_LIBSECP256K1_DYNAMIC": "true"}
+_CROSS_WINDOWS_ENV = {
+    "BTCLIB_LIBSECP256K1_CROSS_COMPILE": "true",
+    "CFFI_PLATFORM": "Windows",
+}
 
 # what #497 checked by hand -- order, permissions, compression and every
 # timestamp -- read back from zipfile.ZipInfo rather than from otool or a
@@ -218,6 +258,29 @@ def copy_source_tree(root: Path, dest: Path) -> None:
     _extract_archive(root / "secp256k1", dest / "secp256k1")
 
 
+def _one_wheel(out_dir: Path) -> Path:
+    """Return the one wheel `out_dir` holds.
+
+    Args:
+        out_dir: a directory a build or a repair has just written to.
+
+    Returns:
+        Its one wheel.
+
+    Raises:
+        RuntimeError: it holds a number of wheels other than one -- zero
+            having built nothing, more than one being a stale wheel from
+            an interrupted earlier run sharing the directory, since
+            neither `uv build` nor `python -m build` removes what it did
+            not just write.
+    """
+    wheels = sorted(out_dir.glob("*.whl"))
+    if len(wheels) != 1:
+        msg = f"expected exactly one wheel in {out_dir}, found {wheels}"
+        raise RuntimeError(msg)
+    return wheels[0]
+
+
 def build_wheel(source_dir: Path, out_dir: Path) -> Path:
     """Build `source_dir`'s wheel into `out_dir`, and return its path.
 
@@ -237,22 +300,15 @@ def build_wheel(source_dir: Path, out_dir: Path) -> Path:
 
     Raises:
         subprocess.CalledProcessError: `uv build` itself failed.
-        RuntimeError: the build left `out_dir` with a member count other
-            than one -- zero having built nothing, more than one being a
-            stale wheel from an interrupted earlier run sharing the
-            directory, since `uv build` never removes what it did not
-            just write.
+        RuntimeError: the build left `out_dir` holding other than one
+            wheel -- see `_one_wheel`.
     """
     subprocess.run(  # noqa: S603
         [_UV, "build", "--wheel", "--out-dir", str(out_dir)],
         cwd=source_dir,
         check=True,
     )
-    wheels = sorted(out_dir.glob("*.whl"))
-    if len(wheels) != 1:
-        msg = f"expected exactly one wheel in {out_dir}, found {wheels}"
-        raise RuntimeError(msg)
-    return wheels[0]
+    return _one_wheel(out_dir)
 
 
 def build_repaired_wheels(source_dir: Path, out_dir: Path) -> list[Path]:
@@ -293,6 +349,80 @@ def build_repaired_wheels(source_dir: Path, out_dir: Path) -> list[Path]:
         msg = f"cibuildwheel left no wheel in {out_dir}"
         raise RuntimeError(msg)
     return wheels
+
+
+def build_dynamic_wheel(
+    source_dir: Path, out_dir: Path, build_env: Mapping[str, str]
+) -> Path:
+    """Build `source_dir`'s dynamic wheel into `out_dir`, and return its path.
+
+    The frontend is `python -m build`, invoked on the interpreter this
+    script is running under, which is what `build-dynamic` and
+    `build-windows` in `test.yml` run. `uv build` is the other frontend
+    and `build_wheel` above is where it lives: which one writes the
+    archive is an input to what the archive holds, so the entry point
+    asking about a job's wheel runs that job's own frontend.
+
+    Args:
+        source_dir: the copy of the checkout to build from, and the
+            working directory of the build.
+        out_dir: where the wheel should be written. Each call gets its
+            own, for the reason `build_wheel` gives.
+        build_env: what to add to this process's environment for the
+            build. `_DYNAMIC_ENV` selects the ABI-mode wheel of the
+            platform it runs on and `_CROSS_WINDOWS_ENV` the
+            cross-compiled `win_amd64` one.
+
+    Returns:
+        The one wheel `out_dir` holds afterwards.
+
+    Raises:
+        subprocess.CalledProcessError: `python -m build` itself failed.
+        RuntimeError: the build left `out_dir` holding other than one
+            wheel -- see `_one_wheel`.
+    """
+    subprocess.run(  # noqa: S603
+        [sys.executable, "-m", "build", "--wheel", "--outdir", str(out_dir)],
+        cwd=source_dir,
+        env={**os.environ, **build_env},
+        check=True,
+    )
+    return _one_wheel(out_dir)
+
+
+def repair_wheel(wheel: Path, out_dir: Path) -> Path:
+    """Repair `wheel` into `out_dir`, and return the repaired wheel.
+
+    `build-dynamic` in `test.yml` repairs what it built before uploading
+    it, with `auditwheel` on Linux and `delocate-wheel` on macOS, and
+    those two decide the platform tag the file carries. So the archive
+    this hands back is the one `publish-pypi` uploads, where the build's
+    own output is a file no index ever sees.
+
+    Which tool runs is decided by the platform this is on, as that job
+    decides it by `runner.os`; its matrix is Linux and macOS, and
+    `tests/wheel_reproducibility_platforms_test.py` is what holds the
+    sentinel's copy of that matrix to it.
+
+    Args:
+        wheel: the wheel a build just wrote.
+        out_dir: where the repaired wheel should be written.
+
+    Returns:
+        The one wheel `out_dir` holds afterwards.
+
+    Raises:
+        subprocess.CalledProcessError: the repair tool itself failed.
+        RuntimeError: it left `out_dir` holding other than one wheel --
+            see `_one_wheel`.
+    """
+    repair = (
+        [_DELOCATE, "-w", str(out_dir), str(wheel)]
+        if sys.platform == "darwin"
+        else [_AUDITWHEEL, "repair", "-w", str(out_dir), str(wheel)]
+    )
+    subprocess.run(repair, check=True)  # noqa: S603
+    return _one_wheel(out_dir)
 
 
 def diff_wheels(
@@ -546,6 +676,33 @@ def build_twice_and_compare(keep_wheel: Path | None) -> int:
     return 0
 
 
+def source_date_epoch_is_set() -> bool:
+    """Report whether `SOURCE_DATE_EPOCH` is set, complaining where it is not.
+
+    The entry points that reach a repair want it because the repair
+    reads it: `auditwheel` and `delocate` stamp every member they write
+    at the moment they ran where it is unset, so two sequential builds
+    of one unchanged commit disagree on `date_time` for a reason that is
+    not the wheel, and the run would report that as a reproducibility
+    defect rather than as the caller's own missing step. Defaulting to
+    "now" here is what would hide it.
+
+    The one entry point that repairs nothing wants it for the other
+    reason `build-windows` in `test.yml` gives: hatchling's own fallback
+    constant is deterministic, so two builds agree without it, and what
+    they agree on is then a wheel differing from the published one in
+    every member's stored time.
+
+    Returns:
+        Whether the variable is set. This module's own docstring has the
+        command that sets it.
+    """
+    if "SOURCE_DATE_EPOCH" not in os.environ:
+        print("SOURCE_DATE_EPOCH is not set", file=sys.stderr)
+        return False
+    return True
+
+
 def build_repaired_twice_and_compare() -> int:
     """Build this commit through `cibuildwheel` twice, and compare.
 
@@ -554,15 +711,7 @@ def build_repaired_twice_and_compare() -> int:
         same wheels, name for name and member for member; one where
         `SOURCE_DATE_EPOCH` is unset, before either build runs.
     """
-    if "SOURCE_DATE_EPOCH" not in os.environ:
-        # not a default of "now": `auditwheel` and `delocate` would then
-        # stamp each repair at the moment it ran, so two sequential
-        # builds of one unchanged commit would disagree on `date_time`
-        # for a reason that is not the wheel, and this entry point would
-        # report that disagreement as a reproducibility defect rather
-        # than as the caller's own missing step -- this module's own
-        # docstring has the command that sets it
-        print("SOURCE_DATE_EPOCH is not set", file=sys.stderr)
+    if not source_date_epoch_is_set():
         return 1
 
     with two_source_copies() as (first_source, second_source):
@@ -587,17 +736,76 @@ def build_repaired_twice_and_compare() -> int:
     return 0
 
 
+def build_dynamic_twice_and_compare(
+    build_env: Mapping[str, str], *, repair: bool
+) -> int:
+    """Build this commit's dynamic wheel twice, and compare the two.
+
+    Args:
+        build_env: what the two builds add to this process's
+            environment, which is what selects the wheel being asked
+            about.
+        repair: whether to run this platform's repair tool over each
+            build before comparing, which is what `build-dynamic` does
+            to its wheel and `build-windows` does not to its.
+
+    Returns:
+        The process exit code: zero where the two agree, member for
+        member; one where `SOURCE_DATE_EPOCH` is unset, before either
+        build runs.
+    """
+    if not source_date_epoch_is_set():
+        return 1
+
+    with two_source_copies() as (first_source, second_source):
+        root = first_source.parent
+        first = build_dynamic_wheel(first_source, root / "out-a", build_env)
+        second = build_dynamic_wheel(second_source, root / "out-b", build_env)
+        if repair:
+            first = repair_wheel(first, root / "repaired-a")
+            second = repair_wheel(second, root / "repaired-b")
+
+        name = first.name
+        complaints = diff_wheels(
+            first,
+            second,
+            first_label="the first build",
+            second_label="the second build",
+        )
+
+    if complaints:
+        for complaint in complaints:
+            print(f"::error::{complaint}", file=sys.stderr)
+        return 1
+
+    print(f"{name}: two builds of this commit agree, member for member")
+    return 0
+
+
+# the entry points that take no argument of their own, and the usage
+# message's own source for them: a flag added here is offered by both
+# without a second list to keep in step
+_ENTRY_POINTS: dict[str, Callable[[], int]] = {
+    "--repaired": build_repaired_twice_and_compare,
+    "--dynamic": partial(build_dynamic_twice_and_compare, _DYNAMIC_ENV, repair=True),
+    "--cross-windows": partial(
+        build_dynamic_twice_and_compare, _CROSS_WINDOWS_ENV, repair=False
+    ),
+}
+
+
 def main(argv: list[str]) -> int:
     """Run whichever of the comparisons the command line names."""
     if len(argv) == 3 and argv[1] == "--across-images":
         return compare_across_images(Path(argv[2]))
     if len(argv) == 3 and argv[1] == "--keep-wheel":
         return build_twice_and_compare(Path(argv[2]))
-    if len(argv) == 2 and argv[1] == "--repaired":
-        return build_repaired_twice_and_compare()
+    if len(argv) == 2 and argv[1] in _ENTRY_POINTS:
+        return _ENTRY_POINTS[argv[1]]()
     if len(argv) != 1:
         print(
-            f"usage: {argv[0]} [--keep-wheel DIR | --across-images DIR | --repaired]",
+            f"usage: {argv[0]} [--keep-wheel DIR | --across-images DIR"
+            f" | {' | '.join(_ENTRY_POINTS)}]",
             file=sys.stderr,
         )
         return 2

@@ -26,7 +26,10 @@ script's plumbing rather than a real compile. The fake answers a `git
 archive` call too, now that `main` calls `copy_source_tree` before every
 build, with a real, empty tar archive -- `_extract_archive`'s own
 `tarfile.open` still runs unmocked against that, extracting nothing
-rather than being skipped.
+rather than being skipped. `python -m build` and the two repair tools
+are stood in for the same way on the `--dynamic` and `--cross-windows`
+paths, which is what lets a test on any machine say which tool the
+script reached for.
 
 `--across-images` needs no build at all: what it reads is a directory of
 wheels two jobs already built, so its tests write that directory by hand
@@ -248,6 +251,46 @@ def fake_run_writing(
         for name, members in wheels.items():
             write_wheel(out_dir / name, members)
         return None
+
+    return fake_run
+
+
+def repair_copying_the_wheel_across(record: list[list[str]]) -> Any:
+    """Return a repair stand-in that records its command and copies the wheel.
+
+    `delocate` grafts nothing into a dynamic wheel, the shared object
+    being inside the archive already, so a repair that hands the same
+    members back is the behaviour these tests give the script. `record`
+    is what a test reads to say which tool was called, and how many
+    times a repair ran at all.
+    """
+
+    def fake_run(args: list[str], **_kwargs: Any) -> None:
+        record.append(args)
+        out_dir = Path(args[args.index("-w") + 1])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(args[-1], out_dir / Path(args[-1]).name)
+
+    return fake_run
+
+
+def dynamic_dispatching_run(build_call: Any, record: list[list[str]]) -> Any:
+    """Return a `subprocess.run` stand-in for the `--dynamic` path.
+
+    The flag naming an output directory is what tells apart the kinds
+    of call that reach it there -- `--outdir` for a
+    `python -m build`, `-w` for a repair, and neither for the
+    `git archive` calls `copy_source_tree` makes, which are answered
+    with an empty archive as `dispatching_run` answers them.
+    """
+    repair = repair_copying_the_wheel_across(record)
+
+    def fake_run(args: list[str], **kwargs: Any) -> Any:
+        if "--outdir" in args:
+            return build_call(args, **kwargs)
+        if "-w" in args:
+            return repair(args, **kwargs)
+        return subprocess.CompletedProcess(args, 0, stdout=_empty_tar_bytes())
 
     return fake_run
 
@@ -498,6 +541,75 @@ def test_build_repaired_wheels_refuses_an_empty_out_dir(
         check.build_repaired_wheels(tmp_path / "source", tmp_path / "out")
 
 
+def test_build_dynamic_wheel_carries_the_linkage_its_environment_names(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The variable selecting the linkage reaches the build, not the caller.
+
+    A run without it builds the static wheel, which would agree with
+    itself and report green on a question nothing had asked.
+    """
+    seen: dict[str, Any] = {}
+
+    def spy(args: list[str], **kwargs: Any) -> None:
+        seen["args"] = args
+        seen["cwd"] = kwargs["cwd"]
+        seen["env"] = kwargs["env"]
+        out_dir = Path(args[args.index("--outdir") + 1])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        write_wheel(out_dir / _WHEEL, [("pkg/a.py", b"x")])
+
+    monkeypatch.setattr(check.subprocess, "run", spy)
+    monkeypatch.setenv("A_VARIABLE_THE_BUILD_INHERITS", "kept")
+
+    wheel = check.build_dynamic_wheel(
+        tmp_path / "source", tmp_path / "out", check._CROSS_WINDOWS_ENV
+    )
+
+    assert wheel.name == _WHEEL
+    assert seen["cwd"] == tmp_path / "source"
+    assert seen["args"][1:3] == ["-m", "build"]
+    assert seen["env"]["BTCLIB_LIBSECP256K1_CROSS_COMPILE"] == "true"
+    assert seen["env"]["CFFI_PLATFORM"] == "Windows"
+    assert seen["env"]["A_VARIABLE_THE_BUILD_INHERITS"] == "kept"
+
+
+def test_repair_wheel_runs_delocate_on_macos(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`build-dynamic` repairs a macOS wheel with delocate, so this does."""
+    monkeypatch.setattr(check.sys, "platform", "darwin")
+    built = tmp_path / "out" / _WHEEL
+    write_wheel(built, [("pkg/a.py", b"x")])
+    record: list[list[str]] = []
+    monkeypatch.setattr(
+        check.subprocess, "run", repair_copying_the_wheel_across(record)
+    )
+
+    repaired = check.repair_wheel(built, tmp_path / "repaired")
+
+    assert repaired == tmp_path / "repaired" / _WHEEL
+    assert record[0][0].endswith("delocate-wheel")
+
+
+def test_repair_wheel_runs_auditwheel_off_macos(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """And with auditwheel everywhere else, which there means Linux."""
+    monkeypatch.setattr(check.sys, "platform", "linux")
+    built = tmp_path / "out" / _WHEEL
+    write_wheel(built, [("pkg/a.py", b"x")])
+    record: list[list[str]] = []
+    monkeypatch.setattr(
+        check.subprocess, "run", repair_copying_the_wheel_across(record)
+    )
+
+    check.repair_wheel(built, tmp_path / "repaired")
+
+    assert record[0][0].endswith("auditwheel")
+    assert record[0][1] == "repair"
+
+
 def test_pair_wheels_by_name_is_silent_where_both_builds_match(
     check: ModuleType, tmp_path: Path
 ) -> None:
@@ -720,7 +832,8 @@ def test_main_says_how_to_be_called_when_it_is_not(
     """An argument the script does not take is a usage message, not a crash."""
     assert check.main(["prog", "unexpected"]) == 2
     assert capsys.readouterr().err == (
-        "usage: prog [--keep-wheel DIR | --across-images DIR | --repaired]\n"
+        "usage: prog [--keep-wheel DIR | --across-images DIR"
+        " | --repaired | --dynamic | --cross-windows]\n"
     )
 
 
@@ -915,6 +1028,93 @@ def test_main_repaired_builds_from_two_differently_named_directories(
     assert len(seen_dests) == 2
     assert seen_dests[0] != seen_dests[1]
     assert len(seen_dests[0].name) != len(seen_dests[1].name)
+
+
+def test_main_dynamic_refuses_to_run_without_source_date_epoch(
+    check: ModuleType,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The repair reads it, so this refuses it unset as `--repaired` does."""
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+
+    assert check.main(["prog", "--dynamic"]) == 1
+    assert "SOURCE_DATE_EPOCH is not set" in capsys.readouterr().err
+
+
+def test_main_dynamic_repairs_each_build_before_comparing(
+    check: ModuleType,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The published file is the repaired one, so that is what is compared."""
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
+    record: list[list[str]] = []
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dynamic_dispatching_run(
+            fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]}, out_flag="--outdir"),
+            record,
+        ),
+    )
+
+    assert check.main(["prog", "--dynamic"]) == 0
+
+    assert len(record) == 2
+    assert _WHEEL in capsys.readouterr().out
+
+
+def test_main_dynamic_reports_a_difference_and_exits_nonzero(
+    check: ModuleType,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A divergence between two dynamic builds is what turns it red."""
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dynamic_dispatching_run(
+            build_writing_in_turn([b"first", b"second"], out_flag="--outdir"),
+            [],
+        ),
+    )
+
+    assert check.main(["prog", "--dynamic"]) == 1
+
+    err = capsys.readouterr().err
+    assert "::error::" in err
+    assert "pkg/a.py" in err
+    assert "content differs" in err
+
+
+def test_main_cross_windows_compares_what_no_tool_repaired(
+    check: ModuleType,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`build-windows` runs no repair, so the build's own file is compared.
+
+    Running one here would compare an archive the release never
+    uploads, and on a Linux host it would be `auditwheel` reading a
+    `win_amd64` wheel.
+    """
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
+    record: list[list[str]] = []
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dynamic_dispatching_run(
+            fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]}, out_flag="--outdir"),
+            record,
+        ),
+    )
+
+    assert check.main(["prog", "--cross-windows"]) == 0
+
+    assert record == []
+    assert "two builds of this commit agree" in capsys.readouterr().out
 
 
 def test_across_images_is_green_where_both_images_built_one_wheel(

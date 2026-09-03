@@ -3528,6 +3528,43 @@ release-notes length in the first place, and are still in
   spellings before a resolver matches them, so what the written form
   decides is what a reader copies out and types.
 
+### The sentinel builds the wheels the release's other two jobs upload
+
+- **`wheel-reproducibility.yml` gains a `dynamic` job and a
+  `cross-windows` job, each building the wheel one job of `test.yml`
+  uploads twice over and diffing the two archives member by member**
+  (closes #540). `build-dynamic` builds the ABI-mode wheel of the
+  platforms its own matrix names, with `python -m build`, and repairs
+  it in the job with `auditwheel` or `delocate`; `build-windows`
+  cross-compiles the `win_amd64` one on a Linux runner with nothing
+  repairing it afterwards. `publish-pypi` uploads both under the
+  `*-wheels-*` pattern that collects the static wheels, so what these
+  reproduce to is a property of files on the index. Whether they do is
+  this workflow's own output on the Actions tab, a red platform being
+  what says the answer is no.
+- **`check_wheel_reproducibility.py` gains `--dynamic` and
+  `--cross-windows`, which build through `python -m build` and hold the
+  environment that selects the linkage themselves.** The frontend, the
+  repair and the platform tag are each that job's own rather than `uv
+  build`'s or `cibuildwheel`'s, so neither entry point is an existing
+  one with a variable exported around it. Holding the variables in the
+  script is what stops an entry point named for a linkage from building
+  the static wheel, agreeing with itself and reporting green on a
+  question nothing asked.
+- **`tests/wheel_reproducibility_platforms_test.py` holds the `dynamic`
+  job's matrix against `build-dynamic`'s, as equality.** That is how it
+  already holds `repaired`'s against `build-cibuildwheel`'s, and for
+  the same reason: an image uploading a release wheel and missing here
+  is a wheel nothing measures, and one here uploading none is runner
+  time spent on a file nobody installs. `build-windows` has no matrix,
+  so `cross-windows` has no list to hold against anything.
+- **`RELEASING.md`'s paragraph on the `py3-none-*` wheels says the
+  sentinel builds each of them twice, and that a second image is what
+  stays unasked of them.** Those wheels carry the pinned timestamp for
+  the reason that paragraph already gives; what has moved is that the
+  archive it produces is now compared against another of the same
+  commit.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
