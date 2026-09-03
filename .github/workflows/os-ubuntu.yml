@@ -194,4 +194,4 @@ jobs:
           BTCLIB_LIBSECP256K1_DYNAMIC: "true"
         run: >
           uv run --locked --no-default-groups --group test
-          --reinstall-package btclib_secp256k1 --no-cache pytest --no-cov
+          --reinstall-package btclib-secp256k1 --no-cache pytest --no-cov

@@ -316,7 +316,7 @@ jobs:
           COVERAGE_FILE: coverage-data-dynamic
         run: >
           uv run --locked --no-default-groups --group test
-          --reinstall-package btclib_secp256k1 --no-cache pytest
+          --reinstall-package btclib-secp256k1 --no-cache pytest
           --cov-fail-under=0
 
       # what the two data files are for: a line neither linkage executes

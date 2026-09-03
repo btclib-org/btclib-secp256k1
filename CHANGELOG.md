@@ -3513,6 +3513,21 @@ release-notes length in the first place, and are still in
   which links nothing this extension compiles -- never receives the
   option at all.
 
+### The distribution's name is hyphenated where a command names it
+
+- **An argument naming the distribution writes `btclib-secp256k1`:
+  `uv sync`'s `--reinstall-package`, `pip install`'s target and its
+  `--no-binary` and `--only-binary` values, `pip show`'s argument, the
+  name `wait_for_pypi_release.py` asks the index for, and the message
+  `RELEASING.md` gives a release tag** (closes #573). Section 3 of the
+  organization standard reaches wherever the thing named is the
+  distribution rather than the import package, and `[project].name` is
+  `btclib-secp256k1`. `check-wheel-contents --package` and
+  `griffe check` keep the underscore, each taking a module to find --
+  in the wheel's library, and on a search path. PEP 503 folds the two
+  spellings before a resolver matches them, so what the written form
+  decides is what a reader copies out and types.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -43,7 +43,7 @@ runnable on a schedule and a dispatch, where a step only a release runs
 is a step whose defect ships with a release.
 
     uv run --no-project --python 3.14 \
-        .github/scripts/wait_for_pypi_release.py btclib_secp256k1 "$TAG"
+        .github/scripts/wait_for_pypi_release.py btclib-secp256k1 "$TAG"
 """
 
 from __future__ import annotations
