@@ -40,6 +40,7 @@ says how the choice is enforced.
 [![os-ubuntu workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-ubuntu.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-ubuntu.yml)
 [![os-windows workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-windows.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-windows.yml)
 [![links workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/links.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/links.yml)
+[![wheel-reproducibility workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/wheel-reproducibility.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/wheel-reproducibility.yml)
 [![codeql workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/codeql.yml)
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-secp256k1/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-secp256k1)

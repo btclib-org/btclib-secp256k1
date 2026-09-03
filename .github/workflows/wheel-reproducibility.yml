@@ -53,14 +53,16 @@ name: wheel-reproducibility
 
 on:
   schedule:
-    # Tuesday: every other weekday of the grid already carries a sentinel
-    # -- section 10 of btclib-org/.github's README.md is the calendar,
-    # and not this file's to restate. Only the default branch schedules
-    # workflows, so on any other branch this is reachable through the
-    # dispatch below alone
-    - cron: "8 5 * * 2"
-  # the escape hatch, and the only way to ask before the first Tuesday
-  # after this lands
+    # Sunday, hour 02: the day the grid gives to a tree's security, this
+    # asking whether a wheel it builds reproduces byte for byte. The
+    # time is the organization grid -- section 10 of
+    # btclib-org/.github's README.md -- which gives a workflow its day
+    # and its hour and this repository its minute, and is not this
+    # file's to restate. Only the default branch schedules workflows, so
+    # on any other branch this is reachable through the dispatch below
+    # alone
+    - cron: "8 2 * * 0"
+  # the escape hatch, and the way to ask without waiting for the day
   workflow_dispatch:
   pull_request:
     # ready_for_review, so a pull request marked ready gets the run the
