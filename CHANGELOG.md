@@ -3470,6 +3470,20 @@ release-notes length in the first place, and are still in
   it, and `--refresh-package btclib-secp256k1` alone does not, which
   the paragraph beside it does not say either.
 
+### A merge no longer cancels the sentinel run measuring it
+
+- **`wheel-reproducibility.yml`'s concurrency group cancels a pull
+  request's own in-flight run when the pull request closed without
+  merging, and queues behind it instead when the pull request
+  merged** (closes #523). Pull request #520 (issue #509) is the
+  measurement behind the fix: its real run, `33691065182`, was
+  cancelled by the `closed` event's own run, `33691087266`, which the
+  `rebuild` job's `if` then skipped, so the pair reads in the run list
+  as an ordinary superseded run rather than as a measurement that never
+  happened. The `closed` event's own run still lands in the same group
+  on a merge, but no longer cancels the run already there, which is
+  then free to finish against the head that landed.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
