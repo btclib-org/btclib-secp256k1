@@ -3368,6 +3368,19 @@ release-notes length in the first place, and are still in
   installed also described a two-step sync-then-run setup this workflow
   no longer runs.
 
+### The `actionlint-py` pin carries the prompt to revisit `$/`
+
+- **`.pre-commit-config.yaml`'s `actionlint-py` entry now carries a
+  comment asking whoever reviews the next bump of that pin to re-test
+  whether a released actionlint parses GitHub's `$/...` syntax, and, if
+  it does, to drop `.github/zizmor.yml`'s `self-repository` ignores
+  together with the workspace-relative `uses:` migration** (closes
+  #517). `pre-commit.ci`'s weekly autoupdate is what moves that pin, so
+  a bump pull request is the moment somebody is already looking at the
+  actionlint version; nothing tracked that moment before.
+  `.github/zizmor.yml`'s own comment now points at the pin rather than
+  restating the argument.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

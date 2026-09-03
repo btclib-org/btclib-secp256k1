@@ -3,13 +3,14 @@
 # workspace-relative `uses: ./...` in this tree and recommends GitHub's
 # `$/...` form instead (issue #512). That form is declined here rather
 # than adopted: actionlint -- the other hook this repository holds at
-# zero findings -- does not parse `$/`. v1.7.12, the latest released
-# actionlint, predates GitHub's introduction of the syntax;
-# rhysd/actionlint#711 asks for support and rhysd/actionlint#732 is its
-# open, unmerged pull request. Adopting `$/` now would trade a zizmor
-# finding for an actionlint one on the same lines. Revisit once a
-# released actionlint parses it, and drop this file's ignores together
-# with the migration.
+# zero findings -- does not parse `$/`. The latest released actionlint
+# predates GitHub's introduction of the syntax; rhysd/actionlint#711
+# asks for support and rhysd/actionlint#732 is its open, unmerged pull
+# request. Adopting `$/` now would trade a zizmor finding for an
+# actionlint one on the same lines. `.pre-commit-config.yaml`'s
+# `actionlint-py` entry carries the prompt to revisit this once a
+# released actionlint parses it, and to drop this file's ignores
+# together with the migration then.
 #
 # Ignored by file rather than by file:line:column: both files move --
 # release.yml and test.yml each carry commits after this one landed --
