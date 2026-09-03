@@ -3221,6 +3221,19 @@ release-notes length in the first place, and are still in
   that is not expected to pass is what would say so if it started
   passing.
 
+### `conf.py`'s `myst_heading_anchors` comment names only this tree's own reason
+
+- **The comment above `myst_heading_anchors` says CONTRIBUTING.md's own
+  anchor link and the depth of `## Build` are why this tree sets 2, with
+  no claim about another repository's `conf.py`** (closes #519).
+
+### `.readthedocs.yaml`'s `-W` comment matches what sphinx does
+
+- **The comment above the Read the Docs build command says `-W` reports
+  every warning the build raises before failing at the end of it, the
+  same claim `.github/workflows/docs.yml`'s comment makes for the same
+  command** (closes #546).
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

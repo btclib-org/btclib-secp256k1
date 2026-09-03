@@ -77,8 +77,9 @@ build:
   # uv.lock decides that, and a uv too old to read the lock fails loudly
   # rather than resolving something else.
   # -W turns a failed import into a failed build, which is the point of
-  # the whole file, and reports every other problem the build raises in
-  # that same run rather than one per push.
+  # the whole file, and reports every warning the build raises before
+  # failing at the end of it, so one broken module does not hide the
+  # next.
   # -n is docs.yml's own flag, kept in step here so the site this file
   # publishes is built by the same command that gates a merge
   commands:

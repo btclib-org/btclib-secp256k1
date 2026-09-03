@@ -81,11 +81,10 @@ source_suffix = [".rst", ".md"]
 # this package (__init__.py) rather than imported from cffi
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
-# unlike btclib's own conf.py, which needs none of this: CONTRIBUTING.md
-# links to "README.md#build", an anchor into a markdown heading rather
-# than a whole file, and myst generates no heading ids at all unless
-# told to. 2 is the depth of "## Build", the one heading a root file
-# links to by anchor today
+# CONTRIBUTING.md links to "README.md#build", an anchor into a markdown
+# heading rather than a whole file, and myst generates no heading ids at
+# all unless told to. 2 is the depth of "## Build", the one heading a
+# root file links to by anchor today
 myst_heading_anchors = 2
 
 # no suppress_warnings, matching btclib: the transform at the bottom
