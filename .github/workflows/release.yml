@@ -168,14 +168,14 @@ jobs:
       # The fallback downstream stays: it covers the release deleted by
       # hand and recreated.
       #
-      # Existence is not the whole question, and asking only that is what
-      # this step used to do. That fallback fires on an *empty* section,
-      # and "## v0.8.0 (work in progress, not released yet)" is not empty:
-      # it matches github-release's heading regex too, the tag being
-      # followed by a space, so a forgotten retitle publishes the
-      # work-in-progress text as the release notes and nothing says a
-      # word. RELEASING.md's `close the release notes` step is what drops
-      # those five words, and this step checks that it did.
+      # Existence is not the whole question: that fallback fires on an
+      # *empty* section, and "## v0.8.0 (work in progress, not released
+      # yet)" is not empty: it matches github-release's heading regex
+      # too, the tag being followed by a space, so a forgotten retitle
+      # publishes the work-in-progress text as the release notes and
+      # nothing says a word. RELEASING.md's `close the release notes`
+      # step is what drops those five words, and this step checks that
+      # it did.
       #
       # CHANGELOG.md is checked beside it because RELEASING.md retitles
       # the two together, and RELEASE_NOTES.md's section points at

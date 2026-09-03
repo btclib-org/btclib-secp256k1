@@ -175,10 +175,10 @@ jobs:
       # SECURITY.md, recorded here rather than read out of the vendored
       # tree at check time: a key list taken from the same place as the
       # tag is a list whoever controls that place also writes. Upstream
-      # asks a human for the same separation in step 2 of its README,
-      # cross-referencing each fingerprint against a source its owner
-      # controls. keys.openpgp.org because that is the keyserver its
-      # SECURITY.md names in the command it gives
+      # asks a human for the same separation in its own README, the step
+      # that cross-references each fingerprint against a source its
+      # owner controls. keys.openpgp.org because that is the keyserver
+      # its SECURITY.md names in the command it gives
       - name: Import the libsecp256k1 maintainer keys
         env:
           # Pieter Wuille, Tim Ruffing, Sebastian Falbesoner

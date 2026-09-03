@@ -3234,6 +3234,33 @@ release-notes length in the first place, and are still in
   same claim `.github/workflows/docs.yml`'s comment makes for the same
   command** (closes #546).
 
+### `release.yml`'s retitle-check comment states its current reason
+
+- **The comment above "Check that the release notes are retitled for
+  the tag" no longer says what the check used to be, only what the
+  fallback it guards against actually fires on** (closes #489).
+  github-release's own fallback fires on an *empty* section, not on a
+  non-empty "work in progress" heading, and that is the reason the
+  comment now gives for checking more than a section's existence.
+
+### `vendored-vectors.yml` names upstream's cross-reference step
+
+- **The comment above "Import the libsecp256k1 maintainer keys" names
+  the README step upstream asks a human to perform by what it does —
+  cross-reference each fingerprint against a source its owner controls
+  — instead of by its position in a numbered list** (closes #490). The
+  list is `bitcoin-core/secp256k1`'s own, a document this organization
+  does not control and no gate here reads, so reordering it no longer
+  falsifies a citation nothing here would catch.
+
+### The `ci:` block names `lint.yml` instead of counting its runners
+
+- **The comment explaining what `skip: [submodule-pin]` still gates
+  names `lint.yml` directly rather than counting how many workflows run
+  `.pre-commit-config.yaml`** (closes #493). `deps-latest.yml`'s
+  `lint-latest` job now runs the same file too, so the count had
+  already moved; naming the required check is the fact that does not.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
