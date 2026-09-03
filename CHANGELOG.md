@@ -3141,6 +3141,21 @@ release-notes length in the first place, and are still in
   flag needs the plugin installed to parse, so `test-requires` and the
   sdist job's `pip install` name pytest-cov beside pytest.
 
+### The reproducibility sentinel cites the issue that would close the gap
+
+- **`wheel-reproducibility.yml`'s header names #524 where it says why
+  the workflow is a sentinel and not a gate** (closes #551). Two images
+  of one platform do not build one wheel yet, and pinning the image, the
+  Xcode and the MSVC toolset is that issue. The header pointed at a
+  record kept on #439 instead, which is the umbrella its landed stages
+  close rather than the question still open. The tree's other citations
+  of #439 stay: in that same header, in
+  `check_wheel_reproducibility.py`'s docstring and in `RELEASING.md`,
+  each names it as the origin of the question this measures or as what
+  section 12 of the organization standard's exemption cites, and an
+  issue cited for what it asked is the record rather than a place to
+  look next.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
