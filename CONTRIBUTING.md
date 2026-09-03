@@ -495,7 +495,7 @@ command at all, for the reason below, and nothing requires its result.
 - `Lint and type-check`
 
   ```shell
-  uvx pre-commit run --all-files
+  uv run --locked --only-group lint pre-commit run --all-files
   ```
 
 - `Ask which files the pull request touches`, whose answer decides whether
@@ -606,10 +606,16 @@ command at all, for the reason below, and nothing requires its result.
   ```
 
 - `Build sdist`, and `Install from the sdist and run the suite on <os>`
-  after it
+  after it. The build timestamp is pinned as in `Build wheels on <os>`
+  above, and the normalizer that follows the build reads that same
+  variable to rewrite every member's `mtime`, refusing to run without
+  it -- its own docstring has the reasoning:
 
   ```shell
-  uv build --sdist
+  export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+  uv run --locked --only-group build python -m build -s
+  uv run --no-project --python 3.14 \
+      .github/scripts/normalize_sdist.py dist/
   python -m pip install --verbose dist/*.tar.gz   # in a fresh venv
   ```
 
@@ -794,9 +800,14 @@ run locally.
 
 - `wheel-reproducibility`, which builds this commit's wheel twice, from
   two directories it extracts `HEAD` into, and diffs the two archives
-  member by member:
+  member by member. The job pins the build timestamp first, as in
+  `Build wheels on <os>` above; `hatchling`'s own fallback constant
+  would make the two local builds agree either way, so what pinning it
+  buys here is that this measurement and the wheel a release actually
+  builds do not differ in an exported variable:
 
   ```shell
+  export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
   uv run --no-project python \
       .github/scripts/check_wheel_reproducibility.py
   ```
@@ -806,6 +817,30 @@ run locally.
   `uv` itself to run each build. Only the environment the command runs
   in is answered locally; the workflow's own matrix is what asks the
   rest, the second image it builds each platform on included
+
+  The workflow's `repaired` job asks the same question of the file PyPI
+  actually receives: `uv build` stops at the archive `hatchling` writes,
+  where `cibuildwheel` repairs it with `auditwheel`, `delocate` or
+  `delvewheel`, and it is that rewritten archive the job builds twice
+  and diffs. It pins the same timestamp first, and here the export is
+  not optional: `auditwheel` and `delocate` take each member's `mtime`
+  from the clock of the moment where the variable is unset, so two
+  sequential builds of one unchanged commit disagree and the check
+  reports a wheel that does reproduce as one that does not. It
+  reproduces the same way otherwise, for this platform only, and needs
+  `cibuildwheel` on `PATH`:
+
+  ```shell
+  export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+  uv run --locked --only-group build python \
+      .github/scripts/check_wheel_reproducibility.py --repaired
+  ```
+
+  as with `Build wheels on <os>` above, the Linux build runs inside a
+  manylinux container, so reproducing it needs a container runtime
+  (`colima` on macOS). `CIBW_BUILD` narrows the workflow's own run to
+  one interpreter; left unset, this builds every interpreter
+  `cibuildwheel` selects for the platform at hand
 
 ### What a change here has to satisfy
 
@@ -886,8 +921,9 @@ can act on from a branch is noise.
 | `os-macos` | weekly, a release | both macOS images × every interpreter |
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
 | `deps-latest` | weekly | the dependencies, at their newest |
-| `links`, `mutation` | weekly | — |
-| `wheel-reproducibility` | weekly, a pull request touching what it builds | every wheel platform, on two images, built twice on each |
+| `links` | weekly, a pull request touching its own configuration | — |
+| `mutation` | weekly | — |
+| `wheel-reproducibility` | weekly, a pull request touching what it builds | every wheel platform, on two images, built twice on each, and the repaired wheel, built twice on one image per platform |
 | `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
 
