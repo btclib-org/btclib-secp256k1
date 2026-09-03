@@ -64,6 +64,9 @@ _GIT = shutil.which("git") or "git"
 # call it on both sides of a comparison unless the filename is the
 # subject
 _WHEEL = "pkg-1.0-py3-none-any.whl"
+# an arbitrary commit time, set for every --repaired test below since
+# build_repaired_twice_and_compare refuses to run without it
+_EPOCH = 1_700_000_000
 
 
 @pytest.fixture
@@ -830,12 +833,25 @@ def test_main_keeps_the_wheel_even_where_the_two_builds_disagree(
         assert archive.read("pkg/a.py") == b"first"
 
 
+def test_main_repaired_refuses_to_run_without_source_date_epoch(
+    check: ModuleType,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unset is a failure, not "now": two builds would then disagree."""
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+
+    assert check.main(["prog", "--repaired"]) == 1
+    assert "SOURCE_DATE_EPOCH is not set" in capsys.readouterr().err
+
+
 def test_main_repaired_reports_success_when_the_two_builds_agree(
     check: ModuleType,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The green path of `--repaired`, naming every wheel it compared."""
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
     monkeypatch.setattr(
         check.subprocess,
         "run",
@@ -858,6 +874,7 @@ def test_main_repaired_reports_a_difference_and_exits_nonzero(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A divergence between two repaired builds is what turns it red."""
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
     monkeypatch.setattr(
         check.subprocess,
         "run",
@@ -879,6 +896,7 @@ def test_main_repaired_builds_from_two_differently_named_directories(
     check: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`#503`'s property holds on this path too, both taking one helper."""
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
     seen_dests: list[Path] = []
 
     def fake_copy(_root: Path, dest: Path) -> None:

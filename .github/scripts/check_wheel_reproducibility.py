@@ -87,8 +87,10 @@ commit under test the current `HEAD`:
 `<dir>` holds one directory per platform, each holding one directory
 per image, each of those holding that image's wheel. `--repaired` takes
 no argument and needs `cibuildwheel` on `PATH`, which is the `build`
-dependency group:
+dependency group, and `SOURCE_DATE_EPOCH` set in the environment first,
+or this entry point refuses to run:
 
+    export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
     uv run --locked --only-group build python \\
         .github/scripts/check_wheel_reproducibility.py --repaired
 
@@ -102,6 +104,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import shutil
 import subprocess
 import sys
@@ -548,8 +551,20 @@ def build_repaired_twice_and_compare() -> int:
 
     Returns:
         The process exit code: zero where the two builds produced the
-        same wheels, name for name and member for member.
+        same wheels, name for name and member for member; one where
+        `SOURCE_DATE_EPOCH` is unset, before either build runs.
     """
+    if "SOURCE_DATE_EPOCH" not in os.environ:
+        # not a default of "now": `auditwheel` and `delocate` would then
+        # stamp each repair at the moment it ran, so two sequential
+        # builds of one unchanged commit would disagree on `date_time`
+        # for a reason that is not the wheel, and this entry point would
+        # report that disagreement as a reproducibility defect rather
+        # than as the caller's own missing step -- this module's own
+        # docstring has the command that sets it
+        print("SOURCE_DATE_EPOCH is not set", file=sys.stderr)
+        return 1
+
     with two_source_copies() as (first_source, second_source):
         root = first_source.parent
         first = build_repaired_wheels(first_source, root / "out-a")
