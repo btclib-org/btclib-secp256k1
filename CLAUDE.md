@@ -222,11 +222,15 @@ Do not use Fable unless explicitly instructed.
   API call that shows each still off: the two secret-scanning extensions
   are the ones that answer a PATCH with 200 and change nothing. Do not
   spend a session rediscovering them
-- **every `schedule` and `workflow_dispatch` here is inert off `main`**:
-  both only run from the default branch, so a rehearsal of `release.yml`
-  cannot be dispatched from a branch, and `os-macos.yml`,
-  `deps-latest.yml` and the other sentinels are reachable there through
-  nothing at all until merged
+- **`schedule` here is inert off `main`; `workflow_dispatch` is not**:
+  cron fires only from the default branch, but `workflow_dispatch` only
+  needs its trigger to exist on `main` for the workflow to be
+  dispatchable at all, and `--ref` then picks which branch's copy of the
+  file runs — so a rehearsal of `release.yml`, or a change to
+  `os-macos.yml`, `deps-latest.yml` or another sentinel, is dispatchable
+  from the branch that carries it and runs that branch's own copy before
+  either lands. Only a workflow that has never landed on `main` is
+  reachable through nothing at all until it does
 - **a hand-applied mutation can outlive its restore.** `(0, 1, 2, 3)` and
   `(0, 1, 1, 3)` are the same length, so restoring the file with `cp` in the
   same second leaves mtime *and* size matching what the `.pyc` recorded, and
