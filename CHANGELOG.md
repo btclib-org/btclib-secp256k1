@@ -3484,6 +3484,18 @@ release-notes length in the first place, and are still in
   on a merge, but no longer cancels the run already there, which is
   then free to finish against the head that landed.
 
+### The `public-api` search paths name the end each one serves
+
+- **`release.yml`'s comment on `griffe check`'s `-s . -s src` names
+  which end of the comparison each search path serves, and what has to
+  be true for `-s .` to come off** (closes #566). `v0.8.0.4`, the tag
+  the job resolves as the previous release, keeps `btclib_secp256k1/`
+  at the repository root, where this tree keeps it under `src/`, and
+  either path alone raises `ModuleNotFoundError` at the end the other
+  one serves. The tags before `v0.8.0` name the package
+  `btclib_libsecp256k1`, and the job's nearest-tag resolution never
+  reaches back to them.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
