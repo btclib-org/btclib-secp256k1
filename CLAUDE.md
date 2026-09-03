@@ -89,7 +89,7 @@ rather than merely readable, a fast-forward of a clean `main` brings it
 up:
 
 ```shell
-git fetch origin && git merge --ff-only origin/main   # clean main only
+git fetch origin && git merge --ff-only origin/main
 ```
 
 That writes no commit, switches no branch and runs no hook, so it is on
@@ -116,17 +116,20 @@ this way also sorts every worktree of one issue together. `role` covers
 the narrower case of a coder and its reviewer holding a worktree at
 once, which the ordinary sequence avoids by each removing its own.
 
+An issue in `btclib-org/.github`'s tracker, worked in `btclib-secp256k1`
+by a coder, names its worktree `wt-github-255-btclib-secp256k1-coder`. A
+worktree isolates files, and a submodule is a checkout of its own that it
+does not inherit, which is why `git submodule update --init secp256k1`
+follows the `cd`; `uv sync --locked` after it is a second venv and a
+second build of the extension, minutes rather than seconds. The editing,
+the gates and the commits all happen in the worktree before the push.
+
 ```shell
-WT=<scratchpad>/wt-<tracker>-<issue>-<repo>-<role>  # wt-github-255-btclib-coder
+WT=<scratchpad>/wt-<tracker>-<issue>-<repo>-<role>
 git worktree add "$WT" origin/main -b <branch>
 cd "$WT"
-git submodule update --init secp256k1  # a worktree isolates files, and a
-                                       # submodule is a checkout of its
-                                       # own that it does not inherit
-uv sync --locked                       # a second venv, and a second build
-                                       # of the extension: minutes, not
-                                       # seconds
-# edit, gate and commit here, then
+git submodule update --init secp256k1
+uv sync --locked
 git push origin HEAD:refs/heads/<branch>
 ```
 

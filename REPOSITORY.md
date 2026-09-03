@@ -757,10 +757,11 @@ carries what maintaining its baseline costs.
 The other plan-gated number is not a setting at all, and it is the one
 that has moved this repository's workflows twice: how many jobs may run
 at once. It is an attribute of the organization, shared by every
-repository in it, and the plan is what sets it.
+repository in it, and the plan is what sets it — `free`, read back
+rather than assumed:
 
 ```shell
-gh api orgs/btclib-org --jq .plan.name        # free
+gh api orgs/btclib-org --jq .plan.name
 ```
 
 [GitHub's own table](https://docs.github.com/en/actions/reference/limits)
@@ -835,10 +836,10 @@ and `bip324` are in a list of what this package wraps.
 ## No website
 
 This repository serves no GitHub Pages site, so no file in its root is a
-URL anywhere:
+URL anywhere, and the endpoint answers 404:
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/pages   # 404
+gh api repos/btclib-org/btclib-secp256k1/pages
 ```
 
 **`.homepage` names the tree's own Read the Docs project instead**, read

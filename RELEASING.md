@@ -360,13 +360,13 @@ Then:
    update, not a workflow of this repository, and say nothing about the
    tree
 1. tag the commit `main` now points at, signed, and push that tag
-   alone:
+   alone, checking for `Good signature` before anything is pushed:
 
    ```shell
    sha=$(git rev-parse origin/main)
    tag=v$(uv version --short)
    git tag -s "$tag" -m "btclib-secp256k1 $tag" "$sha"
-   git tag -v "$tag"        # Good signature, before anything is pushed
+   git tag -v "$tag"
    git push origin "$tag"
    ```
 
