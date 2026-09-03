@@ -3712,6 +3712,17 @@ release-notes length in the first place, and are still in
   the defect. An issue an entry only names belongs in the sentence; this
   one is left as the record of an entry that put it in the parentheses.
 
+### `RELEASING.md`'s rebuild section stops naming which issue section 12 cites
+
+- **The sentence closing the two-environment rebuild section no longer
+  asserts which issue section 12 of the organization standard cites for
+  a compiled wheel's exemption** (closes #557). `btclib-org/.github#748`
+  moved that citation off `btclib-org/btclib-secp256k1#439`, so a
+  sentence restating a number from another repository's file went false
+  the moment that file's own citation moved again. `#439` remaining the
+  umbrella over both rebuild halves is this tree's own fact and stays;
+  which number section 12 carries is the standard's to state.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

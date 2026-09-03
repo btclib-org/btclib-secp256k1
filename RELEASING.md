@@ -942,9 +942,10 @@ a defect to report. On Linux the image is obtainable, so the rebuild
 inside it is a check a stranger can run; on macOS and Windows there is
 no image to rebuild in, and that is the end state rather than something
 a fix is coming for.
-btclib-org/btclib-secp256k1#439 is the umbrella over both halves, and
-what section 12 of the organization standard's exemption for a compiled
-wheel cites.
+btclib-org/btclib-secp256k1#439 is the umbrella over both halves. Which
+issue section 12 of the organization standard cites for a compiled
+wheel's exemption is that file's own to state, not this one's to
+restate.
 
 `wheel-reproducibility.yml` is what measures any of the above rather
 than leaving it asserted. Its `rebuild`, `repaired`, `dynamic` and
