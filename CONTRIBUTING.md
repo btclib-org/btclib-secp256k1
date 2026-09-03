@@ -464,6 +464,13 @@ UV_PROJECT_ENVIRONMENT=.venv-3.10 uv run --python 3.10 --no-cache pytest
 `.gitignore` matches that name with `.venv*/`, the comment beside the
 pattern saying what ships the environment when nothing matches it.
 
+A `git pull` that changes `scripts/hatch_build.py` is not itself enough
+to reach a `.venv` a `uv sync --locked` already considers satisfied: the
+sync reports the package `Checked`, not rebuilt, and installs nothing
+new even where the pulled change moves what the hook decides.
+`--reinstall-package btclib-secp256k1` is what forces the rebuild;
+`--refresh-package btclib-secp256k1` alone does not.
+
 To build the distributions:
 
 ```shell
