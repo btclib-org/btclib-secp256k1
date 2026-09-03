@@ -32,6 +32,18 @@ name: wheel-reproducibility
 # builds through cibuildwheel twice and diffs the pair, so the file
 # PyPI receives is the one under measurement.
 #
+# And #540, which is the wheels neither of those two builds. The
+# release uploads what build-dynamic and build-windows in test.yml
+# produce as well: the ABI-mode wheel of the platforms that job
+# names, repaired inside the job by auditwheel or delocate, and the
+# win_amd64 one cross-compiled on a Linux runner with nothing repairing
+# it afterwards. The frontend, the repair and the platform tag are each
+# that job's own rather than uv build's or cibuildwheel's, so the
+# dynamic and cross-windows jobs below run those two builds twice each
+# instead of either job above taking a flag. What they inherit from
+# repaired is its bound: one image per platform, so whether two images
+# agree is not asked of these wheels either.
+#
 # CIBW_BUILD narrows it to one interpreter, and the reason is not the
 # one test.yml's build-cibuildwheel gives for narrowing a pull request:
 # that one turns on the merge afterwards building everything, and
@@ -367,6 +379,133 @@ jobs:
           uv run --locked --only-group build python
           .github/scripts/check_wheel_reproducibility.py
           --repaired
+
+  dynamic:
+    name: Build the dynamic wheel twice on ${{ matrix.os }} and diff them
+    # rebuild's own conditions, and for its own reasons
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    runs-on: ${{ matrix.os }}
+    # two builds of the vendored library, with no container to pull
+    # before either: the same bound-a-hung-job ceiling the jobs above
+    # carry
+    timeout-minutes: 40
+    # the platform tag of a dynamic wheel is the interpreter's own, so
+    # substituting the interpreter substitutes the tag: the interpreter
+    # here is the one setup-python installs below and never one of uv's,
+    # the way build-dynamic in test.yml pins it and for the reason its
+    # own comment gives
+    env:
+      UV_PYTHON_DOWNLOADS: never
+    strategy:
+      # every image to the end, as in rebuild
+      fail-fast: false
+      matrix:
+        # build-dynamic's own list in test.yml, copied, and held against
+        # it by tests/wheel_reproducibility_platforms_test.py --
+        # equality, as repaired's is and for repaired's reason: this job
+        # asks whether the wheel that job uploads reproduces, so a
+        # second image of a platform would be a wheel measured twice
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-26-intel
+          - macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the vendored library is compiled twice here too
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      # the deployment target reaches the platform tag and the vendored
+      # library alike, so a build without it is a different file from
+      # the one the release publishes: build-dynamic in test.yml carries
+      # this step and the reasoning behind both values
+      - name: Set the macOS deployment target
+        if: runner.os == 'macOS'
+        env:
+          TARGET: ${{ matrix.os == 'macos-26-intel' && '10.13' || '11.0' }}
+        run: echo "MACOSX_DEPLOYMENT_TARGET=$TARGET" >> "$GITHUB_ENV"
+
+      # what auditwheel and delocate read for every member they write:
+      # see repaired's own step
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
+      # --only-group build carries the frontend and both repair tools,
+      # and --locked pins them: the same group build-dynamic builds and
+      # repairs under. No shell: bash, every image of this matrix being
+      # Linux or macOS
+      - name: Build the dynamic wheel twice and diff the two archives
+        run: >
+          uv run --locked --only-group build python
+          .github/scripts/check_wheel_reproducibility.py
+          --dynamic
+
+  cross-windows:
+    name: Cross-compile the Windows wheel twice and diff them
+    # rebuild's own conditions, and for its own reasons
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    # a Linux host, which is where build-windows in test.yml
+    # cross-compiles this wheel: building it on Windows would measure a
+    # file the release does not publish
+    runs-on: ubuntu-latest
+    # as above
+    timeout-minutes: 40
+    # as above
+    env:
+      UV_PYTHON_DOWNLOADS: never
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the vendored library is cross-compiled twice here
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      # the cross toolchain, which is what makes a win_amd64 wheel on a
+      # Linux runner possible at all: build-windows installs the same
+      # package
+      - name: Install dependencies
+        run: sudo apt install -y mingw-w64
+
+      # nothing repairs this wheel, so what the pin buys is that the
+      # archive under measurement carries the release's own instant
+      # rather than hatchling's fallback constant: build-windows in
+      # test.yml carries this step and the reasoning
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
+      # --only-group build and --locked, as above: what this needs from
+      # the group is the frontend alone, no repair tool running here
+      - name: Cross-compile the Windows wheel twice and diff the archives
+        run: >
+          uv run --locked --only-group build python
+          .github/scripts/check_wheel_reproducibility.py
+          --cross-windows
 
   across-images:
     name: Compare the wheels two images of one platform built

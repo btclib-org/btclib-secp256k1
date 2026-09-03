@@ -848,6 +848,25 @@ run locally.
   one interpreter; left unset, this builds every interpreter
   `cibuildwheel` selects for the platform at hand
 
+  The `dynamic` and `cross-windows` jobs ask the same question of the
+  `py3-none-*` wheels, which `build-dynamic` and `build-windows` build
+  with `python -m build` rather than with either frontend above and
+  which `publish-pypi` uploads with the rest. `--dynamic` builds the
+  wheel of the platform it runs on and repairs each build the way that
+  job does, with `auditwheel` or `delocate`; `--cross-windows` builds
+  the `win_amd64` one and repairs nothing, wanting a `mingw-w64`
+  toolchain where the job above wants a container. Both refuse an unset
+  `SOURCE_DATE_EPOCH`: where a repair runs the reason is the one above,
+  and where none does it is that the archive would carry `hatchling`'s
+  fallback constant rather than the instant the rest of the release
+  carries:
+
+  ```shell
+  export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
+  uv run --locked --only-group build python \
+      .github/scripts/check_wheel_reproducibility.py --dynamic
+  ```
+
 ### What a change here has to satisfy
 
 Past the gates above, and past what section 9 of the standard asks of any
@@ -929,7 +948,7 @@ can act on from a branch is noise.
 | `deps-latest` | weekly | the dependencies, at their newest |
 | `links` | weekly, a pull request touching its own configuration | — |
 | `mutation` | weekly | — |
-| `wheel-reproducibility` | weekly, a pull request touching what it builds | every wheel platform, on two images, built twice on each, and the repaired wheel, built twice on one image per platform |
+| `wheel-reproducibility` | weekly, a pull request touching what it builds | every wheel platform, on two images, built twice on each, and the repaired, dynamic and cross-compiled wheels, built twice on one image per platform |
 | `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
 
