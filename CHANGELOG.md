@@ -3041,6 +3041,15 @@ release-notes length in the first place, and are still in
   built as its own line: that is the pair never having been compared,
   which must not print like agreement.
 
+### The documentation build does not pass `--keep-going`
+
+- **`sphinx-build` is spelled `-n -W -b html` in `docs.yml`,
+  `.readthedocs.yaml`, `CONTRIBUTING.md` and `docs/README.rst`** (issue
+  btclib-org/.github#347). Section 2 of the organization standard is
+  where that is settled, with the rejected alternative beside it.
+- The comments in `docs.yml` and `.readthedocs.yaml` credit `-W` with
+  reporting every warning a build raises before failing at the end of it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
