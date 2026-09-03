@@ -31,6 +31,14 @@ What it does with the result:
 - the wheel tag is set from the extension mode: `infer_tag` for a static
   extension, which is ABI-specific, and an explicit
   `py3-none-<platform>` for a dynamic one, which is not
+- an editable install never reads either: hatchling's own
+  `WheelBuilder.build_editable_detection` and `build_editable_explicit`
+  decide the tag from `self.get_default_tag()` regardless, so the hook
+  rebinds that method on the live builder to the same decision above,
+  which is the one call both editable paths make in its place.
+  `tests/extension_test.py` reads the installed distribution's own
+  `WHEEL` back, on every build the suite runs, and fails if its tag
+  is ever the universal one this rebind exists to avoid
 - a wheel mixing both modes raises, and so does one with no extension at
   all. Neither can arise from the configurations CI builds, which is the
   argument for refusing them rather than for reporting them: nothing
