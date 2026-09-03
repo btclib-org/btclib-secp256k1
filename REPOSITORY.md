@@ -130,17 +130,18 @@ one but the last is expected to go red for a reason no pull request
 introduced. `wheel-reproducibility.yml` is the exception, and by design —
 issue #508 gave it a `pull_request` trigger precisely so that a branch's own
 change to the build can turn a cell red, which is what a required check
-exists to catch. What keeps it out of the rule instead is that the property
-it measures does not hold on every platform yet: Windows failed on the
-sentinel's own first measurement, issue #510's subject, so requiring it
-would fail a pull request for that platform's standing defect rather than
-for what the pull request itself did. The first three are the ones worth
-naming twice, because they do run the suite: what a merge no longer waits
-for is every cell of it but one, the reasoning being in `os-ubuntu.yml`'s
-header and the numbers in `test.yml`'s, and `release.yml` calls all three so
-that a publication still does. `scorecard.yml` is outside the rule for a
-reason of its own: it carries no `pull_request` trigger, so it produces no
-context a branch rule could name.
+exists to catch. What keeps it out of the rule instead is the gap
+`wheel-reproducibility.yml`'s own header names: two images of one
+platform do not build one wheel yet, one half of that gap open and
+pinned by an issue, the other declined outright. Requiring the check
+would fail a pull request for that gap rather than for what the pull
+request itself did. The first three are the ones worth naming twice,
+because they do run the suite: what a merge no longer waits for is
+every cell of it but one, the reasoning being in `os-ubuntu.yml`'s
+header and the numbers in `test.yml`'s, and `release.yml` calls all
+three so that a publication still does. `scorecard.yml` is outside the
+rule for a reason of its own: it carries no `pull_request` trigger, so
+it produces no context a branch rule could name.
 
 A check can be bound to the app that produces it — `checks` with an
 `app_id` rather than the bare `contexts` list — so that nothing else can

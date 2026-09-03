@@ -76,9 +76,10 @@ name: wheel-reproducibility
 # has to edit, and nothing would fail when it was not edited.
 #
 # The pull_request trigger below is #508: schedule and workflow_dispatch
-# alone made a fix unmeasurable before it landed, because both are inert
-# off the default branch -- whoever writes #510's Windows fix has to see
-# whether it worked before merging it. The paths filter is what keeps
+# alone would leave a branch's own change to the build unmeasured until
+# somebody remembered to dispatch it by hand, so this measures every
+# pull request instead -- whoever changes the build sees whether it
+# still reproduces before merging it. The paths filter is what keeps
 # every other pull request from paying for a double build on every image:
 # everything in it is something this job depends on -- the build scripts,
 # the version and the build backend's own configuration, the vendored

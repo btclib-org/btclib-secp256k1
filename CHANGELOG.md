@@ -3332,6 +3332,31 @@ release-notes length in the first place, and are still in
   `cpNN` extension came out `py3-none-any`, and uv's cache served one
   interpreter's `.so` to any other interpreter it built for next.
 
+### `schedule` and `workflow_dispatch` are told apart
+
+- **`CLAUDE.md`'s bullet on dispatching a workflow off `main` now says
+  `workflow_dispatch` runs a branch's own copy of a workflow already
+  landed on `main`, where it said dispatching one from a branch was
+  impossible** (closes #525). `schedule` still fires only from the
+  default branch, but `--ref <branch>` runs that branch's copy of any
+  workflow whose trigger already exists on `main`, so a change to
+  `release.yml` or to a sentinel is measurable before it merges; only a
+  workflow that has never landed on `main` is unreachable until then.
+  `wheel-reproducibility.yml`'s own header made the same claim about
+  `workflow_dispatch` under its `pull_request` trigger and is corrected
+  with it, the trigger's own reason -- a pull request measured without
+  anyone dispatching by hand -- left standing.
+
+### `REPOSITORY.md` cites the gap keeping the sentinel out of the branch rule
+
+- **The paragraph exempting `wheel-reproducibility.yml` from the branch
+  rule now cites what the workflow's own header names, where it named
+  #510** (closes #542). #510 closed with every `rebuild` cell green,
+  Windows included; what keeps the sentinel out of the rule is
+  `across-images` failing on every platform: pinning the Linux
+  container is #524, and pinning the Xcode and the MSVC toolset macOS
+  and Windows builds use is declined instead.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
