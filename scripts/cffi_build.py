@@ -276,8 +276,41 @@ class FFIExtension:
         # the linked object name only the bare filename with both flags,
         # where either alone leaves the other stab carrying the absolute
         # path (btclib-org/btclib-secp256k1#503)
-        darwin_debug_map_flags = (
-            ["-fdebug-compilation-dir=."] if platform.system() == "Darwin" else []
+        #
+        # Everywhere else that same -g records the compile's own
+        # working directory as the compile unit's DW_AT_comp_dir, whose
+        # string the link copies into the extension's own
+        # .debug_line_str: two builds of one commit from two directories
+        # differ there by the difference between the two names, and
+        # there is no debug map and no second stab for a linker flag to
+        # reach, so one compile flag is the whole of it.
+        # -ffile-prefix-map is a map rather than an instruction to write
+        # a given directory, which is why it is handed one -- the
+        # directory subprocess.run below makes this compile's cwd,
+        # resolved because what the compiler records is the path the
+        # kernel answers with. Both compilers take it, where the
+        # -fdebug-compilation-dir above is clang's alone -- gcc, which
+        # is /usr/bin/cc on the Linux images, rejects that one as an
+        # unrecognized option. -fdebug-prefix-map would serve here too,
+        # and is taken by both as well; -ffile-prefix-map is preferred
+        # to it because gcc's own manual defines -ffile-prefix-map as
+        # equivalent to specifying all the individual -f*-prefix-map
+        # options, __FILE__ and the profile paths along with the debug
+        # information. An option a compiler does not have is an error
+        # and not a warning, so a toolchain too old for this one fails
+        # the build outright rather than quietly reproducing the
+        # difference. Measured with two builds of one commit from two
+        # differently named directories: readelf reads DW_AT_comp_dir as
+        # "." and a raw scan of the linked extension finds neither
+        # directory, where without the flag each extension carries its
+        # own. Nothing of this reaches the vendored library CMake builds
+        # beside it, whose objects carry no debug information at all --
+        # build_c's own note beside the configure has the reason
+        # (btclib-org/btclib-secp256k1#522)
+        build_path_flags = (
+            ["-fdebug-compilation-dir=."]
+            if platform.system() == "Darwin"
+            else [f"-ffile-prefix-map={build_dir.resolve()}=."]
         )
         compile_command = [
             *shlex.split(get_config_var("CC")),
@@ -285,7 +318,7 @@ class FFIExtension:
             *shlex.split(get_config_var("CCSHARED") or ""),
             f"-I{get_path('include')}",
             f"-I{get_path('platinclude')}",
-            *darwin_debug_map_flags,
+            *build_path_flags,
             "-c",
             str(c_filename),
             "-o",
