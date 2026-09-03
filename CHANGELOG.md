@@ -3658,6 +3658,35 @@ release-notes length in the first place, and are still in
   workflow would be one more line a copy carries along, which is the
   failure the test exists to catch.
 
+### `claude-review.yml` takes the closed pull request type
+
+- **`.github/workflows/claude-review.yml`'s `pull_request` trigger takes
+  the `closed` type, and the review job declines to run on it** (closes
+  #591). Merging or closing a pull request is neither a push nor a
+  synchronize, so a review still held in that pull request's concurrency
+  group survives it, and the type is what lands the closed event in the
+  group. The review's subject is the pull request, so what the
+  cancellation costs is a verdict on a pull request that has stopped
+  taking changes, against a shared concurrency slot and a model call the
+  workflow's own header says are not free.
+- **Whether the closed event reaches a group held on a job rather than
+  on the workflow is not measured** (issue #593). Every neighbour taking
+  the type holds its group at the workflow level, where the run enters
+  it before any job's `if` is read; `claude-review.yml` holds one per
+  job, so that a push superseding a review leaves an `@claude` question
+  running beside it. `tests/cancel_in_progress_test.py`'s docstring
+  cites the issue where it states the two kinds of group alike, that
+  clause being what the type rests on here.
+- **`tests/cancel_in_progress_test.py` carries the exception, rather than
+  the workflow marking itself exempt.** `claude-review.yml` has no `push`
+  trigger, so the `closed` type puts it in the shape that test fails;
+  `_ANSWERS_ABOUT_THE_PULL_REQUEST` names the reason it is excepted, and
+  a test beside it turns red where the exception exempts nothing.
+- **The negative case for the module's `closed` pattern is a trigger
+  rather than a workflow.** Every `pull_request` trigger here takes the
+  type, so what shows the pattern does not match any `types:` list is
+  `claude-review.yml`'s own `issue_comment` list.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

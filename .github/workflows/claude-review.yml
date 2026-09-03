@@ -31,8 +31,25 @@ on:
     # draft condition below withheld while it was a draft: the default
     # types do not include it, and without it a readied pull request would
     # wait for its next push to be reviewed at all. The same reasoning
-    # links.yml carries for the same type
-    types: [opened, reopened, synchronize, ready_for_review]
+    # links.yml carries for the same type.
+    #
+    # closed joins them for the reason every other pull_request workflow
+    # here gives at this key: merging or closing a pull request is neither
+    # a push nor a synchronize, so a review still held in that pull
+    # request's concurrency group survives it -- cancel-in-progress only
+    # fires when a new run lands in that group, and nothing otherwise
+    # does. Landing the closed event there is what lets it supersede a
+    # review nobody is going to read, which is a shared concurrency slot
+    # and a model call the header above says are not free. The job below
+    # declines the review itself, a pull request that has stopped taking
+    # changes being none to write a verdict on.
+    #
+    # What is not measured is whether the closed event reaches a group
+    # held on a job rather than on the workflow: every neighbour taking
+    # this type holds its group at the workflow level, where the run
+    # enters it before any job's `if` is read, and the group below is
+    # the job's. #593 has the reading and the command that answers it
+    types: [opened, reopened, synchronize, ready_for_review, closed]
   # the on-demand half: somebody writes @claude in a comment on a pull
   # request, or on a line of its diff, and asks for something the automatic
   # pass did not answer
@@ -49,8 +66,10 @@ permissions:
 jobs:
   review:
     name: Claude review
-    # a draft is work its author is not asking anyone to read yet, and a
-    # comment event is the other job's.
+    # a draft is work its author is not asking anyone to read yet, a
+    # closed pull request has stopped taking the changes a verdict would
+    # be about, and a comment event is the other job's. The trigger above
+    # takes the closed event only to land it in this job's group.
     #
     # The fork condition is not a policy but a fact about secrets: "with
     # the exception of GITHUB_TOKEN, secrets are not passed to the runner
@@ -79,6 +98,7 @@ jobs:
     if: >-
       ${{ vars.CLAUDE_REVIEW_ENABLED == 'true'
           && github.event_name == 'pull_request'
+          && github.event.action != 'closed'
           && !github.event.pull_request.draft
           && github.event.pull_request.head.repo.full_name
              == github.repository }}
