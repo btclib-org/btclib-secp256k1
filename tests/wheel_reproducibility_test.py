@@ -833,7 +833,7 @@ def test_main_says_how_to_be_called_when_it_is_not(
     assert check.main(["prog", "unexpected"]) == 2
     assert capsys.readouterr().err == (
         "usage: prog [--keep-wheel DIR | --across-images DIR"
-        " | --repaired | --dynamic | --cross-windows]\n"
+        " | --repaired [--keep-wheel DIR] | --dynamic | --cross-windows]\n"
     )
 
 
@@ -1030,6 +1030,60 @@ def test_main_repaired_builds_from_two_differently_named_directories(
     assert len(seen_dests[0].name) != len(seen_dests[1].name)
 
 
+def test_main_repaired_keeps_the_first_builds_wheels_where_it_is_asked_to(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`--repaired --keep-wheel` leaves every wheel the first build left.
+
+    A Linux `cibuildwheel` run leaves a `manylinux` wheel and a
+    `musllinux` one from the one interpreter, and both are what
+    `across-images` wants kept, not one.
+    """
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
+    musl = "pkg-1.0-cp314-cp314-musllinux_1_2_x86_64.whl"
+    many = "pkg-1.0-cp314-cp314-manylinux_2_17_x86_64.whl"
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dispatching_run(
+            fake_run_writing(
+                {musl: [("pkg/a.py", b"x")], many: [("pkg/a.py", b"x")]},
+                out_flag="--output-dir",
+            ),
+            out_flag="--output-dir",
+        ),
+    )
+    kept = tmp_path / "wheel-repaired" / "linux-x86-64" / "ubuntu-latest"
+
+    assert check.main(["prog", "--repaired", "--keep-wheel", str(kept)]) == 0
+
+    with zipfile.ZipFile(kept / musl) as archive:
+        assert archive.read("pkg/a.py") == b"x"
+    with zipfile.ZipFile(kept / many) as archive:
+        assert archive.read("pkg/a.py") == b"x"
+
+
+def test_main_repaired_keeps_the_wheels_even_where_the_two_builds_disagree(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The copy is taken before the comparison, as `--keep-wheel` alone does."""
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dispatching_run(
+            build_writing_in_turn([b"first", b"second"], out_flag="--output-dir"),
+            out_flag="--output-dir",
+        ),
+    )
+    kept = tmp_path / "kept"
+
+    assert check.main(["prog", "--repaired", "--keep-wheel", str(kept)]) == 1
+
+    with zipfile.ZipFile(kept / _WHEEL) as archive:
+        assert archive.read("pkg/a.py") == b"first"
+
+
 def test_main_dynamic_refuses_to_run_without_source_date_epoch(
     check: ModuleType,
     capsys: pytest.CaptureFixture[str],
@@ -1132,6 +1186,79 @@ def test_across_images_is_green_where_both_images_built_one_wheel(
     )
 
 
+def test_across_images_pairs_more_than_one_wheel_per_image(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#524's own shape: one Linux image can leave two wheels, not one.
+
+    Both images built through `--repaired --keep-wheel` leave a
+    `manylinux` wheel and a `musllinux` one, paired by name rather than
+    compared as one wheel each.
+    """
+    musl = "pkg-1.0-cp314-cp314-musllinux_1_2_x86_64.whl"
+    many = "pkg-1.0-cp314-cp314-manylinux_2_17_x86_64.whl"
+    write_wheel(
+        tmp_path / "linux-x86-64" / "ubuntu-latest" / musl, [("pkg/a.py", b"x")]
+    )
+    write_wheel(
+        tmp_path / "linux-x86-64" / "ubuntu-latest" / many, [("pkg/a.py", b"y")]
+    )
+    write_wheel(tmp_path / "linux-x86-64" / "ubuntu-22.04" / musl, [("pkg/a.py", b"x")])
+    write_wheel(tmp_path / "linux-x86-64" / "ubuntu-22.04" / many, [("pkg/a.py", b"y")])
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 0
+
+    assert (
+        "linux-x86-64: its images agree, member for member" in capsys.readouterr().out
+    )
+
+
+def test_across_images_names_the_wheel_within_a_pair_that_differs(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Only the wheel whose member moved is named, not the one that agrees."""
+    musl = "pkg-1.0-cp314-cp314-musllinux_1_2_x86_64.whl"
+    many = "pkg-1.0-cp314-cp314-manylinux_2_17_x86_64.whl"
+    write_wheel(
+        tmp_path / "linux-x86-64" / "ubuntu-latest" / musl, [("pkg/a.py", b"x")]
+    )
+    write_wheel(
+        tmp_path / "linux-x86-64" / "ubuntu-latest" / many, [("pkg/a.py", b"y")]
+    )
+    write_wheel(tmp_path / "linux-x86-64" / "ubuntu-22.04" / musl, [("pkg/a.py", b"x")])
+    write_wheel(
+        tmp_path / "linux-x86-64" / "ubuntu-22.04" / many, [("pkg/a.py", b"moved")]
+    )
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
+
+    err = capsys.readouterr().err
+    assert f"::error::linux-x86-64: {many}: pkg/a.py: content differs" in err
+    assert musl not in err
+
+
+def test_across_images_names_a_wheel_only_one_image_built(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A wheel one image alone left is unpaired, not a member difference."""
+    musl = "pkg-1.0-cp314-cp314-musllinux_1_2_x86_64.whl"
+    many = "pkg-1.0-cp314-cp314-manylinux_2_17_x86_64.whl"
+    write_wheel(
+        tmp_path / "linux-aarch64" / "ubuntu-24.04-arm" / musl, [("pkg/a.py", b"x")]
+    )
+    write_wheel(
+        tmp_path / "linux-aarch64" / "ubuntu-24.04-arm" / many, [("pkg/a.py", b"x")]
+    )
+    write_wheel(
+        tmp_path / "linux-aarch64" / "ubuntu-22.04-arm" / many, [("pkg/a.py", b"x")]
+    )
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
+
+    err = capsys.readouterr().err
+    assert f"only ubuntu-24.04-arm built {musl}" in err
+
+
 def test_across_images_names_the_image_and_the_member_that_differ(
     check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1148,6 +1275,45 @@ def test_across_images_names_the_image_and_the_member_that_differ(
     err = capsys.readouterr().err
     assert "::error::macos-x86-64: pkg/_ext.so: content differs" in err
     assert "2 vs 3 bytes" in err
+
+
+def test_across_images_compares_members_of_two_differently_named_singletons(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#514's own case, exercised at the level `across-images` actually calls.
+
+    A macOS or Windows runner's deployment target reaches the platform
+    tag, so the one wheel each image built can be named differently with
+    the question about their members still open. `compare_one_platform`
+    has to route this -- one wheel on each side -- through `diff_wheels`
+    directly rather than through `pair_wheels_by_name`, which pairs
+    strictly by filename: two differently-named singletons would then
+    overlap in nothing and `diff_wheels` would never run, silently
+    dropping the member comparison the mismatched name was never meant
+    to excuse.
+    """
+    write_wheel(
+        tmp_path
+        / "macos-arm64"
+        / "macos-15"
+        / "pkg-1.0-cp314-cp314-macosx_15_0_arm64.whl",
+        [("pkg/_ext.so", b"aa")],
+    )
+    write_wheel(
+        tmp_path
+        / "macos-arm64"
+        / "macos-latest"
+        / "pkg-1.0-cp314-cp314-macosx_26_0_arm64.whl",
+        [("pkg/_ext.so", b"bbb")],
+    )
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
+
+    err = capsys.readouterr().err
+    assert "the wheel is named" in err
+    assert "::error::macos-arm64: pkg/_ext.so: content differs" in err
+    assert "only macos-15 built" not in err
+    assert "only macos-latest built" not in err
 
 
 def test_across_images_refuses_a_platform_only_one_image_built(
@@ -1177,7 +1343,7 @@ def test_across_images_names_an_image_that_left_no_wheel(
     assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
 
     err = capsys.readouterr().err
-    assert "ubuntu-26.04-arm left [], not one wheel" in err
+    assert "ubuntu-26.04-arm left no wheel" in err
 
 
 def test_across_images_refuses_a_directory_no_platform_reached(

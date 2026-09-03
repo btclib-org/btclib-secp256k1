@@ -3723,6 +3723,32 @@ release-notes length in the first place, and are still in
   umbrella over both rebuild halves is this tree's own fact and stays;
   which number section 12 carries is the standard's to state.
 
+### `repaired` builds a second host image on Linux, and `across-images` reads it
+
+- **The *The Linux container the static wheels compile in is named by
+  digest* entry's third bullet said no job builds one commit through
+  that container on two host images (issue #584); `repaired` now
+  carries a second host image on `linux-x86-64` and `linux-aarch64`,
+  reused from `rebuild`'s own pair, and `across-images` compares it**
+  (closes #524). The two families are read as separate directories
+  rather than merged into one: an unrepaired `uv build` wheel and a
+  `cibuildwheel`-repaired one of the same interpreter are not the same
+  file, and a line saying they disagree would mean nothing.
+- **`compare_one_platform` pairs a set of wheels per image by name where
+  an image can hold more than one, and otherwise compares the two
+  images' one wheel each through `diff_wheels` regardless of name.** A
+  macOS or Windows runner's deployment target reaches the platform tag,
+  so two images of one of those platforms can name the one wheel each of
+  them built differently while the question about its members is still
+  open; pairing that pair by name would read the name difference as two
+  wheels with nothing in common and never compare a member. Linux's
+  `manylinux` and `musllinux` wheels, from the one interpreter, are where
+  a name is what tells two genuinely distinct wheels apart.
+- `build_repaired_twice_and_compare` takes an optional `keep_wheel`
+  reached through `--repaired --keep-wheel <dir>`, since a Linux
+  `cibuildwheel` run leaves a `manylinux` wheel and a `musllinux` one
+  from the one interpreter.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

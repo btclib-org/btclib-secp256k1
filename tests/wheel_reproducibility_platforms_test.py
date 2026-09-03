@@ -21,12 +21,18 @@ builds a release wheel on and the sentinel does not is a wheel nothing
 measures -- together with the pairing, since a platform left with one
 image is one whose across-images comparison has nothing to compare.
 
-`repaired`'s list is held as equality instead, and #515 is why: that
-job asks whether the wheel the release uploads reproduces, so its
-images are the release's and a second one would be a platform measured
-twice. An image in one list and not the other is a defect in whichever
-direction it falls -- one it builds and the release does not is
-runner-minutes spent on a wheel nobody installs.
+`repaired`'s list is held the same way rebuild's is, and #515 is the
+reason it starts there: that job asks whether the wheel the release
+uploads reproduces, so every release image has to be among its own --
+an image the release builds a wheel on and this job does not is a wheel
+nothing measures. #524 is why it is a containment and not an equality,
+though, unlike rebuild's: the release images stay held as a containment,
+but linux-x86-64 and linux-aarch64 also carry a second image apiece,
+reused from rebuild's own pair, for the container question #524 asks
+that the runner's own toolchain does not answer. Every other platform
+keeps exactly its one release image, since a second one there would
+measure a toolchain the pinned container -- Linux's own object -- says
+nothing about.
 
 `dynamic`'s list is held against `build-dynamic`'s the same way and for
 the same reason, that job being where the `py3-none-*` wheels #540 is
@@ -110,9 +116,12 @@ def _images_by_platform(body: str) -> dict[str, list[str]]:
 
 _GATE_PLATFORMS = _os_list(_job_body(_GATE, "build-cibuildwheel"))
 _SENTINEL_IMAGES = _images_by_platform(_job_body(_SENTINEL, "rebuild"))
-_REPAIRED_PLATFORMS = _os_list(_job_body(_SENTINEL, "repaired"))
+_REPAIRED_IMAGES = _images_by_platform(_job_body(_SENTINEL, "repaired"))
 _GATE_DYNAMIC_PLATFORMS = _os_list(_job_body(_GATE, "build-dynamic"))
 _DYNAMIC_PLATFORMS = _os_list(_job_body(_SENTINEL, "dynamic"))
+# the two platforms #524's own container question is about, and the only
+# ones `repaired` carries a second image on
+_LINUX_PLATFORMS = ("linux-x86-64", "linux-aarch64")
 
 
 def test_every_platform_list_was_read() -> None:
@@ -124,7 +133,7 @@ def test_every_platform_list_was_read() -> None:
     """
     assert _GATE_PLATFORMS, "test.yml's build-cibuildwheel names no platform"
     assert _SENTINEL_IMAGES, "wheel-reproducibility.yml's rebuild names none"
-    assert _REPAIRED_PLATFORMS, "wheel-reproducibility.yml's repaired names none"
+    assert _REPAIRED_IMAGES, "wheel-reproducibility.yml's repaired names none"
     assert _GATE_DYNAMIC_PLATFORMS, "test.yml's build-dynamic names no platform"
     assert _DYNAMIC_PLATFORMS, "wheel-reproducibility.yml's dynamic names none"
 
@@ -140,14 +149,49 @@ def test_wheel_reproducibility_runs_on_every_wheel_platform() -> None:
     )
 
 
-def test_the_repaired_job_builds_the_release_images_and_no_others() -> None:
-    """`repaired` asks about the uploaded wheel, so its images are those."""
-    assert _REPAIRED_PLATFORMS == _GATE_PLATFORMS, (
-        "wheel-reproducibility.yml's repaired job builds on"
-        f" {', '.join(_REPAIRED_PLATFORMS)} where build-cibuildwheel builds"
-        f" release wheels on {', '.join(_GATE_PLATFORMS)}: the job that asks"
-        " whether the uploaded wheel reproduces has to ask it of the images"
-        " that upload one, and of no others"
+def test_the_repaired_job_builds_every_release_image() -> None:
+    """`repaired` asks about the uploaded wheel, so it never skips one."""
+    measured = {image for images in _REPAIRED_IMAGES.values() for image in images}
+    missing = [image for image in _GATE_PLATFORMS if image not in measured]
+    assert not missing, (
+        f"wheel-reproducibility.yml's repaired job is missing {', '.join(missing)},"
+        " which build-cibuildwheel builds a release wheel on"
+    )
+
+
+def test_the_repaired_job_carries_a_second_image_on_linux_alone() -> None:
+    """#524's own claim is about Linux, and the second image is #514's pair."""
+    doubled = {
+        platform: images
+        for platform, images in _REPAIRED_IMAGES.items()
+        if len(set(images)) >= 2
+    }
+    assert set(doubled) == set(_LINUX_PLATFORMS), (
+        "wheel-reproducibility.yml's repaired job carries a second image on"
+        f" {', '.join(sorted(doubled))}, and #524's own claim is about"
+        f" {', '.join(_LINUX_PLATFORMS)} alone"
+    )
+    for platform, images in doubled.items():
+        assert set(images) == set(_SENTINEL_IMAGES[platform]), (
+            f"repaired's own images for {platform} are {sorted(set(images))},"
+            f" not rebuild's own pair {sorted(set(_SENTINEL_IMAGES[platform]))}"
+            " that #514 already measures there"
+        )
+
+
+def test_the_repaired_job_carries_one_image_off_linux() -> None:
+    """A second image off Linux would measure a toolchain the pin ignores."""
+    singles = {
+        platform: images
+        for platform, images in _REPAIRED_IMAGES.items()
+        if platform not in _LINUX_PLATFORMS
+    }
+    not_one = {
+        platform: images for platform, images in singles.items() if len(images) != 1
+    }
+    assert not not_one, (
+        "wheel-reproducibility.yml's repaired job builds"
+        f" {not_one} on more than the one release image off Linux"
     )
 
 
