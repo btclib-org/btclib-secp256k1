@@ -22,15 +22,46 @@ name: wheel-reproducibility
 # difference between two images attributable to the image rather than to
 # either build's own drift.
 #
+# And it asks #515, which is about what the release actually uploads.
+# uv build, which rebuild runs, stops at the archive hatchling writes;
+# cibuildwheel runs the same scripts/cffi_build.py and then repairs the
+# wheel with the tool it defaults to on that platform -- auditwheel on
+# Linux, delocate on macOS, delvewheel on Windows, [tool.cibuildwheel]
+# naming no repair-wheel-command of its own. What that hands back is
+# the repair's own file rather than the build's. The repaired job below
+# builds through cibuildwheel twice and diffs the pair, so the file
+# PyPI receives is the one under measurement.
+#
+# CIBW_BUILD narrows it to one interpreter, and the reason is not the
+# one test.yml's build-cibuildwheel gives for narrowing a pull request:
+# that one turns on the merge afterwards building everything, and
+# nothing here ever does, the variable below being unconditional. The
+# reason is that rebuild has only ever measured one interpreter -- uv
+# build leaves one wheel, for the interpreter uv resolves for the
+# project -- so an unnarrowed job here would answer a question this
+# file asks nowhere else, at a cost that rises with every identifier
+# cibuildwheel selects. What it leaves out is stated rather than
+# covered: whether a wheel of another ABI tag reproduces is not
+# measured, on any trigger.
+#
+# And no test command: what this asks is whether two archives are the
+# same bytes, which running the wheel does not answer.
+#
+# On the release images alone, where rebuild carries two per platform:
+# whether two images agree is the across-images question below, and it
+# is already asked of the uv build wheel. Asking it again here would
+# double this job for an answer the run already carries.
+#
 # The first image of each pair below is hand-kept against that job's own
-# list, GitHub Actions giving one workflow no way to read another's
-# strategy.matrix short of workflow_call, which neither file uses and
-# which wiring this sentinel into the gate would defeat the point of. A
-# test holds the two together instead --
-# tests/wheel_reproducibility_platforms_test.py -- so the two files can
-# still drift for a moment but not silently: the suite goes red the
-# moment an image build-cibuildwheel builds on is missing here, which is
-# the direction that matters now that the lists are no longer equal.
+# list, and repaired's own list is that same copy: GitHub Actions gives
+# one workflow no way to read another's strategy.matrix short of
+# workflow_call, which neither file uses and which wiring this sentinel
+# into the gate would defeat the point of. A test holds the three
+# together instead -- tests/wheel_reproducibility_platforms_test.py --
+# so the files can still drift for a moment but not silently: the suite
+# goes red the moment an image build-cibuildwheel builds on is missing
+# from either job here, which is the direction that matters now that
+# rebuild's list and that job's are no longer equal.
 #
 # It is a sentinel and not a gate. The property this asks about does not
 # hold on every platform yet -- #439's own record of where the four
@@ -229,6 +260,73 @@ jobs:
         with:
           name: wheel-${{ matrix.platform }}-${{ matrix.os }}
           path: ${{ runner.temp }}/wheel/
+
+  repaired:
+    name: Build the repaired wheel twice on ${{ matrix.os }} and diff them
+    # rebuild's own conditions, and for its own reasons
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    runs-on: ${{ matrix.os }}
+    # two cibuildwheel builds, each of which provisions an interpreter
+    # and, on Linux, pulls a container per libc before compiling
+    # anything: the same bound-a-hung-job ceiling rebuild carries
+    timeout-minutes: 40
+    # the interpreter uv runs cibuildwheel with is the one setup-python
+    # installs below and never one of uv's own: see build-cibuildwheel
+    # in test.yml, whose own env carries this variable and the reason
+    env:
+      UV_PYTHON_DOWNLOADS: never
+      # the one interpreter, and no test run: see this file's header
+      CIBW_BUILD: cp314-*
+      CIBW_TEST_SKIP: "*"
+    strategy:
+      # every image to the end, as in rebuild: which platform disagrees
+      # is the answer
+      fail-fast: false
+      matrix:
+        # build-cibuildwheel's own list in test.yml, copied, and held
+        # against it by tests/wheel_reproducibility_platforms_test.py --
+        # equality here, where rebuild's is a containment, since this
+        # job carries no second image of a platform
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-26-intel
+          - macos-latest
+          - windows-latest
+          - windows-11-arm
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the vendored library is compiled twice here too
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      # --only-group build, so the environment is cibuildwheel and the
+      # tools it needs and no extension of this project's own; --locked,
+      # so the cibuildwheel deciding the images and the identifiers is
+      # the one uv.lock pins rather than whatever the index holds. The
+      # script finds cibuildwheel on the PATH this sets, which is why it
+      # runs under uv run rather than under --no-project as rebuild's
+      # does. shell: bash for the two Windows images, whose default is
+      # PowerShell -- see rebuild's own step for the hazard
+      - name: Build the repaired wheel twice and diff the two archives
+        shell: bash
+        run: >
+          uv run --locked --only-group build python
+          .github/scripts/check_wheel_reproducibility.py
+          --repaired
 
   across-images:
     name: Compare the wheels two images of one platform built

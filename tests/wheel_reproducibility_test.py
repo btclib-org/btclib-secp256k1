@@ -200,38 +200,47 @@ def _escaping_tar_bytes() -> bytes:
     return buffer.getvalue()
 
 
-def dispatching_run(build_call: Any) -> Any:
+def dispatching_run(build_call: Any, *, out_flag: str = "--out-dir") -> Any:
     """Return a `subprocess.run` stand-in that fakes `git archive` calls.
 
     `main` now runs `copy_source_tree` -- two `git archive` calls -- ahead
-    of every `build_wheel`, and both go through the same `subprocess.run`
-    a test here replaces. `--out-dir` is what only a `uv build` call
-    carries, so its absence is what marks a `git archive` call, answered
-    with an empty archive rather than reaching `build_call`, which does
-    not expect one; `args[0]` is not what tells the two apart, since it
-    names `_GIT`'s own resolved, and possibly absolute, path rather than
-    the literal string "git".
+    of every build, and both go through the same `subprocess.run`
+    a test here replaces. The flag naming the output directory is what
+    only a build call carries, so its absence is what marks a `git
+    archive` call, answered with an empty archive rather than reaching
+    `build_call`, which does not expect one; `args[0]` is not what tells
+    the two apart, since it names `_GIT`'s own resolved, and possibly
+    absolute, path rather than the literal string "git".
+
+    `out_flag` is what a caller changes to fake the `--repaired` path
+    instead: `uv build` takes `--out-dir` and `cibuildwheel`
+    `--output-dir`, and reading the flag off the command line rather
+    than assuming one is what keeps a `git archive` call from being
+    mistaken for a build in either.
     """
 
     def fake_run(args: list[str], **kwargs: Any) -> Any:
-        if "--out-dir" not in args:
+        if out_flag not in args:
             return subprocess.CompletedProcess(args, 0, stdout=_empty_tar_bytes())
         return build_call(args, **kwargs)
 
     return fake_run
 
 
-def fake_run_writing(wheels: dict[str, list[tuple[str, bytes]]]) -> Any:
+def fake_run_writing(
+    wheels: dict[str, list[tuple[str, bytes]]], *, out_flag: str = "--out-dir"
+) -> Any:
     """Return a `subprocess.run` stand-in that writes a canned wheel.
 
     `wheels` maps a wheel's own filename to the members it should
-    contain; `--out-dir` is read out of the faked command line, and every
-    call writes every one of `wheels` there -- `build_wheel`'s own
-    "exactly one" check is what a test then leans on to pick one out.
+    contain; the output directory is read out of the faked command line
+    at `out_flag`, and every call writes every one of `wheels` there --
+    `build_wheel`'s own "exactly one" check is what a test then leans on
+    to pick one out, where `build_repaired_wheels` takes them all.
     """
 
     def fake_run(args: list[str], **_kwargs: Any) -> Any:
-        out_dir = Path(args[args.index("--out-dir") + 1])
+        out_dir = Path(args[args.index(out_flag) + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
         for name, members in wheels.items():
             write_wheel(out_dir / name, members)
@@ -240,7 +249,7 @@ def fake_run_writing(wheels: dict[str, list[tuple[str, bytes]]]) -> Any:
     return fake_run
 
 
-def build_writing_in_turn(contents: list[bytes]) -> Any:
+def build_writing_in_turn(contents: list[bytes], *, out_flag: str = "--out-dir") -> Any:
     """Return a build stand-in writing a different wheel on each call.
 
     One entry per build, in order, so that a test says what the second
@@ -249,7 +258,7 @@ def build_writing_in_turn(contents: list[bytes]) -> Any:
     remaining = list(contents)
 
     def build_call(args: list[str], **_kwargs: Any) -> None:
-        out_dir = Path(args[args.index("--out-dir") + 1])
+        out_dir = Path(args[args.index(out_flag) + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
         write_wheel(out_dir / _WHEEL, [("pkg/a.py", remaining.pop(0))])
 
@@ -422,6 +431,159 @@ def test_build_wheel_refuses_more_than_one_wheel(
         check.build_wheel(tmp_path / "source", tmp_path / "out")
 
 
+def test_build_repaired_wheels_returns_every_wheel_cibuildwheel_left(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """More than one wheel is the ordinary Linux answer, not a failure.
+
+    `build_wheel` refuses a second wheel because `uv build` writing two
+    means a stale one shared the directory; one `cibuildwheel` run of
+    one interpreter writes a `manylinux` wheel and a `musllinux` one,
+    so here both come back.
+    """
+    musl = "pkg-1.0-cp314-cp314-musllinux_1_2_x86_64.whl"
+    many = "pkg-1.0-cp314-cp314-manylinux_2_17_x86_64.whl"
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        fake_run_writing(
+            {musl: [("pkg/a.py", b"x")], many: [("pkg/a.py", b"x")]},
+            out_flag="--output-dir",
+        ),
+    )
+
+    wheels = check.build_repaired_wheels(tmp_path / "source", tmp_path / "out")
+
+    assert [wheel.name for wheel in wheels] == sorted([many, musl])
+
+
+def test_build_repaired_wheels_runs_in_the_directory_it_builds(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cibuildwheel refuses a package directory outside its own cwd.
+
+    So the package argument is `.` and the working directory is the
+    copy, rather than the copy's path being passed from the checkout
+    the environment was built in.
+    """
+    seen: dict[str, Any] = {}
+
+    def spy(args: list[str], **kwargs: Any) -> None:
+        seen["args"] = args
+        seen["cwd"] = kwargs["cwd"]
+        out_dir = Path(args[args.index("--output-dir") + 1])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        write_wheel(out_dir / _WHEEL, [("pkg/a.py", b"x")])
+
+    monkeypatch.setattr(check.subprocess, "run", spy)
+
+    check.build_repaired_wheels(tmp_path / "source", tmp_path / "out")
+
+    assert seen["cwd"] == tmp_path / "source"
+    assert seen["args"][-1] == "."
+
+
+def test_build_repaired_wheels_refuses_an_empty_out_dir(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cibuildwheel exiting zero with nothing built is named, not indexed."""
+    monkeypatch.setattr(
+        check.subprocess, "run", fake_run_writing({}, out_flag="--output-dir")
+    )
+
+    with pytest.raises(RuntimeError, match="left no wheel"):
+        check.build_repaired_wheels(tmp_path / "source", tmp_path / "out")
+
+
+def test_pair_wheels_by_name_is_silent_where_both_builds_match(
+    check: ModuleType, tmp_path: Path
+) -> None:
+    """Two builds leaving the same wheels, member for member, is green."""
+    first, second = two_wheels(tmp_path, [("pkg/a.py", b"x")], [("pkg/a.py", b"x")])
+
+    assert (
+        check.pair_wheels_by_name(
+            [first], [second], first_label="one", second_label="other"
+        )
+        == []
+    )
+
+
+def test_pair_wheels_by_name_names_a_wheel_only_one_build_left(
+    check: ModuleType, tmp_path: Path
+) -> None:
+    """A wheel missing on one side is not the two of them disagreeing.
+
+    One build reaching an interpreter or a libc the other did not means
+    the pair was never compared, which has to read differently from
+    their bytes differing.
+    """
+    write_wheel(tmp_path / "one" / _WHEEL, [("pkg/a.py", b"x")])
+    write_wheel(tmp_path / "one" / "pkg-1.0-cp314-cp314-musl.whl", [("a", b"x")])
+    write_wheel(tmp_path / "other" / _WHEEL, [("pkg/a.py", b"x")])
+    write_wheel(tmp_path / "other" / "pkg-1.0-cp314-cp314-many.whl", [("a", b"x")])
+
+    complaints = check.pair_wheels_by_name(
+        sorted((tmp_path / "one").glob("*.whl")),
+        sorted((tmp_path / "other").glob("*.whl")),
+        first_label="one",
+        second_label="other",
+    )
+
+    assert complaints == [
+        "only one built pkg-1.0-cp314-cp314-musl.whl",
+        "only other built pkg-1.0-cp314-cp314-many.whl",
+    ]
+
+
+def test_pair_wheels_by_name_compares_the_wheels_both_builds_left(
+    check: ModuleType, tmp_path: Path
+) -> None:
+    """A wheel present on both sides is compared member by member."""
+    first, second = two_wheels(tmp_path, [("pkg/a.py", b"x")], [("pkg/a.py", b"y")])
+
+    complaints = check.pair_wheels_by_name(
+        [first], [second], first_label="one", second_label="other"
+    )
+
+    assert len(complaints) == 1
+    assert "pkg/a.py" in complaints[0]
+    assert "content differs" in complaints[0]
+
+
+def test_pair_wheels_by_name_says_which_wheel_each_line_is_about(
+    check: ModuleType, tmp_path: Path
+) -> None:
+    """One build leaves two wheels on Linux, and the members repeat.
+
+    Every member of the package appears once per wheel, so a line
+    naming only the member says nothing about which of the two
+    disagreed: with the `manylinux` and the `musllinux` wheel differing
+    in the same member, the two entries would be the same words twice.
+    """
+    for side, content in (("one", b"x"), ("other", b"y")):
+        for wheel in (
+            "pkg-1.0-cp314-cp314-manylinux_2_17_x86_64.whl",
+            "pkg-1.0-cp314-cp314-musllinux_1_2_x86_64.whl",
+        ):
+            write_wheel(tmp_path / side / wheel, [("pkg/a.py", content)])
+
+    complaints = check.pair_wheels_by_name(
+        sorted((tmp_path / "one").glob("*.whl")),
+        sorted((tmp_path / "other").glob("*.whl")),
+        first_label="the first build",
+        second_label="the second build",
+    )
+
+    # the length first: both assertions below hold of an empty list, so
+    # without it a pair_wheels_by_name returning nothing at all would
+    # satisfy a test written to witness two lines telling each other
+    # apart
+    assert len(complaints) == 2
+    assert len(complaints) == len(set(complaints))
+    assert all(complaint.startswith("pkg-1.0-cp314-cp314-") for complaint in complaints)
+
+
 def test_diff_wheels_reports_nothing_for_identical_archives(
     check: ModuleType, tmp_path: Path
 ) -> None:
@@ -555,7 +717,7 @@ def test_main_says_how_to_be_called_when_it_is_not(
     """An argument the script does not take is a usage message, not a crash."""
     assert check.main(["prog", "unexpected"]) == 2
     assert capsys.readouterr().err == (
-        "usage: prog [--keep-wheel DIR | --across-images DIR]\n"
+        "usage: prog [--keep-wheel DIR | --across-images DIR | --repaired]\n"
     )
 
 
@@ -666,6 +828,75 @@ def test_main_keeps_the_wheel_even_where_the_two_builds_disagree(
 
     with zipfile.ZipFile(kept / _WHEEL) as archive:
         assert archive.read("pkg/a.py") == b"first"
+
+
+def test_main_repaired_reports_success_when_the_two_builds_agree(
+    check: ModuleType,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The green path of `--repaired`, naming every wheel it compared."""
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dispatching_run(
+            fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]}, out_flag="--output-dir"),
+            out_flag="--output-dir",
+        ),
+    )
+
+    assert check.main(["prog", "--repaired"]) == 0
+
+    out = capsys.readouterr().out
+    assert _WHEEL in out
+    assert "two repaired builds of this commit agree" in out
+
+
+def test_main_repaired_reports_a_difference_and_exits_nonzero(
+    check: ModuleType,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A divergence between two repaired builds is what turns it red."""
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        dispatching_run(
+            build_writing_in_turn([b"first", b"second"], out_flag="--output-dir"),
+            out_flag="--output-dir",
+        ),
+    )
+
+    assert check.main(["prog", "--repaired"]) == 1
+
+    err = capsys.readouterr().err
+    assert "::error::" in err
+    assert "pkg/a.py" in err
+    assert "content differs" in err
+
+
+def test_main_repaired_builds_from_two_differently_named_directories(
+    check: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`#503`'s property holds on this path too, both taking one helper."""
+    seen_dests: list[Path] = []
+
+    def fake_copy(_root: Path, dest: Path) -> None:
+        seen_dests.append(dest)
+        dest.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(check, "copy_source_tree", fake_copy)
+    monkeypatch.setattr(
+        check.subprocess,
+        "run",
+        fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]}, out_flag="--output-dir"),
+    )
+
+    assert check.main(["prog", "--repaired"]) == 0
+
+    assert len(seen_dests) == 2
+    assert seen_dests[0] != seen_dests[1]
+    assert len(seen_dests[0].name) != len(seen_dests[1].name)
 
 
 def test_across_images_is_green_where_both_images_built_one_wheel(

@@ -13,14 +13,21 @@ matrix is a hand-typed copy of `build-cibuildwheel`'s in `test.yml`,
 kept in sync by a comment in each file rather than by anything that
 fails when the two disagree. This is that check.
 
-The two lists are not equal, and #514 is why: the sentinel carries a
-second image for every platform, so that one commit is built on two
-environments and not only in two directories of one. Equality would
-forbid exactly the thing the sentinel exists to do. What has to hold is
-the containment -- an image `build-cibuildwheel` builds a release wheel
-on and the sentinel does not is a wheel nothing measures -- together
-with the pairing, since a platform left with one image is one whose
-across-images comparison has nothing to compare.
+`rebuild`'s list and `build-cibuildwheel`'s are not equal, and #514 is
+why: that job carries a second image for every platform, so that one
+commit is built on two environments and not only in two directories of
+one. Equality would forbid exactly the thing it exists to do. What has
+to hold there is the containment -- an image `build-cibuildwheel`
+builds a release wheel on and the sentinel does not is a wheel nothing
+measures -- together with the pairing, since a platform left with one
+image is one whose across-images comparison has nothing to compare.
+
+`repaired`'s list is held as equality instead, and #515 is why: that
+job asks whether the wheel the release uploads reproduces, so its
+images are the release's and a second one would be a platform measured
+twice. An image in one list and not the other is a defect in whichever
+direction it falls -- one it builds and the release does not is
+runner-minutes spent on a wheel nobody installs.
 
 GitHub Actions gives one workflow no way to read another's
 `strategy.matrix` short of `workflow_call`, which neither file uses --
@@ -92,17 +99,19 @@ def _images_by_platform(body: str) -> dict[str, list[str]]:
 
 _GATE_PLATFORMS = _os_list(_job_body(_GATE, "build-cibuildwheel"))
 _SENTINEL_IMAGES = _images_by_platform(_job_body(_SENTINEL, "rebuild"))
+_REPAIRED_PLATFORMS = _os_list(_job_body(_SENTINEL, "repaired"))
 
 
-def test_the_two_platform_lists_were_read() -> None:
+def test_the_three_platform_lists_were_read() -> None:
     """Each list is non-empty, so the comparisons below are not vacuous.
 
-    A job renamed, a matrix reindented, or either list rewritten in
+    A job renamed, a matrix reindented, or any list rewritten in
     another shape would each leave one of these empty and every
     assertion below trivially true.
     """
     assert _GATE_PLATFORMS, "test.yml's build-cibuildwheel names no platform"
     assert _SENTINEL_IMAGES, "wheel-reproducibility.yml's rebuild names none"
+    assert _REPAIRED_PLATFORMS, "wheel-reproducibility.yml's repaired names none"
 
 
 def test_wheel_reproducibility_runs_on_every_wheel_platform() -> None:
@@ -113,6 +122,17 @@ def test_wheel_reproducibility_runs_on_every_wheel_platform() -> None:
         f"build-cibuildwheel builds a wheel on {', '.join(missing)} and"
         " wheel-reproducibility.yml does not: a wheel the release ships"
         " that this measurement never reaches"
+    )
+
+
+def test_the_repaired_job_builds_the_release_images_and_no_others() -> None:
+    """`repaired` asks about the uploaded wheel, so its images are those."""
+    assert _REPAIRED_PLATFORMS == _GATE_PLATFORMS, (
+        "wheel-reproducibility.yml's repaired job builds on"
+        f" {', '.join(_REPAIRED_PLATFORMS)} where build-cibuildwheel builds"
+        f" release wheels on {', '.join(_GATE_PLATFORMS)}: the job that asks"
+        " whether the uploaded wheel reproduces has to ask it of the images"
+        " that upload one, and of no others"
     )
 
 
