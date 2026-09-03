@@ -393,9 +393,14 @@ as one; the listing above answers each ruleset's id, and the rules and
 the bypass of either are read from it:
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/rulesets/<id> \
-  --jq '{rules: [.rules[].type], bypass: [.bypass_actors[].actor_type]}'
+gh api --jq '{rules: [.rules[].type], bypass: [.bypass_actors[].actor_type]}' \
+  repos/btclib-org/btclib-secp256k1/rulesets/<id>
 ```
+
+The id goes after `--jq` rather than into the middle of the call, so the
+line ends in the placeholder and a paste made before it is filled in has
+nothing for its `>` to open — section 9 of the organization standard is
+where that rule is.
 
 The split is the point of there being two. The review is the rule a solo
 maintainer cannot satisfy, GitHub refusing a self-approval; the integrity
@@ -415,10 +420,10 @@ so that constraint is stated where the rule is and not only in the
 repository setting "Merge methods" below reads back.
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/rulesets/<id> \
-  --jq '{bypass: [.bypass_actors[].bypass_mode],
-         methods: [.rules[] | select(.type=="pull_request")
-                            | .parameters.allowed_merge_methods]}'
+gh api --jq '{bypass: [.bypass_actors[].bypass_mode],
+              methods: [.rules[] | select(.type=="pull_request")
+                                 | .parameters.allowed_merge_methods]}' \
+  repos/btclib-org/btclib-secp256k1/rulesets/<id>
 ```
 
 The other mode, `always`, permits a direct push as well, and it is not
@@ -457,9 +462,9 @@ RELEASING.md's own recovery path deletes and re-tags a release that
 failed before the PyPI upload, and either rule would block that.
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/rulesets/<id> \
-  --jq '{name, target, conditions, rules: [.rules[].type],
-         bypass: .bypass_actors}'
+gh api --jq '{name, target, conditions, rules: [.rules[].type],
+              bypass: .bypass_actors}' \
+  repos/btclib-org/btclib-secp256k1/rulesets/<id>
 ```
 
 ## Head branches after a merge
@@ -560,8 +565,8 @@ signature and not for a particular signer. The check is worth making on
 whatever landed all the same:
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/commits/<sha> \
-  --jq '.commit.verification | {verified, reason}'
+gh api --jq '.commit.verification | {verified, reason}' \
+  repos/btclib-org/btclib-secp256k1/commits/<sha>
 ```
 
 **What auto-merge will press was chosen when it was switched on, rather
@@ -573,7 +578,7 @@ request is holding is still worth reading, the wait itself being what
 this bypasses:
 
 ```shell
-gh pr view <n> --repo btclib-org/btclib-secp256k1 --json autoMergeRequest
+gh pr view --repo btclib-org/btclib-secp256k1 --json autoMergeRequest <n>
 ```
 
 ## Token permissions

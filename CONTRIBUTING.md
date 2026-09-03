@@ -353,12 +353,12 @@ writes into the common git directory, which every worktree of this
 repository shares:
 
 ```shell
-git -C <worktree> rev-parse --git-path hooks
+git rev-parse --git-path hooks
 ```
 
-answers with the primary checkout's `.git/hooks`, so one session
-installing it installs it for every other. Run the gate by hand before
-committing.
+answers with the primary checkout's `.git/hooks` in every worktree, so
+one session installing it installs it for every other. Run the gate by
+hand before committing.
 
 Two hooks are regenerated rather than fixed when they fail. The test data
 is private keys, so `detect-secrets` would report all of it; the known

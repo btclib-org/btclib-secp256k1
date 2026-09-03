@@ -3394,6 +3394,52 @@ release-notes length in the first place, and are still in
   `wheel-reproducibility.yml`'s `repaired` job already runs before the
   same command.
 
+### A bare placeholder ends its command, or takes a fence of its own
+
+- **`CONTRIBUTING.md`, `RELEASING.md`, `REPOSITORY.md`, `SECURITY.md`
+  and `tests/README.md` no longer write a bare placeholder with another
+  word after it on the line** (closes btclib-org/.github#740). Section 9
+  of the organization standard puts a bare placeholder at the end of its
+  command, where the `>` closing it has nothing to open and the line is
+  a parse error before it is a command. With a word after it, that `>`
+  takes the word as its target: in a reader's directory holding a file
+  of the placeholder's own name the `<` succeeds, the line runs, and the
+  redirection creates a file named `rev-parse`, `-s`, `..main`, `--jq`,
+  `--repo`, `.tar.gz` or `:bip-0340`. Pasted unfilled and on its own,
+  each fence changed here creates nothing, under `zsh`, `bash` and `sh`
+  alike, interactively, on stdin and as a file argument.
+- `REPOSITORY.md`'s `gh api` calls put the endpoint after `--jq` and its
+  `gh pr view` the pull request number after the flags, and
+  `RELEASING.md`'s griffe check puts the release tag after `-s`, so that
+  the placeholder is what ends the line.
+- Where the placeholder sits inside a word no order ends the command in
+  it, so the value takes a fence of its own with nothing under it to
+  reach and the fence that consumes it writes `${name:?}`: the sdist
+  version `SECURITY.md` verifies the attestation of, the upstream commit
+  `tests/README.md` re-checks a pin against, and the previous version
+  `RELEASING.md` reads the cycle's log from.
+- `CONTRIBUTING.md` reads the hooks path with `git rev-parse --git-path
+  hooks`, which answers with the primary checkout's `.git/hooks` from
+  any worktree of it, rather than with a `-C <worktree>` whose own shape
+  keeps the placeholder in the middle of the command.
+- The pair of calls whose redirection lands on an absolute path is left
+  alone, btclib-org/.github#725 being where that question sits, and so
+  is the pair in `CONTRIBUTING.md`'s shared half, which is the
+  standard's copy and the same bytes in every tree. Neither pair writes,
+  measured the same way: `git rebase --onto <new-base> <old-base-sha>
+  <child>` gives the shell `> <` and fails at the parse, and the
+  remaining targets are absolute paths.
+
+### The public-API check searches both layouts the tags carry
+
+- **`RELEASING.md`'s griffe command passes `-s . -s src`**, where `-s .`
+  alone finds no `btclib_secp256k1` to load and the check cannot run.
+  `src` is where this tree keeps the package and `.` is where a release
+  from before it moved under `src/` keeps it, so a comparison against
+  such a tag loads neither side without the other; `release.yml`'s own
+  griffe step carries the same pair, with the same reason written at
+  it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -54,11 +54,21 @@ distribution can be traced back to the workflow run and the commit it
 was built from.
 
 The sdist is also attached to the GitHub release, and that copy carries a
-build provenance attestation of its own, signed in the run that built it:
+build provenance attestation of its own, signed in the run that built it.
+The version takes a fence of its own with nothing under it to reach:
+written into the file name, `btclib_secp256k1-<version>.tar.gz` is a
+`<version` redirection that creates a file named `.tar.gz` wherever the
+reader's directory holds a file called `version`. `${version:?}` answers
+the other paste, the second fence alone, where the value is merely unset:
+it stops the check before it asks about a file nobody named.
+
+```shell
+version=<version>
+```
 
 ```shell
 repo=btclib-org/btclib-secp256k1
-gh attestation verify btclib_secp256k1-<version>.tar.gz \
+gh attestation verify "btclib_secp256k1-${version:?}.tar.gz" \
   --repo "$repo" --signer-workflow "$repo/.github/workflows/release.yml"
 ```
 
