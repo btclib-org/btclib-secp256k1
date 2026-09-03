@@ -560,6 +560,12 @@ repos:
   # actionlint, rather than the upstream hook, which is a go one
   - repo: https://github.com/Mateusz-Grzelinski/actionlint-py
     rev: v1.7.12.24
+    # pre-commit.ci's weekly autoupdate is what moves this rev, so a pull
+    # request bumping it is the moment to re-test whether the actionlint
+    # it now pins parses GitHub's `$/...` syntax. If it does, drop
+    # .github/zizmor.yml's self-repository ignores together with the
+    # workspace-relative `uses:` migration in release.yml and test.yml
+    # (issue #512)
     hooks:
       - id: actionlint
         # actionlint runs shellcheck over every run: script, but only if
