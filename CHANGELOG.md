@@ -2971,6 +2971,24 @@ release-notes length in the first place, and are still in
   entry declines. The other two are what make the test fail when
   somebody reaches for it.
 
+### The `wheel-reproducibility` sentinel takes its calendar slot
+
+- **`.github/workflows/wheel-reproducibility.yml` fires at the instant
+  section 10's calendar gives it, and `README.md`'s badge row carries
+  it** (closes #538). btclib-org/.github#698 is where the row was
+  settled: Sunday, hour 02, the sentinel seated among the security rows
+  that day holds and taking the hour below them, the band growing
+  downward where a family's own hours are taken. The minute is this
+  repository's row in that section's second table and does not move. The
+  comment beside the schedule states the day the grid gives the
+  workflow, replacing a reason for a day picked against the slots this
+  tree itself had in use, and the dispatch beside it names no day at
+  all.
+- The badge goes between `links` and `codeql`, which is the calendar's
+  order over the sentinels this tree runs: `sdist-rebuild`, which the
+  calendar puts between those two, is a workflow this repository does
+  not schedule.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
