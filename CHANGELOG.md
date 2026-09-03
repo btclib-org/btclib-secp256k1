@@ -3320,6 +3320,18 @@ release-notes length in the first place, and are still in
   request and failed only once the push to main built `cp310` for the
   first time.
 
+### An editable install's `WHEEL` carries the same tag a standard build would
+
+- **`scripts/hatch_build.py`'s build hook now rebinds `get_default_tag`
+  on the live `WheelBuilder` instance to the tag it already decided for
+  a standard build** (closes #534). `WheelBuilder.build_editable_detection`
+  and `build_editable_explicit` (hatchling 1.32.0) each set
+  `build_data["tag"]` from `self.get_default_tag()` before either one
+  reads `build_data["infer_tag"]` or a `build_data["tag"]` this hook
+  already set, so an editable install of a static build carrying a
+  `cpNN` extension came out `py3-none-any`, and uv's cache served one
+  interpreter's `.so` to any other interpreter it built for next.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
