@@ -3101,6 +3101,46 @@ release-notes length in the first place, and are still in
   file no longer being one of the two that say a wheel does not
   reproduce at all.
 
+### The coverage ratchet is met before a push, and on both linkages
+
+- **`addopts` carries `--cov` and `--durations=8`, so a bare
+  `uv run pytest` is the 100% ratchet** (closes btclib-org/.github#431).
+  A gate CI alone runs is one a change meets after it is pushed.
+  `--cov` sits ahead of `--durations=8` rather than last: it takes an
+  optional value, so as the final token it swallows the first path the
+  command line gives, and `tests/conftest_test.py` is what keeps it off
+  the end.
+- **`tests/conftest.py` gates a run that asked for less than the suite
+  at nothing, and lets it report all the same.** `fail_under` applies to
+  every report coverage writes, so a run of one module would end in
+  `Required test coverage of 100.0% not reached` -- true of that run and
+  saying nothing about the tree. What counts as asking for less is
+  section 8 of the organization standard's set: a path that leaves a
+  `testpaths` entry out, `-k`, `-m`, `--deselect`, `--ignore`,
+  `--ignore-glob`, `--lf`. `pytest tests` is none of them, being what a
+  bare run already collects, which is what btclib-org/.github#430 is
+  about; the threshold is written to `config.known_args_namespace`, the
+  copy pytest-cov reads, and an explicit `--cov-fail-under` outranks it
+  either way.
+- **The coverage job of `test.yml` runs the suite against each linkage,
+  names each run's data file with `COVERAGE_FILE`, and gates the union
+  beside the static run's own 100%.** A given build has one branch of
+  `_load_lib` and not the other, so the dynamic run cannot execute the
+  linked-in one and is asked for `--cov-fail-under=0`; what the combined
+  report gates is a line neither linkage reaches, and its threshold is
+  `[tool.coverage.report]`'s rather than a copy in the workflow. The
+  rejected alternative is an `exclude_also` naming the linked-in branch
+  with its reason, honest only where the dynamic build is not shipped,
+  and this repository publishes both.
+- **A run whose question coverage is no part of passes `--no-cov`**: the
+  platform sentinels, `[tool.cibuildwheel]`'s `test-command`, the sdist
+  suite job of `test.yml`, and the mutation session, whose mutants are
+  reached by no test on purpose. `deps-latest` keeps the measurement
+  instead: it resolves every dependency at its newest, and a release
+  that moves the number is what that sentinel is there to report. The
+  flag needs the plugin installed to parse, so `test-requires` and the
+  sdist job's `pip install` name pytest-cov beside pytest.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -724,7 +724,20 @@ testpaths = ["tests"]
 # belt and braces: testpaths is ignored when pytest is given explicit
 # paths, and the vendored tree carries python files of its own
 norecursedirs = ["secp256k1"]
-addopts = "-ra --strict-markers --strict-config"
+# --cov is here so that the ratchet in [tool.coverage.report] is what a
+# bare `uv run pytest` measures rather than something only the coverage
+# job of test.yml reaches, a gate CI alone runs being one a change meets
+# after it is pushed. What it costs is that fail_under applies to a
+# partial report too, and tests/conftest.py is where that is answered.
+#
+# Its position is load-bearing, and this is the line that says so: --cov
+# takes an *optional* value, so as the last token here it is handed
+# whatever the command line goes on to give, and
+# `pytest tests/keys_test.py` becomes `--cov=tests/keys_test.py` with no
+# path left to select on. Anywhere but last is safe, and --durations=8
+# after it is what keeps it that way -- section 7 of the organization
+# standard names both flags in the addopts it gives
+addopts = "-ra --strict-markers --strict-config --cov --durations=8"
 # an unknown warning is a deprecation the 3.10 to 3.14 spread will turn
 # into a breakage, so make it fail while it is still cheap
 filterwarnings = ["error"]
@@ -767,13 +780,24 @@ precision = 2
 exclude_also = ["raise RuntimeError", "raise AssertionError"]
 # with those excluded the suite reaches every line and every branch, so
 # the ratchet can be the only value that fails on a single new untested
-# one. It assumes the static extension the coverage job builds: on a
-# dynamic one the linked-in branch of _load_lib is the unexecuted one
+# one. It is what a static build meets: on a dynamic one the linked-in
+# branch of _load_lib is the unexecuted one, so the coverage job of
+# test.yml runs that linkage at --cov-fail-under=0 and reports the two
+# runs combined against this same number, beside the static run's own
+# gate rather than instead of it -- section 8 of the organization
+# standard, at "where an optional native dependency splits the code"
 fail_under = 100
 
 [tool.cibuildwheel]
-test-requires = ["pytest"]
-test-command = "pytest {project}/tests/"
+# pytest-cov beside pytest because addopts carries --cov, and an
+# interpreter without the plugin answers "unrecognized arguments: --cov"
+# and exits before it collects anything. What this run asks is whether
+# the wheel it just built passes, so it turns the measurement off with
+# the --no-cov below: section 8 of the organization standard names that
+# flag as one a job may pass beyond what pyproject.toml holds, and
+# coverage is measured once, on the gate's own cell
+test-requires = ["pytest", "pytest-cov"]
+test-command = "pytest --no-cov {project}/tests/"
 build-frontend = "build"
 archs = "auto64"
 # PyPy wheels are opt-in since cibuildwheel 3.0

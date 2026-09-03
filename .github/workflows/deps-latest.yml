@@ -143,7 +143,17 @@ jobs:
       # still --locked, which is not a contradiction: the step above just
       # wrote that lock, so this asserts nothing moved between the two and
       # keeps the convention that no uv command here installs from a lock
-      # it has not checked
+      # it has not checked.
+      #
+      # No --no-cov here, where the platform sentinels and the wheel,
+      # sdist and mutation runs all pass it: --cov comes from addopts, so
+      # this step gates the ratchet against the newest resolution of
+      # every dependency. The header names coverage's fail_under of 100
+      # beside filterwarnings = ["error"] as the ways an upstream release
+      # turns this tree red with nobody having touched it, and that is
+      # what this workflow is for: it gates no merge, so a release moving
+      # the number is read here, ahead of the dependabot pull request the
+      # cron above runs one day in front of
       - name: Run pytest
         shell: bash
         run: uv run --locked --no-default-groups --group test pytest

@@ -50,6 +50,11 @@ htmlcov/
 .tox/
 .coverage
 .coverage.*
+# the coverage job's two runs, one per linkage, named with COVERAGE_FILE
+# so that neither overwrites the other: combine consumes both, so what
+# these cover is a run that stopped before that step
+coverage-data-static
+coverage-data-dynamic
 .cache
 nosetests.xml
 coverage.xml
