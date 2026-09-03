@@ -3565,6 +3565,20 @@ release-notes length in the first place, and are still in
   archive it produces is now compared against another of the same
   commit.
 
+### The publishing environments' `url:` links the PyPI page canonically
+
+- **`release.yml`'s `pypi` and `testpypi` environments link
+  `https://pypi.org/project/btclib-secp256k1/` and
+  `https://test.pypi.org/project/btclib-secp256k1/`** (closes #581).
+  Section 3 of the organization standard links a PyPI page in that
+  form, and spells the distribution there as it is spelled wherever a
+  person writes the name for somebody to copy out. `pypi.org/p/<name>`
+  redirects to `/project/<name>/` carrying whatever spelling it was
+  handed, so the short form costs the reader the hops and leaves the
+  underscore in the address they arrive at. GitHub puts the value on
+  the deployment's `environment_url`, where it is a link a reader
+  follows.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
