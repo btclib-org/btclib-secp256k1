@@ -64,21 +64,28 @@ name: wheel-reproducibility
 # that job reads rebuild, whose Linux build runs on the runner. The
 # answer it carries is about the runner's own toolchain and not about
 # the container this job compiles a Linux wheel in, which the digest
-# [tool.cibuildwheel.linux] pins is what names. Asking it of this job
-# is #584: a second image per platform here, and a comparison taking a
-# set of wheels per image rather than one, a Linux cibuildwheel run
-# leaving a manylinux wheel and a musllinux one.
+# [tool.cibuildwheel.linux] pins is what names. repaired below carries a
+# second image too, on its two Linux platforms alone, reused from
+# rebuild's own pair rather than a third image nothing justifies; a
+# comparison taking a set of wheels per image is what that needs, a
+# Linux cibuildwheel run leaving a manylinux wheel and a musllinux one;
+# and across-images reads both jobs, one directory per family, since an
+# unrepaired uv-build wheel and a cibuildwheel-repaired one of the same
+# interpreter are not the same file and a line saying they disagree
+# would mean nothing (#524).
 #
-# The first image of each pair below is hand-kept against that job's own
-# list, and repaired's own list is that same copy: GitHub Actions gives
-# one workflow no way to read another's strategy.matrix short of
-# workflow_call, which neither file uses and which wiring this sentinel
-# into the gate would defeat the point of. A test holds the three
-# together instead -- tests/wheel_reproducibility_platforms_test.py --
-# so the files can still drift for a moment but not silently: the suite
-# goes red the moment an image build-cibuildwheel builds on is missing
-# from either job here, which is the direction that matters now that
-# rebuild's list and that job's are no longer equal.
+# The first image of each pair in rebuild's own matrix below is
+# hand-kept against build-cibuildwheel's list in test.yml, and
+# repaired's own list carries every one of those plus linux-x86-64's and
+# linux-aarch64's second image, reused from the pair above: GitHub
+# Actions gives one workflow no way to read another's strategy.matrix
+# short of workflow_call, which neither file uses and which wiring this
+# sentinel into the gate would defeat the point of. A test holds the
+# three together instead -- tests/wheel_reproducibility_platforms_test.py
+# -- so the files can still drift for a moment but not silently: the
+# suite goes red the moment an image build-cibuildwheel builds on is
+# missing from either job here, which is the direction that matters now
+# that rebuild's list and that job's are no longer equal.
 #
 # It is a sentinel and not a gate. Two images of one platform do not
 # build one wheel: rebuild below compiles on the runner, so the
@@ -331,16 +338,37 @@ jobs:
       fail-fast: false
       matrix:
         # build-cibuildwheel's own list in test.yml, copied, and held
-        # against it by tests/wheel_reproducibility_platforms_test.py --
-        # equality here, where rebuild's is a containment, since this
-        # job carries no second image of a platform
-        os:
-          - ubuntu-latest
-          - ubuntu-24.04-arm
-          - macos-26-intel
-          - macos-latest
-          - windows-latest
-          - windows-11-arm
+        # against it by tests/wheel_reproducibility_platforms_test.py as
+        # a containment: this job's own images are a superset of the
+        # release ones rather than equal to them, now that the two Linux
+        # entries below carry a second image apiece. macos-x86-64,
+        # macos-arm64, windows-x86-64 and windows-arm64 keep exactly the
+        # one image that uploads a release wheel, unchanged from before
+        # #524 -- a second image there would measure a toolchain the
+        # pinned container says nothing about, which is RELEASING.md's
+        # own reasoning for declining the pin itself on those platforms.
+        # linux-x86-64 and linux-aarch64 each carry rebuild's own second
+        # image besides the release one, reused rather than a third image
+        # nothing justifies: [tool.cibuildwheel.linux]'s pinned digest is
+        # what this second host image is for, so the two builds are meant
+        # to agree on the container even where the host does not
+        include:
+          - platform: linux-x86-64
+            os: ubuntu-latest
+          - platform: linux-x86-64
+            os: ubuntu-22.04
+          - platform: linux-aarch64
+            os: ubuntu-24.04-arm
+          - platform: linux-aarch64
+            os: ubuntu-22.04-arm
+          - platform: macos-x86-64
+            os: macos-26-intel
+          - platform: macos-arm64
+            os: macos-latest
+          - platform: windows-x86-64
+            os: windows-latest
+          - platform: windows-arm64
+            os: windows-11-arm
 
     steps:
       - name: Checkout code
@@ -378,13 +406,46 @@ jobs:
       # script finds cibuildwheel on the PATH this sets, which is why it
       # runs under uv run rather than under --no-project as rebuild's
       # does. shell: bash for the two Windows images, whose default is
-      # PowerShell -- see rebuild's own step for the hazard
+      # PowerShell -- see rebuild's own step for the hazard.
+      # Only the four single-image platforms take this step: the two
+      # Linux ones need their first build's wheels kept for the
+      # container comparison below, which is the next step instead
       - name: Build the repaired wheel twice and diff the two archives
+        if: ${{ !startsWith(matrix.platform, 'linux') }}
         shell: bash
         run: >
           uv run --locked --only-group build python
           .github/scripts/check_wheel_reproducibility.py
           --repaired
+
+      # the Linux entries' own build: --keep-wheel is what the plain
+      # step above does not pass, so that this image's own set of
+      # wheels -- manylinux and musllinux both, from the one interpreter
+      # -- survives past the comparison against this job's second build,
+      # for across-images below to compare against the other host
+      # image's own set
+      - name: Build the repaired wheel twice, diff them, and keep the first
+        if: startsWith(matrix.platform, 'linux')
+        shell: bash
+        env:
+          KEEP_WHEEL: ${{ runner.temp }}/wheel-repaired/${{ matrix.platform }}/${{ matrix.os }}
+        run: >
+          uv run --locked --only-group build python
+          .github/scripts/check_wheel_reproducibility.py
+          --repaired --keep-wheel "$KEEP_WHEEL"
+
+      # !cancelled(), for rebuild's own reason: a Linux image whose own
+      # two builds disagree still has a set of wheels worth comparing
+      # against the other image's. startsWith(matrix.platform, 'linux'),
+      # since macos-x86-64, macos-arm64, windows-x86-64 and windows-arm64
+      # carry no second image here and so have nothing for across-images
+      # to read on this path
+      - name: Keep this image's repaired wheels for the across-images comparison
+        if: ${{ !cancelled() && startsWith(matrix.platform, 'linux') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repaired-wheel-${{ matrix.platform }}-${{ matrix.os }}
+          path: ${{ runner.temp }}/wheel-repaired/
 
   dynamic:
     name: Build the dynamic wheel twice on ${{ matrix.os }} and diff them
@@ -515,7 +576,11 @@ jobs:
 
   across-images:
     name: Compare the wheels two images of one platform built
-    needs: rebuild
+    # rebuild for the runner-toolchain question on every platform,
+    # repaired for the container question #524 asks on the two Linux
+    # ones -- see the steps below for why the two are never merged into
+    # one comparison
+    needs: [rebuild, repaired]
     # !cancelled() rather than success(), for the same reason the upload
     # step above carries it: a platform whose images disagree is what
     # this job exists to name, and one image's red must not take the
@@ -560,3 +625,31 @@ jobs:
           uv run --no-project python
           .github/scripts/check_wheel_reproducibility.py
           --across-images "$WHEELS"
+
+      # a directory of its own rather than a second pattern merged into
+      # the one above: the two families are never one wheel each of the
+      # same platform, an unrepaired uv-build archive and a
+      # cibuildwheel-repaired one of the same interpreter carrying
+      # different names and meaning nothing compared against each other.
+      # !cancelled(), so the runner-toolchain comparison above failing
+      # does not skip the container one
+      - name: Download every Linux image's repaired wheels
+        if: ${{ !cancelled() }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: repaired-wheel-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/wheels-repaired
+
+      # the container question #524 asks: whether the pinned digest,
+      # built on two host images, leaves the host with nothing left to
+      # decide. Only linux-x86-64 and linux-aarch64 reach here, since
+      # repaired uploads a second image nowhere else
+      - name: Diff the repaired wheels two images of one Linux platform built
+        if: ${{ !cancelled() }}
+        env:
+          WHEELS_REPAIRED: ${{ runner.temp }}/wheels-repaired
+        run: >
+          uv run --no-project python
+          .github/scripts/check_wheel_reproducibility.py
+          --across-images "$WHEELS_REPAIRED"

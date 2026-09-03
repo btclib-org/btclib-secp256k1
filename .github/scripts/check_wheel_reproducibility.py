@@ -38,10 +38,11 @@ reproduce because the compiler, its version and the toolchain the
 runner happened to have are unpinned inputs, and `RELEASING.md` says
 the same of a rebuild on a second image -- which is a claim about two
 environments and not about two directories.
-`--across-images` is the entry point that asks it. The comparison
-cannot happen where either build does, the two builds being on two
-machines, so each `--keep-wheel` run saves its first build's wheel and
-a later run compares the saved wheels: `wheel-reproducibility.yml`
+`--across-images` is the entry point that asks it, of what `--keep-wheel`
+saves and, on Linux, of what `--repaired --keep-wheel` saves too. The
+comparison cannot happen where either build does, the two builds being
+on two machines, so each keeping run saves its first build's wheels and
+a later run compares what was saved: `wheel-reproducibility.yml`
 carries them between the two as artifacts.
 
 A whole-archive digest says two wheels differ and nothing past that.
@@ -96,10 +97,12 @@ commit under test the current `HEAD`:
 `--keep-wheel <dir>` adds a copy of the first build's wheel under
 `<dir>`, and `--across-images <dir>` compares wheels already built:
 `<dir>` holds one directory per platform, each holding one directory
-per image, each of those holding that image's wheel. `--repaired` takes
-no argument and needs `cibuildwheel` on `PATH`, which is the `build`
+per image, each of those holding that image's wheel, or set of wheels.
+`--repaired` needs `cibuildwheel` on `PATH`, which is the `build`
 dependency group, and `SOURCE_DATE_EPOCH` set in the environment first,
-or this entry point refuses to run:
+or this entry point refuses to run, with or without `--keep-wheel <dir>`
+after it -- which copies every wheel the first build left rather than
+one, for the same reason `--across-images` reads a directory of sets:
 
     export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
     uv run --locked --only-group build python \\
@@ -543,29 +546,41 @@ def compare_one_platform(platform: Path) -> list[str]:
 
     Args:
         platform: a directory holding one subdirectory per image that
-            built this platform's wheel, each with that wheel in it. The
-            first image in sorted order is the one every other is
-            compared against, so that a platform built on more than two
-            images still yields one line per disagreeing pair.
+            built this platform's wheel, each with that wheel -- or, on
+            Linux, that wheel's `manylinux` and `musllinux` copies --
+            inside it. The first image in sorted order is the one every
+            other is compared against, so that a platform built on more
+            than two images still yields one line per disagreeing pair.
 
     Returns:
-        An empty list where every image's wheel matches the first one's.
-        A directory that does not hold exactly one wheel is a line here
-        too, and so is a platform left with fewer than two of them: the
-        comparison this directory exists for did not happen, which is
-        not the same answer as the wheels agreeing and must not print
-        like it.
+        An empty list where every image's wheel, or set of wheels,
+        matches the first one's, wheel for wheel and member for member.
+        An image directory holding no wheel is a line here too, and so
+        is a platform left with fewer than two images: the comparison
+        this directory exists for did not happen, which is not the same
+        answer as the wheels agreeing and must not print like it.
+
+        Where both images hold exactly one wheel each, the two are
+        compared through `diff_wheels` directly, whatever their names --
+        a macOS or Windows runner's deployment target reaches the
+        platform tag, so two images of that platform name the one wheel
+        each of them built differently while the question about its
+        members is still open, and `pair_wheels_by_name`'s pairing by
+        filename would read that difference as two wheels with nothing
+        in common rather than as one wheel two images tagged apart.
+        Where either image holds more than one -- Linux's `manylinux`
+        and `musllinux` pair from the one interpreter -- the pairing is
+        by name instead, since there the several wheels are genuinely
+        distinct packages and a name is what tells them apart.
     """
     complaints: list[str] = []
-    wheels: dict[str, Path] = {}
+    wheels: dict[str, list[Path]] = {}
     for image in sorted(path for path in platform.iterdir() if path.is_dir()):
         found = sorted(image.glob("*.whl"))
-        if len(found) == 1:
-            wheels[image.name] = found[0]
+        if found:
+            wheels[image.name] = found
         else:
-            complaints.append(
-                f"{image.name} left {[wheel.name for wheel in found]}, not one wheel"
-            )
+            complaints.append(f"{image.name} left no wheel")
     if len(wheels) < 2:
         complaints.append(
             f"a wheel came back from {sorted(wheels)} alone, so no two images"
@@ -574,12 +589,21 @@ def compare_one_platform(platform: Path) -> list[str]:
         return complaints
     reference, *others = sorted(wheels)
     for other in others:
-        complaints += diff_wheels(
-            wheels[reference],
-            wheels[other],
-            first_label=reference,
-            second_label=other,
-        )
+        first_wheels, second_wheels = wheels[reference], wheels[other]
+        if len(first_wheels) == 1 and len(second_wheels) == 1:
+            complaints += diff_wheels(
+                first_wheels[0],
+                second_wheels[0],
+                first_label=reference,
+                second_label=other,
+            )
+        else:
+            complaints += pair_wheels_by_name(
+                first_wheels,
+                second_wheels,
+                first_label=reference,
+                second_label=other,
+            )
     return complaints
 
 
@@ -703,8 +727,18 @@ def source_date_epoch_is_set() -> bool:
     return True
 
 
-def build_repaired_twice_and_compare() -> int:
+def build_repaired_twice_and_compare(keep_wheel: Path | None = None) -> int:
     """Build this commit through `cibuildwheel` twice, and compare.
+
+    Args:
+        keep_wheel: a directory to copy the first build's repaired wheels
+            into, or `None` to keep none. The copy is taken before the
+            second build runs, for the reason `build_twice_and_compare`
+            gives -- a build or a comparison that fails still leaves this
+            image's half of an `--across-images` comparison behind --
+            and it copies every wheel the first build left rather than
+            one: Linux leaves a `manylinux` wheel and a `musllinux` one
+            from the one interpreter, and `--across-images` wants both.
 
     Returns:
         The process exit code: zero where the two builds produced the
@@ -717,6 +751,10 @@ def build_repaired_twice_and_compare() -> int:
     with two_source_copies() as (first_source, second_source):
         root = first_source.parent
         first = build_repaired_wheels(first_source, root / "out-a")
+        if keep_wheel is not None:
+            keep_wheel.mkdir(parents=True, exist_ok=True)
+            for wheel in first:
+                shutil.copy2(wheel, keep_wheel / wheel.name)
         second = build_repaired_wheels(second_source, root / "out-b")
 
         names = ", ".join(wheel.name for wheel in first)
@@ -782,9 +820,11 @@ def build_dynamic_twice_and_compare(
     return 0
 
 
-# the entry points that take no argument of their own, and the usage
-# message's own source for them: a flag added here is offered by both
-# without a second list to keep in step
+# the entry points that take no required argument of their own, and the
+# usage message's own source for two of them: a flag added here is
+# offered by both without a second list to keep in step. `--repaired`
+# also takes `--keep-wheel`, parsed ahead of this dict in main() and
+# written into the usage message by hand for that reason
 _ENTRY_POINTS: dict[str, Callable[[], int]] = {
     "--repaired": build_repaired_twice_and_compare,
     "--dynamic": partial(build_dynamic_twice_and_compare, _DYNAMIC_ENV, repair=True),
@@ -800,12 +840,15 @@ def main(argv: list[str]) -> int:
         return compare_across_images(Path(argv[2]))
     if len(argv) == 3 and argv[1] == "--keep-wheel":
         return build_twice_and_compare(Path(argv[2]))
+    if len(argv) == 4 and argv[1:3] == ["--repaired", "--keep-wheel"]:
+        return build_repaired_twice_and_compare(Path(argv[3]))
     if len(argv) == 2 and argv[1] in _ENTRY_POINTS:
         return _ENTRY_POINTS[argv[1]]()
     if len(argv) != 1:
+        others = " | ".join(name for name in _ENTRY_POINTS if name != "--repaired")
         print(
             f"usage: {argv[0]} [--keep-wheel DIR | --across-images DIR"
-            f" | {' | '.join(_ENTRY_POINTS)}]",
+            f" | --repaired [--keep-wheel DIR] | {others}]",
             file=sys.stderr,
         )
         return 2

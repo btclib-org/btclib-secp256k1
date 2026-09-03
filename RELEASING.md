@@ -913,9 +913,10 @@ those inside a manylinux or a musllinux container, and
 `[tool.cibuildwheel.linux]` names that container by the digest of its
 content: `docker pull`able by anyone, outliving the runner image that
 hosted it, so the digest states the environment to somebody who was
-never on the machine. What no job compares is one commit built through
-that container on two host images, which is
-btclib-org/btclib-secp256k1#584.
+never on the machine. `wheel-reproducibility.yml`'s `repaired` job
+builds one commit through that container on two host images on both
+Linux platforms, and `across-images` is what compares them
+(btclib-org/btclib-secp256k1#524).
 
 The `py3-none-manylinux*` wheels are outside it. `build-dynamic`
 compiles them on the runner in no container, so
@@ -950,8 +951,10 @@ restate.
 `wheel-reproducibility.yml` is what measures any of the above rather
 than leaving it asserted. Its `rebuild`, `repaired`, `dynamic` and
 `cross-windows` jobs each build one commit twice in one image and name
-the members that differ, and `across-images` compares `rebuild`'s
-wheels from two images of one platform. `repaired`, `dynamic` and
+the members that differ, and `across-images` compares two images'
+wheels of one platform: `rebuild`'s wherever it builds one, and
+`repaired`'s on the two Linux platforms, which carry a second image of
+their own. `repaired`, `dynamic` and
 `cross-windows` take the frontend and the repair from the job that
 uploads the wheel each is about, so the file under measurement is the
 one PyPI receives; `build-windows` runs no repair, so `cross-windows`
