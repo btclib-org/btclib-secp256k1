@@ -760,6 +760,13 @@ max-complexity = 10
 # about, both submodules' -- the same reason as normalize_sdist_test.py
 # above
 "tests/submodule_pin_test.py" = ["too-many-arguments"]
+# each fake method's own argument count is libsecp256k1-zkp's C
+# signature, which the fake stands in for and cannot shorten without
+# ceasing to be a stand-in for that call
+"tests/zkp_rangeproof_test.py" = [
+    "too-many-arguments",
+    "too-many-positional-arguments",
+]
 # sphinx imports this one by its own convention, reading docs/source/ as
 # a configuration directory rather than a package; the same reason
 # excludes the standalone scripts above
