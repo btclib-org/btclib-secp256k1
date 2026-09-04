@@ -699,6 +699,9 @@ max-complexity = 10
 # written, so this module docstring is the only place its own
 # reasoning (why ffi and lib need one, why lib stays Any) can live
 "stubs/_btclib_secp256k1.pyi" = ["docstring-in-stub"]
+# the same exemption, the same reason, for the flagged extension's own
+# stub (btclib-org/btclib-secp256k1#605)
+"stubs/_btclib_secp256k1_zkp.pyi" = ["docstring-in-stub"]
 # flake8-no-pep420: every file here is a standalone entry point a workflow
 # step invokes with "python .github/scripts/<name>.py", never an import --
 # the directory holds no __init__.py because it is not a package, and
@@ -776,8 +779,11 @@ notice-rgx = "^# Copyright \\(c\\) The btclib developers\\n# Distributed under t
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # belt and braces: testpaths is ignored when pytest is given explicit
-# paths, and the vendored tree carries python files of its own
-norecursedirs = ["secp256k1"]
+# paths, and both vendored trees carry python files of their own --
+# secp256k1-zkp's tools/ directory names two of them
+# (test_vectors_musig2_generate.py, tests_wycheproof_generate_ecdsa.py)
+# that match pytest's own collection glob
+norecursedirs = ["secp256k1", "secp256k1-zkp"]
 # --cov is here so that the ratchet in [tool.coverage.report] is what a
 # bare `uv run pytest` measures rather than something only the coverage
 # job of test.yml reaches, a gate CI alone runs being one a change meets
@@ -792,6 +798,13 @@ norecursedirs = ["secp256k1"]
 # after it is what keeps it that way -- section 7 of the organization
 # standard names both flags in the addopts it gives
 addopts = "-ra --strict-markers --strict-config --cov --durations=8"
+# --strict-markers is what this registers against: an unregistered
+# @pytest.mark.zkp would otherwise fail collection with no clue beyond
+# the name. Needs BTCLIB_LIBSECP256K1_ZKP=true, which is a build-time
+# question -- the extension the marked test imports either exists or
+# the collection itself fails -- so the marker names the requirement
+# rather than something a test can skip past at run time
+markers = ["zkp: needs BTCLIB_LIBSECP256K1_ZKP=true (btclib-org/btclib-secp256k1#605)"]
 # an unknown warning is a deprecation the 3.10 to 3.14 spread will turn
 # into a breakage, so make it fail while it is still cheap
 filterwarnings = ["error"]

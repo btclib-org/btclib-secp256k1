@@ -562,6 +562,20 @@ command at all, for the reason below, and nothing requires its result.
   written where the command runs and `.gitignore` names them, `combine`
   consuming both and leaving `.coverage`, which it names too
 
+- `Build the flagged secp256k1-zkp extension, and run its tests`
+
+  ```shell
+  BTCLIB_LIBSECP256K1_ZKP=true uv run --locked --no-default-groups \
+      --group test python -c "import _btclib_secp256k1_zkp as m; print(m.lib)"
+  BTCLIB_LIBSECP256K1_ZKP=true uv run --locked --no-default-groups \
+      --group test pytest -m zkp --no-cov
+  ```
+
+  the second command exits 5, pytest's own "no tests ran", until #607,
+  #608 and #609 add a test marked `zkp`: the job tolerates that one exit
+  code and nothing else, which a bare reproduction of it should read as
+  before treating a local red as this branch's own
+
 - `Build wheels on <os>`, for this platform only
 
   ```shell
