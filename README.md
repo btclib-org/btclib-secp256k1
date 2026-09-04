@@ -112,6 +112,21 @@ When a new release of the bindings is needed while still wrapping the
 same libsecp256k1 version, a fourth number is appended:
 0.8.0.1, 0.8.0.2, etc.
 
+<!-- The link below is read by check_submodule_pin.py's zkp half, the
+same way the one above is read by its release half -- see that module's
+docstring. A commit rather than a tag, because secp256k1-zkp cuts none;
+keep this the only link to a secp256k1-zkp commit in this file, for the
+same reason the paragraph above gives for its own link. -->
+
+secp256k1-zkp (btclib-org/btclib-secp256k1#603) is vendored beside
+secp256k1, not in place of it, and carries no release of its own to
+track: it is pinned at
+[10366dbb](https://github.com/BlockstreamResearch/secp256k1-zkp/commit/10366dbbbfeb11457f2aae3b23e154ab7d6a1fe4),
+the tip of its `master` when #603 decided to vendor it. The published
+wheels do not build against it; #605 is what reads this submodule at
+all. A re-pin is a pull request of its own, reviewing the delta against
+the commit named here.
+
 ## The name
 
 This package was `btclib_libsecp256k1` up to and including 0.7.1.3, and

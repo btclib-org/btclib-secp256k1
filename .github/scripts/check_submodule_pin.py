@@ -54,6 +54,19 @@ distinguishable from a current one by shape alone. Keeping the
 "## Versioning" link the *only* such link in README.md is what keeps
 first and only the same match; a link added anywhere else in the file
 that also matches `_NAMED` has to stay below it.
+
+secp256k1-zkp (btclib-org/btclib-secp256k1#604) is pinned the same way and
+checked differently, because it has no release to name: zero tags at the
+pin, so there is no `<tag>^{commit}` for the vendored clone to resolve and
+`commit_of`/`why_no_tag` do not apply to it. What README.md declares
+instead is the commit itself, as the url of its GitHub commit page, and
+the check is a direct string comparison against the index's gitlink for
+that submodule -- no resolution, and so no need for the zkp clone to be
+checked out at all for this hook to pass or fail correctly. That also
+means the hazard two paragraphs up does not reach it: `_NAMED_ZKP` and
+`_NAMED` match different, non-overlapping URL shapes (a release tag's
+path against a commit's), so one can never shadow the other's first
+match.
 """
 
 from __future__ import annotations
@@ -88,11 +101,18 @@ _INHERITED = (
 
 _ROOT = Path(__file__).resolve().parents[2]
 _SUBMODULE = "secp256k1"
+_SUBMODULE_ZKP = "secp256k1-zkp"
 
 # the release README.md names, as the url of an upstream release tag. The
 # same expression release.yml reads it with, which is what keeps the two
 # checks about one line of prose rather than two
 _NAMED = re.compile(r"secp256k1/releases/tag/(v[0-9][0-9.]*)")
+
+# the commit README.md names for secp256k1-zkp, as the url of its GitHub
+# commit page -- there is no tag to link instead. 40 hex digits rather
+# than a short prefix, so the comparison in main() is exact and needs no
+# clone to disambiguate a prefix against
+_NAMED_ZKP = re.compile(r"secp256k1-zkp/commit/([0-9a-f]{40})")
 
 
 def named_release(readme: str) -> str | None:
@@ -109,6 +129,21 @@ def named_release(readme: str) -> str | None:
         module docstring's #429 paragraph.
     """
     match = _NAMED.search(readme)
+    return match[1] if match else None
+
+
+def named_zkp_commit(readme: str) -> str | None:
+    """Return the secp256k1-zkp commit README.md names, or None.
+
+    Args:
+        readme: the text of README.md.
+
+    Returns:
+        The first commit it links to on secp256k1-zkp's own commit page,
+        or None where it links to none -- a failure of its own, the same
+        way `named_release` returning None is.
+    """
+    match = _NAMED_ZKP.search(readme)
     return match[1] if match else None
 
 
@@ -142,8 +177,8 @@ def _git(*args: str, cwd: Path | None = None, disown: bool = False) -> str | Non
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def pinned_commit() -> str | None:
-    """Return the commit the index pins the submodule to.
+def pinned_commit(submodule: str = _SUBMODULE) -> str | None:
+    """Return the commit the index pins a submodule to.
 
     The index, and not `HEAD`: a hook runs on what is about to be
     committed, and the commit that moves the submodule is the one this
@@ -157,10 +192,14 @@ def pinned_commit() -> str | None:
     second reason: the gitlink is in this repository's tree, and it is
     there whether or not the submodule has been checked out.
 
+    Args:
+        submodule: the gitlink's path, `_SUBMODULE` by default -- the one
+            argument callers pass is `_SUBMODULE_ZKP`.
+
     Returns:
         The 40-hex commit, or None if the index has no such gitlink.
     """
-    line = _git("ls-files", "--stage", "--", _SUBMODULE)
+    line = _git("ls-files", "--stage", "--", submodule)
     if not line:
         return None
     fields = line.split()
@@ -254,20 +293,21 @@ def why_no_tag(tag: str) -> str:
     )
 
 
-def main() -> int:
-    """Compare the pin with the release the prose names.
+def _check_release_pin(readme: str) -> int:
+    """Check the secp256k1 half: a tag, resolved in the vendored clone.
+
+    Args:
+        readme: the text of README.md.
 
     Returns:
-        0 where they agree, 1 where they do not or where the question
-        could not be asked -- which is a failure too: a check that
-        cannot read its inputs has not passed.
+        0 where the pin and the tag agree, 1 otherwise.
     """
-    pinned = pinned_commit()
+    pinned = pinned_commit(_SUBMODULE)
     if pinned is None:
         print(f"no {_SUBMODULE} submodule in this tree", file=sys.stderr)
         return 1
 
-    named = named_release((_ROOT / "README.md").read_text(encoding="utf-8"))
+    named = named_release(readme)
     if named is None:
         print(
             "README.md links to no libsecp256k1 release: the version this"
@@ -294,6 +334,65 @@ def main() -> int:
 
     print(f"the submodule is pinned to {named} ({pinned[:7]}), as README.md says")
     return 0
+
+
+def _check_zkp_pin(readme: str) -> int:
+    """Check the secp256k1-zkp half: a commit, no tag naming it.
+
+    Args:
+        readme: the text of README.md.
+
+    Returns:
+        0 where the pin and the declared commit agree, 1 otherwise. No
+        clone is read here at all -- see the module docstring's #604
+        paragraph for why a direct string comparison is enough.
+    """
+    pinned = pinned_commit(_SUBMODULE_ZKP)
+    if pinned is None:
+        print(f"no {_SUBMODULE_ZKP} submodule in this tree", file=sys.stderr)
+        return 1
+
+    named = named_zkp_commit(readme)
+    if named is None:
+        print(
+            f"README.md links to no {_SUBMODULE_ZKP} commit: the pin this"
+            " package builds against is declared there, as the url of its"
+            " GitHub commit page",
+            file=sys.stderr,
+        )
+        return 1
+
+    if named != pinned:
+        print(
+            f"README.md names {_SUBMODULE_ZKP} commit {named[:7]}, and the"
+            f" submodule is pinned to {pinned[:7]}. The submodule moves in a"
+            " change of its own, with the commit named in README.md moved"
+            " with it",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(
+        f"the {_SUBMODULE_ZKP} submodule is pinned to {pinned[:7]}, as README.md says"
+    )
+    return 0
+
+
+def main() -> int:
+    """Compare each submodule's pin with what README.md declares for it.
+
+    Returns:
+        0 where every submodule's pin and its declared value agree, 1
+        where any pair does not or where a question could not be asked --
+        which is a failure too: a check that cannot read its inputs has
+        not passed. Both halves run regardless of the first's result, so
+        a single failing commit reports every disagreement it has rather
+        than the first one found.
+    """
+    readme = (_ROOT / "README.md").read_text(encoding="utf-8")
+    release_ok = _check_release_pin(readme) == 0
+    zkp_ok = _check_zkp_pin(readme) == 0
+    return 0 if release_ok and zkp_ok else 1
 
 
 if __name__ == "__main__":

@@ -36,8 +36,12 @@ import pytest
 
 _PINNED = "6e2c8bc4ecdc6e71dbe7a368f360d8d453ce435d"
 _OTHER = "1a53f4907d5b8f7b0e5b1d3e33e3e50b0e1f0d5c"
+_ZKP_PINNED = "10366dbbbfeb11457f2aae3b23e154ab7d6a1fe4"
+_ZKP_OTHER = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 _README = (
     "wraps ([v0.8.0](https://github.com/bitcoin-core/secp256k1/releases/tag/v0.8.0))."
+    " zkp at [10366dbb](https://github.com/BlockstreamResearch/secp256k1-zkp/commit/"
+    "10366dbbbfeb11457f2aae3b23e154ab7d6a1fe4)."
 )
 
 
@@ -67,23 +71,33 @@ def _tree(
     readme: str = _README,
     pinned: str | None = _PINNED,
     tagged: str | None = _PINNED,
+    zkp_pinned: str | None = _ZKP_PINNED,
 ) -> None:
-    """Stand a tree up in the three answers the check reads.
+    """Stand a tree up in the answers the check reads, both halves.
 
-    The defaults are the agreeing case, so each test below names the one
-    answer it changes and the reader sees which that is.
+    The defaults are the agreeing case for each half, so each test below
+    names the one answer it changes and the reader sees which that is. A
+    test exercising only the release half leaves the zkp half agreeing by
+    default, and the other way round.
 
     Args:
         monkeypatch: the fixture the substitutions are made through.
         tmp_path: where the README the check reads is written.
         readme: its text.
-        pinned: what the gitlink says, or None for no submodule at all.
+        pinned: what the secp256k1 gitlink says, or None for no submodule
+            at all.
         tagged: what the tag resolves to, or None for a tag the vendored
             clone does not have.
+        zkp_pinned: what the secp256k1-zkp gitlink says, or None for no
+            submodule at all.
     """
     (tmp_path / "README.md").write_text(readme, encoding="utf-8")
     monkeypatch.setattr(check, "_ROOT", tmp_path)
-    monkeypatch.setattr(check, "pinned_commit", lambda: pinned)
+
+    def _pinned_commit(submodule: str = check._SUBMODULE) -> str | None:
+        return zkp_pinned if submodule == check._SUBMODULE_ZKP else pinned
+
+    monkeypatch.setattr(check, "pinned_commit", _pinned_commit)
     monkeypatch.setattr(check, "commit_of", lambda _tag: tagged)
 
 
@@ -239,6 +253,70 @@ def test_a_tree_with_no_submodule_fails(
     assert "no secp256k1 submodule" in capsys.readouterr().err
 
 
+def test_the_zkp_commit_is_read_off_the_url() -> None:
+    """The zkp pin is the one README.md links to, and the first of them."""
+    assert check.named_zkp_commit(_README) == _ZKP_PINNED
+    assert check.named_zkp_commit("no link here") is None
+    assert check.named_zkp_commit("") is None
+
+
+def test_a_zkp_pin_matching_the_named_commit_passes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The case the tree is in, for the half with no release to name."""
+    _tree(monkeypatch, tmp_path)
+    assert check.main() == 0
+
+
+def test_a_zkp_pin_that_is_not_the_named_commit_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A submodule moved without the prose, or prose without the submodule.
+
+    The release half agrees here, so this is the zkp half's own failure
+    message, not the release half's.
+    """
+    _tree(monkeypatch, tmp_path, zkp_pinned=_ZKP_OTHER)
+
+    assert check.main() == 1
+    error = capsys.readouterr().err
+    assert _ZKP_PINNED[:7] in error
+    assert _ZKP_OTHER[:7] in error
+    assert "v0.8.0" not in error, "the release half agreed and stayed quiet on stderr"
+
+
+def test_a_readme_naming_no_zkp_commit_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No zkp link is a failure, the same way no release link is."""
+    _tree(monkeypatch, tmp_path, readme=_README.split(" zkp at", maxsplit=1)[0])
+
+    assert check.main() == 1
+    assert "links to no secp256k1-zkp commit" in capsys.readouterr().err
+
+
+def test_a_tree_with_no_zkp_submodule_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The zkp gitlink is the first thing that half reads too."""
+    _tree(monkeypatch, tmp_path, zkp_pinned=None)
+
+    assert check.main() == 1
+    assert "no secp256k1-zkp submodule" in capsys.readouterr().err
+
+
+def test_both_halves_disagreeing_report_both(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A single failing commit names every pin that disagrees, not the first."""
+    _tree(monkeypatch, tmp_path, pinned=_OTHER, zkp_pinned=_ZKP_OTHER)
+
+    assert check.main() == 1
+    error = capsys.readouterr().err
+    assert _OTHER[:7] in error
+    assert _ZKP_OTHER[:7] in error
+
+
 def test_the_submodule_is_read_with_the_hook_environment_off(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -312,6 +390,27 @@ def test_pinned_commit_reads_the_gitlink_line_git_prints(
     ordinary_file = f"100644 {_PINNED} 0\tsecp256k1"
     monkeypatch.setattr(check, "_git", lambda *_args, **_kwargs: ordinary_file)
     assert check.pinned_commit() is None
+
+
+def test_pinned_commit_reads_whichever_submodule_it_is_asked_for(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The path argument is threaded to `_git`, not the default silently kept.
+
+    A `pinned_commit` that read `_SUBMODULE` internally instead of its own
+    `submodule` parameter would pass this test's default call and fail
+    silently on the zkp one -- this is the regression that guards the
+    parametrization itself, not only its default.
+    """
+    seen: list[str] = []
+
+    def _git(*args: str, **_kwargs: object) -> str:
+        seen.append(args[-1])
+        return f"160000 {_ZKP_PINNED} 0\t{args[-1]}"
+
+    monkeypatch.setattr(check, "_git", _git)
+    assert check.pinned_commit(check._SUBMODULE_ZKP) == _ZKP_PINNED
+    assert seen == [check._SUBMODULE_ZKP]
 
 
 def test_the_entry_point_guard_runs_the_check_as___main__(

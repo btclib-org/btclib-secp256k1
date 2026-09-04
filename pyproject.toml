@@ -202,6 +202,29 @@ exclude = [
     "secp256k1/build-aux/m4/ltsugar.m4",
     "secp256k1/build-aux/m4/ltversion.m4",
     "secp256k1/build-aux/m4/lt~obsolete.m4",
+    # secp256k1-zkp (btclib-org/btclib-secp256k1#604), the same risk as
+    # secp256k1's own entries above: a local `./autogen.sh && ./configure`
+    # run in this submodule too would leave these behind, uncommitted and
+    # unbuilt by the CMake path this package actually uses -- measured by
+    # building the sdist with a stray secp256k1/.dirstamp (an automake
+    # artifact .gitignore already names) present, which shipped anyway:
+    # a submodule's own .gitignore is not what keeps its debris out, this
+    # list is. Only the top-level files, not the boilerplate autotools
+    # writes into its own aux directory: secp256k1's own entries for that
+    # directory name `build-aux/`, which the pinned v0.8.0 no longer has
+    # (btclib-org/btclib-secp256k1#611 -- upstream renamed it to
+    # `autotools-aux/` before that tag), so they already match nothing,
+    # and getting the replacement list right for either submodule needs
+    # an actual autogen.sh run this change does not make
+    "secp256k1-zkp/autom4te.cache",
+    "secp256k1-zkp/aclocal.m4",
+    "secp256k1-zkp/configure",
+    "secp256k1-zkp/Makefile",
+    "secp256k1-zkp/Makefile.in",
+    "secp256k1-zkp/config.log",
+    "secp256k1-zkp/config.status",
+    "secp256k1-zkp/libtool",
+    "secp256k1-zkp/libsecp256k1.pc",
 ]
 
 [tool.check-wheel-contents]
@@ -694,6 +717,10 @@ max-complexity = 10
 # about; splitting it into a dataclass would move the same seven names
 # one level down rather than removing any of them
 "tests/normalize_sdist_test.py" = ["too-many-arguments"]
+# one keyword per pin field the submodule-pin check and its tests care
+# about, both submodules' -- the same reason as normalize_sdist_test.py
+# above
+"tests/submodule_pin_test.py" = ["too-many-arguments"]
 # sphinx imports this one by its own convention, reading docs/source/ as
 # a configuration directory rather than a package; the same reason
 # excludes the standalone scripts above

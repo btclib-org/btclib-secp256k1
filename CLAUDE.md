@@ -119,19 +119,32 @@ once, which the ordinary sequence avoids by each removing its own.
 An issue in `btclib-org/.github`'s tracker, worked in `btclib-secp256k1`
 by a coder, names its worktree `wt-github-255-btclib-secp256k1-coder`. A
 worktree isolates files, and a submodule is a checkout of its own that it
-does not inherit, which is why `git submodule update --init secp256k1`
-follows the `cd`; `uv sync --locked` after it is a second venv and a
-second build of the extension, minutes rather than seconds. The editing,
-the gates and the commits all happen in the worktree before the push.
+does not inherit, which is why `git submodule update --init` follows the
+`cd`; `uv sync --locked` after it is a second venv and a second build of
+the extension, minutes rather than seconds. The editing, the gates and
+the commits all happen in the worktree before the push.
 
 ```shell
 WT=<scratchpad>/wt-<tracker>-<issue>-<repo>-<role>
 git worktree add "$WT" origin/main -b <branch>
 cd "$WT"
-git submodule update --init secp256k1
+git submodule update --init
 uv sync --locked
 git push origin HEAD:refs/heads/<branch>
 ```
+
+`--init` with no path initializes every submodule `.gitmodules` lists,
+`secp256k1-zkp` (btclib-org/btclib-secp256k1#604) alongside `secp256k1`
+-- naming `secp256k1` alone, as an earlier revision of this recipe did,
+leaves `secp256k1-zkp` uninitialized, and nothing in the gates says so:
+`check-sdist` reads `git ls-files`, which reports an uninitialized
+submodule as its own single gitlink rather than as the files under it,
+so the sdist it builds ships neither directory's content and still
+answers "SDist matches git" (btclib-org/btclib-secp256k1#612, reproduced
+against `secp256k1` alone and so not this branch's own defect to carry).
+That the build does not yet read `secp256k1-zkp`
+(btclib-org/btclib-secp256k1#605 is what first does) is not the same
+question as whether the sdist gate does.
 
 `-b <branch>` sits after the path and the commit-ish so that the
 placeholder ends the command, which is section 9 of the organization
@@ -148,31 +161,41 @@ which, in one block, is this line against whatever `$WT` already held.
 git worktree remove --force "$WT"
 ```
 
-The venv, the C build and a second clone of the submodule are the whole
-of the cost, and they buy the thing that matters: a commit cannot
-contain work that was never in it, and the maintainer's branch does not
-move under them. The clone is the third of those because a linked
-worktree gets a submodule module of its own rather than sharing the
+The venv, the C build and a clone of each submodule are the whole of the
+cost, and they buy the thing that matters: a commit cannot contain work
+that was never in it, and the maintainer's branch does not move under
+them. The clone is the third of those because a linked worktree gets a
+submodule module of its own per submodule rather than sharing the
 primary checkout's — `secp256k1/.git` there reads `gitdir:
-…/.git/worktrees/<wt>/modules/secp256k1` — which was measured at 14 MB
-under `.git/worktrees/<wt>/modules` and 7 MB of tree. `--reference`
-against the primary's module is what a session asks about next, and it
-works: `git submodule update --init --reference
+…/.git/worktrees/<wt>/modules/secp256k1`, `secp256k1-zkp/.git` the same
+one directory over — which was measured at 14 MB and 13 MB respectively
+under `.git/worktrees/<wt>/modules`, 7 MB of tree each. `--reference`
+against the primary's own module is what a session asks about next, one
+invocation per submodule, each against that submodule's own path under
+the primary's `.git/modules/`: `git submodule update --init --reference
 <primary>/.git/modules/secp256k1 secp256k1` leaves the module directory
 exactly where git puts it, writes one `objects/info/alternates` pointing
 at the primary's `objects`, and measures **128 KB** against those 14 MB,
 with the primary's own `core.worktree` untouched and its submodule
-clean. What it costs is the pointer: the worktree's submodule then has
-no copy of its own objects, so a `git gc` or a repack in the primary —
-or moving or deleting it — can leave this one unable to find them. What
-git is keeping apart by giving each linked worktree a module of its own
-is the submodule's *state*, so that two worktrees can have it checked
-out at two commits; the object store sitting inside that module is a
-consequence of where the state lives rather than a refusal to share
-objects, which is why `--reference` is allowed to share them and why it
-changes nothing about `core.worktree`. For a recipe whose last line
-removes the worktree anyway that is a trade worth declining, and
-declining knowingly is the point of the paragraph.
+clean. The same command against `secp256k1-zkp` needs the primary
+checkout to already carry a `secp256k1-zkp` module of its own to
+reference — true once the primary has been brought forward past
+btclib-org/btclib-secp256k1#604 and had `git submodule update --init
+secp256k1-zkp` run in it once, and not before: asked of a primary still
+on `main` before that, it fails outright with "reference repository …
+is not a local repository" rather than falling back to a plain clone,
+measured by trying it. What `--reference` costs, once it works, is the
+pointer: the worktree's submodule then has no copy of its own objects,
+so a `git gc` or a repack in the primary — or moving or deleting it —
+can leave this one unable to find them. What git is keeping apart by
+giving each linked worktree a module of its own is the submodule's
+*state*, so that two worktrees can have it checked out at two commits;
+the object store sitting inside that module is a consequence of where
+the state lives rather than a refusal to share objects, which is why
+`--reference` is allowed to share them and why it changes nothing about
+`core.worktree`. For a recipe whose last line removes the worktree
+anyway that is a trade worth declining, and declining knowingly is the
+point of the paragraph.
 
 **The submodule line is what makes the rest of the recipe run**, and
 leaving it out costs a session rather than a build: `git submodule status`
