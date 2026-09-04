@@ -8,12 +8,21 @@ Section 7 of the organization standard asks for `__all__` on every module
 and package, "a module under a private name excepted as no part of that
 surface", and a census walking the tree rather than listing it, "so a new
 public name fails until it is exported or recorded" (#357,
-btclib-org/.github#79). This package is flat -- `btclib_secp256k1` and
-eleven modules under it, `_scalar`, `_secret` and `_cdata` excepted by
-their own leading underscore -- so the walk below has none of btclib's
-own `tests/all_test.py` nested-package machinery: no group-or-unpublished
+btclib-org/.github#79). Eleven modules sit directly under
+`btclib_secp256k1` -- `_scalar`, `_secret` and `_cdata` excepted by their
+own leading underscore -- so the walk below has none of btclib's own
+`tests/all_test.py` nested-package machinery: no group-or-unpublished
 partition, because no module here re-exports another by name, and no
-transitive descent, for the same reason.
+transitive descent into the eleven, for the same reason.
+
+`zkp`, the one subpackage, is out of that walk by name rather than by the
+underscore convention: `library_modules()` does not import it, and
+`test_every_module_is_declared` below excludes it from the names
+`iter_modules` finds. An attribute access under it can raise `ImportError`
+by design (`btclib_secp256k1/zkp/__init__.py`'s own docstring), which
+`test_every_exported_name_exists`'s `hasattr` calls do not tolerate --
+`hasattr` swallows `AttributeError` alone. `tests/zkp_test.py` is where
+the subpackage is covered instead.
 
 Every module's `ffi`, `lib`, `CData`, `BytesLike`, `MutableBytesLike` and
 `ctx` come from `from . import ...` or `from .context import ctx`, which
@@ -222,11 +231,16 @@ def test_every_module_is_declared() -> None:
     `btclib_secp256k1/` and not imported above would be silently absent
     from every check in this file, which a discovered list would not
     let happen.
+
+    `zkp` is excluded by name rather than left to fail this comparison:
+    the module docstring above has the reason it carries none of the
+    checks this file runs, and `tests/zkp_test.py` is where it is
+    declared instead.
     """
     found = sorted(
         name
         for _, name, _ in iter_modules(btclib_secp256k1.__path__)
-        if public_name(name)
+        if public_name(name) and name != "zkp"
     )
     declared = sorted(
         module.__name__.rsplit(".", 1)[-1] for module in library_modules()[1:]

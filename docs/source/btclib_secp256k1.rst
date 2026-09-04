@@ -81,6 +81,21 @@ btclib\_secp256k1.xonly module
    :members:
    :show-inheritance:
 
+btclib\_secp256k1.zkp package
+------------------------------
+
+.. No :members: on either stanza below: both load the flagged
+   secp256k1-zkp extension on first attribute access, and this
+   documentation build never sets BTCLIB_LIBSECP256K1_ZKP. #607 onward
+   is where the wrapped modules -- and their :members: -- arrive.
+
+.. automodule:: btclib_secp256k1.zkp
+
+btclib\_secp256k1.zkp.context module
+-------------------------------------
+
+.. automodule:: btclib_secp256k1.zkp.context
+
 Module contents
 ---------------
 

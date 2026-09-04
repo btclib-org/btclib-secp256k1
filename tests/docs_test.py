@@ -12,9 +12,13 @@ module absent from the automodule directives, and therefore from the
 published documentation, with nothing anywhere to say so; this test is
 the thing that says so.
 
-Simpler than btclib's version in one way: this package has no
-subpackages, so a single page holds every stanza and there is no
-toctree-entry pattern to also check.
+Simpler than btclib's version in one way: `zkp`, the one subpackage this
+package has, gets its stanzas on the same page as everything else rather
+than a nested page of its own, so there is no toctree-entry pattern to
+also check. `_shipped()` below needs no case for it either -- a
+subpackage's `__init__.py` maps to the dotted package name the same way
+the top package's own does, stripping the trailing `__init__` rather
+than keeping it as a path component.
 """
 
 import re
