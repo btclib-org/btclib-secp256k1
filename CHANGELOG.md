@@ -4012,6 +4012,18 @@ release-notes length in the first place, and are still in
   repository the `gh api` readback names: `gh api
   repos/btclib-org/btclib-secp256k1 --jq .fork` answers `false` here too.
 
+### The uv floor moves again, to the ceiling Dependabot bundles today
+
+- **`[tool.uv]`'s `required-version` moves from `>=0.12.1` to
+  `>=0.12.7`, the ceiling Dependabot's own uv-ecosystem updater bundles
+  today** (issue btclib-org/.github#448). Section 1 sets the floor at
+  the ceiling rather than below it because that updater runs `uv lock`
+  with exactly the uv it ships and refuses rather than upgrading
+  itself, so a floor above the ceiling would silently stop every lock
+  update it attempts; the failure the floor guards against is an
+  *older* uv rewriting the lock, and raising it as the ceiling rises is
+  always safe.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
