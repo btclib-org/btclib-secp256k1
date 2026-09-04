@@ -344,13 +344,16 @@ its lines is executed, though an unflagged environment can plainly
 import the module itself, the way the documentation build does for its
 own `:members:`. Nothing in it can be *called* there either: every
 entry point opens with a `_boundary()` that raises `ImportError` naming
-the flag. Expect **92.49%**, not 100%, from this command on an ordinary
-checkout — that shortfall is not the module alone: `[tool.coverage.run]`
-names `tests` in `source` too, so `tests/zkp_musig_test.py` and
+the flag. This command reports short of 100% on an ordinary checkout —
+that shortfall is not the module alone: `[tool.coverage.run]` names
+`tests` in `source` too, so `tests/zkp_musig_test.py` and
 `tests/zkp_musig_vectors_test.py` are measured the same way, and each
 stops at its own `importorskip` before a line below it runs, reported
-missed rather than absent from the table. All three files are what a
-contributor should expect to see short, not a broken tree. `test.yml`
+missed rather than absent from the table. A flagged module and its test
+files appearing short in that report is what a contributor should expect to
+see, not a broken tree; which files those are grows with every module #603
+still has queued behind it, so nothing here counts them.
+`test.yml`
 runs this same command against three builds: once per linkage, plus
 once more against the flagged build restricted to the tests marked
 `zkp` — `-m zkp`, a selection rather than the whole suite, the same

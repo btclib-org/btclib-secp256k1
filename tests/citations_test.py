@@ -86,6 +86,12 @@ _DEFINITION = re.compile(r"^def (test_[a-z0-9_]+)\(", re.MULTILINE)
 # still being cited, so this cannot become a list of names nobody removed
 _FOREIGN = {
     "test_low_r": "rust-bitcoin/rust-secp256k1, src/lib.rs",
+    "test_ecdsa_anti_exfil_signer_commit": (
+        "BlockstreamResearch/secp256k1-zkp, src/modules/ecdsa_s2c/tests_impl.h"
+    ),
+    "test_ecdsa_s2c_sign_verify": (
+        "BlockstreamResearch/secp256k1-zkp, src/modules/ecdsa_s2c/tests_impl.h"
+    ),
 }
 
 

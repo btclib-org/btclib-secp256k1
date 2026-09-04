@@ -4131,6 +4131,60 @@ release-notes length in the first place, and are still in
   spelling. `CONTRIBUTING.md`'s gate section now says so, and carries
   the command that re-derives the number should it ever move.
 
+### `zkp.ecdsa_s2c` wraps sign-to-contract and the anti-exfil protocol
+
+- **Every entry point `secp256k1_ecdsa_s2c.h` declares, wrapped one for one**
+  (closes #609): `opening_parse`, `opening_serialize`, `sign` and
+  `verify_commit` for sign-to-contract, and the four `anti_exfil_*`
+  functions the header's own module docstring lays out as the ECDSA
+  Anti-Exfil Protocol -- the reason this module wraps the anti-exfil
+  half rather than deferring it, that being what the module exists for
+  in production. Every entry point reads `zkp.context.ctx` -- and,
+  through it, `zkp`'s own `ffi` and `lib` -- lazily inside itself rather
+  than at the module's own top level, which is what lets
+  `docs/source/btclib_secp256k1.rst` carry its `:members:` without the
+  documentation build ever setting `BTCLIB_LIBSECP256K1_ZKP`. A
+  signature crosses this module's boundary in the 64-byte compact form
+  only; an opening crosses it as the 33-byte compressed serialization
+  `opening_serialize` writes and `opening_parse` reads back, `sign` and
+  `anti_exfil_signer_commit` answering it directly.
+- **Pinned by `src/modules/ecdsa_s2c/tests_impl.h`'s own two fixed
+  vectors**, reproduced against this wrapper rather than against a bare
+  call: the key of `0x55` repeated, the message of `0x88` repeated, and
+  for each vector the opening `sign` answers and the opening
+  `anti_exfil_signer_commit` answers for the same data used as a host
+  commitment. The full anti-exfil protocol is run end to end against
+  random keys too.
+- **A `secp256k1_pubkey` or `secp256k1_ecdsa_signature` the primary
+  package's `dsa` or `keys` module parses is not pointer-compatible with
+  what this extension's own calls expect**, two independently built
+  cffi extensions never sharing a struct type even where the C layout
+  agrees -- measured directly, `TypeError: ... the types are different
+  (check that you are not e.g. mixing up different ffi instances)`. So
+  `anti_exfil_host_verify`'s public key and every signature this module
+  parses are parsed again here, against `zkp`'s own `ffi` and `lib`,
+  rather than through the primary package's modules. `_scalar.py`'s
+  `octets` and `scalar` cross that boundary safely and are reused
+  unchanged, working through `ffi.buffer` and `ffi.typeof` rather than
+  opaque struct identity.
+- **A hand-written stand-in, not the flagged extension, is what reaches
+  100% coverage of this module unflagged**: none of the functions this
+  module wraps exist in the primary extension, so unlike `zkp.context`'s
+  own tests -- which reuse the primary package's real, always-built
+  `ffi` and `lib`, sharing context creation and both callbacks with
+  secp256k1-zkp's own header -- nothing here could reuse a real
+  implementation of them. There is no longer a single build the
+  `coverage` job's ratchet measures: it is the union of three, one
+  flagged, gated at 100% after `combine` (#607). The tests driving the
+  real fixed vectors and the end-to-end protocol are marked `zkp` and
+  guarded with `pytest.importorskip("_btclib_secp256k1_zkp")`: the
+  `coverage` job's own third step selects and runs them against the
+  flagged build, folding them into that union, and the ordinary static
+  and dynamic runs skip them cleanly rather than failing. The separate
+  `zkp` job selects them the same way, for a different question -- that
+  the fourth build path compiles and imports on a clean runner, not
+  coverage.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
