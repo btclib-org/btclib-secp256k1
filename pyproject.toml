@@ -179,6 +179,19 @@ exclude = [
     "**/ehthumbs.db",
     "**/*.swp",
     "secp256k1/src/btclib_default_callbacks.c",
+    # a local `./autogen.sh && ./configure` run in either submodule
+    # leaves these behind, uncommitted and unbuilt by the CMake path this
+    # package actually uses -- measured by building the sdist with a
+    # stray secp256k1/.dirstamp (an automake artifact .gitignore already
+    # names) present, which shipped anyway: a submodule's own .gitignore
+    # is not what keeps its debris out, this list is. Both submodules'
+    # entries below, flat files and the nested aux directory alike, are
+    # the file list `./autogen.sh && ./configure` actually wrote at each
+    # pin (btclib-org/btclib-secp256k1#611), not a name reasoned about
+    # from upstream's own Makefile.am -- which is how the previous
+    # revision of this list came to name `secp256k1/build-aux/...`, a
+    # directory upstream had already renamed to `autotools-aux/` before
+    # the pinned v0.8.0, matching nothing since
     "secp256k1/autom4te.cache",
     "secp256k1/aclocal.m4",
     "secp256k1/configure",
@@ -188,34 +201,22 @@ exclude = [
     "secp256k1/config.status",
     "secp256k1/libtool",
     "secp256k1/libsecp256k1.pc",
-    "secp256k1/build-aux/ar-lib",
-    "secp256k1/build-aux/compile",
-    "secp256k1/build-aux/config.guess",
-    "secp256k1/build-aux/config.sub",
-    "secp256k1/build-aux/depcomp",
-    "secp256k1/build-aux/install-sh",
-    "secp256k1/build-aux/ltmain.sh",
-    "secp256k1/build-aux/missing",
-    "secp256k1/build-aux/test-driver",
-    "secp256k1/build-aux/m4/libtool.m4",
-    "secp256k1/build-aux/m4/ltoptions.m4",
-    "secp256k1/build-aux/m4/ltsugar.m4",
-    "secp256k1/build-aux/m4/ltversion.m4",
-    "secp256k1/build-aux/m4/lt~obsolete.m4",
-    # secp256k1-zkp (btclib-org/btclib-secp256k1#604), the same risk as
-    # secp256k1's own entries above: a local `./autogen.sh && ./configure`
-    # run in this submodule too would leave these behind, uncommitted and
-    # unbuilt by the CMake path this package actually uses -- measured by
-    # building the sdist with a stray secp256k1/.dirstamp (an automake
-    # artifact .gitignore already names) present, which shipped anyway:
-    # a submodule's own .gitignore is not what keeps its debris out, this
-    # list is. Only the top-level files, not the boilerplate autotools
-    # writes into its own aux directory: secp256k1's own entries for that
-    # directory name `build-aux/`, which the pinned v0.8.0 no longer has
-    # (btclib-org/btclib-secp256k1#611 -- upstream renamed it to
-    # `autotools-aux/` before that tag), so they already match nothing,
-    # and getting the replacement list right for either submodule needs
-    # an actual autogen.sh run this change does not make
+    "secp256k1/autotools-aux/ar-lib",
+    "secp256k1/autotools-aux/compile",
+    "secp256k1/autotools-aux/config.guess",
+    "secp256k1/autotools-aux/config.sub",
+    "secp256k1/autotools-aux/depcomp",
+    "secp256k1/autotools-aux/install-sh",
+    "secp256k1/autotools-aux/ltmain.sh",
+    "secp256k1/autotools-aux/missing",
+    "secp256k1/autotools-aux/test-driver",
+    "secp256k1/autotools-aux/m4/libtool.m4",
+    "secp256k1/autotools-aux/m4/ltoptions.m4",
+    "secp256k1/autotools-aux/m4/ltsugar.m4",
+    "secp256k1/autotools-aux/m4/ltversion.m4",
+    "secp256k1/autotools-aux/m4/lt~obsolete.m4",
+    # secp256k1-zkp (btclib-org/btclib-secp256k1#604), the same risk and
+    # the same aux directory name at its own pin, confirmed the same way
     "secp256k1-zkp/autom4te.cache",
     "secp256k1-zkp/aclocal.m4",
     "secp256k1-zkp/configure",
@@ -225,6 +226,20 @@ exclude = [
     "secp256k1-zkp/config.status",
     "secp256k1-zkp/libtool",
     "secp256k1-zkp/libsecp256k1.pc",
+    "secp256k1-zkp/autotools-aux/ar-lib",
+    "secp256k1-zkp/autotools-aux/compile",
+    "secp256k1-zkp/autotools-aux/config.guess",
+    "secp256k1-zkp/autotools-aux/config.sub",
+    "secp256k1-zkp/autotools-aux/depcomp",
+    "secp256k1-zkp/autotools-aux/install-sh",
+    "secp256k1-zkp/autotools-aux/ltmain.sh",
+    "secp256k1-zkp/autotools-aux/missing",
+    "secp256k1-zkp/autotools-aux/test-driver",
+    "secp256k1-zkp/autotools-aux/m4/libtool.m4",
+    "secp256k1-zkp/autotools-aux/m4/ltoptions.m4",
+    "secp256k1-zkp/autotools-aux/m4/ltsugar.m4",
+    "secp256k1-zkp/autotools-aux/m4/ltversion.m4",
+    "secp256k1-zkp/autotools-aux/m4/lt~obsolete.m4",
 ]
 
 [tool.check-wheel-contents]
@@ -691,6 +706,9 @@ max-complexity = 10
 # else: what it prints is what pre-commit shows the developer whose
 # commit it just refused, and stderr is where all of that goes
 ".github/scripts/check_submodule_pin.py" = ["print"]
+# and the submodules-checked-out check, a hook for the same reason and
+# with the same exemption (btclib-org/btclib-secp256k1#612)
+".github/scripts/check_submodules_checked_out.py" = ["print"]
 # the wheel-content check, whose complaints are `::error::` workflow
 # annotations on stderr and whose all-clear line on stdout is what a
 # green run of check-dist shows in its own log: same exemption, same

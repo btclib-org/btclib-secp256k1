@@ -674,6 +674,22 @@ repos:
     hooks:
       - id: uv-lock
 
+  # check-sdist below trusts `git ls-files --recurse-submodules`, and
+  # that flag silently drops a submodule that is not checked out instead
+  # of failing on it -- so an uninitialized secp256k1 or secp256k1-zkp
+  # answers "SDist matches git" with the whole vendored tree missing from
+  # both sides at once (btclib-org/btclib-secp256k1#612). This hook asks
+  # the one question that catches it before check-sdist ever runs;
+  # always_run for the same reason submodule-pin above is
+  - repo: local
+    hooks:
+      - id: submodules-checked-out
+        name: every submodule .gitmodules names is checked out
+        language: python
+        entry: python .github/scripts/check_submodules_checked_out.py
+        always_run: true
+        pass_filenames: false
+
   # check-sdist compares the sdist's members against git's tracked
   # files: a tracked file the archive leaves out and [tool.check-sdist]
   # below does not name is reported missing, and a member neither git
