@@ -3927,6 +3927,34 @@ release-notes length in the first place, and are still in
   artifact at the repository root the same way the primary extension's
   own entry already guards against.
 
+### A sentinel verifies the secp256k1-zkp pin's signer
+
+- **`vendored-vectors.yml` gained a `zkp-pin` job, the external anchor
+  the zkp submodule pin did not have** (closes #613). `_check_zkp_pin`
+  is a self-consistency check entirely inside this repository, by
+  design; this is the network half, in the shape the existing `pin` job
+  already has for the mainline submodule, answering a narrower question
+  because secp256k1-zkp cuts no tags: who signed the pinned commit, not
+  that a project released it. Neither project's own `SECURITY.md` names
+  that person, Andrew Poelstra -- so the fingerprint recorded is his,
+  cross-referenced against his own site the way the existing job's
+  comment already asks a human to do, and against GitHub's independent
+  copy of the same key. It records that he personally authored and
+  signed the one commit pinned today, not that he dominates the
+  project's history: measured, he is seventh by author count, at
+  roughly 4% of it, with three other contributors together holding
+  around two thirds -- so a re-pin authored or signed by someone else is
+  the likelier case, and fails this job until that pull request adds
+  their own fingerprint the same independently-sourced way, a cost
+  stated in the workflow's own comment rather than left to be
+  rediscovered. That key is expired without being revoked, so the job
+  reads GnuPG's own status codes directly rather than `git
+  verify-commit`'s exit code, which fails a merely-expired key exactly
+  as it would a forged one.
+- **A sentinel, not a gate**, for the reason every network check in that
+  workflow already is one, confirmed against `REPOSITORY.md`'s required
+  checks rather than assumed.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

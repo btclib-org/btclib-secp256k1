@@ -75,6 +75,10 @@ on:
       # the run that answers whether a bump is a signed upstream release
       # is the run on the bump itself
       - secp256k1
+      # the zkp-pin job's own equivalent (issue #613), same reasoning:
+      # the commit README.md declares is a gitlink move on the pull
+      # request that makes it
+      - secp256k1-zkp
       - README.md
 
 permissions:
@@ -215,3 +219,117 @@ jobs:
             echo "::error::the submodule is pinned to $pinned, which is not $named"
             exit 1
           fi
+
+  # The zkp pin's own external anchor (issue #613), the same shape as the
+  # pin job above and a sentinel for the identical reason -- a keyserver
+  # or a maintainer's own site being unreachable is nothing a pull
+  # request introduced -- but answering a narrower question, argued in
+  # full on the issue:
+  #
+  # secp256k1-zkp cuts no tags (issue #604's own premise), so there is no
+  # signed release act to verify the way `git tag -v` verifies one above.
+  # What is checkable is who wrote the pinned commit, which is a weaker
+  # claim than "the project blessed this as a release" and is worded as
+  # one below rather than borrowing the pin job's own wording.
+  #
+  # Neither secp256k1-zkp's own SECURITY.md nor mainline's is the right
+  # fingerprint source: both list the disclosure contacts for
+  # vulnerabilities in mainline (Pieter Wuille, Tim Ruffing, and -- only
+  # in mainline's own, more current copy -- Sebastian Falbesoner), and
+  # neither names Andrew Poelstra.
+  #
+  # The fingerprint below is his, and the reason it is the one recorded
+  # is narrower than "he is the project's dominant contributor" -- he is
+  # not: `git -C secp256k1-zkp log --format='%an' | sort | uniq -c | sort
+  # -rn` puts him seventh by author count, at roughly 4% of the full
+  # history, with Wuille, Ruffing and Nick together holding around two
+  # thirds; the committer distribution (mostly the mainline-sync flood
+  # `merge-script` carries in) is the same shape. What actually justifies
+  # this fingerprint is narrower and true: he personally authored *and*
+  # signed the one commit this tree pins, which is sufficient reason to
+  # trust his key for verifying *that* pin, and is the whole of the
+  # claim -- sourced the way the pin job's own comment already asks a
+  # human to source one, cross-referenced against a page only its owner
+  # controls, `andrew.gpg` linked from his own GitHub profile bio
+  # (`gh api users/apoelstra --jq .blog`), and checked against a second,
+  # independent copy, GitHub's own key store for the same account
+  # (`gh api users/apoelstra/gpg_keys`); the two agree.
+  #
+  # What this means for the next re-pin: FINGERPRINT below is not a
+  # standing maintainer roster, only a record of who signed the commit
+  # pinned today. A re-pin authored or merge-script-signed by anyone
+  # else -- likely, given the distribution above -- fails this job until
+  # that pull request adds their fingerprint the same way, sourced and
+  # cross-referenced independently rather than copied from either
+  # SECURITY.md. That is a cost of every re-pin, stated here so it is
+  # not rediscovered as a surprise red run.
+  zkp-pin:
+    name: Check the pinned secp256k1-zkp commit
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # shallow is enough: the one commit this needs is fetched
+          # below, from upstream, which is the point of fetching it at
+          # all
+          submodules: true
+
+      - name: Import the secp256k1-zkp signer's key
+        env:
+          # Andrew Poelstra, https://www.wpsoftware.net/andrew/andrew.gpg
+          FINGERPRINT: 90F9CA3C3EC97BE922DF955EC588D63CE41B97C1
+        run: gpg --keyserver hkps://keys.openpgp.org --recv-keys "$FINGERPRINT"
+
+      # `git verify-commit --raw` over its own exit code, because that
+      # exit code answers a stricter question than this one is: GnuPG
+      # fails a signature made with a key whose stated expiry has since
+      # passed exactly the same way it fails a forged one, and this key
+      # has already been measured to be in that state -- expired
+      # 2026-07-28, and the pinned commit was signed 2026-08-19, three
+      # weeks *after* that date, on both the copy this key was imported
+      # from and GitHub's own independent copy of it. That is Andrew
+      # Poelstra's own key hygiene lapsing, not a reason to doubt he
+      # wrote the commit: nothing about an expired-but-not-revoked key
+      # weakens the cryptographic fact that this exact signature was
+      # produced by the private half of the fingerprint below, which is
+      # the claim this job exists to check. So the machine-readable
+      # status codes are read directly -- VALIDSIG naming the expected
+      # fingerprint is what a mathematically genuine signature always
+      # prints, expired or not, and REVKEYSIG is the one status that
+      # does mean stop trusting it, the owner's own act rather than a
+      # calendar date
+      - name: The pin is a commit signed by a recognized secp256k1-zkp contributor
+        env:
+          FINGERPRINT: 90F9CA3C3EC97BE922DF955EC588D63CE41B97C1
+        run: |
+          named=$(sed -n 's|.*secp256k1-zkp/commit/\([0-9a-f]\{40\}\).*|\1|p' README.md | head -1)
+          pinned=$(git ls-tree HEAD secp256k1-zkp | awk '{print $3}')
+          if [ -z "$named" ]; then
+            echo "::error::README.md links to no secp256k1-zkp commit"
+            exit 1
+          fi
+          if [ "$named" != "$pinned" ]; then
+            echo "::error::the submodule is pinned to $pinned, which README.md does not name"
+            exit 1
+          fi
+          git -C secp256k1-zkp fetch --force origin "$pinned"
+          raw=$(git -C secp256k1-zkp verify-commit --raw "$pinned" 2>&1) || true
+          if ! grep -q "^\[GNUPG:\] VALIDSIG $FINGERPRINT " <<< "$raw"; then
+            echo "::error::$pinned carries no valid signature from $FINGERPRINT"
+            echo "$raw"
+            exit 1
+          fi
+          if grep -q "^\[GNUPG:\] REVKEYSIG" <<< "$raw"; then
+            echo "::error::$FINGERPRINT has been revoked by its own owner"
+            exit 1
+          fi
+          if grep -q "^\[GNUPG:\] EXPKEYSIG" <<< "$raw"; then
+            echo "::warning::$FINGERPRINT has expired; the signature still" \
+              "verifies and the key has not been revoked, so this passes" \
+              "-- see issue #613"
+          fi
+          echo "$pinned is validly signed by $FINGERPRINT"
