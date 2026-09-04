@@ -300,6 +300,62 @@ Do not use Fable unless explicitly instructed.
   sits under them, not a list to be kept here: section 9 says an entry's
   bullets are separate facts and cite separately, so several citations
   under one `###` are no evidence of a theme
+- **`wheel-reproducibility.yml`'s `across-images` job is red by design;
+  only its Linux-repaired half is a claim about this tree.** `rebuild`
+  builds the wheels its *Diff the wheels two images of one platform
+  built* step compares with a plain `uv build` on the runner, entering
+  no container, so what disagrees is the host image's own toolchain —
+  `RELEASING.md`'s rebuild section already gives other bytes from a
+  rebuild outside the image that built the original as the expected
+  outcome. That step is `failure` on runs of branches unrelated to it
+  (`33788435813`, `33784301251`, `33756652274`), the disagreement
+  identical across them — `linux-aarch64`'s extension module at
+  `1819920 vs 1875352 bytes, crc32 5ebec3ee vs 2f8938f0` on every one.
+  In a dispatched run of the same job (`33811045142`) the *Diff the
+  repaired wheels two images of one Linux platform built* step, added
+  by #524, compares the `cibuildwheel`-repaired wheels built inside the
+  pinned container instead, and answers `linux-x86-64: its images
+  agree, member for member` — that is the half a red job still has to
+  keep green
+- **`markdownlint-cli2` is reachable only through `pre-commit`, not
+  through `uv run --only-group lint` on its own.** It is a node hook
+  rather than a member of the `lint` dependency group:
+  `uv run --locked --only-group lint markdownlint-cli2 --fix
+  CHANGELOG.md` dies with `error: Failed to spawn: markdownlint-cli2 /
+  No such file or directory`, exit `2`. The invocation that reaches it
+  is `uv run --locked --only-group lint pre-commit run markdownlint-cli2
+  --files CHANGELOG.md`, which exits `1` with `files were modified by
+  this hook` where the fixer repaired something — that exit is the
+  fixer working, not a failure. It is the one automated repair for what
+  the `merge=union` driver does to `CHANGELOG.md`, below
+- **`pre-commit`'s own log names the sdist hook `check sdist`, with a
+  space, though `.pre-commit-config.yaml`'s `id:` is `check-sdist`.** A
+  `grep -c check-sdist` over a run's log answers `0` on a run where the
+  hook passed, which reads as the hook never having run rather than as
+  the hook succeeding; grep the display name, or read the region
+- **The control for an empty Actions variable store here is the
+  organization endpoint, not the repository's.**
+  `repos/btclib-org/btclib-secp256k1/actions/variables` and
+  `.../actions/secrets` both answer `total_count: 0`, so neither
+  controls the other — an endpoint that answers zero for every
+  repository measures nothing. `gh api orgs/btclib-org/actions/secrets`
+  answers `total_count: 1` (`CLAUDE_CODE_OAUTH_TOKEN`, visibility
+  `all`), which is what makes `gh api orgs/btclib-org/actions/variables`
+  answering `total_count: 0` a real absence rather than an endpoint
+  nobody populates. Organization level is also where to ask in the
+  first place: `CLAUDE_REVIEW_ENABLED`, `claude-review.yml`'s own
+  switch, is an organization variable
+- **The `merge=union` driver's blank-line damage to `CHANGELOG.md` is
+  invisible to `git diff --numstat` and to `git rebase`'s own exit
+  code.** Where a rebase's two sides both append at the end of the open
+  section, the driver keeps the order right and eats only the single
+  blank line above the later `###` — `git diff --numstat` reports the
+  change as a pure addition with no deleted line, and `git rebase`
+  exits `0`. What finds it is reconstructing the file from the new
+  base's own blob with the branch's own block spliced back in and
+  comparing byte for byte; the `markdownlint-cli2` `pre-commit` hook
+  above is what repairs it, since the bare `uv run --only-group lint`
+  invocation cannot reach the tool at all
 
 ## Conventions to match
 
