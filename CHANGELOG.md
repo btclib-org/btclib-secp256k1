@@ -3983,6 +3983,23 @@ release-notes length in the first place, and are still in
   namespace already states for free.
 - Expose no module yet: #607 is `zkp.musig`, next.
 
+### The worktree-removal fence stops on an unset `WT`
+
+- **`CLAUDE.md`'s worktree-removal fence reads `git worktree remove
+  --force "${WT:?}"`, replacing the bare `"$WT"`, and the paragraph
+  above it says what the `:?` is doing there** (issue
+  btclib-org/.github#790). That removal stands in a fence of its own
+  because the block above it ends in a placeholder, so it is pasted
+  alone into whatever shell the reader is in: bare, `"$WT"` expands to
+  the empty string where nothing set it and the command runs on that,
+  where `${WT:?}` makes the expansion fail and the removal does not run.
+  Section 9 of the organization standard asks for both halves -- a fence
+  with nothing in it that fails at the parse is live, so it writes each
+  value the reader was to set as `${name:?}`, and prose beside the fence
+  says what `:?` is doing there, since a reader who is not told deletes
+  it. The prose added is `btclib-org/.github`'s own sentence, byte for
+  byte.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
