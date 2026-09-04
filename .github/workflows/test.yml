@@ -336,6 +336,81 @@ jobs:
           uv run --locked --no-default-groups --group test
           coverage report
 
+  # secp256k1-zkp (btclib-org/btclib-secp256k1#603, #605): one job, one
+  # platform, one interpreter, static only -- the matrix does not learn
+  # the flag, the same argument the coverage job's own header gives for
+  # measuring coverage once. Linux and not macOS or Windows for the same
+  # reason build-dynamic below picks ubuntu-latest first among its own
+  # four: the cheapest cell to schedule, and nothing about the fourth
+  # build path in scripts/cffi_build.py is platform-specific in a way
+  # the three ordinary paths are not already covered for elsewhere.
+  # BTCLIB_LIBSECP256K1_ZKP=true is passed to every step outside the
+  # explicit builds below, so this job is not silently comparable to a
+  # run of it that never uses the flag
+  zkp:
+    name: Build the flagged secp256k1-zkp extension, and run its tests
+    if: >-
+      ${{ !github.event.pull_request.draft
+      && needs.changes.outputs.code == 'true'
+      && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BTCLIB_LIBSECP256K1_ZKP: "true"
+
+    needs: changes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      # the editable install's own build hook is what compiles the
+      # extension, exactly as the coverage job's static run above does
+      # for the primary one -- so this import is a real gate on the
+      # fourth build path, independent of whether any test below
+      # exercises it: a CMake configure failure, a header this build
+      # cannot preprocess, or a link error all fail here, before pytest
+      # is ever invoked. --reinstall-package and --no-cache for the
+      # reason the coverage job's own dynamic run gives: neither uv's
+      # build cache nor the venv it restores is keyed on
+      # BTCLIB_LIBSECP256K1_ZKP, only on the source tree, so a cache
+      # entry this workflow's own coverage job populated for the
+      # unflagged build is indistinguishable from this one's without it
+      - name: Build the flagged extension, and prove it imports
+        run: >
+          uv run --locked --no-default-groups --group test
+          --reinstall-package btclib-secp256k1 --no-cache
+          python -c "import _btclib_secp256k1_zkp as m; print(m.lib)"
+
+      # the tests marked zkp: none exist yet, #607, #608 and #609 being
+      # what adds btclib_secp256k1.zkp and its own tests. Selecting a
+      # marker nothing carries is pytest's own "no tests ran", exit 5 --
+      # deliberately distinct from every other exit code, which is what
+      # lets this step tell "no zkp tests exist yet" apart from a real
+      # failure rather than swallowing both. -m alone already sets this
+      # run's own coverage floor to zero (tests/conftest.py), so --no-cov
+      # only saves the report nobody would read for a selection this
+      # narrow
+      - name: Run the tests marked zkp
+        run: |
+          set +e
+          uv run --locked --no-default-groups --group test \
+            pytest -m zkp --no-cov
+          code=$?
+          set -e
+          if [ "$code" -eq 5 ]; then
+            echo "no zkp-marked tests yet (btclib-org/btclib-secp256k1#607, #608, #609)"
+            exit 0
+          fi
+          exit "$code"
+
   build-cibuildwheel:
     name: Build wheels on ${{ matrix.os }}
     if: >-
@@ -964,6 +1039,7 @@ jobs:
     needs:
       - changes
       - coverage
+      - zkp
       - build-cibuildwheel
       - build-dynamic
       - build-sdist

@@ -3881,6 +3881,52 @@ release-notes length in the first place, and are still in
   to fix is argued on the issue rather than assumed; the guard here does
   not wait on that answer.
 
+### `cffi_build.py` grows a fourth, flag-gated path over secp256k1-zkp
+
+- **`BTCLIB_LIBSECP256K1_ZKP=true` builds a second static extension,
+  `_btclib_secp256k1_zkp`, over the vendored secp256k1-zkp submodule,
+  every one of its own modules turned on** (closes #605). Unset, which
+  is every build this project ships, `scripts/cffi_build.py`'s
+  `ffi_ext_zkp` is `None` and `scripts/hatch_build.py`'s hook skips the
+  `pyproject.toml` `cffi_modules` entry naming it rather than building
+  it: a static file has no environment variable to condition an entry
+  on, so the decision moves into the build description, where the flag
+  is already read. `BTCLIB_LIBSECP256K1_DYNAMIC` or
+  `BTCLIB_LIBSECP256K1_CROSS_COMPILE` alongside the flag raises before
+  either does anything, rather than silently ignoring it: two
+  dynamically linked cores are not a combination this project has built
+  or tested. `scripts/README.md` and `stubs/_btclib_secp256k1_zkp.pyi`
+  -- the second, so strict mypy typechecks a module that exists only
+  after the flagged build -- describe it the way the three ordinary
+  paths and the primary extension's own stub already are.
+- **`Secp256k1CFFIExtension` and the new `Secp256k1ZkpCFFIExtension`
+  share their CMake, architecture and header-preprocessing logic through
+  a new `VendoredCMakeExtension`**, so that the two extensions' own
+  differences -- which submodule is read, which of its CMake modules are
+  turned on, which of its headers the cdef comes from -- are the whole
+  of what either subclass states. The header-stripping pattern widens
+  from `#include` to allow whitespace before `include`: three of
+  secp256k1-zkp's own headers spell their own include of `secp256k1.h`
+  that way, which the unspaced pattern left in the concatenated blob for
+  `gcc -E` to fail resolving, there being no `-I` on that command for it
+  to find the file through.
+- **`test.yml` gains one job, `zkp`: Linux x86-64, one interpreter,
+  static only**, matching the coverage job's own argument for measuring
+  once rather than across the matrix. It proves the fourth path compiles
+  and imports, then runs the tests marked `zkp` -- a marker
+  `pyproject.toml` now registers, none carrying it yet, #607, #608 and
+  #609 being what adds them. `pytest -m zkp` therefore exits 5, pytest's
+  own "no tests ran", and the job's own step is the one place that
+  exit code is treated as expected rather than as a failure.
+- **The sdist exclude list gains `/_btclib_secp256k1_zkp.*`, beside the
+  primary extension's own root-artifact entry**, which does not also
+  match it: gitignore-style matching treats `.` as a literal character,
+  so `/_btclib_secp256k1.*` needs a literal dot immediately after
+  `_btclib_secp256k1`, which `_btclib_secp256k1_zkp.so` does not have.
+  Running `scripts/cffi_build.py` directly with the flag set leaves this
+  artifact at the repository root the same way the primary extension's
+  own entry already guards against.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

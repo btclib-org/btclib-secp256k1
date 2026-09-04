@@ -83,6 +83,12 @@ class CustomBuildHook(BuildHookInterface[Any]):
         own name, and one of the two tags -- inferred for a static build,
         `py3-none-<platform>` for a dynamic one.
 
+        A `cffi_modules` entry that resolves to `None` -- `ffi_ext_zkp`,
+        unflagged -- contributes no artifact and no mode, rather than
+        being asked to build: `pyproject.toml` names the entry
+        unconditionally, so this is where the environment variable it is
+        actually gated on gets read.
+
         Raises RuntimeError unless the modules agree on which of the two it
         is. The tag is a property of the whole wheel, so a wheel holding
         both kinds has no tag that is true of it: `py3-none-<platform>`
@@ -125,6 +131,16 @@ class CustomBuildHook(BuildHookInterface[Any]):
 
         for script, ext_name in cffi_config:
             ext = self.get_ext_object(script, ext_name)
+            # a cffi_modules entry that is always in pyproject.toml but
+            # names a build-time question, not a build: scripts/cffi_build.py's
+            # zkp extension resolves to None where BTCLIB_LIBSECP256K1_ZKP
+            # is unset, which is every wheel this project ships. get_ext_object
+            # would otherwise raise on an absent name, and the entry has
+            # to be present unconditionally for the flag to turn a build
+            # of it on or off -- pyproject.toml's own list holds no
+            # environment variable to be conditioned on
+            if ext is None:
+                continue
 
             temp_dir = build_dir / ext.name
             if temp_dir.exists():
