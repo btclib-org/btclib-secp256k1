@@ -4024,6 +4024,38 @@ release-notes length in the first place, and are still in
   *older* uv rewriting the lock, and raising it as the ceiling rises is
   always safe.
 
+### `README.md` and `SECURITY.md` say which vendored library answered
+
+- **`README.md`'s Design section names the library behind each call:
+  everything outside `btclib_secp256k1.zkp` is libsecp256k1, everything
+  under it secp256k1-zkp** (closes #610, issue #603). A namespace rather
+  than an argument per call, because the libraries overlap by name and
+  not by API -- `musig` is in both, and the fork's is mainline's entry
+  points plus the ones its adaptor signatures need. The criterion that
+  flips the flag's default, putting secp256k1-zkp in the published
+  wheels, is quoted from #603 rather than paraphrased.
+- **The *Wrapped modules* table is scoped to mainline, and the `zkp`
+  namespace takes a paragraph after it**, naming its own `lib`, `ffi`
+  and `context` and sending a reader to the API documentation for which
+  modules are there: that set grows a module at a time, where a list
+  here would be a line every such change has to remember to edit.
+  `silentpayments` runs the other way and is said to -- secp256k1-zkp
+  has no such module at the pinned commit, so BIP352 is mainline's
+  alone. *Build* names `BTCLIB_LIBSECP256K1_ZKP`, pointing at
+  `scripts/README.md` for the variables choosing among the compile
+  paths.
+- **`SECURITY.md` says which library answered a call, so that a reporter
+  does not have to derive it**: `btclib_secp256k1.zkp` delegates to the
+  fork, which is beta because it cuts no tag for a vendored-source
+  review to anchor against and publishes the modules it adds beyond
+  mainline as experimental. The fork's own security policy names the
+  address mainline's does, so where a flaw in the C code goes is the
+  same either way; what differs is that no published wheel carries the
+  extension behind the namespace, making a report under `zkp` a report
+  about a build made from source. The subpackage's own module docstring
+  defers this status here, and the argument it gives for declining a
+  runtime warning stays with it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

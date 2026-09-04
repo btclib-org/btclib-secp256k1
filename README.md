@@ -232,6 +232,27 @@ went:
   besides, which `gh attestation verify` checks; SECURITY.md has the
   command
 
+Which library answered is read off the import line. Everything outside
+`btclib_secp256k1.zkp` is
+[libsecp256k1](https://github.com/bitcoin-core/secp256k1); everything
+under it is
+[secp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp),
+the fork of it carrying the confidential-assets and adaptor-signature
+work mainline does not. A namespace rather than an argument on each
+call, because the libraries overlap by name and not by API: `musig` is
+in both, and the fork's is mainline's entry points plus the ones its
+adaptor signatures need, so one `musig` would name both and an import
+line could not say which was reached — outside `zkp` it is mainline's
+that answers.
+
+The default of the flag that builds the fork flips — the published
+wheels then carrying secp256k1-zkp — at the first of the events
+btclib-org/btclib-secp256k1#603 names, and not before:
+"`BlockstreamResearch/secp256k1-zkp` cuts a tag, which gives the pin a
+release to anchor the vendored-source review against", or "btclib
+acquires a run-time caller of anything under `zkp`". Versioning above
+names the commit the fork is pinned at, and Build below the flag.
+
 ## What the boundary checks
 
 Every wrapper validates its arguments before calling, and what it
@@ -954,7 +975,8 @@ would buy the caller two signatures' worth of nothing.
 ## Wrapped modules
 
 All the optional libsecp256k1 modules are compiled in and their
-declarations are available through the `lib` and `ffi` cffi objects:
+declarations are available through the `lib` and `ffi` cffi objects. The
+table is mainline's:
 
 | libsecp256k1 module | bindings                                  |
 | ------------------- | ----------------------------------------- |
@@ -1120,6 +1142,15 @@ Either way the abort()ing libsecp256k1 defaults are replaced by
 do-nothing stubs in the vendored build, so no illegal argument can take
 the hosting process down.
 
+`btclib_secp256k1.zkp` is the same layout over secp256k1-zkp: a `lib`
+and an `ffi` of its own, a `zkp.context` holding that library's own
+shared context and raising what it reported, and a wrapper module per
+secp256k1-zkp module wrapped. Which those are is
+[the API documentation](https://btclib-secp256k1.readthedocs.io) rather
+than a list here, that set growing a module at a time.
+`silentpayments` runs the other way: secp256k1-zkp has no such module at
+the commit Versioning names, so BIP352 is mainline's alone.
+
 ## Thread safety
 
 The bindings can be called concurrently from several threads. They hold
@@ -1262,6 +1293,14 @@ with a Windows arm64 build.
 The dynamic (ABI mode) Windows wheel is instead cross-compiled on Linux
 with mingw-w64, through the vendored CMake toolchain file, and is
 x86_64 only.
+
+`BTCLIB_LIBSECP256K1_ZKP` builds a second static extension, over the
+vendored secp256k1-zkp, beside the one every wheel carries: it is what
+`btclib_secp256k1.zkp` loads, and no published wheel carries it.
+[scripts/README.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/scripts/README.md)
+has that variable beside the ones choosing among the paths above, and
+says what setting it alongside one of them does: the build declines,
+this extension having no dynamic form.
 
 How to get the submodule, set up the development environment, run the
 suite, reproduce each CI job locally, and what a change is expected to
