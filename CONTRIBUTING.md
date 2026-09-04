@@ -320,8 +320,9 @@ directive imports the result. The lint gate installs no project —
 `submodule-pin` resolves the release `README.md` names in that clone's
 own refs, which is what lets the check run offline.
 
-Three gates decide a merge, and each command below is the one its
-workflow runs:
+Three gates decide a merge, and each command below is close to the one
+its workflow runs — the second is what a contributor types, not what
+`test.yml` runs, and the difference is coverage's own:
 
 ```shell
 uv run --locked --only-group lint pre-commit run --all-files
@@ -330,13 +331,39 @@ uv run --locked --no-default-groups --group docs \
     sphinx-build -n -W -b html docs/source docs/build/html
 ```
 
-Coverage is measured in branch mode and gated by the `fail_under` ratchet
-in `pyproject.toml`: `--cov` is in `addopts`, so the second command above
-is the ratchet and nothing has to be typed after `pytest` to reach it. A
-run that asks for less than the suite — a path leaving part of `tests`
-out, `-k`, `-m`, `--deselect`, `--ignore`, `--ignore-glob` or `--lf` —
-reports its coverage and is gated at nothing, `tests/conftest.py` being
-where that is decided and why.
+Coverage is measured in branch mode, `--cov` sitting in `addopts` so
+nothing has to be typed after `pytest` to see it. The `fail_under`
+ratchet in `pyproject.toml` gates at 100%, but the plain command above no
+longer reaches it on its own: `btclib_secp256k1.zkp.musig` (#607 onward)
+is opt-in behind `BTCLIB_LIBSECP256K1_ZKP` by decision (#603), and this
+suite never imports it without the flag —
+`tests/zkp_musig_test.py` and `tests/zkp_musig_vectors_test.py` both
+`importorskip` out, `tests/all_test.py` excludes `zkp` by name, and
+`tests/examples_test.py` does not descend into subpackages — so none of
+its lines is executed, though an unflagged environment can plainly
+import the module itself, the way the documentation build does for its
+own `:members:`. Nothing in it can be *called* there either: every
+entry point opens with a `_boundary()` that raises `ImportError` naming
+the flag. Expect **92.49%**, not 100%, from this command on an ordinary
+checkout — that shortfall is not the module alone: `[tool.coverage.run]`
+names `tests` in `source` too, so `tests/zkp_musig_test.py` and
+`tests/zkp_musig_vectors_test.py` are measured the same way, and each
+stops at its own `importorskip` before a line below it runs, reported
+missed rather than absent from the table. All three files are what a
+contributor should expect to see short, not a broken tree. `test.yml`
+runs this same command against three builds: once per linkage, plus
+once more against the flagged build restricted to the tests marked
+`zkp` — `-m zkp`, a selection rather than the whole suite, the same
+restriction this paragraph goes on to call out below — each carrying
+its own `--cov-fail-under=0`, and gates the union of the three at 100%
+after `combine`; "Measure coverage, gated at 100%" below is the
+sequence that reproduces that union, and its own 100.00% is CI's real
+number, for whoever builds the extension to check it locally. A run
+that asks for less than the full suite even at that — a path leaving
+part of `tests` out, `-k`, `-m`, `--deselect`, `--ignore`,
+`--ignore-glob` or `--lf` — reports its coverage and is gated at
+nothing either way, `tests/conftest.py` being where that is decided and
+why.
 
 The group flags are not decoration. `uv run` syncs the environment
 itself, and without `--no-default-groups --group test` it installs the
@@ -540,27 +567,39 @@ command at all, for the reason below, and nothing requires its result.
   (<https://github.com/btclib-org/btclib-secp256k1/issues/242>)
 
 - `Measure coverage, gated at 100%`, which is the suite against each
-  linkage and the union of the two gated at the ratchet
+  linkage, the tests marked `zkp` against the flagged build, and the
+  union of the three gated at the ratchet
 
   ```shell
   COVERAGE_FILE=coverage-data-static \
-      uv run --locked --no-default-groups --group test pytest
+      uv run --locked --no-default-groups --group test pytest \
+      --cov-fail-under=0
   BTCLIB_LIBSECP256K1_DYNAMIC=true COVERAGE_FILE=coverage-data-dynamic \
       uv run --locked --no-default-groups --group test \
       --reinstall-package btclib-secp256k1 --no-cache pytest \
       --cov-fail-under=0
+  BTCLIB_LIBSECP256K1_ZKP=true COVERAGE_FILE=coverage-data-zkp \
+      uv run --locked --no-default-groups --group test \
+      --reinstall-package btclib-secp256k1 --no-cache pytest \
+      -m zkp --cov-fail-under=0
   uv run --locked --no-default-groups --group test \
-      coverage combine coverage-data-static coverage-data-dynamic
+      coverage combine coverage-data-static coverage-data-dynamic \
+      coverage-data-zkp
   uv run --locked --no-default-groups --group test coverage report
   ```
 
-  the dynamic run is gated at nothing because the linked-in branch of
-  `_load_lib` is the line it cannot execute; what answers for that line
-  is the static run, and what answers for a line neither of them reaches
-  is the combined report, which takes its threshold from
-  `[tool.coverage.report]` like the first run does. The data files are
-  written where the command runs and `.gitignore` names them, `combine`
-  consuming both and leaving `.coverage`, which it names too
+  none of the three is gated at 100 on its own any more, each carrying
+  its own `--cov-fail-under=0` for a different line it cannot execute:
+  the linked-in branch of `_load_lib` for the dynamic run, and
+  `btclib_secp256k1.zkp.musig` (#607 onward) for both the static and
+  the dynamic run, since neither sets `BTCLIB_LIBSECP256K1_ZKP` and the
+  zkp run's own `-m zkp` selection is what reaches it. What answers for
+  each missing line is one of the other two runs, and the combined
+  report -- the first and only place 100 is actually asked for -- is
+  what answers for a line none of the three reaches, taking its
+  threshold from `[tool.coverage.report]`. The data files are written
+  where the command runs and `.gitignore` names them, `combine`
+  consuming all three and leaving `.coverage`, which it names too
 
 - `Build the flagged secp256k1-zkp extension, and run its tests`
 
@@ -578,10 +617,11 @@ command at all, for the reason below, and nothing requires its result.
   local venv already holding an unflagged build serves it back unless
   told not to -- a fresh venv does not need either flag, and the job
   carries them regardless of which a runner happens to be. The second
-  command exits 5, pytest's own "no tests ran", until #607, #608 and
-  #609 add a test marked `zkp`: the job tolerates that one exit code
-  and nothing else, which a bare reproduction of it should read as
-  before treating a local red as this branch's own
+  command selects the tests marked `zkp`, over
+  `btclib_secp256k1.zkp.musig` (#607) and the modules #608 and #609
+  add; an exit of 5, pytest's own "no tests ran", is a real failure
+  here -- a selection that collected nothing, from a renamed marker, a
+  moved file, or a `-m` matching no test
 
 - `Build wheels on <os>`, for this platform only
 

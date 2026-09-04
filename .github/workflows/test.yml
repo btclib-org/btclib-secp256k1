@@ -280,30 +280,39 @@ jobs:
       # the static extension, which is what a CPython wheel carries and
       # what a bare `uv run pytest` builds: `_load_lib` returns
       # `module.lib` there. The interpreter comes from .python-version,
-      # as it does for a developer, and --cov comes from addopts, so
-      # this step is the ratchet with nothing typed after the command.
-      # One command, not a sync followed by a run: uv run syncs the
-      # environment itself, so the flags belong on this line — left off,
-      # it syncs the default groups, which are wider than test's own.
-      # --locked asserts that uv.lock matches pyproject.toml, which a
-      # plain sync would quietly fix by re-locking instead
+      # as it does for a developer, and --cov comes from addopts.
+      # --cov-fail-under=0 for the same reason the two steps below carry
+      # it: btclib_secp256k1.zkp.musig (#607 onward) is a line neither
+      # this run nor the dynamic one below can execute without
+      # BTCLIB_LIBSECP256K1_ZKP, so this run is short of 100 by
+      # construction too, and none of the three steps is "the ratchet"
+      # on its own any more -- only the union after Report the union
+      # below is. One command, not a sync followed by a run: uv run
+      # syncs the environment itself, so the flags belong on this line —
+      # left off, it syncs the default groups, which are wider than
+      # test's own. --locked asserts that uv.lock matches
+      # pyproject.toml, which a plain sync would quietly fix by
+      # re-locking instead
       - name: Run the suite against a static build
-        run: uv run --locked --no-default-groups --group test pytest
+        run: >
+          uv run --locked --no-default-groups --group test pytest
+          --cov-fail-under=0
         env:
-          # not the default `.coverage`: the step below writes its own
-          # run beside this one and the two are combined afterwards, so
-          # a shared name would leave each overwriting the other.
-          # COVERAGE_FILE is --data-file's environment variable,
-          # coverage's own, so pytest writes here without a second flag
-          # naming what [tool.coverage.run] already decides
+          # not the default `.coverage`: the two steps below each write
+          # their own run beside this one and the three are combined
+          # afterwards, so a shared name would leave each overwriting
+          # the last. COVERAGE_FILE is --data-file's environment
+          # variable, coverage's own, so pytest writes here without a
+          # second flag naming what [tool.coverage.run] already decides
           COVERAGE_FILE: coverage-data-static
 
       # the other branch of `_load_lib`: cffi in ABI mode, dlopening the
       # shared object shipped beside the module. --cov-fail-under=0 and
-      # not --no-cov, this run's data being half of the union below: the
-      # linked-in branch the step above takes is the one line it cannot
-      # execute, so it is short of 100 by construction, and zero is what
-      # leaves it reporting rather than failing on that.
+      # not --no-cov, this run's data being one third of the union
+      # below: the linked-in branch the step above takes is the one
+      # line it cannot execute, so it is short of 100 by construction,
+      # and zero is what leaves it reporting rather than failing on
+      # that.
       # tests/conftest.py hands an explicit threshold back untouched,
       # which is what lets this flag reach the report at all.
       # --reinstall-package with --no-cache because the extension the
@@ -319,19 +328,45 @@ jobs:
           --reinstall-package btclib-secp256k1 --no-cache pytest
           --cov-fail-under=0
 
-      # what the two data files are for: a line neither linkage executes
-      # is what the union reports, where each run on its own reports the
-      # other's branch as a miss. combine writes the default `.coverage`,
-      # which is what report then reads
-      - name: Combine the two runs
+      # zkp/musig.py (#607 onward) runs for real only under
+      # BTCLIB_LIBSECP256K1_ZKP, which neither run above sets: no line
+      # of it is reachable there, by construction, the same way the
+      # linked-in branch of _load_lib is not reachable from the run
+      # above this one. -m zkp rather than the whole suite again: the
+      # static and dynamic runs already cover every line the flag does
+      # not gate, so this run only has to supply what they cannot --
+      # tests/conftest.py sets this selection's own floor to zero on its
+      # own, --cov-fail-under=0 making that explicit rather than relied
+      # on. --reinstall-package and --no-cache for the reason the
+      # dynamic run above needs them: neither the environment nor the
+      # build cache is keyed on this variable, only on the source tree
+      - name: Run the tests marked zkp against the flagged build
+        env:
+          BTCLIB_LIBSECP256K1_ZKP: "true"
+          COVERAGE_FILE: coverage-data-zkp
+        run: >
+          uv run --locked --no-default-groups --group test
+          --reinstall-package btclib-secp256k1 --no-cache pytest
+          -m zkp --cov-fail-under=0
+
+      # what the three data files are for: a line none of the three runs
+      # executes is what the union reports, where each run on its own
+      # reports what only the other two cover as a miss. combine writes
+      # the default `.coverage`, which is what report then reads
+      - name: Combine the three runs
         run: >
           uv run --locked --no-default-groups --group test
           coverage combine coverage-data-static coverage-data-dynamic
+          coverage-data-zkp
 
       # no --fail-under here: coverage reads [tool.coverage.report]'s
-      # own, which is the ratchet the static run above already met, and a
-      # copy of the number in this file is one a maintainer never runs
-      - name: Report the union, gated at 100% too
+      # own, which is the ratchet -- none of the three steps above meets
+      # it alone any more, each carrying its own --cov-fail-under=0 for
+      # a different line the flag or the linkage keeps it from
+      # executing, so this report is the first and only place 100 is
+      # actually asked for. A copy of the number in this file is one a
+      # maintainer never runs
+      - name: Report the union, gated at 100%
         run: >
           uv run --locked --no-default-groups --group test
           coverage report
@@ -389,27 +424,17 @@ jobs:
           --reinstall-package btclib-secp256k1 --no-cache
           python -c "import _btclib_secp256k1_zkp as m; print(m.lib)"
 
-      # the tests marked zkp: none exist yet, #607, #608 and #609 being
-      # what adds btclib_secp256k1.zkp and its own tests. Selecting a
-      # marker nothing carries is pytest's own "no tests ran", exit 5 --
-      # deliberately distinct from every other exit code, which is what
-      # lets this step tell "no zkp tests exist yet" apart from a real
-      # failure rather than swallowing both. -m alone already sets this
-      # run's own coverage floor to zero (tests/conftest.py), so --no-cov
-      # only saves the report nobody would read for a selection this
-      # narrow
+      # the tests marked zkp, over btclib_secp256k1.zkp.musig (#607) and
+      # the modules #608 and #609 add. Nothing here tolerates exit 5,
+      # pytest's own "no tests ran": a selection that collects nothing
+      # -- a renamed marker, a moved file, a -m matching no test -- is a
+      # real failure. -m alone already sets this run's own coverage
+      # floor to zero (tests/conftest.py), so --no-cov only saves the
+      # report nobody would read for a selection this narrow
       - name: Run the tests marked zkp
-        run: |
-          set +e
-          uv run --locked --no-default-groups --group test \
-            pytest -m zkp --no-cov
-          code=$?
-          set -e
-          if [ "$code" -eq 5 ]; then
-            echo "no zkp-marked tests yet (btclib-org/btclib-secp256k1#607, #608, #609)"
-            exit 0
-          fi
-          exit "$code"
+        run: >
+          uv run --locked --no-default-groups --group test
+          pytest -m zkp --no-cov
 
   build-cibuildwheel:
     name: Build wheels on ${{ matrix.os }}
