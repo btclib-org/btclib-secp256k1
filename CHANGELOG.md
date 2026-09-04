@@ -4000,6 +4000,18 @@ release-notes length in the first place, and are still in
   it. The prose added is `btclib-org/.github`'s own sentence, byte for
   byte.
 
+### `claude-review.yml`'s fork comment names a repository that is not a fork
+
+- **The job header's argument for comparing by `full_name` rather than
+  by `.fork` illustrated the distinction with `btclib-org/bbt`, which is
+  not a fork** (issue btclib-org/.github#456). The argument stands --
+  `.fork` is a property of the head repository rather than of the pull
+  request -- and only the example had stopped instancing it. The
+  replacement is `btclib-org/bbt`'s own wording, landed there first as
+  [PR 8](https://github.com/btclib-org/bbt/pull/8), adapted only in the
+  repository the `gh api` readback names: `gh api
+  repos/btclib-org/btclib-secp256k1 --jq .fork` answers `false` here too.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
