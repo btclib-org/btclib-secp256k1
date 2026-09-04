@@ -12,9 +12,22 @@ picks the third, `BTCLIB_LIBSECP256K1_CROSS_COMPILE` forces it for a
 target whose interpreter cannot be run here, and `CFFI_PLATFORM` names
 the platform being built for when it is not the one running.
 
-Two classes: `FFIExtension` is the shape of a build with the three steps
-a subclass has to answer, and `Secp256k1CFFIExtension` is this project's
-one. scripts/README.md walks the file; the module is also loaded by
+A fourth, orthogonal thing the environment decides: `BTCLIB_LIBSECP256K1_ZKP`
+builds a second extension, `_btclib_secp256k1_zkp`, over the vendored
+secp256k1-zkp submodule -- static only, `Secp256k1ZkpCFFIExtension`'s own
+docstring has the reason. Unset, nothing about the three paths above
+changes at all: `ffi_ext_zkp` below is `None`, and
+`scripts/hatch_build.py` never calls into this module a second time.
+
+Three classes: `FFIExtension` is the shape of a build with the three
+steps a subclass has to answer; `VendoredCMakeExtension` is what this
+project's two extensions share -- the CMake invocation, the
+architecture and deployment-target options, and the header-to-cdef
+derivation, none of which depends on which of the two submodules is
+being built; `Secp256k1CFFIExtension` and `Secp256k1ZkpCFFIExtension`
+are the two of them, differing only in which submodule they read, which
+of its modules they turn on, and which of its headers the cdef comes
+from. scripts/README.md walks the file; the module is also loaded by
 `exec()` from scripts/hatch_build.py, which is why nothing here depends
 on being importable.
 """
@@ -42,6 +55,7 @@ else:
 
 cross_compile = os.environ.get("BTCLIB_LIBSECP256K1_CROSS_COMPILE", "false") == "true"
 static = os.environ.get("BTCLIB_LIBSECP256K1_DYNAMIC", "false") != "true"
+zkp = os.environ.get("BTCLIB_LIBSECP256K1_ZKP", "false") == "true"
 
 # do-nothing implementations of the external default callbacks: they replace
 # the abort()ing upstream defaults, so that illegal inputs never crash the
@@ -398,43 +412,73 @@ class FFIExtension:
         return artifacts
 
 
-class Secp256k1CFFIExtension(FFIExtension):
-    """The vendored libsecp256k1, built with CMake and wrapped by cffi."""
+class VendoredCMakeExtension(FFIExtension):
+    """A vendored secp256k1-shaped submodule, built with CMake, wrapped by cffi.
 
-    def __init__(self) -> None:
+    What `Secp256k1CFFIExtension` and `Secp256k1ZkpCFFIExtension` do not
+    share is which submodule is read, which of its CMake modules are
+    turned on, and which of its headers the cdef comes from -- the three
+    arguments `configure` below takes. Everything else is a property of
+    building this shape of upstream CMake project, once per submodule,
+    and lives here so that it is written once: the architecture and
+    deployment-target options, the callback stubs, the choice among the
+    three compilation paths `FFIExtension.create_cffi` makes, and the
+    header concatenation and preprocessing.
+    """
+
+    def configure(
+        self,
+        submodule: str,
+        name: str,
+        headers: list[str],
+        module_flags: list[str],
+        extra_clean_patterns: tuple[str, ...] = (),
+    ) -> None:
         """Name the sources, the headers and where the build output goes.
+
+        Called by a subclass's own `__init__`, in place of setting these
+        attributes by hand and calling `FFIExtension.__init__` itself, so
+        that the two subclasses read the same way: each names what is
+        its own and defers the rest to this method, which ends by making
+        the same call `Secp256k1CFFIExtension.__init__` used to make
+        directly.
 
         Also decides whether this build is static: the dynamic path is
         asked for by environment variable, and cross-compilation forces
-        it, the target's interpreter not being runnable here.
+        it, the target's interpreter not being runnable here. This is a
+        property of the environment the whole file was loaded under, not
+        of which submodule is being built, so it is set the same way for
+        both subclasses.
+
+        Args:
+            submodule: the vendored submodule's directory name, directly
+                under the repository root.
+            name: the name of the extension this build produces.
+            headers: the public headers the cdef is derived from, in an
+                order that satisfies their `#include` dependencies --
+                stripped before preprocessing, so the list order is what
+                still expresses them.
+            module_flags: the `-DSECP256K1_ENABLE_MODULE_*` CMake
+                arguments this submodule's modules are turned on or off
+                with, explicit rather than left to upstream's own
+                defaults, which are not part of its API.
+            extra_clean_patterns: glob patterns, beyond the extension's
+                own name, that a previous build of this extension alone
+                may have left behind. Empty for a submodule whose build
+                leaves nothing else, which is every one but the first.
         """
-        self.name = "_btclib_secp256k1"
+        self.name = name
         self.static = static and not cross_compile
-        self.clean_patterns = [
-            "_btclib_secp256k1.*",
-            "src/btclib_secp256k1/libsecp256k1.*",
-        ]
+        self.clean_patterns = [f"{name}.*", *extra_clean_patterns]
         # working directory
-        self.wd = pathlib.Path(__file__).parent.parent.resolve() / "secp256k1"
+        self.wd = pathlib.Path(__file__).parent.parent.resolve() / submodule
         self.include_dir = self.wd / "include"
-        # #include directives are stripped before preprocessing, so the
-        # concatenation order must satisfy the inter-header dependencies:
-        # musig and silentpayments need the extrakeys types, everything
-        # needs secp256k1.h
-        self.headers = [
-            "secp256k1.h",
-            "secp256k1_ecdh.h",
-            "secp256k1_recovery.h",
-            "secp256k1_extrakeys.h",
-            "secp256k1_schnorrsig.h",
-            "secp256k1_musig.h",
-            "secp256k1_ellswift.h",
-            "secp256k1_silentpayments.h",
-        ]
+        self.headers = headers
+        self.module_flags = module_flags
         # the library is built out of tree, so that the vendored sources
         # are never written to: build/ is where a wheel build puts its
         # own artifacts too, and is removed wholesale before each of them
-        self.cmake_dir = self.wd.parent / "build" / "secp256k1"
+        self.cmake_dir = self.wd.parent / "build" / submodule
         self.library_dirs = [self.cmake_dir / "lib"]
         self.libraries = ["secp256k1"]
         super().__init__()
@@ -609,16 +653,11 @@ class Secp256k1CFFIExtension(FFIExtension):
             # file's lines move with the next submodule bump and nothing
             # here would notice, where these names survive it
             "-DSECP256K1_VALGRIND=OFF",
-            # all the modules wrapped by the bindings are requested
-            # explicitly: upstream defaults are not part of its API
-            # (recovery, in particular, is disabled by default)
-            "-DSECP256K1_ENABLE_MODULE_ECDH=ON",
-            "-DSECP256K1_ENABLE_MODULE_RECOVERY=ON",
-            "-DSECP256K1_ENABLE_MODULE_EXTRAKEYS=ON",
-            "-DSECP256K1_ENABLE_MODULE_SCHNORRSIG=ON",
-            "-DSECP256K1_ENABLE_MODULE_MUSIG=ON",
-            "-DSECP256K1_ENABLE_MODULE_ELLSWIFT=ON",
-            "-DSECP256K1_ENABLE_MODULE_SILENTPAYMENTS=ON",
+            # every module this extension wraps, named by the subclass's
+            # own __init__ and passed to configure(): upstream defaults
+            # are not part of its API (recovery, in particular, is
+            # disabled by default in both submodules)
+            *self.module_flags,
             "-DSECP256K1_BUILD_BENCHMARK=OFF",
             "-DSECP256K1_BUILD_TESTS=OFF",
             "-DSECP256K1_BUILD_EXHAUSTIVE_TESTS=OFF",
@@ -686,6 +725,15 @@ class Secp256k1CFFIExtension(FFIExtension):
         then expands the `__attribute__ ((...))` that cffi's parser cannot
         read. Raises RuntimeError if the preprocessing fails, a partial
         cdef being a wrapper that compiles and declares the wrong thing.
+
+        The pattern allows whitespace between `#` and `include`: every
+        header of the primary submodule spells it `#include`, but three
+        of secp256k1-zkp's own (`secp256k1_bppp.h`, `secp256k1_generator.h`,
+        `secp256k1_rangeproof.h`) spell their own include of `secp256k1.h`
+        `# include`, which an unspaced pattern leaves in the concatenated
+        blob for `gcc -E` to fail on -- there being no `-I` on the command
+        below for it to resolve against, every header read by path and
+        concatenated instead.
         """
         ffi_header = ""
         for h in self.headers:
@@ -693,7 +741,7 @@ class Secp256k1CFFIExtension(FFIExtension):
             with location.open(encoding="utf-8") as f:
                 ffi_header += f.read() + "\n"
 
-        ffi_header = re.sub(r"#include .*", "", ffi_header)
+        ffi_header = re.sub(r"#\s*include .*", "", ffi_header)
 
         # expand all __attribute__ ((...)) to nothing: cffi cannot parse them
         command = [
@@ -714,7 +762,151 @@ class Secp256k1CFFIExtension(FFIExtension):
         return ffi_header, definitions
 
 
+class Secp256k1CFFIExtension(VendoredCMakeExtension):
+    """The vendored libsecp256k1, built with CMake and wrapped by cffi."""
+
+    def __init__(self) -> None:
+        """Name the sources, the headers and where the build output goes."""
+        self.configure(
+            submodule="secp256k1",
+            name="_btclib_secp256k1",
+            # #include directives are stripped before preprocessing, so
+            # the concatenation order must satisfy the inter-header
+            # dependencies: musig and silentpayments need the extrakeys
+            # types, everything needs secp256k1.h
+            headers=[
+                "secp256k1.h",
+                "secp256k1_ecdh.h",
+                "secp256k1_recovery.h",
+                "secp256k1_extrakeys.h",
+                "secp256k1_schnorrsig.h",
+                "secp256k1_musig.h",
+                "secp256k1_ellswift.h",
+                "secp256k1_silentpayments.h",
+            ],
+            module_flags=[
+                "-DSECP256K1_ENABLE_MODULE_ECDH=ON",
+                "-DSECP256K1_ENABLE_MODULE_RECOVERY=ON",
+                "-DSECP256K1_ENABLE_MODULE_EXTRAKEYS=ON",
+                "-DSECP256K1_ENABLE_MODULE_SCHNORRSIG=ON",
+                "-DSECP256K1_ENABLE_MODULE_MUSIG=ON",
+                "-DSECP256K1_ENABLE_MODULE_ELLSWIFT=ON",
+                "-DSECP256K1_ENABLE_MODULE_SILENTPAYMENTS=ON",
+            ],
+            # a leftover of a previous local dynamic build: emit_dynamic
+            # copies the shared library beside the emitted ABI-mode
+            # module, which an editable install places inside
+            # src/btclib_secp256k1/ next to __init__.py -- harmless to a
+            # later static build, _load_lib returning before it ever
+            # globs for one, but stale all the same, and switching a
+            # local build back to dynamic must not pick up the wrong
+            # commit's copy. secp256k1-zkp never builds dynamic (see
+            # Secp256k1ZkpCFFIExtension), so it never leaves this behind
+            extra_clean_patterns=("src/btclib_secp256k1/libsecp256k1.*",),
+        )
+
+
+class Secp256k1ZkpCFFIExtension(VendoredCMakeExtension):
+    """The vendored secp256k1-zkp, built with CMake and wrapped by cffi.
+
+    Static only. Two statically linked cores do not resolve into one
+    another -- `RTLD_LOCAL`, and `SECP256K1_USE_EXTERNAL_DEFAULT_CALLBACKS`
+    already gives each its own default callbacks -- so nothing here stops
+    this extension and `Secp256k1CFFIExtension`'s from being linked into
+    one process at once, each with its own `secp256k1_context_create`,
+    its own contexts and its own copy of every symbol. A dynamic build
+    instead `dlopen`s a shared object at import, which this project has
+    not built or tested two of side by side, so `BTCLIB_LIBSECP256K1_ZKP`
+    declines rather than shipping a second one -- raising here, before
+    any CMake or cffi work starts, rather than letting the dynamic path
+    build something nobody asked for
+    (btclib-org/btclib-secp256k1#603, #605).
+
+    Every module secp256k1-zkp defines is turned on, not the modules
+    beyond mainline's own alone: #603 measured trimming the shared ones
+    (ecdh, recovery, ellswift, musig) at 85 KB of a 1.5 MB library, and
+    zkp's own musig -- the adaptor-capable one, a superset of mainline's
+    -- is needed regardless. secp256k1-zkp has no silentpayments module
+    at the pinned commit, secp256k1-zkp#368's 0.8.0 sync that would add
+    one not yet merged upstream (#603's own survey), so this extension's
+    header list and module flags have no entry for it where
+    `Secp256k1CFFIExtension`'s does.
+    """
+
+    def __init__(self) -> None:
+        """Name the sources, the headers and where the build output goes.
+
+        Raises:
+            RuntimeError: if `BTCLIB_LIBSECP256K1_ZKP` is set alongside
+                `BTCLIB_LIBSECP256K1_DYNAMIC` or
+                `BTCLIB_LIBSECP256K1_CROSS_COMPILE`, either of which
+                takes the *other* extension down the dynamic path this
+                class's own docstring declines.
+        """
+        if not static or cross_compile:
+            msg = (
+                "BTCLIB_LIBSECP256K1_ZKP is static-only: unset "
+                "BTCLIB_LIBSECP256K1_DYNAMIC and BTCLIB_LIBSECP256K1_CROSS_COMPILE, "
+                "or unset BTCLIB_LIBSECP256K1_ZKP"
+            )
+            raise RuntimeError(msg)
+        self.configure(
+            submodule="secp256k1-zkp",
+            name="_btclib_secp256k1_zkp",
+            # secp256k1.h before everything; extrakeys before schnorrsig,
+            # musig and schnorrsig_halfagg, which need its types;
+            # rangeproof before surjectionproof, which needs its types --
+            # the same #include-stripped concatenation this file's other
+            # extension needs, over zkp's own copies of the headers the
+            # two submodules share, which differ from mainline's own
+            # (zkp's musig and schnorrsig each add the adaptor-signature
+            # entry points, and secp256k1.h a deprecated alias)
+            headers=[
+                "secp256k1.h",
+                "secp256k1_ecdh.h",
+                "secp256k1_recovery.h",
+                "secp256k1_extrakeys.h",
+                "secp256k1_schnorrsig.h",
+                "secp256k1_musig.h",
+                "secp256k1_ellswift.h",
+                "secp256k1_generator.h",
+                "secp256k1_rangeproof.h",
+                "secp256k1_surjectionproof.h",
+                "secp256k1_whitelist.h",
+                "secp256k1_ecdsa_adaptor.h",
+                "secp256k1_ecdsa_s2c.h",
+                "secp256k1_bppp.h",
+                "secp256k1_schnorrsig_halfagg.h",
+            ],
+            module_flags=[
+                "-DSECP256K1_ENABLE_MODULE_ECDH=ON",
+                "-DSECP256K1_ENABLE_MODULE_RECOVERY=ON",
+                "-DSECP256K1_ENABLE_MODULE_EXTRAKEYS=ON",
+                "-DSECP256K1_ENABLE_MODULE_SCHNORRSIG=ON",
+                "-DSECP256K1_ENABLE_MODULE_MUSIG=ON",
+                "-DSECP256K1_ENABLE_MODULE_ELLSWIFT=ON",
+                "-DSECP256K1_ENABLE_MODULE_GENERATOR=ON",
+                "-DSECP256K1_ENABLE_MODULE_RANGEPROOF=ON",
+                "-DSECP256K1_ENABLE_MODULE_SURJECTIONPROOF=ON",
+                "-DSECP256K1_ENABLE_MODULE_WHITELIST=ON",
+                "-DSECP256K1_ENABLE_MODULE_ECDSA_ADAPTOR=ON",
+                "-DSECP256K1_ENABLE_MODULE_ECDSA_S2C=ON",
+                "-DSECP256K1_ENABLE_MODULE_BPPP=ON",
+                "-DSECP256K1_ENABLE_MODULE_SCHNORRSIG_HALFAGG=ON",
+            ],
+        )
+
+
 ffi_ext = Secp256k1CFFIExtension()
+# None where the flag is unset, which is every build this project ships
+# today: scripts/hatch_build.py's own loop skips a cffi_modules entry
+# that resolves to None rather than building it, so the extension this
+# module's docstring calls a fourth path is, unflagged, not merely
+# empty but absent -- nothing here differs from what this file built
+# before this class existed
+ffi_ext_zkp = Secp256k1ZkpCFFIExtension() if zkp else None
 
 if __name__ == "__main__":
     ffi_ext.create_cffi(pathlib.Path())
+    if ffi_ext_zkp is not None:
+        ffi_ext_zkp.create_cffi(pathlib.Path())
