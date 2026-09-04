@@ -3853,6 +3853,34 @@ release-notes length in the first place, and are still in
   it (btclib-org/btclib-secp256k1#612, reproduced against `secp256k1`
   alone and not this change's own defect to carry).
 
+### The sdist excludes name the aux directory upstream actually uses
+
+- **`pyproject.toml`'s sdist-exclude entries for the autotools boilerplate
+  a local `./autogen.sh && ./configure` leaves behind now name
+  `autotools-aux/`, not `build-aux/`** (closes #611). The previous
+  entries matched nothing at either submodule's pin: reasoned from
+  upstream's `Makefile.am` rather than measured, they named a directory
+  upstream had already renamed before `secp256k1`'s pinned `v0.8.0`. The
+  replacement list is the file `./autogen.sh && ./configure` actually
+  wrote, run against a disposable clone of each submodule at its own
+  pin, and `secp256k1-zkp` gets the same nested entries `secp256k1`
+  does, confirmed the same way rather than assumed to match.
+
+### A hook refuses an uninitialized submodule ahead of check-sdist
+
+- **A new `submodules-checked-out` pre-commit hook fails, naming which
+  submodule, where any `.gitmodules` lists is not checked out** (closes
+  #612). `check-sdist` trusts `git ls-files --recurse-submodules`, and
+  that flag silently omits an uninitialized submodule's content from its
+  own answer rather than erroring on it, so the sdist and the comparison
+  it is checked against agree on shipping nothing for that submodule at
+  once. The hook runs ahead of `check-sdist` in
+  `.pre-commit-config.yaml` and reads `.gitmodules` and the filesystem
+  only, so it costs nothing `check-sdist` was not already going to
+  spend. Whether the silent omission itself is upstream `check-sdist`'s
+  to fix is argued on the issue rather than assumed; the guard here does
+  not wait on that answer.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
