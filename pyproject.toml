@@ -168,6 +168,15 @@ exclude = [
     # !stubs/_btclib_secp256k1.pyi negation there and drops the stub
     # the strict mypy gate needs from the sdist
     "/_btclib_secp256k1.*",
+    # the same risk, for the flagged extension `scripts/cffi_build.py`
+    # builds under BTCLIB_LIBSECP256K1_ZKP: running it directly leaves
+    # its own artifact at the repository root too
+    # (btclib-org/btclib-secp256k1#605). A separate entry rather than
+    # widening the pattern above: gitignore-style matching treats `.` as
+    # literal, so `/_btclib_secp256k1.*` does not also match
+    # `_btclib_secp256k1_zkp.so`, there being no dot between the two --
+    # measured with pathspec, the library hatchling's own matching uses
+    "/_btclib_secp256k1_zkp.*",
     "**/.libs",
     "**/.deps",
     "**/*.o",
@@ -804,7 +813,9 @@ addopts = "-ra --strict-markers --strict-config --cov --durations=8"
 # question -- the extension the marked test imports either exists or
 # the collection itself fails -- so the marker names the requirement
 # rather than something a test can skip past at run time
-markers = ["zkp: needs BTCLIB_LIBSECP256K1_ZKP=true (btclib-org/btclib-secp256k1#605)"]
+markers = [
+    "zkp: needs BTCLIB_LIBSECP256K1_ZKP=true (btclib-org/btclib-secp256k1#605)",
+]
 # an unknown warning is a deprecation the 3.10 to 3.14 spread will turn
 # into a breakage, so make it fail while it is still cheap
 filterwarnings = ["error"]
