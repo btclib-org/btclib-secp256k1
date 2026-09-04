@@ -3811,6 +3811,48 @@ release-notes length in the first place, and are still in
   `git rebase`'s own exit code**, and that reconstructing the file
   from the new base's blob is what catches it where those two do not.
 
+### secp256k1-zkp is vendored as a second submodule, pinned at a commit no tag names
+
+- **`.gitmodules` now carries `secp256k1-zkp` beside `secp256k1`, pinned
+  where #603 decided rather than at a release: zkp cuts no tags** (closes
+  #604, issue #603). The published wheels do not build against it and no
+  wrapper reads it yet; #605 is what first does. The vendored-source
+  review this pin stands on read the delta against mainline's own tip
+  rather than the whole tree, `src/modules/` and `include/` only: the
+  core modules both trees share are changed in the same places, not
+  replaced, and what is new to this package is zkp's own extra modules
+  and its own `musig`, unreachable from mainline at any pin.
+- **`check_submodule_pin.py` gained a second half for a submodule with no
+  release to resolve**: README.md now declares the zkp pin as the url of
+  its GitHub commit page, and the check compares that string directly
+  against the index's gitlink, reading neither a tag nor the vendored
+  clone at all. The mainline half is untouched; the two run independently
+  and a single failing commit reports whichever pin disagrees, not merely
+  the first one checked.
+- **The sdist now carries a second vendored tree, and the exclude list
+  gained the entries the local-autotools-debris risk shares with
+  `secp256k1`'s own** — the flat filenames only, not the nested autotools
+  boilerplate directory, whose exact contents at the pinned commit this
+  change does not verify (btclib-org/btclib-secp256k1#611).
+- **The CI matrix's own `submodules: true`/`recursive` checkouts are left
+  as they are.** Every one of them now also clones `secp256k1-zkp`, which
+  no job yet builds; measured against this pin, a shallow clone of it
+  costs on the order of a second and single-digit megabytes, small next
+  to the minutes those jobs already spend compiling `secp256k1`, and
+  scoping every checkout down to `secp256k1` alone would touch its own
+  fetch-depth semantics in each of them for that saving. `lint.yml`,
+  which runs `check-sdist`, needs both submodules checked out regardless,
+  for the sdist it builds there to be the one this package actually
+  ships.
+- **`CLAUDE.md`'s worktree recipe now runs `git submodule update --init`
+  with no path, initializing every submodule rather than naming
+  `secp256k1` alone**, which a second submodule made false: `check-sdist`
+  answers "SDist matches git" against an sdist missing a whole
+  uninitialized submodule's content, reading `git ls-files`, which
+  reports a submodule as its own gitlink rather than as the files under
+  it (btclib-org/btclib-secp256k1#612, reproduced against `secp256k1`
+  alone and not this change's own defect to carry).
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
