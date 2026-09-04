@@ -4056,6 +4056,81 @@ release-notes length in the first place, and are still in
   defers this status here, and the argument it gives for declining a
   runtime warning stays with it.
 
+### `btclib_secp256k1.zkp.musig` wraps every entry point zkp's musig header declares
+
+- **zkp's own MuSig2 -- `KeyAggCache`, `SecretNonce` and `Session`
+  shaped like `btclib_secp256k1.musig`'s own, built over zkp's `ffi`,
+  `lib` and `ctx`, never mainline's** (closes #607). #283's structural
+  finding is why: zkp's `nonce_process` takes a sixth argument, an
+  optional adaptor point, `musig_adapt` and `musig_extract_adaptor`
+  read the `nonce_parity` a session built by *that* call reports, and
+  every opaque struct this needs -- keyagg cache, session, secnonce,
+  even a plain `secp256k1_pubkey` -- is a distinct cffi type from
+  mainline's, measured directly: passing one across raises `TypeError:
+  ... the types are different`. So nothing here calls
+  `btclib_secp256k1.keys` or `.xonly`; only `_scalar.py`'s
+  pure-argument helpers and `_secret.wipe` cross the boundary safely.
+- **Every entry point defers `ffi`, `lib` and `ctx` to its own call**,
+  rather than importing any of the three at module scope: importing
+  this module is what Sphinx's autodoc does to document it, and the
+  documentation build never sets `BTCLIB_LIBSECP256K1_ZKP`.
+  `docs/source/btclib_secp256k1.rst` now carries `:members:` for it.
+- **Validated against BIP327's own vectors**, the same files
+  `tests/vectors_test.py` reads for mainline, run unchanged against this
+  module. BIP327 defines no adaptor extension, so that path is checked
+  by round trip instead: pre-sign, adapt with a known secret, extract
+  the secret back out of the two signatures.
+- **The `coverage` job's ratchet gains a third run, over the flagged
+  build.** Neither the static nor the dynamic run this ratchet already
+  measures sets `BTCLIB_LIBSECP256K1_ZKP`, so this module's own lines
+  are unreachable by either; a third step runs the tests marked `zkp`
+  against the flagged build, its own data file joining the other two on
+  the same `coverage combine` line the dynamic run's already sat on.
+  The static step also gains `--cov-fail-under=0`, the dynamic step's
+  own flag: it is no longer the one run of the three that meets 100 on
+  its own, `btclib_secp256k1.zkp.musig` being a line it cannot execute
+  either. The union alone stays gated at 100%. The separate `zkp` job is
+  unchanged by this: it proves the fourth build path compiles and
+  imports on a clean runner, which is a different question from
+  coverage.
+- **Neither the `coverage` job's new step nor the separate `zkp` job
+  tolerates pytest's exit 5** on the tests marked `zkp`: a selection
+  collecting nothing is the failure it is everywhere else, now that
+  this branch's own tests carry the marker and are collected by both.
+- **The `Example:` blocks carry no `>>>` prompts.**
+  `tests/examples_test.py` discovers a package's modules through
+  `pkgutil.iter_modules`, which does not descend into subpackages, so a
+  doctest under `zkp` is never collected on any build -- measured
+  directly, not assumed (issue btclib-org/btclib-secp256k1#621, which is
+  where that gap is tracked and is not this branch's to close). Written
+  as doctests, these blocks would have claimed a coverage
+  `CONTRIBUTING.md` does not give; as plain illustrative code they claim
+  none.
+- **The 100% floor is a property of the union, measured in CI; the
+  ordinary local `pytest` command stays light and no longer reaches
+  it.** `btclib_secp256k1.zkp.musig` is opt-in behind
+  `BTCLIB_LIBSECP256K1_ZKP` by decision (#603), and this suite never
+  imports it without the flag -- `tests/zkp_musig_test.py` and
+  `tests/zkp_musig_vectors_test.py` both `importorskip` out,
+  `tests/all_test.py` excludes `zkp` by name, and
+  `tests/examples_test.py` does not descend into subpackages -- so none
+  of its lines is executed by the suite, though an unflagged
+  environment can plainly import the module itself, the way the
+  documentation build does for its own `:members:`; nothing in it can
+  be *called* there either, every entry point opening with a
+  `_boundary()` that raises `ImportError` naming the flag. At landing,
+  the plain command reported **92.49%**, not 100%, and that shortfall
+  was not the module alone: `[tool.coverage.run]` names `tests` in
+  `source` too, so the two test files above were measured the same way
+  and each stopped at its own `importorskip`, reported missed rather
+  than absent from the table. All three files short, not a broken
+  tree. Making the union the documented local gate was declined: it
+  would force every contributor to build a second C library with CMake
+  for an ordinary gate. So was an `omit` on the flagged test files: the
+  same exemption already declined once in this campaign, in another
+  spelling. `CONTRIBUTING.md`'s gate section now says so, and carries
+  the command that re-derives the number should it ever move.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
