@@ -809,18 +809,14 @@ class Secp256k1CFFIExtension(VendoredCMakeExtension):
 class Secp256k1ZkpCFFIExtension(VendoredCMakeExtension):
     """The vendored secp256k1-zkp, built with CMake and wrapped by cffi.
 
-    Static only. Two statically linked cores do not resolve into one
-    another -- `RTLD_LOCAL`, and `SECP256K1_USE_EXTERNAL_DEFAULT_CALLBACKS`
-    already gives each its own default callbacks -- so nothing here stops
-    this extension and `Secp256k1CFFIExtension`'s from being linked into
-    one process at once, each with its own `secp256k1_context_create`,
-    its own contexts and its own copy of every symbol. A dynamic build
-    instead `dlopen`s a shared object at import, which this project has
-    not built or tested two of side by side, so `BTCLIB_LIBSECP256K1_ZKP`
-    declines rather than shipping a second one -- raising here, before
-    any CMake or cffi work starts, rather than letting the dynamic path
-    build something nobody asked for
-    (btclib-org/btclib-secp256k1#603, #605).
+    Static only, by decision -- #605's own issue body has the reasoning
+    this class executes rather than restates: two statically linked
+    cores, `RTLD_LOCAL`. A dynamic build instead `dlopen`s a shared
+    object at import, which this project has not built or tested two of
+    side by side, so `BTCLIB_LIBSECP256K1_ZKP` declines rather than
+    shipping a second one -- raising here, before any CMake or cffi work
+    starts, rather than letting the dynamic path build something nobody
+    asked for (btclib-org/btclib-secp256k1#603, #605).
 
     Every module secp256k1-zkp defines is turned on, not the modules
     beyond mainline's own alone: #603 measured trimming the shared ones
