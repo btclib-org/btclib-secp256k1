@@ -20,6 +20,21 @@ ours to fix, and it has its own
 [security policy](https://github.com/bitcoin-core/secp256k1/blob/master/SECURITY.md)
 and its own address, *secp256k1-security at bitcoincore dot org*.
 
+One namespace answers from somewhere else, and a report has to say
+which: what answers under `btclib_secp256k1.zkp` is
+[secp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp),
+Blockstream Research's fork of libsecp256k1, vendored as a submodule of
+its own and pinned where README.md's Versioning section says. It is
+**beta**: the fork cuts no tag, so a vendored-source review has no
+release to anchor its pin against, and every entry under the fork's own
+README heading *Added features* is an experimental module, "the APIs of
+these features should not be considered stable". No published wheel
+carries the extension behind that namespace, which is built only where
+`BTCLIB_LIBSECP256K1_ZKP` was set, so a report about anything under
+`zkp` is a report about a build somebody made from source. The fork's own
+[security policy](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/SECURITY.md)
+names the same address mainline's does.
+
 Report there anything affecting the C library. Report here anything
 affecting how these bindings drive it:
 
@@ -38,8 +53,8 @@ affecting how these bindings drive it:
     can reach the caller as a `False`, an ordering or 32 bytes of ECDH
     rather than as an exception. The entry points taking octets are not
     in that position: they parse what they are given
-- the build: which optional modules are compiled in, and the commit of
-    libsecp256k1 the submodule is pinned to
+- the build: which optional modules are compiled in, and the commit each
+    vendored submodule is pinned to
 - the distributions published to PyPI and their provenance
 
 ## Supported versions
