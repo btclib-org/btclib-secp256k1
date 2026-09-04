@@ -504,13 +504,29 @@ repos:
   # open a sentence or sit in a class-name-style compound, and this
   # package's own name never needs the capitalized spelling to appear
   # inside src/btclib_secp256k1/.
+  # `_libsecp256k1` joins `_secp256k1` for the same reason: the
+  # BTCLIB_LIBSECP256K1_* environment variables scripts/cffi_build.py
+  # reads are this project's own build flags, not a downstream name --
+  # they were simply never quoted inside src/btclib_secp256k1/ before
+  # the zkp subpackage's own ImportError named the one that builds its
+  # extension (#606)
   - repo: local
     hooks:
       - id: no-downstream-name-in-package
         name: the shipped package does not name btclib, org spelling excepted
         language: pygrep
         args: ["-i"]
-        entry: 'btclib(?!-secp256k1|_secp256k1|-org|\.org|-node|_node|-benchmarks| developers)'
+        # a block scalar with the pattern alone on its own line, for the
+        # reason the markdown-link-destination hook's own entry already
+        # gives: a folded scalar joins lines with a space, which would
+        # land inside the regex, and "entry: '...'" on one line is not
+        # the single unbroken word yamllint's allow-non-breakable-words
+        # exempts from its line-length rule, where the pattern alone is.
+        # \sdevelopers rather than a literal space before it for the same
+        # reason: \s matches the same one character in "The btclib
+        # developers" without putting a breakable space in the line
+        entry: |-
+          btclib(?!-secp256k1|_secp256k1|_libsecp256k1|-org|\.org|-node|_node|-benchmarks|\sdevelopers)
         files: ^src/btclib_secp256k1/.*\.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy

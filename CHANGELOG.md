@@ -3955,6 +3955,34 @@ release-notes length in the first place, and are still in
   workflow already is one, confirmed against `REPOSITORY.md`'s required
   checks rather than assumed.
 
+### `btclib_secp256k1.zkp` always exists, and loads its extension lazily
+
+- **The subpackage always exists; the flagged extension it wraps mostly
+  does not** (closes #606). `import btclib_secp256k1.zkp` always
+  succeeds and never imports `_btclib_secp256k1_zkp` -- nothing in
+  `__init__.py` reaches into the subpackage either, so importing the top
+  package still costs nothing for a second core it may never load. The
+  first access to `zkp.ffi` or `zkp.lib` is what reaches for the
+  extension, through a module-level `__getattr__` of the same shape
+  `_load_lib` already has; where the build has none, the `ImportError`
+  it raises names `BTCLIB_LIBSECP256K1_ZKP=1` and the sdist rather than
+  leaving a caller with the bare "No module named".
+- **`btclib_secp256k1.zkp.context` holds a context of its own**, created
+  and randomized the way `context.py` does for the primary one, and read
+  the same lazy way: `import btclib_secp256k1.zkp.context` on its own
+  needs no flag either, so `docs/source/btclib_secp256k1.rst` documents
+  it without one. Its own `check()` raises what secp256k1-zkp reported
+  on the calling thread, through a thread-local pair of callbacks of its
+  own -- a call made through zkp's `lib` is never explained by the
+  primary package's `check()`.
+- **beta is the namespace, restated in the subpackage's own module
+  docstring rather than as a runtime warning**: #283's decision, and a
+  `DeprecationWarning`-style category was declined because this
+  project's own `filterwarnings = ["error"]` would turn every `zkp`
+  import, here and downstream, into a hard failure for a status the
+  namespace already states for free.
+- Expose no module yet: #607 is `zkp.musig`, next.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

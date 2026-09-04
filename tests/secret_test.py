@@ -288,6 +288,18 @@ def test_every_function_that_takes_a_secret_out_offers_into() -> None:
     functions: dict[tuple[str, str], FunctionType] = {}
     called: dict[tuple[str, str], set[str]] = {}
     for info in pkgutil.iter_modules(btclib_secp256k1.__path__):
+        if info.name == "zkp":
+            # a subpackage, not a flat module, and out of this walk for
+            # two reasons: it wraps no secret producer yet (#607 onward
+            # is what will), and its own module-level __getattr__ --
+            # PEP 562, the same shape __init__.py's own __version__
+            # getter uses -- is defined inside an indented `else:`
+            # block, whose source `inspect.getsource` hands back
+            # un-dedented; ast.parse refuses that with IndentationError
+            # rather than the OSError this loop already catches below.
+            # tests/all_test.py excludes it from its own generic walk
+            # for the first reason
+            continue
         module = importlib.import_module(f"btclib_secp256k1.{info.name}")
         for name, function in vars(module).items():
             if (
