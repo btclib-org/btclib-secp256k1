@@ -377,10 +377,16 @@ jobs:
       # fourth build path, independent of whether any test below
       # exercises it: a CMake configure failure, a header this build
       # cannot preprocess, or a link error all fail here, before pytest
-      # is ever invoked
+      # is ever invoked. --reinstall-package and --no-cache for the
+      # reason the coverage job's own dynamic run gives: neither uv's
+      # build cache nor the venv it restores is keyed on
+      # BTCLIB_LIBSECP256K1_ZKP, only on the source tree, so a cache
+      # entry this workflow's own coverage job populated for the
+      # unflagged build is indistinguishable from this one's without it
       - name: Build the flagged extension, and prove it imports
         run: >
           uv run --locked --no-default-groups --group test
+          --reinstall-package btclib-secp256k1 --no-cache
           python -c "import _btclib_secp256k1_zkp as m; print(m.lib)"
 
       # the tests marked zkp: none exist yet, #607, #608 and #609 being
