@@ -4553,6 +4553,36 @@ release-notes length in the first place, and are still in
   the entry at the repository root covers every submodule the
   `.gitmodules` there names. The entry itself is unchanged.
 
+### The `check-sdist` comment names what decides how its build runs
+
+- **`--no-isolation` comes from upstream's own hook `entry`** (closes
+  #656). `check-sdist`'s `.pre-commit-hooks.yaml` carries it there and
+  `pre-commit` appends a config's `args` to `entry` rather than
+  replacing it, so the composed line is `check-sdist --no-isolation
+  --inject-junk --installer=pip`; `check-sdist-isolated` is the id
+  whose `entry` omits the flag. The comment had attributed the flag to
+  `--installer=pip`, which selects an installer and not an isolation
+  mode.
+- **`uv build` calls the backend `[build-system]` declares** (closes
+  #663). It reaches for no bundled `uv_build`, so what
+  `--installer=pip` decides is which tool performs the build:
+  `uv build --no-build-isolation` hands the declared backend the
+  environment it is given, where `python -m build --sdist
+  --no-isolation` checks the whole of `requires` first.
+- **The measurement beside `additional_dependencies` cites the exit
+  code rather than the message** (closes #669). `build` returns early
+  on a requirement whose marker is unmet -- the same block under
+  1.5.0's `check_dependency` and 1.6.0's `_check_dependency` -- and
+  `requires` here is marker-gated, so which packages the refusal names
+  follows the interpreter: 3.14 wants `cffi>=2.0` and `setuptools`
+  where 3.11 wants `cffi>=1.6` and `typing_extensions`. `build` also
+  words that message differently between its own releases.
+- **The `--installer=pip` clause no longer cross-references `pyroma`
+  as sitting above it.** That hook is below `check-sdist` in this
+  file, which the other reference to it already says, and the
+  paragraph on `additional_dependencies` draws the comparison the
+  clause was reaching for.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
