@@ -4327,6 +4327,37 @@ release-notes length in the first place, and are still in
   their length -- so a number there is a line every new module has to
   remember to edit.
 
+### `pyproject.toml`'s comments say why, not what the file used to say
+
+- **The comment above `[tool.hatch.build.targets.sdist]`'s exclusion
+  list dates nothing by the vendored submodule's pin** (closes #637).
+  Its closing clause put an upstream rename "before the pinned v0.8.0",
+  and `.github/dependabot.yml` carries a `gitsubmodule` ecosystem: the
+  pull request that moves that pin touches the gitlink and leaves this
+  file alone. What a reader of the list needs is why its entries come
+  from a run at each pin rather than from upstream's own `Makefile.am`,
+  and that is now said in the present tense: none of the submodule
+  entries the comment introduces exists until
+  `./autogen.sh && ./configure` are run, so a stale one matches nothing
+  and fails nothing, and one matching a file a submodule tracks fails
+  nothing either (btclib-org/btclib-secp256k1#655) -- `check-sdist`
+  reads this very list through its hatchling plugin and subtracts what
+  it matches from the tracked files it reports missing.
+  `git submodule status` answers in one line which commit is pinned,
+  about the tree in hand.
+- **The comment above `[project]`'s `dependencies` stops naming the
+  floor the file used to declare** (closes #642). Section 9 of the
+  organization standard keeps history out of prose that lands, and this
+  clause is not the kind that goes stale -- an immutable past constraint
+  cannot -- so what it costs is the comment's subject rather than its
+  truth. The sentences before it already give every floor its own
+  present-tense reason: `ffi.unpack` arrives in cffi 1.6, 1.17 is the
+  first release supporting CPython 3.13, and 2.0 the first supporting
+  3.14 and the free-threaded build. The present-tense equivalent would
+  restate the sentence above it, a single loose floor being exactly the
+  resolver picking "a cffi that cannot know them", so the clause goes
+  rather than being rewritten.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
