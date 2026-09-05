@@ -4443,6 +4443,32 @@ release-notes length in the first place, and are still in
   guarded with `pytest.importorskip` so that `-m zkp` -- the selector of
   the flagged jobs in `.github/workflows/test.yml` -- is what runs it.
 
+### `CLAUDE.md`'s worktree paragraph names the gate and the zkp build flag
+
+- **The paragraph under the worktree recipe names the lint gate as what
+  fails where a submodule is not checked out** (closes #644).
+  `.pre-commit-config.yaml`'s `submodules-checked-out` hook looks for a
+  `.git` of its own under every path `.gitmodules` names and exits 1
+  naming each one missing, so `uv run --locked --only-group lint
+  pre-commit run --all-files` fails on a worktree holding `secp256k1`
+  and not `secp256k1-zkp`, with no project installed and nothing built.
+- **`check-sdist` is named as the gate that says nothing there.** It
+  compares the sdist it builds against `git ls-files --cached
+  --recurse-submodules`, and that command prints nothing at all for a
+  submodule that is not checked out -- not the files under it and not
+  its gitlink -- so the missing tree is absent from both sides of the
+  comparison and the hook answers "SDist matches git" (#612). The
+  paragraph said instead that nothing in the gates says so, and that
+  the gitlink is what `git ls-files` reports there.
+- **The build's clause is present tense and names the flag that decides
+  it.** `scripts/cffi_build.py` builds the vendored `secp256k1-zkp`
+  where `BTCLIB_LIBSECP256K1_ZKP` is `true` (#605), where the paragraph
+  described a build that had yet to read that submodule at all.
+- **The `#612` citation keeps its issue and loses its parenthetical.**
+  The clause beside it addressed the reviewer of the branch that wrote
+  the sentence, on whether the defect was that branch's own to carry,
+  which is not a question anybody reading `CLAUDE.md` asks.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

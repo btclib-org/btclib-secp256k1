@@ -136,15 +136,25 @@ git push origin HEAD:refs/heads/<branch>
 `--init` with no path initializes every submodule `.gitmodules` lists,
 `secp256k1-zkp` (btclib-org/btclib-secp256k1#604) alongside `secp256k1`
 -- naming `secp256k1` alone, as an earlier revision of this recipe did,
-leaves `secp256k1-zkp` uninitialized, and nothing in the gates says so:
-`check-sdist` reads `git ls-files`, which reports an uninitialized
-submodule as its own single gitlink rather than as the files under it,
-so the sdist it builds ships neither directory's content and still
-answers "SDist matches git" (btclib-org/btclib-secp256k1#612, reproduced
-against `secp256k1` alone and so not this branch's own defect to carry).
-That the build does not yet read `secp256k1-zkp`
-(btclib-org/btclib-secp256k1#605 is what first does) is not the same
-question as whether the sdist gate does.
+leaves `secp256k1-zkp` uninitialized, and the lint gate is what says
+so: `.pre-commit-config.yaml`'s `submodules-checked-out` hook looks for
+a `.git` of its own under every path `.gitmodules` names and exits 1
+naming each one missing, so `uv run --locked --only-group lint
+pre-commit run --all-files` -- which installs no project and needs
+nothing built -- fails on a half-initialized worktree. `check-sdist` is
+the gate that does not say so: it compares the sdist it builds against
+`git ls-files --cached --recurse-submodules`, and that command prints
+nothing at all for a submodule that is not checked out, not even its
+gitlink, so the missing tree is absent from both sides of the
+comparison and the answer is still "SDist matches git"
+(btclib-org/btclib-secp256k1#612). A claim about the gates names the
+gate and the command that decides it: they do not move together, and
+one of them learning something falsifies a sentence written about all
+of them. The build compiles `secp256k1-zkp` where
+`BTCLIB_LIBSECP256K1_ZKP` is `true` (btclib-org/btclib-secp256k1#605),
+which is a different question from what the sdist gate sees: a build
+that leaves the flag unset is no reason to leave the submodule
+uninitialized.
 
 `-b <branch>` sits after the path and the commit-ish so that the
 placeholder ends the command, which is section 9 of the organization
