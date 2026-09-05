@@ -493,15 +493,12 @@ class KeyAggCache:
             serialize the result, which no valid input can make it do.
 
     Example:
-        Illustrative only, not run as a doctest: `tests/examples_test.py`
-        does not descend into subpackages, so nothing under `zkp` is
-        collected (issue btclib-org/btclib-secp256k1#621)::
-
-            from btclib_secp256k1 import keys
-            from btclib_secp256k1.zkp import musig
-            pubkeys = [keys.pubkey_from_prvkey(1), keys.pubkey_from_prvkey(2)]
-            cache = musig.KeyAggCache(pubkeys)
-            len(cache.agg_pubkey)  # 32
+        >>> from btclib_secp256k1 import keys
+        >>> from btclib_secp256k1.zkp import musig
+        >>> pubkeys = [keys.pubkey_from_prvkey(1), keys.pubkey_from_prvkey(2)]
+        >>> cache = musig.KeyAggCache(pubkeys)
+        >>> len(cache.agg_pubkey)
+        32
     """
 
     # pydoclint (DOC301) asks that this carry no docstring of its own,
@@ -850,15 +847,12 @@ class SecretNonce:
             `partial_sign`'s own `verify`.
 
     Example:
-        Illustrative only, not run as a doctest: `tests/examples_test.py`
-        does not descend into subpackages, so nothing under `zkp` is
-        collected (issue btclib-org/btclib-secp256k1#621)::
-
-            from btclib_secp256k1 import keys
-            from btclib_secp256k1.zkp import musig
-            prvkey, pubkey = 1, keys.pubkey_from_prvkey(1)
-            with musig.nonce_gen(pubkey, prvkey) as secnonce:
-                len(secnonce.pubnonce)  # 66
+        >>> from btclib_secp256k1 import keys
+        >>> from btclib_secp256k1.zkp import musig
+        >>> prvkey, pubkey = 1, keys.pubkey_from_prvkey(1)
+        >>> with musig.nonce_gen(pubkey, prvkey) as secnonce:
+        ...     len(secnonce.pubnonce)
+        66
     """
 
     # pydoclint (DOC301) asks that this carry no docstring of its own,
@@ -1060,20 +1054,16 @@ class Session:
             which no valid input can make it do.
 
     Example:
-        Illustrative only, not run as a doctest: `tests/examples_test.py`
-        does not descend into subpackages, so nothing under `zkp` is
-        collected (issue btclib-org/btclib-secp256k1#621)::
-
-            from btclib_secp256k1 import keys
-            from btclib_secp256k1.zkp import musig
-            pubkeys = [keys.pubkey_from_prvkey(1), keys.pubkey_from_prvkey(2)]
-            cache = musig.KeyAggCache(pubkeys)
-            secnonces = [
-                musig.nonce_gen(pk, i + 1) for i, pk in enumerate(pubkeys)
-            ]
-            pubnonces = [s.pubnonce for s in secnonces]
-            aggnonce = musig.nonce_agg(pubnonces)
-            session = musig.Session(aggnonce, bytes(32), cache)
+        >>> from btclib_secp256k1 import keys
+        >>> from btclib_secp256k1.zkp import musig
+        >>> pubkeys = [keys.pubkey_from_prvkey(1), keys.pubkey_from_prvkey(2)]
+        >>> cache = musig.KeyAggCache(pubkeys)
+        >>> secnonces = [
+        ...     musig.nonce_gen(pk, i + 1) for i, pk in enumerate(pubkeys)
+        ... ]
+        >>> pubnonces = [s.pubnonce for s in secnonces]
+        >>> aggnonce = musig.nonce_agg(pubnonces)
+        >>> session = musig.Session(aggnonce, bytes(32), cache)
     """
 
     # pydoclint (DOC301) asks that this carry no docstring of its own,
