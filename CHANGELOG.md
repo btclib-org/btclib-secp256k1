@@ -4269,6 +4269,13 @@ release-notes length in the first place, and are still in
   tree runs today is the command the comment already names beside it,
   `ruff format --check .`, which prints the warning directly.
 
+### The badge row's links carry the qualifier the runs page reads
+
+- **Every workflow-status badge link at the head of `README.md` carries
+  `?query=branch%3Amain`** (issue btclib-org/.github#762): the runs page
+  filters on that spelling and ignores the image's `?branch=main`, so the
+  page a badge opens lists the runs the badge answers for.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
