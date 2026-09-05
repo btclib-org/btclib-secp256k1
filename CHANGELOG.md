@@ -4522,6 +4522,37 @@ release-notes length in the first place, and are still in
   filters on that spelling and ignores the image's `?branch=main`, so the
   page a badge opens lists the runs the badge answers for.
 
+### The routing section names each vendored library's own tracker
+
+- **`CONTRIBUTING.md` sends a flaw in a vendored library's C to that
+  library's own tracker, and says how a reader tells which library
+  answered** (closes #638). The import line is the discriminator, the
+  same one `SECURITY.md` routes a vulnerability by: what answers under
+  `btclib_secp256k1.zkp` is BlockstreamResearch/secp256k1-zkp, and what
+  answers outside it bitcoin-core/secp256k1. The bullet names
+  `.gitmodules` as where a vendored submodule's upstream is written, so
+  the rule holds for a submodule vendored later.
+- **The section's heading and its opening sentence count no
+  repositories**, and the bullet for this repository says the bindings
+  drive what they wrap. Section 9 of the organization standard asks for
+  no counts, and a count of repositories is a line a second vendored
+  library falsifies.
+
+### The vendored-bump convention turns on what the upstream publishes
+
+- **`CONTRIBUTING.md`'s conventions bullet says what a bump owes by what
+  the upstream publishes** (closes #639), rather than by naming one
+  submodule. A pin at the commit a release tag names carries the version
+  number and the `RELEASE_NOTES.md` line naming the wrapped release with
+  it; a pin at a commit no tag names carries neither and is reviewed
+  against the commit it replaces.
+  `gh api repos/BlockstreamResearch/secp256k1-zkp/releases` answers an
+  empty list, where the same call for `bitcoin-core/secp256k1` does not.
+- **`.github/dependabot.yml`'s comment describes the entry it sits
+  above**: the `gitsubmodule` ecosystem is configured per directory, so
+  the entry at the repository root covers every submodule the
+  `.gitmodules` there names. The entry itself is unchanged.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

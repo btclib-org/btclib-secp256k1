@@ -55,9 +55,13 @@ updates:
     cooldown:
       default-days: 7
 
-  # signal upstream movement of the vendored secp256k1 submodule;
-  # note: Dependabot tracks the upstream default branch, so releases
-  # still need a manual bump to the tagged commit
+  # signal upstream movement of the vendored submodules. The ecosystem is
+  # configured per directory rather than per submodule: it reads the
+  # .gitmodules at that directory, so every submodule named there is
+  # covered by this one entry.
+  # note: Dependabot tracks each upstream's default branch, so its pull
+  # request says that a bump is available and not which commit to pin;
+  # CONTRIBUTING.md's conventions say what a bump of a submodule owes
   - package-ecosystem: gitsubmodule
     directory: /
     schedule:

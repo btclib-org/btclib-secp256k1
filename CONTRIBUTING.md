@@ -231,25 +231,29 @@ Everything above is the same file in every repository of the
 organization; everything below is this one's, and the comparison stops at
 this heading.
 
-### Which of three repositories this is
+### Which repository an issue belongs to
 
 These are thin python bindings to
-[libsecp256k1](https://github.com/bitcoin-core/secp256k1). Three
-repositories are easy to confuse, and an issue in the wrong one is slow
-to route:
+[libsecp256k1](https://github.com/bitcoin-core/secp256k1). An issue in
+the wrong repository is slow to route:
 
-- the cryptography is upstream, in
-  [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1/issues).
-  It is vendored as the `secp256k1` submodule and only ever read from: a
-  flaw in the library itself is not ours to fix
+- the cryptography is upstream, vendored here as a submodule and only
+  ever read from: a flaw in the library itself is not ours to fix, and
+  it goes to that library's own tracker. The import line says which
+  library answered —
+  [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1/issues)
+  outside `btclib_secp256k1.zkp`, and
+  [BlockstreamResearch/secp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp/issues)
+  under it. `.gitmodules` names every vendored submodule and where it
+  comes from
 - anything with state of its own — a wallet, a transaction, a signing
   session — belongs in
   [btclib](https://github.com/btclib-org/btclib/issues), which is what
   these bindings are for. The Design section of the README says where the
   line is
-- what belongs here is how the bindings drive the library: the wrapping,
-  the argument validation at the cffi boundary, the packaging, and the
-  wheels
+- what belongs here is how the bindings drive what they wrap: the
+  wrapping, the argument validation at the cffi boundary, the packaging,
+  and the wheels
 
 The bug form asks which of the three artifacts is installed — a static
 wheel, a dynamic one, or a build from the sdist — because they differ in
@@ -1003,11 +1007,17 @@ tree's prose:
   ordinary change: releases are cut by a maintainer following
   [RELEASING.md](./RELEASING.md), and `release.yml` checks the tag
   against it
-- **the vendored submodule moves on purpose.** Bumping `secp256k1` is a
-  change of what this package wraps: it belongs in its own pull request,
-  with the version named in the README and in `RELEASE_NOTES.md` moved
-  with it. Dependabot signals upstream movement but tracks the default
-  branch, so a release always needs the tagged commit
+- **a vendored submodule moves on purpose.** Bumping one is a change of
+  what this package wraps and belongs in its own pull request, with what
+  README.md's Versioning section says about that submodule's pin moved
+  with it. Where the upstream cuts releases, as `secp256k1` does, the
+  pin is the commit a release tag names, the version number tracks that
+  release, and `RELEASE_NOTES.md` names it in the release the bump lands
+  in; where the upstream cuts none, as `secp256k1-zkp`, the pin is a
+  commit no tag names, reviewed against the one it replaces, and there
+  is no version for either file to carry. Dependabot signals upstream
+  movement but tracks the upstream default branch, so its pull request
+  says that a bump is available and not which commit to pin
 
 ### What gates a merge, and what only reports
 
