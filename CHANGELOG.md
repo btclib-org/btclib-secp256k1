@@ -4231,6 +4231,26 @@ release-notes length in the first place, and are still in
   checked against btclib-org/btclib#1055's own independent pin of the
   same generator.
 
+### `CONTRIBUTING.md`'s submodule transcript is a captured run
+
+- **The `git submodule init` and `git submodule update` transcript under
+  *The environment and the gates* is the output of a clone of this
+  repository** (closes #629). `.gitmodules` names `secp256k1-zkp`
+  alongside `secp256k1`, where the sample output that block carried
+  named `secp256k1` alone: a reader comparing it against their own
+  terminal saw one registration and one clone where git prints one of
+  each per submodule. The absolute clone destinations are elided and the
+  `checked out` line git prints per submodule is left out, both noted in
+  the sentence under the block. That line names the commit the gitlink
+  holds, which moves with the pin, and `detect-secrets` reads a bare
+  40-hex as a high-entropy string.
+- **The prose around it speaks of the vendored libraries rather than of
+  the one.** A `git worktree` starts with those directories empty rather
+  than with `secp256k1/` alone; `git submodule update --init` with no
+  path after it reaches every submodule `.gitmodules` names; and the
+  lint gate fails outright where one is not checked out at all,
+  `submodules-checked-out` asking that on every invocation.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

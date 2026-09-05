@@ -280,18 +280,25 @@ compiling the vendored library and an extension against it, and the
 [Build](./README.md#build) section of the README says what each platform
 needs.
 
-The vendored library is a submodule, and a clone gets the directory
-without the files in it, so a checkout is two commands before it is
-anything:
+The vendored libraries are submodules, and a clone gets their
+directories without the files in them, so a checkout is two commands
+before it is anything:
 
 <!-- markdownlint-disable MD013 -->
 ```console
 $ git submodule init
 Submodule 'secp256k1' (https://github.com/bitcoin-core/secp256k1.git) registered for path 'secp256k1'
+Submodule 'secp256k1-zkp' (https://github.com/BlockstreamResearch/secp256k1-zkp.git) registered for path 'secp256k1-zkp'
 $ git submodule update
-Cloning into 'secp256k1'...
+Cloning into '.../secp256k1'...
+Cloning into '.../secp256k1-zkp'...
 ```
 <!-- markdownlint-enable MD013 -->
+
+Each `Cloning into` line carries the absolute path of the directory git
+writes to, elided above. A `Submodule path ...: checked out ...` line
+follows per submodule, left out here because the commit it names moves
+with the pin.
 
 Then the environment. `.python-version` pins the interpreter and uv
 installs it if it is missing, so neither pyenv nor a hand-made virtualenv
@@ -305,20 +312,26 @@ uv sync --locked
 That also builds and installs the extension in editable mode, which is
 the minutes rather than seconds part of it.
 
-A `git worktree` starts with an empty `secp256k1/` however complete the
-checkout it was made from, so the submodule is a precondition of the
-gates below and not of a clone alone:
+A `git worktree` starts with those directories empty however complete
+the checkout it was made from, so the submodules are a precondition of
+the gates below and not of a clone alone:
 
 ```shell
 git submodule update --init
 ```
 
+With no path after it, that reaches every submodule `.gitmodules` names.
+
 The test and documentation gates install this package, and installing it
-compiles libsecp256k1 out of that directory before any `automodule`
+compiles libsecp256k1 out of `secp256k1/` before any `automodule`
 directive imports the result. The lint gate installs no project —
 `--only-group` omits it — and needs the vendored clone all the same:
 `submodule-pin` resolves the release `README.md` names in that clone's
 own refs, which is what lets the check run offline.
+
+That gate fails outright where a submodule `.gitmodules` names is not
+checked out at all: `submodules-checked-out` asks that on every
+invocation, whatever the commit touches.
 
 Three gates decide a merge, and each command below is close to the one
 its workflow runs — the second is what a contributor types, not what
