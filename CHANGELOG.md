@@ -4185,6 +4185,52 @@ release-notes length in the first place, and are still in
   the fourth build path compiles and imports on a clean runner, not
   coverage.
 
+### `zkp.generator` and `zkp.rangeproof` wrap generators and range proofs
+
+- **`zkp.generator` wraps every declaration of `secp256k1_generator.h`
+  and `zkp.rangeproof` wraps every declaration of
+  `secp256k1_rangeproof.h`, in one pull request because the second calls
+  into the first for the commitment and the generator each of `verify`,
+  `rewind` and `sign` takes** (closes #608). Both defer `ffi`, `lib` and
+  `ctx` to each function's own first call rather than to import, the
+  same seam `zkp.context`'s own `__getattr__` docstring gives a reason
+  for, and neither reaches for the flagged extension merely by being
+  imported.
+  Two libsecp256k1-zkp objects with no counterpart in mainline's own
+  cdef, `secp256k1_generator` and `secp256k1_pedersen_commitment`, are
+  what forced two local array-building helpers rather than
+  `btclib_secp256k1._cdata.array`: that helper's `ffi.new` is mainline's,
+  which declares neither struct, so an array of either built through it
+  is an "undefined type name" `ffi.error`, measured rather than assumed.
+- **`generator.h()` reads `secp256k1_generator_h` from the library at
+  call time rather than carrying a copy of its serialization**, which is
+  what lets a caller's own independently-computed pin of the same
+  generator be checked against the library itself and not against a
+  copied literal.
+- **`rangeproof.sign` asks `secp256k1_rangeproof_max_size` for its proof
+  buffer rather than carrying a fixed size.** The issue's own body named
+  a constant the header does not define; the worst-case buffer size is a
+  runtime answer from the library, not a `#define`, and is not a promise
+  about a future version of it either.
+- **Every real-vector and property test needs `BTCLIB_LIBSECP256K1_ZKP`,
+  and is guarded by `pytest.importorskip("_btclib_secp256k1_zkp")` and
+  `pytestmark = pytest.mark.zkp`**, so an unflagged run skips the two
+  files cleanly instead of failing to import them. The wrapper modules
+  themselves reach the tree's coverage floor from a pure-python stand-in
+  driven the same way `zkp_test.py`'s own `STAND_IN` is; the two
+  real-vector files' own lines are counted missed by the `coverage`
+  job's static and dynamic steps, `source` naming `tests` in
+  `[tool.coverage.run]`, and are covered instead by that job's third
+  step -- `pytest -m zkp` against the flagged build, #607's own addition
+  -- whose data joins the other two on the same `coverage combine` line.
+- Fixed vectors lifted from secp256k1-zkp's own `tests_impl.h`: `2*G`'s
+  generator and commitment serialization and their malleated-marker-byte
+  cases from `test_generator_fixed_vector` and
+  `test_pedersen_commitment_fixed_vector`, and the proofs of
+  `test_rangeproof_fixed_vectors`. `generator.h()`'s x-coordinate is
+  checked against btclib-org/btclib#1055's own independent pin of the
+  same generator.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

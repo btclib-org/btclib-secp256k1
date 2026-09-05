@@ -92,6 +92,9 @@ _FOREIGN = {
     "test_ecdsa_s2c_sign_verify": (
         "BlockstreamResearch/secp256k1-zkp, src/modules/ecdsa_s2c/tests_impl.h"
     ),
+    "test_rangeproof_fixed_vectors": (
+        "BlockstreamResearch/secp256k1-zkp, src/modules/rangeproof/tests_impl.h"
+    ),
 }
 
 

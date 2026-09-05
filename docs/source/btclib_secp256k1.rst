@@ -87,9 +87,10 @@ btclib\_secp256k1.zkp package
 .. No :members: on the two stanzas immediately below, the zkp package
    itself and zkp.context: both load the flagged secp256k1-zkp
    extension on first attribute access, and this documentation build
-   never sets BTCLIB_LIBSECP256K1_ZKP. zkp.ecdsa_s2c and zkp.musig,
-   further down, defer that load into each call instead, so their own
-   :members: reaches them without the flag.
+   never sets BTCLIB_LIBSECP256K1_ZKP. zkp.ecdsa_s2c, zkp.generator,
+   zkp.musig and zkp.rangeproof, further down, defer that load into
+   each call instead, so their own :members: reaches them without the
+   flag.
 
 .. automodule:: btclib_secp256k1.zkp
 
@@ -105,10 +106,24 @@ btclib\_secp256k1.zkp.ecdsa\_s2c module
    :members:
    :show-inheritance:
 
+btclib\_secp256k1.zkp.generator module
+--------------------------------------
+
+.. automodule:: btclib_secp256k1.zkp.generator
+   :members:
+   :show-inheritance:
+
 btclib\_secp256k1.zkp.musig module
 ----------------------------------
 
 .. automodule:: btclib_secp256k1.zkp.musig
+   :members:
+   :show-inheritance:
+
+btclib\_secp256k1.zkp.rangeproof module
+---------------------------------------
+
+.. automodule:: btclib_secp256k1.zkp.rangeproof
    :members:
    :show-inheritance:
 
