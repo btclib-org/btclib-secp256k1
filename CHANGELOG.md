@@ -4515,6 +4515,13 @@ release-notes length in the first place, and are still in
   is a line every matrix change has to edit, with nothing failing when
   it is not edited.
 
+### The badge row's links carry the qualifier the runs page reads
+
+- **Every workflow-status badge link at the head of `README.md` carries
+  `?query=branch%3Amain`** (issue btclib-org/.github#762): the runs page
+  filters on that spelling and ignores the image's `?branch=main`, so the
+  page a badge opens lists the runs the badge answers for.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
