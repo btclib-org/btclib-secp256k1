@@ -200,29 +200,47 @@ def _install(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(zkp, "_import_extension", lambda: stand_in)
 
 
-@pytest.fixture(autouse=True)
-def _fake_extension(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Install the fake, and clear every cache it and the context build.
+def _forget_cached_extension() -> None:
+    """Drop whatever `zkp` and `zkp.context` cached of the extension.
 
-    The same cleanup `zkp_test.py`'s own tests do by hand, `monkeypatch`
-    covering `zkp.ffi`/`zkp.lib` (module attributes it can restore) and a
-    `finally` covering `zkp.context`'s own globals (which have a real
-    default of `None` rather than being absent, so `monkeypatch.delattr`
-    would leave the module in a state it is never otherwise in).
+    `zkp.ffi`, `zkp.lib` and `zkp.context`'s own `ctx` are written into
+    their module globals on first read and stay there, so `_handles()`
+    finds a plain attribute and the fake above is never consulted:
+    whichever library answered first is the one the test runs against.
+    Under a flagged build the other zkp test modules read the real one,
+    and `pytest-randomly` draws the order.
 
-    Unconditional, not guarded by `hasattr`/`in vars`: every test in
-    this file calls into a wrapper function, and every one of those
-    calls `_handles()` first, which is what sets all five of these
-    before this teardown ever runs.
+    Removed with `pop` on each module's own `__dict__` rather than
+    tested for with `hasattr`: `zkp.ffi` unset raises `ImportError` out
+    of its own `__getattr__` instead of `AttributeError`, which
+    `hasattr` does not answer False for. `zkp.context`'s `ffi` and
+    `lib` are module-scope names whose default is `None`, so they are
+    put back to that rather than removed.
     """
-    _install(monkeypatch)
-    yield
     for name in ("ctx", "_illegal_callback", "_error_callback"):
-        delattr(zkp_context, name)
+        vars(zkp_context).pop(name, None)
     zkp_context.ffi = None
     zkp_context.lib = None
     for name in ("ffi", "lib"):
-        delattr(zkp, name)
+        vars(zkp).pop(name, None)
+
+
+@pytest.fixture(autouse=True)
+def _fake_extension(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Install the fake, over caches cleared before it and after it.
+
+    Every test in this file calls a wrapper function and every one of
+    those calls `_handles()` first, so each needs the fake and leaves a
+    cache of its own behind. Clearing on the way in as well as on the
+    way out is what makes the order `pytest-randomly` draws not matter
+    (btclib-org/btclib-secp256k1#646);
+    `tests/zkp_ecdsa_s2c_test.py`'s own `_clean_extension_cache` is the
+    same fixture for the same reason.
+    """
+    _forget_cached_extension()
+    _install(monkeypatch)
+    yield
+    _forget_cached_extension()
 
 
 def test_generator_parse_and_serialize_round_trip() -> None:

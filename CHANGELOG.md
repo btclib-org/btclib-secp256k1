@@ -4358,6 +4358,91 @@ release-notes length in the first place, and are still in
   resolver picking "a cffi that cannot know them", so the clause goes
   rather than being rewritten.
 
+### The zkp tests make the extension state they need instead of inheriting it
+
+- **The state a build with no flagged extension is in is what a
+  `without_the_extension` fixture makes, for every test that drives
+  either branch of the loader** (closes #623). It writes `None` over
+  `sys.modules["_btclib_secp256k1_zkp"]`, the import system's own
+  negative cache, so `importlib.import_module` raises out of it whatever
+  is on disk; and it empties what `btclib_secp256k1.zkp`'s and
+  `btclib_secp256k1.zkp.context`'s `__getattr__` write into their own
+  module globals on first access, since a read that finds one of those
+  warm never calls the `__getattr__` under test. Both halves are needed
+  under `BTCLIB_LIBSECP256K1_ZKP=true`, where the extension imports and
+  the tests of the modules wrapping zkp-only entry points fill those
+  caches for real, pytest-randomly deciding whether they run first.
+  `test_importing_the_subpackage_does_not_reach_the_extension` asks a
+  fresh interpreter instead, the shape
+  `tests/extension_test.py`'s own `_imported_modules` already uses:
+  `sys.modules` in the interpreter running the suite answers about
+  everything that ran before it, never about the import. Declaring the
+  build was the declined alternative: this tree declares one with a
+  `pytest.importorskip("_btclib_secp256k1_zkp")` at the top of the
+  module and a `pytest.mark.zkp` beside it for the flagged runs' own
+  `-m zkp`, which would skip this file in the static and dynamic runs --
+  the unflagged builds every published wheel carries -- and leave the
+  loader's failure branch driven only where the extension is present.
+- **`test_check_with_nothing_reported` empties `zkp.context`'s own
+  thread-local before it calls `check`.** No wrapper in the subpackage
+  calls `check` at all, so a call through zkp's `lib` that violates a
+  precondition leaves its reason on the thread for whichever `check` a
+  caller makes next -- the contract `tests/callbacks_test.py`'s module
+  docstring states for the primary package.
+  `zkp.musig.SecretNonce.partial_sign` refusing a mismatched private key
+  is such a call, and under a flagged build that reason is what the test
+  would otherwise inherit.
+- **The `ImportError` that path raises names `BTCLIB_LIBSECP256K1_ZKP=true`**
+  (closes #631), which is the value `scripts/cffi_build.py` compares
+  against: a reader following `=1` builds the sdist without the flagged
+  extension and meets the same `ImportError` again. The `match=`
+  patterns in `tests/zkp_test.py` name that value too, so the message
+  and the guard on it move together.
+- **`zkp/context.py`'s `__getattr__` docstring says the modules wrapping
+  zkp-only entry points read `ctx` inside each call rather than at their
+  own import** (closes #633), which is what `zkp/musig.py`'s
+  `_boundary`, `zkp/ecdsa_s2c.py`'s `_bindings` and `zkp/generator.py`'s
+  and `zkp/rangeproof.py`'s `_handles` do.
+  `docs/source/btclib_secp256k1.rst`'s own comment above the `zkp`
+  stanzas states the same thing, and rests on it: a module-scope read
+  would make `import btclib_secp256k1.zkp.musig` raise `ImportError` in
+  every environment without the flag, the documentation build among
+  them.
+- **`tests/zkp_generator_test.py`'s and `tests/zkp_rangeproof_test.py`'s
+  autouse fixtures clear those same caches on the way in as well as on
+  the way out** (closes #646). Each installs a fake extension, and every
+  test in either file calls a wrapper that reads `zkp.context.ctx`
+  before anything else, so a cache another test left warm is what the
+  *first* test of either file runs against -- the fake installed and
+  never consulted, and the failure naming whatever the real library
+  answered. `tests/zkp_ecdsa_s2c_test.py`'s own `_clean_extension_cache`
+  already clears both ways and is the shape these two now take. The
+  names are dropped with `pop` on each module's own `__dict__` rather
+  than tested for with `hasattr`, which does not answer False for
+  `zkp.ffi`: its own `__getattr__` raises `ImportError` where the
+  extension is absent.
+- **`tests/all_test.py`'s public-name census asks whether a name is a
+  submodule of the module holding it, rather than whether its value is a
+  `ModuleType`** (closes #654). A cffi `Lib` answers
+  `isinstance(value, ModuleType)` True without being one: its `__mro__`
+  is `Lib`, `object` and `issubclass(_cffi_backend.Lib, ModuleType)` is
+  False, but it reports `module` as its `__class__`, which is what
+  `isinstance` consults where that differs from `type()`.
+  `btclib_secp256k1.zkp.context.lib` holds such an object once the
+  flagged extension has been loaded, so the census dropped `lib` there
+  under a build carrying that extension and kept it under one that does
+  not, while `UNEXPORTED` records both `ffi` and `lib` -- a guard whose
+  answer depended on the build rather than on the source. Comparing a
+  value's `__name__` against the qualified name it is bound under is
+  what the dropped filter was for, a submodule becoming an attribute of
+  its package as soon as anything imports it, and it reports a module
+  bound under any other name instead of dropping that too. Two tests
+  hold it: one drives the discrimination against a stand-in of the shape
+  measured on a real `Lib`, which every unflagged run collects, and one
+  drives the census against the extension itself, marked `zkp` and
+  guarded with `pytest.importorskip` so that `-m zkp` -- the selector of
+  the flagged jobs in `.github/workflows/test.yml` -- is what runs it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

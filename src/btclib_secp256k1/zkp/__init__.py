@@ -85,7 +85,7 @@ def _import_extension(
         msg = (
             "btclib_secp256k1.zkp needs the flagged secp256k1-zkp "
             "extension, which no published wheel carries: build it "
-            "from the sdist with BTCLIB_LIBSECP256K1_ZKP=1"
+            "from the sdist with BTCLIB_LIBSECP256K1_ZKP=true"
         )
         raise ImportError(msg) from exc
 
