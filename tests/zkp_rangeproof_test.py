@@ -188,21 +188,32 @@ def _install(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(zkp, "_import_extension", lambda: stand_in)
 
 
-@pytest.fixture(autouse=True)
-def _fake_extension(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Install the fake, and clear every cache it and the context build.
+def _forget_cached_extension() -> None:
+    """Drop whatever `zkp` and `zkp.context` cached of the extension.
 
-    `tests/zkp_generator_test.py`'s own fixture of the same name has the
-    reasoning, including for why this is unconditional.
+    `tests/zkp_generator_test.py`'s own function of the same name has
+    the reasoning.
     """
-    _install(monkeypatch)
-    yield
     for name in ("ctx", "_illegal_callback", "_error_callback"):
-        delattr(zkp_context, name)
+        vars(zkp_context).pop(name, None)
     zkp_context.ffi = None
     zkp_context.lib = None
     for name in ("ffi", "lib"):
-        delattr(zkp, name)
+        vars(zkp).pop(name, None)
+
+
+@pytest.fixture(autouse=True)
+def _fake_extension(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Install the fake, over caches cleared before it and after it.
+
+    `tests/zkp_generator_test.py`'s own fixture of the same name has the
+    reasoning, including for why the clearing runs on the way in
+    (btclib-org/btclib-secp256k1#646).
+    """
+    _forget_cached_extension()
+    _install(monkeypatch)
+    yield
+    _forget_cached_extension()
 
 
 COMMIT = bytes([0x08]) + bytes(range(1, 33))

@@ -135,9 +135,9 @@ else:
 
         Imports `btclib_secp256k1.zkp` here, deferred rather than at
         module scope, so that importing this module never reaches for
-        the extension on its own -- only reading `ctx` does, which is
-        what a module wrapping a zkp-only entry point (#607 onward)
-        does at its own import, once it exists.
+        the extension on its own -- only reading `ctx` does, which the
+        modules wrapping zkp-only entry points (#607 onward) do inside
+        each call rather than at their own import.
 
         Args:
             name: the attribute being looked up.
