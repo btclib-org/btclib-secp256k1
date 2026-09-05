@@ -45,6 +45,8 @@ from pathlib import Path
 from pkgutil import iter_modules
 from types import ModuleType
 
+import pytest
+
 import btclib_secp256k1
 from btclib_secp256k1 import (
     context,
@@ -178,14 +180,47 @@ def imported_names(module: ModuleType) -> set[str]:
     return imported_names_in(Path(str(module.__file__)).read_text(encoding="utf-8"))
 
 
+def is_own_submodule(module: ModuleType, name: str, value: object) -> bool:
+    """Whether a name in a module's namespace is a submodule of it.
+
+    Importing `btclib_secp256k1.zkp.context` binds `context` in
+    `vars(btclib_secp256k1.zkp)`, so a package's namespace holds what is
+    under it whether or not it names any of it, and a census of what a
+    module *defines* has to leave those out. A submodule bound that way
+    carries the qualified name it is reached by, which is what this
+    compares against.
+
+    Asked that way rather than with `isinstance(value, ModuleType)`,
+    which a cffi `Lib` answers True to without being one: its `__mro__`
+    is `Lib`, `object` and `issubclass(_cffi_backend.Lib, ModuleType)`
+    is False, but it reports `module` as its `__class__`, and
+    `isinstance` consults `__class__` where that differs from `type()`.
+    `btclib_secp256k1.zkp.context.lib` holds such an object once the
+    flagged extension has been loaded, so an `isinstance` test drops it
+    from the census on a build that has that extension and keeps it on a
+    build that does not -- the two answering differently about the same
+    source (btclib-org/btclib-secp256k1#654).
+
+    Args:
+        module: the module whose namespace holds the name.
+        name: the name it is bound under.
+        value: what it is bound to.
+
+    Returns:
+        Whether it is a submodule of that module under its own name.
+    """
+    return getattr(value, "__name__", None) == f"{module.__name__}.{name}"
+
+
 def defined_public_names(module: ModuleType) -> set[str]:
     """Return the public names a module defines itself.
 
     Everything in its namespace, minus the underscored, minus what it
-    imported, minus the modules: a submodule becomes an attribute of the
-    package as soon as anything imports it, so `context` is in
+    imported, minus its own submodules: a submodule becomes an attribute
+    of the package as soon as anything imports it, so `context` is in
     `vars(btclib_secp256k1)` by the time any test runs even though this
-    module never names it.
+    module never names it. `is_own_submodule` is what asks that, and its
+    own docstring has why it is not an `isinstance` test.
     """
     imported = imported_names(module)
     return {
@@ -193,7 +228,7 @@ def defined_public_names(module: ModuleType) -> set[str]:
         for name, value in vars(module).items()
         if public_name(name)
         and name not in imported
-        and not isinstance(value, ModuleType)
+        and not is_own_submodule(module, name, value)
     }
 
 
@@ -292,6 +327,74 @@ def test_nothing_becomes_public_by_accident() -> None:
             f"{module.__name__} defines public names that are neither"
             f" exported nor recorded in UNEXPORTED: {kept_out}"
         )
+
+
+class _ReportsItselfAModule:
+    """A stand-in for a cffi `Lib`, of the shape measured on a real one.
+
+    `__class__` reporting `module` while `type()` reports something else
+    is the whole of what makes `isinstance(lib, ModuleType)` disagree
+    with `issubclass(type(lib), ModuleType)`; the qualified `__name__` is
+    the other half of what `is_own_submodule` reads. Written from the
+    real object's own answers rather than from the function under test,
+    so what it drives is the case that arises rather than one that would
+    pass.
+    """
+
+    # the suppression is the point rather than an annoyance: mypy
+    # refuses this assignment because a `__class__` that disagrees with
+    # `type()` is exactly what a well-behaved object does not do, which
+    # is why an `isinstance` test on one is worth a stand-in
+    __class__ = ModuleType  # type: ignore[assignment]
+    __name__ = "_extension.lib"
+
+
+def test_an_object_that_reports_itself_a_module_is_not_a_submodule() -> None:
+    """`is_own_submodule` answers what a name is, not what it claims.
+
+    The stand-in is what an `isinstance` test would drop from the
+    census, and dropping it is what made this file pass under a build
+    without the flagged extension and fail under one with it. Beside it,
+    the two ordinary answers: a real submodule bound by import side
+    effect, and a function the module defines.
+    """
+    assert isinstance(_ReportsItselfAModule(), ModuleType)
+    assert not is_own_submodule(zkp_context, "lib", _ReportsItselfAModule())
+    assert is_own_submodule(btclib_secp256k1, "zkp", zkp)
+    assert not is_own_submodule(dsa, "sign", dsa.sign)
+
+
+@pytest.mark.zkp
+def test_the_census_finds_lib_bound_to_the_real_extension() -> None:
+    """`zkp.context.lib` is a defined public name whatever it is bound to.
+
+    The test above drives `is_own_submodule` against a stand-in of the
+    shape a cffi `Lib` has, and every unflagged run collects it; this
+    one drives it against the object itself, which exists only where
+    `BTCLIB_LIBSECP256K1_ZKP=true` built the extension. Reading
+    `zkp.context.ctx` is what binds `lib` to it, that module's own
+    `__getattr__` populating `ffi` and `lib` as a side effect of
+    building the context, so what the census faces here is the case
+    btclib-org/btclib-secp256k1#654 was about rather than a
+    reconstruction of it.
+
+    The `isinstance` assertion is the premise rather than the claim: it
+    is what an `isinstance`-based filter would act on, and a cffi that
+    stopped reporting `module` as a `Lib`'s `__class__` would fail here
+    and say so, instead of leaving this test passing for a reason that
+    had gone away.
+
+    Marked `zkp` and guarded with `importorskip`, which is what puts it
+    in a run that exists: `-m zkp` is the selector of both flagged jobs
+    in `.github/workflows/test.yml`, and the guard is what lets the
+    unflagged runs collect this file and skip this one test rather than
+    error on it.
+    """
+    pytest.importorskip("_btclib_secp256k1_zkp")
+    assert zkp_context.ctx is not None
+    assert isinstance(zkp_context.lib, ModuleType)
+    kept_out = sorted(defined_public_names(zkp_context) - set(zkp_context.__all__))
+    assert kept_out == UNEXPORTED[zkp_context.__name__]
 
 
 def test_the_import_scan_reaches_a_nested_import() -> None:
