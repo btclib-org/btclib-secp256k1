@@ -15,7 +15,7 @@ pytest's `--doctest-modules`, and the reason is what this package is.
 is an editable build of it, and the wrong thing in the wheel jobs, where
 what has to be exercised is the module inside the installed wheel.
 Importing the package by name gets whichever of the two is installed, on
-every one of the eleven kinds of wheel, which is the point.
+every kind of wheel, which is the point.
 
 The examples are therefore constrained to be deterministic: fixed keys,
 and a verification rather than a signature wherever the value depends on
@@ -35,9 +35,16 @@ import btclib_secp256k1
 
 _ROOT = Path(__file__).parents[1]
 
+# the subpackage whose examples need the flagged extension to run
+_ZKP = f"{btclib_secp256k1.__name__}.zkp"
+
 
 def _modules() -> list[str]:
     """Every module of the installed package, the package itself included.
+
+    `walk_packages` descends into `zkp`, where `iter_modules` stops at
+    the top package's own children and leaves a docstring under a
+    subpackage collected by nothing.
 
     Returns:
         The dotted names, sorted, read off the imported package rather
@@ -45,17 +52,45 @@ def _modules() -> list[str]:
         user imports.
     """
     prefix = f"{btclib_secp256k1.__name__}."
-    found = pkgutil.iter_modules(btclib_secp256k1.__path__, prefix)
+    found = pkgutil.walk_packages(btclib_secp256k1.__path__, prefix)
     return sorted([btclib_secp256k1.__name__, *(info.name for info in found)])
 
 
-@pytest.mark.parametrize("name", _modules())
+def _needs_the_zkp_extension(name: str) -> bool:
+    """Whether this module's examples need the flagged extension to run.
+
+    Args:
+        name: the dotted name of the module.
+
+    Returns:
+        Whether it is the `zkp` subpackage or a module under it.
+    """
+    return name == _ZKP or name.startswith(f"{_ZKP}.")
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param(
+            name, marks=[pytest.mark.zkp] if _needs_the_zkp_extension(name) else []
+        )
+        for name in _modules()
+    ],
+)
 def test_the_examples_of_a_module_run(name: str) -> None:
     """Run the doctests of one module, and require that none failed.
+
+    A module under `zkp` carries the `zkp` marker `-m zkp` selects and
+    an `importorskip` that skips it where `BTCLIB_LIBSECP256K1_ZKP`
+    built no extension for its examples to call into: the same pair the
+    test modules under `tests/` use, and `pyproject.toml`'s comment on
+    the marker says why one does not stand for the other.
 
     Args:
         name: the dotted name of the module.
     """
+    if _needs_the_zkp_extension(name):
+        pytest.importorskip("_btclib_secp256k1_zkp")
     results = doctest.testmod(importlib.import_module(name))
     assert results.failed == 0, (
         f"{results.failed} of {results.attempted} examples failed in {name};"
@@ -64,11 +99,21 @@ def test_the_examples_of_a_module_run(name: str) -> None:
 
 
 def test_the_package_carries_examples_at_all() -> None:
-    """Guard the test above against passing on a package with no examples."""
-    attempted = sum(
-        doctest.testmod(importlib.import_module(name)).attempted for name in _modules()
+    """Guard the test above against passing on a package with no examples.
+
+    The examples are parsed and not run: the test above skips a module
+    under `zkp` on an unflagged build, and running its examples here
+    would be running what that skip refused. `DocTestFinder` is what
+    `doctest.testmod` finds them with, so what it counts is what a
+    flagged run attempts.
+    """
+    finder = doctest.DocTestFinder()
+    examples = sum(
+        len(parsed.examples)
+        for name in _modules()
+        for parsed in finder.find(importlib.import_module(name))
     )
-    assert attempted > 0, "no module of the package carries a doctest any more"
+    assert examples > 0, "no module of the package carries a doctest any more"
 
 
 def test_the_readme_examples_run() -> None:

@@ -819,12 +819,13 @@ addopts = "-ra --strict-markers --strict-config --cov --durations=8"
 # the name. Needs BTCLIB_LIBSECP256K1_ZKP=true, which is a build-time
 # question a marker alone cannot answer at collection time -- what tells
 # the flagged and unflagged runs apart is
-# `pytest.importorskip("_btclib_secp256k1_zkp")` at the top of a marked
-# module (#607 onward): the coverage job's static and dynamic steps,
-# neither of which sets the flag, collect these modules and report them
-# skipped rather than erroring, and its own third step and the separate
-# `zkp` job, both flagged and both passing `-m zkp`, are where the
-# import succeeds and the marker actually selects them
+# `pytest.importorskip("_btclib_secp256k1_zkp")`, at the top of a marked
+# module (#607 onward) or before the call in a marked test (#621): the
+# coverage job's static and dynamic steps, neither of which sets the
+# flag, collect them and report them skipped rather than erroring, and
+# its own third step and the separate `zkp` job, both flagged and both
+# passing `-m zkp`, are where the import succeeds and the marker
+# actually selects them
 markers = [
     "zkp: needs BTCLIB_LIBSECP256K1_ZKP=true (btclib-org/btclib-secp256k1#605)",
 ]

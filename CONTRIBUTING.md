@@ -336,13 +336,14 @@ nothing has to be typed after `pytest` to see it. The `fail_under`
 ratchet in `pyproject.toml` gates at 100%, but the plain command above no
 longer reaches it on its own: `btclib_secp256k1.zkp.musig` (#607 onward)
 is opt-in behind `BTCLIB_LIBSECP256K1_ZKP` by decision (#603), and this
-suite never imports it without the flag —
+suite calls into it only with the flag —
 `tests/zkp_musig_test.py` and `tests/zkp_musig_vectors_test.py` both
 `importorskip` out, `tests/all_test.py` excludes `zkp` by name, and
-`tests/examples_test.py` does not descend into subpackages — so none of
-its lines is executed, though an unflagged environment can plainly
-import the module itself, the way the documentation build does for its
-own `:members:`. Nothing in it can be *called* there either: every
+`tests/examples_test.py` marks the examples of a module under `zkp` and
+skips them on that same `importorskip` — so an unflagged run leaves its
+function bodies unexecuted, though it does import the module, which the
+decision in #603 makes safe and which the documentation build already
+does for its `:members:`. Nothing in it can be *called* there either: every
 entry point opens with a `_boundary()` that raises `ImportError` naming
 the flag. This command reports short of 100% on an ordinary checkout —
 that shortfall is not the module alone: `[tool.coverage.run]` names
@@ -457,6 +458,11 @@ in a docstring or in `README.md`, is run by `tests/examples_test.py` on
 every interpreter and every kind of wheel — which constrains an example
 to be deterministic: fixed keys, and a verification rather than a
 signature wherever the value depends on randomness that is not pinned.
+A docstring under `btclib_secp256k1.zkp` runs on the flagged build
+alone: `tests/examples_test.py` gives its module the `zkp` marker and an
+`importorskip`, so what runs it is the `Build the flagged secp256k1-zkp
+extension, and run its tests` job below and the flagged step of the
+coverage job, and every other run skips it.
 
 To time these bindings against the other python wrappers of
 libsecp256k1, clone

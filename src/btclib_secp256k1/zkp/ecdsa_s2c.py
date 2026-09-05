@@ -241,13 +241,10 @@ def sign(
             make it do.
 
     Example:
-        Illustrative only, not a doctest: `tests/examples_test.py`'s
-        module enumeration never reaches a module under a subpackage
-        (issue btclib-org/btclib-secp256k1#621)::
-
-            from btclib_secp256k1.zkp import ecdsa_s2c
-            signature, opening = ecdsa_s2c.sign(bytes(32), 1, bytes(32))
-            ecdsa_s2c.verify_commit(signature, bytes(32), opening)  # True
+        >>> from btclib_secp256k1.zkp import ecdsa_s2c
+        >>> signature, opening = ecdsa_s2c.sign(bytes(32), 1, bytes(32))
+        >>> ecdsa_s2c.verify_commit(signature, bytes(32), opening)
+        True
     """
     msg_bytes = octets(msg_bytes, "message hash", 32)
     prvkey_bytes = scalar(prvkey, "private key")

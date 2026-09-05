@@ -4231,6 +4231,46 @@ release-notes length in the first place, and are still in
   checked against btclib-org/btclib#1055's own independent pin of the
   same generator.
 
+### `tests/examples_test.py` reaches a docstring under `zkp`
+
+- **`_modules()` enumerates with `pkgutil.walk_packages`** (closes
+  #621). `pkgutil.iter_modules` lists the top package's own children and
+  stops at `btclib_secp256k1.zkp` itself, so a doctest anywhere under
+  that subpackage was collected by neither
+  `test_the_examples_of_a_module_run` nor
+  `test_the_package_carries_examples_at_all`, on any build.
+- **A module under `zkp` carries the `zkp` marker and
+  `pytest.importorskip("_btclib_secp256k1_zkp")`**, the pair the test
+  modules under `tests/` already use. Its examples run in the flagged
+  step of the coverage job and in the `zkp` job, and skip where an
+  unflagged build leaves them nothing to call into.
+- **`test_the_package_carries_examples_at_all` parses the examples
+  rather than running them**, that test reaching every module
+  `_modules()` names and so the ones the test above skips.
+  `doctest.DocTestFinder` is what `doctest.testmod` finds them with, so
+  counting what it parses asks the same question of the package without
+  entering an example. `optionflags=doctest.SKIP` is the rejected
+  alternative: it suppresses execution too, but `attempted` counts a
+  skipped example only from Python 3.13, and `requires-python` here is
+  `>=3.10`.
+- **The `Example:` blocks of `btclib_secp256k1.zkp.musig` and
+  `btclib_secp256k1.zkp.ecdsa_s2c` are doctests**, `>>>` prompts and
+  expected output, in place of the literal blocks that cited this issue
+  for not being run.
+- **`CONTRIBUTING.md` says where a doctest under `zkp` runs**, and its
+  coverage paragraph no longer states that the suite never imports
+  `btclib_secp256k1.zkp.musig` without the flag: an unflagged run
+  imports it to count the examples it does not run, and what stays
+  unexecuted there is its function bodies.
+- **`pyproject.toml`'s comment on the `zkp` marker names both places the
+  `importorskip` sits**, the top of a marked module and the line before
+  the call in a marked test.
+- **`tests/examples_test.py`'s module docstring no longer counts the
+  kinds of wheel it runs on.** Section 9 of the organization standard
+  asks for no counts, and `CLAUDE.md` gives the reason this one in
+  particular is a liability: a number of wheels is a line every matrix
+  change has to edit, with nothing failing when it is not edited.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
