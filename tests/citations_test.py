@@ -60,11 +60,15 @@ _ROOT = Path(__file__).parents[1]
 # exemption, so reading itself would let the guard keep its own exemptions
 # alive. It also holds citations as data -- `_cited`'s own cases -- which
 # are fixtures rather than prose, and one of them names a test that
-# deliberately does not exist
+# deliberately does not exist.
+# Read recursively, `btclib_secp256k1/zkp/` being a subpackage whose
+# docstrings are prose like any other: `glob` lists a directory's direct
+# children alone, so a citation in one of those docstrings would be read
+# here by nothing and held to nothing (#622)
 _SOURCES = [
     path
-    for path in sorted((_ROOT / "tests").glob("*.py"))
-    + sorted((_ROOT / "src" / "btclib_secp256k1").glob("*.py"))
+    for path in sorted((_ROOT / "tests").rglob("*.py"))
+    + sorted((_ROOT / "src" / "btclib_secp256k1").rglob("*.py"))
     if path.name != Path(__file__).name
 ]
 
@@ -128,7 +132,7 @@ def _defined() -> set[str]:
         The names of every test function under `tests/`.
     """
     names: set[str] = set()
-    for path in sorted((_ROOT / "tests").glob("*.py")):
+    for path in sorted((_ROOT / "tests").rglob("*.py")):
         names.update(_DEFINITION.findall(path.read_text(encoding="utf-8")))
     return names
 
