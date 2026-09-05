@@ -471,6 +471,11 @@ in a docstring or in `README.md`, is run by `tests/examples_test.py` on
 every interpreter and every kind of wheel — which constrains an example
 to be deterministic: fixed keys, and a verification rather than a
 signature wherever the value depends on randomness that is not pinned.
+A docstring under `btclib_secp256k1.zkp` runs only where the flagged
+extension is built: `tests/examples_test.py` marks that module's case
+`zkp` and guards it with an `importorskip`. In CI that is the `Build the
+flagged secp256k1-zkp extension, and run its tests` job below and the
+flagged step of the coverage job.
 
 To time these bindings against the other python wrappers of
 libsecp256k1, clone

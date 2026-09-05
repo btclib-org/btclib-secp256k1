@@ -4469,6 +4469,52 @@ release-notes length in the first place, and are still in
   the sentence, on whether the defect was that branch's own to carry,
   which is not a question anybody reading `CLAUDE.md` asks.
 
+### `tests/examples_test.py` reaches a docstring under `zkp`
+
+- **`_modules()` enumerates with `pkgutil.walk_packages`** (closes
+  #621). `pkgutil.iter_modules` lists the top package's own children and
+  stops at `btclib_secp256k1.zkp` itself, so a doctest anywhere under
+  that subpackage was collected by neither
+  `test_the_examples_of_a_module_run` nor
+  `test_the_package_carries_examples_at_all`, on any build.
+- **The walk carries an `onerror` that raises.** With none,
+  `pkgutil.walk_packages` swallows the `ImportError` a package raises as
+  it is descended into and yields nothing from under it, which leaves
+  the enumeration at what `iter_modules` returns and the tests reading
+  it passing over the difference.
+  `test_a_subpackage_that_will_not_import_stops_the_enumeration` holds
+  it to that, refusing the subpackage with a meta-path finder.
+- **A module under `zkp` is parametrized with the `zkp` marker and
+  guarded by `pytest.importorskip("_btclib_secp256k1_zkp")`**, the pair
+  the test modules under `tests/` use. Its examples run in the flagged
+  step of the coverage job and in the `zkp` job, and skip where an
+  unflagged build leaves them nothing to call into.
+- **`test_the_package_carries_examples_at_all` parses the examples
+  rather than running them**, that test reaching every module
+  `_modules()` names and so the ones the test above skips.
+  `doctest.DocTestFinder` is what `doctest.testmod` finds them with, so
+  counting what it parses asks the same question of the package without
+  entering an example. `optionflags=doctest.SKIP` is the rejected
+  alternative: it suppresses execution too, but `attempted` counts a
+  skipped example only from Python 3.13, and `requires-python` here is
+  `>=3.10`.
+- **The `Example:` blocks of `btclib_secp256k1.zkp.musig` and
+  `btclib_secp256k1.zkp.ecdsa_s2c` are doctests**, `>>>` prompts and
+  expected output, in place of the literal blocks that cited this issue
+  for not being run.
+- **`CONTRIBUTING.md` qualifies its sentence about where an example
+  runs**: a docstring under `btclib_secp256k1.zkp` runs where the
+  flagged extension is built, and the paragraph says where in CI that
+  is.
+- **`pyproject.toml`'s comment on the `zkp` marker names the guard that
+  sits inside a marked test**, beside the one at the top of a marked
+  module.
+- **`tests/examples_test.py`'s module docstring carries no count.**
+  Section 9 of the organization standard asks for none, and `CLAUDE.md`
+  gives the reason a number of wheels in particular is a liability: it
+  is a line every matrix change has to edit, with nothing failing when
+  it is not edited.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
