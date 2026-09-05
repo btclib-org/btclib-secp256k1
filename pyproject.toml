@@ -87,8 +87,7 @@ classifiers = [
 # satisfies that, so 1.6 is the honest floor there. The two newest
 # interpreters have to be asked for by name, or the resolver may pick a
 # cffi that cannot know them: 1.17 is the first release supporting
-# CPython 3.13, 2.0 the first supporting 3.14 and the free-threaded
-# build. The old '>=1.0.0' declared an installable-but-broken pair
+# CPython 3.13, 2.0 the first supporting 3.14 and the free-threaded build
 dependencies = [
     'cffi>=1.6; python_version<"3.13"',
     'cffi>=1.17; python_version=="3.13"',
@@ -206,10 +205,14 @@ exclude = [
     # entries below, flat files and the nested aux directory alike, are
     # the file list `./autogen.sh && ./configure` actually wrote at each
     # pin (btclib-org/btclib-secp256k1#611), not a name reasoned about
-    # from upstream's own Makefile.am -- which is how the previous
-    # revision of this list came to name `secp256k1/build-aux/...`, a
-    # directory upstream had already renamed to `autotools-aux/` before
-    # the pinned v0.8.0, matching nothing since
+    # from upstream's own Makefile.am: none of these paths exists until
+    # those commands are run, so a stale entry matches nothing and fails
+    # nothing. An entry matching a file a submodule tracks fails nothing
+    # either (btclib-org/btclib-secp256k1#655): it ships an sdist
+    # without that file, and check-sdist does not see the loss, its
+    # hatchling plugin reading this very list ([tool.check-sdist] below)
+    # and subtracting what the list matches from the tracked files it
+    # reports missing
     "secp256k1/autom4te.cache",
     "secp256k1/aclocal.m4",
     "secp256k1/configure",
