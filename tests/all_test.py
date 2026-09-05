@@ -8,21 +8,23 @@ Section 7 of the organization standard asks for `__all__` on every module
 and package, "a module under a private name excepted as no part of that
 surface", and a census walking the tree rather than listing it, "so a new
 public name fails until it is exported or recorded" (#357,
-btclib-org/.github#79). Eleven modules sit directly under
-`btclib_secp256k1` -- `_scalar`, `_secret` and `_cdata` excepted by their
-own leading underscore -- so the walk below has none of btclib's own
-`tests/all_test.py` nested-package machinery: no group-or-unpublished
-partition, because no module here re-exports another by name, and no
-transitive descent into the eleven, for the same reason.
+btclib-org/.github#79). The modules sitting directly under
+`btclib_secp256k1` are all in it -- `_scalar`, `_secret` and `_cdata`
+excepted by their own leading underscore -- and the walk below has none
+of btclib's own `tests/all_test.py` group-or-unpublished partition, no
+module here re-exporting another by name.
 
-`zkp`, the one subpackage, is out of that walk by name rather than by the
-underscore convention: `library_modules()` does not import it, and
-`test_every_module_is_declared` below excludes it from the names
-`iter_modules` finds. An attribute access under it can raise `ImportError`
-by design (`btclib_secp256k1/zkp/__init__.py`'s own docstring), which
-`test_every_exported_name_exists`'s `hasattr` calls do not tolerate --
-`hasattr` swallows `AttributeError` alone. `tests/zkp_test.py` is where
-the subpackage is covered instead.
+`zkp` is a subpackage, and the census descends into it: what it holds
+wraps secp256k1-zkp the way the modules above wrap libsecp256k1, and a
+census walking the tree is what section 7 asks for. The names declared
+under it that are served by loading the flagged extension -- `zkp.ffi`,
+`zkp.lib` and `zkp.context.ctx`, each a module-level `__getattr__` away
+(`btclib_secp256k1/zkp/__init__.py`'s own docstring) -- raise
+`ImportError` without `BTCLIB_LIBSECP256K1_ZKP`, which `hasattr` does
+not tolerate: it swallows `AttributeError` alone. `exported_name_exists`
+below is what reads a name instead, and nothing this file imports
+reaches for that extension (#627). `tests/zkp_test.py` is where the
+subpackage's own behaviour is tested.
 
 Every module's `ffi`, `lib`, `CData`, `BytesLike`, `MutableBytesLike` and
 `ctx` come from `from . import ...` or `from .context import ctx`, which
@@ -38,6 +40,7 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Iterable, Iterator
+from importlib import import_module
 from pathlib import Path
 from pkgutil import iter_modules
 from types import ModuleType
@@ -55,15 +58,26 @@ from btclib_secp256k1 import (
     silentpayments,
     ssa,
     xonly,
+    zkp,
 )
+from btclib_secp256k1.zkp import context as zkp_context
+from btclib_secp256k1.zkp import ecdsa_s2c as zkp_ecdsa_s2c
+from btclib_secp256k1.zkp import generator as zkp_generator
+from btclib_secp256k1.zkp import musig as zkp_musig
+from btclib_secp256k1.zkp import rangeproof as zkp_rangeproof
 
 # what a module defines without a leading underscore and deliberately does
 # not export, with the reason beside the list in the module's own
 # docstring or comments. A name added here is a decision; a name that has
 # to be added here to make the suite pass is one that was about to become
-# public by accident. Empty today: nothing in this package currently
-# defines a public name it withholds
-UNEXPORTED: dict[str, list[str]] = {}
+# public by accident
+UNEXPORTED: dict[str, list[str]] = {
+    # `ffi` and `lib` are bound to None at module level and rebound when
+    # `ctx` is first read: that module's own comment has why they are
+    # assignments where `ctx` is an annotation, and `btclib_secp256k1.zkp`
+    # is where a caller reads either of them from
+    "btclib_secp256k1.zkp.context": ["ffi", "lib"],
+}
 
 
 def public_name(name: str) -> bool:
@@ -93,7 +107,33 @@ def library_modules() -> list[ModuleType]:
         silentpayments,
         ssa,
         xonly,
+        zkp,
+        zkp_context,
+        zkp_ecdsa_s2c,
+        zkp_generator,
+        zkp_musig,
+        zkp_rangeproof,
     ]
+
+
+def found_modules(package: ModuleType, prefix: str = "") -> Iterator[str]:
+    """Yield the public module names a package holds, subpackages descended.
+
+    Args:
+        package: the package to read.
+        prefix: what the names it holds are reached through, `zkp.` for
+            what the subpackage holds and empty for the package itself.
+
+    Yields:
+        Each name, as `library_modules` spells it.
+    """
+    for _, name, is_package in iter_modules(package.__path__):
+        if not public_name(name):
+            continue
+        yield prefix + name
+        if is_package:
+            subpackage = import_module(f"{package.__name__}.{name}")
+            yield from found_modules(subpackage, f"{prefix}{name}.")
 
 
 def module_scope(body: Iterable[ast.stmt]) -> Iterator[ast.stmt]:
@@ -157,6 +197,40 @@ def defined_public_names(module: ModuleType) -> set[str]:
     }
 
 
+def exported_name_exists(module: ModuleType, name: str) -> bool:
+    """Whether a module answers one of its own `__all__` entries.
+
+    What `hasattr` would answer, and the case it cannot be asked:
+    `zkp.ffi`, `zkp.lib` and `zkp.context.ctx` are served by loading the
+    flagged extension, so without `BTCLIB_LIBSECP256K1_ZKP` reading one
+    raises `ImportError` rather than answering. That is a name the
+    module serves -- what it wanted was the extension -- and it is told
+    from a broken import by the flag the message names, which is where
+    `btclib_secp256k1.zkp` sends a caller who has no such build.
+
+    Of `btclib_secp256k1.zkp` itself this therefore asks nothing: that
+    module's `__getattr__` refuses what is not in `__all__` and reaches
+    for the extension for what is, so every entry of that `__all__`
+    answers `ImportError` where no flagged build exists, this one
+    included. `zkp.context`'s `__getattr__` names `ctx` rather than
+    reading `__all__`, and does report a name it does not serve.
+
+    Args:
+        module: the module declaring the name.
+        name: one of its `__all__` entries.
+
+    Returns:
+        Whether the module answers it.
+    """
+    try:
+        getattr(module, name)
+    except AttributeError:
+        return False
+    except ImportError as exc:
+        return "BTCLIB_LIBSECP256K1_ZKP" in str(exc)
+    return True
+
+
 def test_every_exported_name_exists() -> None:
     """An `__all__` entry that names nothing is a broken `import *`."""
     for module in library_modules():
@@ -164,7 +238,26 @@ def test_every_exported_name_exists() -> None:
         assert names is not None, f"{module.__name__} declares no __all__"
         assert names, f"{module.__name__} declares an empty __all__"
         for name in names:
-            assert hasattr(module, name), f"{module.__name__}.{name} is not there"
+            assert exported_name_exists(module, name), (
+                f"{module.__name__}.{name} is not there"
+            )
+
+
+def test_an_exported_name_that_is_not_there_is_reported() -> None:
+    """The check above is worth what its reader does with a miss.
+
+    Asked of the modules themselves rather than of a stand-in: a
+    module-level `__getattr__` refuses an unknown name with
+    `AttributeError` and reaches for the extension for a name it
+    serves, and it is the real one that decides which. `dsa` is the
+    ordinary shape beside them, having no `__getattr__` at all.
+    """
+    assert exported_name_exists(dsa, "sign")
+    assert not exported_name_exists(dsa, "no_such_name")
+    assert not exported_name_exists(zkp, "no_such_name")
+    assert not exported_name_exists(zkp_context, "no_such_name")
+    # served, whether this build can load the extension or not
+    assert exported_name_exists(zkp, "ffi")
 
 
 def test_no_module_exports_a_name_it_imported() -> None:
@@ -232,18 +325,14 @@ def test_every_module_is_declared() -> None:
     from every check in this file, which a discovered list would not
     let happen.
 
-    `zkp` is excluded by name rather than left to fail this comparison:
-    the module docstring above has the reason it carries none of the
-    checks this file runs, and `tests/zkp_test.py` is where it is
-    declared instead.
+    A module under `zkp` is named for the subpackage it sits in --
+    `zkp.musig`, which is not `musig` -- so that the two cannot be
+    taken for one another in the comparison or in its failure.
     """
-    found = sorted(
-        name
-        for _, name, _ in iter_modules(btclib_secp256k1.__path__)
-        if public_name(name) and name != "zkp"
-    )
+    found = sorted(found_modules(btclib_secp256k1))
     declared = sorted(
-        module.__name__.rsplit(".", 1)[-1] for module in library_modules()[1:]
+        module.__name__.removeprefix(f"{btclib_secp256k1.__name__}.")
+        for module in library_modules()[1:]
     )
     assert found == declared, (
         f"btclib_secp256k1/ holds {found}, this file names {declared}"

@@ -335,14 +335,15 @@ Coverage is measured in branch mode, `--cov` sitting in `addopts` so
 nothing has to be typed after `pytest` to see it. The `fail_under`
 ratchet in `pyproject.toml` gates at 100%, but the plain command above no
 longer reaches it on its own: `btclib_secp256k1.zkp.musig` (#607 onward)
-is opt-in behind `BTCLIB_LIBSECP256K1_ZKP` by decision (#603), and this
-suite never imports it without the flag —
+is opt-in behind `BTCLIB_LIBSECP256K1_ZKP` by decision (#603), and
+without the flag nothing calls into it. The module is imported all the
+same — `tests/all_test.py`'s census and `tests/secret_test.py`'s walk
+both descend into the subpackage, and the documentation build imports
+it for its own `:members:` — so what an unflagged run executes there is
+its module-level lines and no function body. Nothing drives it:
 `tests/zkp_musig_test.py` and `tests/zkp_musig_vectors_test.py` both
-`importorskip` out, `tests/all_test.py` excludes `zkp` by name, and
-`tests/examples_test.py` does not descend into subpackages — so none of
-its lines is executed, though an unflagged environment can plainly
-import the module itself, the way the documentation build does for its
-own `:members:`. Nothing in it can be *called* there either: every
+`importorskip` out, and `tests/examples_test.py` does not descend into
+subpackages (#621). Nothing in it can be *called* there either: every
 entry point opens with a `_boundary()` that raises `ImportError` naming
 the flag. This command reports short of 100% on an ordinary checkout —
 that shortfall is not the module alone: `[tool.coverage.run]` names

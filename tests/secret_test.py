@@ -19,7 +19,9 @@ import importlib
 import inspect
 import mmap
 import pkgutil
-from types import FunctionType
+import textwrap
+from collections.abc import Iterator
+from types import FunctionType, ModuleType
 from typing import Any
 
 import pytest
@@ -50,6 +52,12 @@ def _calls(function: FunctionType) -> set[str]:
     the same tweak, and a source matched as text answers that a
     public-key call produces a private key.
 
+    The source is dedented before it is parsed. A function defined
+    inside a module-level `else:` block -- `btclib_secp256k1.zkp`'s own
+    `__getattr__` is one -- comes back from `inspect.getsource` still
+    indented, and `ast.parse` answers that with `IndentationError`,
+    which is not the `OSError` the walk below catches (#626).
+
     Args:
         function: the function to read.
 
@@ -59,7 +67,8 @@ def _calls(function: FunctionType) -> set[str]:
         module it was reached.
     """
     names: set[str] = set()
-    for node in ast.walk(ast.parse(inspect.getsource(function))):
+    source = textwrap.dedent(inspect.getsource(function))
+    for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Call):
             if isinstance(node.func, ast.Attribute):
                 names.add(node.func.attr)
@@ -68,15 +77,39 @@ def _calls(function: FunctionType) -> set[str]:
     return names
 
 
+def _modules(package: ModuleType) -> Iterator[ModuleType]:
+    """Yield the modules a package holds, and those its subpackages hold.
+
+    `btclib_secp256k1.zkp` is one such subpackage, and what it holds
+    wraps secp256k1-zkp the way the flat modules wrap libsecp256k1, so
+    the question this file asks is the same question there (#626).
+
+    Importing one reaches for no extension without
+    `BTCLIB_LIBSECP256K1_ZKP`: the flagged one is loaded on the first
+    read of `ffi`, `lib` or `ctx`, and an import reads none of the
+    three -- `btclib_secp256k1/zkp/__init__.py`'s own docstring is
+    where that is decided.
+
+    Args:
+        package: the package to read.
+
+    Yields:
+        Each module under it, at any depth.
+    """
+    for info in pkgutil.iter_modules(package.__path__):
+        module = importlib.import_module(f"{package.__name__}.{info.name}")
+        yield module
+        if info.ispkg:
+            yield from _modules(module)
+
+
 def _take_through_a_table(buffer: Any) -> Any:
     """Read a secret out through a subscript, which names no function.
 
     Two things read this. `_calls` parses it below, to see that a call
     reached as `table["take"](buffer)` contributes no name; the test
     that follows also runs it, on a real secret, to check that the
-    secret still comes out through the subscript. It is at module level
-    for the first of those: `inspect.getsource` of a nested function
-    answers its indented block, which `ast.parse` refuses outright.
+    secret still comes out through the subscript.
 
     Args:
         buffer: whatever `_secret.take` would have been handed.
@@ -277,9 +310,17 @@ def test_every_function_that_takes_a_secret_out_offers_into() -> None:
     honest.
 
     What the walk cannot see is a secret that never goes through `take`
-    at all: `silentpayments._found_output` reads the per-output tweak
+    at all. `silentpayments._found_output` reads the per-output tweak
     out of the struct as a `bytes` of its own, so no population defined
-    this way can contain it, and SECURITY.md names it for that reason.
+    this way can contain it, and SECURITY.md names the tweak it answers
+    for that reason.
+    The subpackage answers its secrets the same way: the secret
+    adaptor `zkp.musig.extract_adaptor` recovers, the blinding factors
+    `zkp.generator.pedersen_blind_sum` and
+    `zkp.generator.pedersen_blind_generator_blind_sum` answer, and the
+    one `zkp.rangeproof.rewind` recovers, each read out of a buffer of
+    its own with `ffi.unpack`. The walk descends into those modules and
+    reports no producer in them (#640).
     """
     # the tweak of a label, in both halves that answer it: it is one
     # member of a returned tuple, where an argument could not say which
@@ -287,21 +328,10 @@ def test_every_function_that_takes_a_secret_out_offers_into() -> None:
     exempt = {"_label_", "label"}
     functions: dict[tuple[str, str], FunctionType] = {}
     called: dict[tuple[str, str], set[str]] = {}
-    for info in pkgutil.iter_modules(btclib_secp256k1.__path__):
-        if info.name == "zkp":
-            # a subpackage, not a flat module, and out of this walk:
-            # its own module-level __getattr__ -- PEP 562, the same
-            # shape __init__.py's own __version__ getter uses -- is
-            # defined inside an indented `else:` block, whose source
-            # `inspect.getsource` hands back un-dedented; ast.parse
-            # refuses that with IndentationError rather than the
-            # OSError this loop already catches below.
-            # tests/all_test.py excludes it from its own generic walk
-            # for a different reason: an attribute access under it can
-            # raise ImportError by design, which hasattr does not
-            # tolerate.
-            continue
-        module = importlib.import_module(f"btclib_secp256k1.{info.name}")
+    for module in _modules(btclib_secp256k1):
+        # `zkp.musig` rather than `musig`: they are different modules
+        # of this package, and the failure below names one of them
+        where = module.__name__.removeprefix(f"{btclib_secp256k1.__name__}.")
         for name, function in vars(module).items():
             if (
                 not inspect.isfunction(function)
@@ -309,10 +339,10 @@ def test_every_function_that_takes_a_secret_out_offers_into() -> None:
             ):
                 continue
             try:
-                called[info.name, name] = _calls(function)
+                called[where, name] = _calls(function)
             except OSError:  # pragma: no cover - source ships with the wheel
                 continue
-            functions[info.name, name] = function
+            functions[where, name] = function
 
     producers = {key for key, names in called.items() if "take" in names}
     assert producers, "no call site of _secret.take was found: the walk is broken"
