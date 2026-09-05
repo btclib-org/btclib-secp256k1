@@ -486,18 +486,17 @@ select = ["ALL"]
 # so nothing here enforces it -- what does is that the next reader of this
 # file should not have to look each code up to find out what was allowed
 ignore = [
-    # ruff's own docs/formatter.md, under "Conflicting lint rules", at
-    # the ruff revision this file and .pre-commit-config.yaml both pin
-    # (v0.16.3): the formatter's own rewriting undoes what this rule
-    # asks for, so selecting it is a lint failure the next `ruff format`
-    # produces again. The list is the vendor's and does not change with
-    # this tree; `ruff format --check .` prints the same warning
-    # directly. D203 needs no entry here -- the pep257 convention below
-    # already disables it in favour of D211, the other half of the pair
-    # ruff calls incompatible, without printing the warning ruff
-    # reserves for a pair nothing has settled -- and ISC002 needs none
-    # either: the vendor's own conditional is "if used without ISC001",
-    # and ISC001 stays selected here
+    # ruff's own docs/formatter.md, under "Conflicting lint rules": the
+    # formatter's own rewriting undoes what this rule asks for, so
+    # selecting it is a lint failure the next `ruff format` produces
+    # again. The list is the vendor's and does not change with this
+    # tree; `ruff format --check .` prints the same warning directly.
+    # D203 needs no entry here -- the pep257 convention below already
+    # disables it in favour of D211, the other half of the pair ruff
+    # calls incompatible, without printing the warning ruff reserves
+    # for a pair nothing has settled -- and ISC002 needs none either:
+    # the vendor's own conditional is "if used without ISC001", and
+    # ISC001 stays selected here
     "missing-trailing-comma",
     # comparing against a key, signature or hash length (32, 33, 64, 65)
     # is not a magic value: it is the domain

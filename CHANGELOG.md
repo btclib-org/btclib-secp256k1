@@ -4251,6 +4251,24 @@ release-notes length in the first place, and are still in
   lint gate fails outright where one is not checked out at all,
   `submodules-checked-out` asking that on every invocation.
 
+### The conflicting-lint-rules comment names no ruff revision
+
+- **The comment opening `[tool.ruff.lint]`'s `ignore` list sends the
+  reader to ruff's own `docs/formatter.md`, under "Conflicting lint
+  rules", with no version beside it** (closes #635). Ruff runs here from
+  two pins that move independently -- `.pre-commit-config.yaml`'s hook
+  `rev` and `uv.lock`'s own `ruff` entry -- so no one figure describes
+  both, and nothing re-derives one written in a comment: a hook bump
+  moves the first, a lock refresh the second, and neither reads this
+  file. The version decided nothing either. `docs/formatter.md` at ruff
+  `0.16.3`, `0.16.4` and `0.16.5` differs only in the `rev:` of its own
+  pre-commit example, the list of rules the formatter conflicts with
+  identical across them --
+  `gh api "repos/astral-sh/ruff/contents/docs/formatter.md?ref=<tag>"`
+  is the read. What answers the question against whatever ruff this
+  tree runs today is the command the comment already names beside it,
+  `ruff format --check .`, which prints the warning directly.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
