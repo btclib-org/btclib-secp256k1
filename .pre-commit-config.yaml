@@ -714,22 +714,38 @@ repos:
   # are read through check-sdist's hatchling.build plugin, keyed on
   # [build-system], so nothing here repeats them; [tool.check-sdist]
   # holds only what that plugin does not reach.
-  # --installer=pip, as pyroma above: the default installer is uv|pip,
-  # which resolves to uv wherever a uv is importable or on PATH and
-  # then runs `uv build` -- not PEP 517 for this backend, uv building
-  # with the copy of uv_build bundled in itself regardless of what
-  # [build-system] declares, so additional_dependencies would decide
-  # nothing. --installer=pip runs `python -m build --sdist
-  # --no-isolation` instead, which reads this hook's own environment
-  # rather than an isolated one.
+  # --no-isolation is upstream's rather than this file's: check-sdist's
+  # .pre-commit-hooks.yaml carries it in the entry of the check-sdist
+  # id, and pre-commit appends a config's args to that entry rather
+  # than replacing it. So the composed line is `check-sdist
+  # --no-isolation --inject-junk --installer=pip`, which the process
+  # table shows during
+  #
+  #   uv run --locked --only-group lint \
+  #     pre-commit run check-sdist --all-files
+  #
+  # check-sdist-isolated is the id whose entry omits the flag.
+  # --installer=pip decides which tool performs that unisolated build.
+  # The uv|pip default resolves to uv wherever a uv is importable or on
+  # PATH, and `uv build --no-build-isolation` calls the backend
+  # [build-system] declares without checking that the rest of requires
+  # is installed -- measured, the composed line with --installer=pip
+  # dropped builds the sdist from an environment holding hatchling
+  # alone and answers "SDist matches git". --installer=pip runs
+  # `python -m build --sdist --no-isolation` instead.
   # additional_dependencies is [build-system]'s requires verbatim,
   # unlike pyroma's hatchling alone: build --no-isolation checks the
   # whole of requires before calling the backend, packing an sdist
   # asking nothing of the cffi and cmake requirements themselves --
-  # measured, the same command with hatchling alone dying
-  # "Getting build dependencies for sdist... ERROR Missing
-  # dependencies: cmake>=3.22, setuptools, cffi>=2.0" -- but requiring
-  # every declared package to be installable first regardless.
+  # measured, the same command with hatchling alone refusing to build
+  # at all, exit 1, and naming what it wants -- but requiring every
+  # declared package to be installable first regardless. What it names
+  # is not quoted here: build skips a requirement whose marker is
+  # unmet, and requires is marker-gated, so the interpreter running
+  # the hook decides the list -- 3.14 wants cffi>=2.0 and setuptools
+  # where 3.11 wants cffi>=1.6 and typing_extensions. build words that
+  # message differently between its own releases, so the exit code is
+  # what this rests on.
   # --inject-junk plants an egg-info directory beside the sources for
   # the length of the run. git-only below cannot be what keeps it out --
   # it is read against files git tracks, and an injected directory is
