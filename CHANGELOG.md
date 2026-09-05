@@ -4269,6 +4269,64 @@ release-notes length in the first place, and are still in
   tree runs today is the command the comment already names beside it,
   `ruff format --check .`, which prints the warning directly.
 
+### Every guard that walks the package descends into `zkp`
+
+- **`tests/citations_test.py` reads the sources recursively** (closes
+  #622). `Path.glob` lists a directory's direct children alone, so
+  nothing under `src/btclib_secp256k1/zkp/` reached the reader and a
+  test named in a docstring there was held to no test existing --
+  `tests/docs_test.py` reads the same tree with `rglob` and does
+  descend, which is the disagreement between them. Nothing under the
+  subpackage cites a test, so what changes is what the guard covers
+  rather than what it reports.
+- **`tests/secret_test.py`'s walk descends into the subpackage, and
+  `_calls` dedents the source before parsing it** (closes #626). A
+  function defined inside a module-level `else:` block --
+  `btclib_secp256k1.zkp`'s own `__getattr__` is one -- comes back from
+  `inspect.getsource` still indented, and `ast.parse` answers that with
+  `IndentationError`, which is not the `OSError` the walk catches. The
+  population the walk finds is unchanged by the descent: nothing under
+  `zkp` calls `_secret.take`, those modules importing `wipe` alone. A
+  module is keyed by the name it is reached through, `zkp.musig` rather
+  than `musig`, the two being different modules of this package.
+- **The secrets the subpackage answers do not pass through `take`**
+  (issue #640). A secret that never goes through it is what the walk
+  cannot see, which SECURITY.md records for
+  `silentpayments._found_output`; the secret adaptor
+  `zkp.musig.extract_adaptor` recovers, the blinding factors
+  `zkp.generator` answers and the one `zkp.rangeproof.rewind` recovers
+  are read out of their buffers with `ffi.unpack` the same way. The
+  walk's own docstring names them, and what to do about the wrappers is
+  that issue's rather than this branch's.
+- **`tests/all_test.py`'s census walks the subpackage** (closes #627).
+  `zkp.musig` and `zkp.ecdsa_s2c` are ordinary modules with ordinary
+  `__all__` lists whose entry points defer the extension into their own
+  first call, so the census asks them what it asks the modules above
+  them, and `test_every_module_is_declared` names what it finds for the
+  subpackage it sits in. `zkp.ffi`, `zkp.lib` and `zkp.context.ctx` are
+  served by a module-level `__getattr__` that loads the flagged
+  extension, so `hasattr` propagates the `ImportError` an unflagged
+  build gets: `exported_name_exists` reads a name instead, counting an
+  `ImportError` naming `BTCLIB_LIBSECP256K1_ZKP` as a name the module
+  serves, and `test_an_exported_name_that_is_not_there_is_reported`
+  holds it to answering false for one nothing serves. `zkp.context`'s
+  `ffi` and `lib` go into `UNEXPORTED`, that module's own comment
+  giving why they are assignments where `ctx` is an annotation.
+- **`CONTRIBUTING.md`'s coverage paragraph says what an unflagged run
+  executes under `zkp.musig`** (closes #645). What keeps the plain
+  `pytest` command short of the ratchet is that nothing calls into that
+  module without the flag, not that nothing imports it: the census and
+  the walk above both do, and so does the documentation build for its
+  own `:members:`, so what an unflagged run executes there is
+  module-level lines and no function body. The command already in that
+  section is what says how much that comes to.
+- **`tests/all_test.py`'s docstring names the underscore exception
+  without a total** (closes #647). Nothing in the file re-derives how
+  many modules sit directly under the package --
+  `test_every_module_is_declared` compares two sorted lists and never
+  their length -- so a number there is a line every new module has to
+  remember to edit.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
