@@ -4980,6 +4980,28 @@ release-notes length in the first place, and are still in
   removal runs against whatever worktree that path names. Both are
   `btclib-org/.github`'s at `20ad654` byte for byte.
 
+### The secp256k1-zkp pin check fails where the key does not arrive
+
+- **`vendored-vectors.yml`'s `zkp-pin` job imports the signer's key from
+  the bundle its owner publishes, and then asserts that the keyring holds
+  the pinned fingerprint** (closes #690). `keys.openpgp.org` publishes a
+  key's user IDs only where its owner has confirmed an address through
+  it, and serves this one stripped of them; GnuPG skips a key carrying no
+  user ID on import and exits 0 having imported nothing. So the source is
+  what makes the key arrive and `gpg --list-keys` is what makes its
+  absence fail the step that asked for it, rather than the step that
+  trips over the empty keyring afterwards. The URL is where the bytes
+  come from and not why they can be trusted: the fingerprint is what the
+  job trusts, and it is pinned in the step's own environment.
+- **The verification step's error tells an absent key from a signature
+  that does not verify** (closes #690). `NO_PUBKEY` names the key id the
+  keyring has nothing to check the pin's signature against, which is what
+  a re-pin signed by somebody this job carries no fingerprint for prints,
+  and `BADSIG` names a signature that fails against a key the keyring
+  does hold. `VALIDSIG` naming the pinned fingerprint is the success the
+  step greps for, and the comment above it argues reading the
+  machine-readable status over `verify-commit`'s own exit code.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
