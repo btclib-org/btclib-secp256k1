@@ -4583,6 +4583,21 @@ release-notes length in the first place, and are still in
   paragraph on `additional_dependencies` draws the comparison the
   clause was reaching for.
 
+### The pragma's reason names the case, on the pragma's own line
+
+- **`tests/secret_test.py`'s `# pragma: no cover` carries its reason
+  after ` -- `, and the reason names what the handler catches** (issue
+  btclib-org/.github#838): section 8 of the organization standard puts
+  it there so that `git grep -nE 'pragma: no cover$'` and
+  `git grep -nE 'pragma: no cover - [^-]'` answer empty in a tree that
+  keeps the rule, which makes the pair a gate rather than a census. The
+  arm covers `inspect.getsource`, which raises `OSError` for a module
+  imported with no source file beside it, so a function whose source
+  cannot be read is left out of the population the walk builds. The
+  reason it replaces, `source ships with the wheel`, is about a
+  distribution rather than about the handler: `uv sync` installs this
+  package editable, so the source the walk reads is the checkout's own.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
