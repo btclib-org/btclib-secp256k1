@@ -57,8 +57,14 @@ jobs:
       # elevation-per-job: this job writes neither a release nor
       # anything else to the tree, so contents stays at its workflow
       # default of read
-      actions: read
       contents: read
+      # what the Packaging check reads workflow-run history with, to see
+      # whether release.yml has runs that succeeded -- ossf/scorecard's
+      # checks/raw/github/packaging.go calls
+      # Client.Actions.ListWorkflowRunsByFileName for a workflow file its
+      # matcher recognizes as publishing, which release.yml is by its
+      # pypa/gh-action-pypi-publish step
+      actions: read
     # a run past this is hung rather than analysing
     timeout-minutes: 15
     steps:

@@ -66,9 +66,8 @@ on:
 
 # least privilege for the GITHUB_TOKEN: everything running in a job can read
 # it, and nothing here writes. In particular no issues: write -- an
-# automatic issue per surviving mutant is the usual next step, and it would
-# make this the only workflow here able to write anything, to save a
-# maintainer from reading a report they already receive
+# automatic issue per surviving mutant is the usual next step, declined to
+# save a maintainer from reading a report they already receive
 permissions:
   contents: read
 

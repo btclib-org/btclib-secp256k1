@@ -5097,6 +5097,29 @@ release-notes length in the first place, and are still in
   unqualified -- left a reader checking the setting's own reasoning
   against ruff with the qualification missing.
 
+### `links.yml` and `mutation.yml` decline `issues: write` on their own reasoning
+
+- **Neither file's comment on declining `issues: write` claims any
+  longer that taking it would make that workflow the only one here
+  able to write anything** (closes #698). `claude-review.yml`,
+  `codeql.yml`, `release.yml`, `scorecard.yml` and
+  `vendored-vectors.yml` each already grant a write scope of their
+  own, which is what made the removed clause false regardless of what
+  either file otherwise does; what each comment states now -- that an
+  automatic issue is declined to save a maintainer from reading a
+  notification they already receive -- does not depend on what any
+  other workflow in the directory grants.
+
+### `scorecard.yml`'s `actions: read` carries its own reason
+
+- **The job's `actions: read` grant sits under a comment naming what
+  asks for it, and `contents: read` moves up to sit under the comment
+  that already explained it** (closes #699). `ossf/scorecard`'s
+  `checks/raw/github/packaging.go` calls
+  `Client.Actions.ListWorkflowRunsByFileName` for a workflow file its
+  Packaging check recognizes as publishing a package, which
+  `release.yml` is by its `pypa/gh-action-pypi-publish` step.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

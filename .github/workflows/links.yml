@@ -67,8 +67,7 @@ on:
 # links alone, where an unauthenticated runner is rate limited hard enough
 # to look like rot.
 # Deliberately not issues: write. An automatic "link rot" issue is the
-# usual next step, and it would make this the only workflow here able to
-# write anything -- to save a maintainer from reading a failure
+# usual next step, declined to save a maintainer from reading a failure
 # notification they already receive
 permissions:
   contents: read
