@@ -143,13 +143,22 @@ else:
         Raises:
             AttributeError: for any other name, this being the
                 fallback python calls only once the module itself has
-                none.
+                none, and for an `__all__` entry the loader leaves
+                unbound.
             ImportError: see `_import_extension`.
         """
+        msg = f"module {__name__!r} has no attribute {name!r}"
         if name not in __all__:
-            msg = f"module {__name__!r} has no attribute {name!r}"
             raise AttributeError(msg)
         module = _import_extension()
         globals()["ffi"] = module.ffi
         globals()["lib"] = _load_lib(module)
-        return globals()[name]
+        try:
+            return globals()[name]
+        except KeyError:
+            # an `__all__` entry the loader does not bind is a name
+            # this module does not have, and answers as one: `hasattr`
+            # and `getattr(module, name, default)` swallow
+            # `AttributeError` alone, so any other exception raises out
+            # of a caller's ordinary probe instead of answering it
+            raise AttributeError(msg) from None
