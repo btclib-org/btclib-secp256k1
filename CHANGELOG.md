@@ -5120,6 +5120,31 @@ release-notes length in the first place, and are still in
   Packaging check recognizes as publishing a package, which
   `release.yml` is by its `pypa/gh-action-pypi-publish` step.
 
+### `zkp`'s wrapper modules share one helper for `ffi`, `lib` and `ctx`
+
+- **`zkp.context._bindings()` is the one place every module wrapping a
+  zkp-only entry point reaches for `ffi`, `lib` and `ctx` together**
+  (closes #636). `git grep -n -E '^def _(handles|boundary|bindings)\('
+  -- src/btclib_secp256k1/zkp/` used to answer once per module --
+  `_bindings` in `ecdsa_s2c.py`, `_handles` in `generator.py` and in
+  `rangeproof.py`, `_boundary` in `musig.py` -- three of the four
+  reading `ffi` and `lib` straight from `zkp` and `ctx` from `context`
+  separately, the fourth reading all three through `context`, which
+  makes `context`'s own `ffi` and `lib` real only where `ctx` is read
+  first. The same grep now answers only `context.py`, and every caller
+  of `_bindings` takes on that order by construction rather than by
+  which of the four files its author opened first.
+- **`_bindings()` builds the context at most once, reading `ctx` from
+  this module's own globals once it is there rather than rebuilding
+  it on every call.** A rebuild registers fresh callback closures over
+  the fresh context and overwrites the module globals the previous
+  ones were the only reference to, so whichever earlier context a
+  caller is still holding is left registered against closures nothing
+  references any more, freed under it -- `tests/zkp_test.py`'s
+  `test_bindings_builds_the_context_once` asserts one `ctx` across
+  two calls and the same closures with it, the closures being the
+  lifetime a rebuild breaks rather than a proxy for it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -39,32 +39,13 @@ from typing import Any
 from btclib_secp256k1 import BytesLike, CData
 from btclib_secp256k1._scalar import in_range, octets, scalar
 
-from . import generator
+from . import context, generator
 
 __all__ = ["MAX_MESSAGE_LEN", "info", "max_size", "rewind", "sign", "verify"]
 
 # SECP256K1_RANGEPROOF_MAX_MESSAGE_LEN, the one constant the header
 # itself defines
 MAX_MESSAGE_LEN = 3968
-
-
-def _handles() -> tuple[Any, Any, Any]:
-    """Return this subpackage's `ffi`, `lib` and `ctx`, deferred to first use.
-
-    The same seam as `zkp.generator._handles`, and its docstring has the
-    reasoning.
-
-    Returns:
-        `ffi`, `lib` and `ctx` of the flagged secp256k1-zkp extension.
-
-    Raises:
-        ImportError: propagated from `btclib_secp256k1.zkp`, if the
-            extension was never built.
-    """
-    from . import ffi, lib  # noqa: PLC0415
-    from .context import ctx  # noqa: PLC0415
-
-    return ffi, lib, ctx
 
 
 def _gen(lib: Any, gen_bytes: BytesLike | None) -> CData:
@@ -110,7 +91,7 @@ def max_size(max_value: int, min_bits: int) -> int:
         ValueError: if `max_value` is a bool or does not fit in 8 bytes,
             or if `min_bits` is out of [0, 64].
     """
-    _ffi, lib, ctx = _handles()
+    _ffi, lib, ctx = context._bindings()
     if not isinstance(max_value, int):
         raise TypeError(f"max_value must be an int, not {type(max_value).__name__}")
     if isinstance(max_value, bool) or not 0 <= max_value < 2**64:
@@ -146,7 +127,7 @@ def verify(
         ValueError: if `commit_bytes` or `gen_bytes` is not a valid
             33-byte generator or commitment.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     commit = generator.pedersen_commitment_parse(commit_bytes, "commitment")
     proof_bytes = octets(proof, "proof")
     extra_bytes = octets(extra_commit, "extra_commit")
@@ -201,7 +182,7 @@ def rewind(
             or if the proof does not verify or the rewind fails --
             libsecp256k1-zkp reports both through the same return code.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     commit = generator.pedersen_commitment_parse(commit_bytes, "commitment")
     proof_bytes = octets(proof, "proof")
     nonce_bytes = octets(nonce, "nonce", 32)
@@ -313,7 +294,7 @@ def sign(  # noqa: PLR0913
             own docstring names, indistinguishably from a bad argument
             that reached this far.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     commit = generator.pedersen_commitment_parse(commit_bytes, "commitment")
     blind_bytes = scalar(blind, "blind")
     nonce_bytes = octets(nonce, "nonce", 32)
@@ -379,7 +360,7 @@ def info(proof: BytesLike) -> tuple[int, int, int, int]:
     Raises:
         ValueError: if the proof cannot be decoded.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     proof_bytes = octets(proof, "proof")
     exp = ffi.new("int *")
     mantissa = ffi.new("int *")

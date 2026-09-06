@@ -408,9 +408,8 @@ def test_a_call_made_through_lib_reports_through_zkp_context_check() -> None:
     bare 0 and reads why with `btclib_secp256k1.zkp.context.check()`.
     """
     from btclib_secp256k1.zkp import context as zkp_context  # noqa: PLC0415
-    from btclib_secp256k1.zkp.musig import _boundary  # noqa: PLC0415
 
-    ffi_, lib_, ctx_ = _boundary()
+    ffi_, lib_, ctx_ = zkp_context._bindings()
     cache, secnonces, session = two_of_two_session()
     secnonce = secnonces[0]._secnonce
     keypair_obj = ffi_.new("secp256k1_keypair *")

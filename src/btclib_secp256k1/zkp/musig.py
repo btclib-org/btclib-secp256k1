@@ -49,17 +49,18 @@ through mainline's own `lib.secp256k1_keypair_create`, and this module's
 `_keypair` is the local equivalent, over zkp's own `ctx` and `lib`.
 
 **Every entry point here defers `ffi`, `lib` and `ctx` to its own call,
-through `_boundary` below, rather than importing any of the three at
-module scope.** `btclib_secp256k1.musig` imports its `ffi` and `lib`
+through `context._bindings()`, rather than importing any of the three
+at module scope.** `btclib_secp256k1.musig` imports its `ffi` and `lib`
 eagerly and may, because mainline's extension is never flag-gated; this
 module's is, and `docs/source/btclib_secp256k1.rst` documents every
 class and function below with `:members:` in a build that never sets
 `BTCLIB_LIBSECP256K1_ZKP` -- so importing this module, which Sphinx's
 autodoc does to read the docstrings and signatures, must not itself
 reach for the extension. `btclib_secp256k1.zkp.context`'s own
-`__getattr__` already makes this trade for `ctx` alone; `_boundary`
-is the same trade for `ffi` and `lib` too, made once so that every
-function below is not repeating the two lines that make it.
+`__getattr__` already makes this trade for `ctx` alone; `_bindings` is
+the same trade for `ffi` and `lib` too, shared by every module wrapping
+a zkp-only entry point so that none of them repeats the two lines that
+make it.
 
 **Validation**: BIP327's own vectors -- `tests/bip327_*_vectors.json`,
 the files `tests/vectors_test.py` already reads for
@@ -85,6 +86,8 @@ from typing import Any
 from btclib_secp256k1 import BytesLike, CData
 from btclib_secp256k1._scalar import in_range, octets, scalar
 from btclib_secp256k1._secret import wipe
+
+from . import context
 
 __all__ = [
     "KeyAggCache",
@@ -126,33 +129,6 @@ _COMPRESSED_FLAG = 258
 _UNCOMPRESSED_FLAG = 2
 
 
-def _boundary() -> tuple[Any, Any, Any]:
-    """Return this subpackage's `ffi` and `lib`, and this module's `ctx`.
-
-    Deferred here, and not at module scope: the module docstring above
-    has the reasoning, which is `btclib_secp256k1.zkp.context`'s own
-    `__getattr__` docstring restated for a module with many entry
-    points instead of one lazy attribute. `btclib_secp256k1.zkp`'s own
-    `__getattr__` and `btclib_secp256k1.zkp.context`'s cache `ffi`,
-    `lib` and `ctx` into their own module globals on first access, so
-    only the very first call anywhere in the process reaches for the
-    extension; every call after that, from any function below, is a
-    plain attribute read.
-
-    Returns:
-        `btclib_secp256k1.zkp.ffi`, `.lib`, and
-        `btclib_secp256k1.zkp.context.ctx`.
-
-    Raises:
-        ImportError: from `btclib_secp256k1.zkp`, if the flagged
-            extension this needs was never built.
-    """
-    from . import ffi, lib  # noqa: PLC0415
-    from .context import ctx  # noqa: PLC0415
-
-    return ffi, lib, ctx
-
-
 def _pubkey_parse(
     ffi: Any, lib: Any, ctx: Any, pubkey_bytes: BytesLike, name: str
 ) -> CData:
@@ -162,9 +138,9 @@ def _pubkey_parse(
     docstring explains why that one cannot be called from here instead.
 
     Args:
-        ffi: this module's `ffi`, from `_boundary`.
-        lib: this module's `lib`, from `_boundary`.
-        ctx: this module's `ctx`, from `_boundary`.
+        ffi: this module's `ffi`, from `context._bindings()`.
+        lib: this module's `lib`, from `context._bindings()`.
+        ctx: this module's `ctx`, from `context._bindings()`.
         pubkey_bytes: the public key, 33 or 65 bytes.
         name: what the key is, as the exception should call it.
 
@@ -190,9 +166,9 @@ def _pubkey_serialize(
     The local equivalent of `btclib_secp256k1.keys.serialize`.
 
     Args:
-        ffi: this module's `ffi`, from `_boundary`.
-        lib: this module's `lib`, from `_boundary`.
-        ctx: this module's `ctx`, from `_boundary`.
+        ffi: this module's `ffi`, from `context._bindings()`.
+        lib: this module's `lib`, from `context._bindings()`.
+        ctx: this module's `ctx`, from `context._bindings()`.
         pubkey: the zkp-native public key object, as `_pubkey_parse` or
             `secp256k1_musig_pubkey_get` returns.
         compressed: whether to return 33 bytes rather than 65.
@@ -220,9 +196,9 @@ def _xonly_serialize(ffi: Any, lib: Any, ctx: Any, xonly_pubkey: CData) -> bytes
     The local equivalent of `btclib_secp256k1.xonly.serialize`.
 
     Args:
-        ffi: this module's `ffi`, from `_boundary`.
-        lib: this module's `lib`, from `_boundary`.
-        ctx: this module's `ctx`, from `_boundary`.
+        ffi: this module's `ffi`, from `context._bindings()`.
+        lib: this module's `lib`, from `context._bindings()`.
+        ctx: this module's `ctx`, from `context._bindings()`.
         xonly_pubkey: the zkp-native x-only public key object, as
             `secp256k1_musig_pubkey_agg` writes it.
 
@@ -247,9 +223,9 @@ def _keypair(ffi: Any, lib: Any, ctx: Any, prvkey: BytesLike | int) -> CData:
     safe to call on it for the reason the module docstring gives.
 
     Args:
-        ffi: this module's `ffi`, from `_boundary`.
-        lib: this module's `lib`, from `_boundary`.
-        ctx: this module's `ctx`, from `_boundary`.
+        ffi: this module's `ffi`, from `context._bindings()`.
+        lib: this module's `lib`, from `context._bindings()`.
+        ctx: this module's `ctx`, from `context._bindings()`.
         prvkey: the private key, 32 bytes or an int below 2**256.
 
     Returns:
@@ -273,7 +249,7 @@ def _array(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
     module's own `ffi`.
 
     Args:
-        ffi: this module's `ffi`, from `_boundary`.
+        ffi: this module's `ffi`, from `context._bindings()`.
         cdecl: the cffi declaration of the array type.
         items: the objects to point at, which the caller keeps alive.
 
@@ -299,7 +275,7 @@ def pubnonce_parse(pubnonce_bytes: BytesLike, name: str = "public nonce") -> CDa
     Raises:
         ValueError: if it is not 66 bytes, or not one BIP327 defines.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     pubnonce_bytes = octets(pubnonce_bytes, name, _PUBNONCE_SIZE)
     pubnonce = ffi.new("secp256k1_musig_pubnonce *")
     if not lib.secp256k1_musig_pubnonce_parse(ctx, pubnonce, pubnonce_bytes):
@@ -321,7 +297,7 @@ def pubnonce_serialize(pubnonce: CData) -> bytes:
         RuntimeError: if libsecp256k1-zkp refuses the object, which one
             it produced cannot make it do.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_PUBNONCE_SIZE}]")
     if not lib.secp256k1_musig_pubnonce_serialize(ctx, output, pubnonce):
         raise RuntimeError("public nonce serialization failed")
@@ -342,7 +318,7 @@ def aggnonce_parse(aggnonce_bytes: BytesLike, name: str = "aggregate nonce") -> 
     Raises:
         ValueError: if it is not 66 bytes, or not one BIP327 defines.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     aggnonce_bytes = octets(aggnonce_bytes, name, _AGGNONCE_SIZE)
     aggnonce = ffi.new("secp256k1_musig_aggnonce *")
     if not lib.secp256k1_musig_aggnonce_parse(ctx, aggnonce, aggnonce_bytes):
@@ -364,7 +340,7 @@ def aggnonce_serialize(aggnonce: CData) -> bytes:
         RuntimeError: if libsecp256k1-zkp refuses the object, which one
             it produced cannot make it do.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_AGGNONCE_SIZE}]")
     if not lib.secp256k1_musig_aggnonce_serialize(ctx, output, aggnonce):
         raise RuntimeError("aggregate nonce serialization failed")
@@ -388,7 +364,7 @@ def partial_sig_parse(
         ValueError: if it is not 32 bytes, or not one below the curve
             order.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     partial_sig_bytes = octets(partial_sig_bytes, name, _PARTIAL_SIG_SIZE)
     partial_sig = ffi.new("secp256k1_musig_partial_sig *")
     if not lib.secp256k1_musig_partial_sig_parse(ctx, partial_sig, partial_sig_bytes):
@@ -410,7 +386,7 @@ def partial_sig_serialize(partial_sig: CData) -> bytes:
         RuntimeError: if libsecp256k1-zkp refuses the object, which one
             it produced cannot make it do.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_PARTIAL_SIG_SIZE}]")
     if not lib.secp256k1_musig_partial_sig_serialize(ctx, output, partial_sig):
         raise RuntimeError("partial signature serialization failed")
@@ -442,7 +418,7 @@ def nonce_agg(pubnonces_bytes: Sequence[BytesLike]) -> bytes:
         RuntimeError: if libsecp256k1-zkp fails to aggregate or
             serialize the result, which no valid input can make it do.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     if not pubnonces_bytes:
         raise ValueError("at least one public nonce is required")
     # a per-contribution parse loop, not a comprehension calling
@@ -504,7 +480,7 @@ class KeyAggCache:
     # pydoclint (DOC301) asks that this carry no docstring of its own,
     # the class docstring above being where the constructor is documented
     def __init__(self, pubkeys_bytes: Sequence[BytesLike]) -> None:  # noqa: D107
-        ffi, lib, ctx = _boundary()
+        ffi, lib, ctx = context._bindings()
         if not pubkeys_bytes:
             raise ValueError("at least one public key is required")
         # a per-contribution parse loop, for the reason nonce_agg's has
@@ -548,7 +524,7 @@ class KeyAggCache:
             RuntimeError: if libsecp256k1-zkp fails to read or serialize
                 it, which a cache this built cannot make it do.
         """
-        ffi, lib, ctx = _boundary()
+        ffi, lib, ctx = context._bindings()
         agg_pk = ffi.new("secp256k1_pubkey *")
         if not lib.secp256k1_musig_pubkey_get(ctx, agg_pk, self._cache):
             raise RuntimeError("aggregate public key extraction failed")
@@ -641,7 +617,7 @@ class KeyAggCache:
             RuntimeError: if libsecp256k1-zkp fails to serialize the
                 result, which no valid input can make it do.
         """
-        ffi, lib, ctx = _boundary()
+        ffi, lib, ctx = context._bindings()
         tweak_add = getattr(lib, tweak_add_name)
         tweak_bytes = scalar(tweak, "tweak")
         output = ffi.new("secp256k1_pubkey *")
@@ -717,7 +693,7 @@ def nonce_gen(
             them, or is not in [1, n-1], or if `msg32` or
             `extra_input32` is given and is not 32 bytes.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     pubkey = _pubkey_parse(ffi, lib, ctx, pubkey_bytes, "public key")
     prvkey_bytes = None if prvkey is None else scalar(prvkey, "private key")
     msg_bytes = None if msg32 is None else octets(msg32, "message", 32)
@@ -793,7 +769,7 @@ def nonce_gen_counter(
             or to generate the nonce, which a private key already
             verified cannot make it do.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     nonrepeating_cnt = in_range(nonrepeating_cnt, "nonrepeating_cnt", 2**64 - 1)
     msg_bytes = None if msg32 is None else octets(msg32, "message", 32)
     extra_bytes = (
@@ -837,7 +813,8 @@ class SecretNonce:
     threads racing `partial_sign` on one object, `wipe`'s cases, and why
     a `SecretNonce` told neither `wipe` nor entered as a `with` block is
     dropped holding the secret. All of it applies unchanged; only the
-    `ctx`, `ffi` and `lib` this reaches for, through `_boundary`, differ.
+    `ctx`, `ffi` and `lib` this reaches for, through `context._bindings()`,
+    differ.
 
     Args:
         secnonce: the libsecp256k1-zkp secret nonce object `nonce_gen` or
@@ -906,7 +883,7 @@ class SecretNonce:
                 not verify, which no input reaching this far can make
                 happen.
         """
-        ffi, lib, ctx = _boundary()
+        ffi, lib, ctx = context._bindings()
         # _take, not _held: it clears self._secnonce as the one
         # statement that reads it, for the reason
         # `btclib_secp256k1.musig.SecretNonce`'s own docstring gives
@@ -1075,7 +1052,7 @@ class Session:
         keyagg_cache: KeyAggCache,
         adaptor_bytes: BytesLike | None = None,
     ) -> None:
-        ffi, lib, ctx = _boundary()
+        ffi, lib, ctx = context._bindings()
         aggnonce = aggnonce_parse(aggnonce_bytes)
         msg_bytes = octets(msg32, "message", 32)
         adaptor = (
@@ -1123,7 +1100,7 @@ class Session:
             ValueError: if any of the three byte arguments is not the
                 right length or not one libsecp256k1-zkp will read.
         """
-        ffi, lib, ctx = _boundary()
+        ffi, lib, ctx = context._bindings()
         partial_sig = partial_sig_parse(partial_sig_bytes)
         pubnonce = pubnonce_parse(pubnonce_bytes)
         pubkey = _pubkey_parse(ffi, lib, ctx, pubkey_bytes, "public key")
@@ -1167,7 +1144,7 @@ class Session:
             RuntimeError: if libsecp256k1-zkp fails to aggregate the
                 result, which no valid input can make it do.
         """
-        ffi, lib, ctx = _boundary()
+        ffi, lib, ctx = context._bindings()
         if not partial_sigs_bytes:
             raise ValueError("at least one partial signature is required")
         # a per-contribution parse loop, for the reason nonce_agg's has
@@ -1202,7 +1179,7 @@ class Session:
             RuntimeError: if libsecp256k1-zkp fails to extract it, which
                 a session this built cannot make it do.
         """
-        ffi, lib, ctx = _boundary()
+        ffi, lib, ctx = context._bindings()
         parity = ffi.new("int *")
         if not lib.secp256k1_musig_nonce_parity(ctx, parity, self._session):
             raise RuntimeError("nonce parity extraction failed")
@@ -1248,7 +1225,7 @@ def adapt(
             not 32 bytes or does not fit in them, if `nonce_parity` is
             not 0 or 1, or if `pre_sig64` or `sec_adaptor` overflow.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     pre_sig_bytes = octets(pre_sig64, "pre-signature", _SIGNATURE_SIZE)
     sec_adaptor_bytes = scalar(sec_adaptor, "secret adaptor")
     nonce_parity = in_range(nonce_parity, "nonce_parity", 1)
@@ -1287,7 +1264,7 @@ def extract_adaptor(sig64: BytesLike, pre_sig64: BytesLike, nonce_parity: int) -
             `nonce_parity` is not 0 or 1, or if `sig64` or `pre_sig64`
             grossly overflow.
     """
-    ffi, lib, ctx = _boundary()
+    ffi, lib, ctx = context._bindings()
     sig_bytes = octets(sig64, "signature", _SIGNATURE_SIZE)
     pre_sig_bytes = octets(pre_sig64, "pre-signature", _SIGNATURE_SIZE)
     nonce_parity = in_range(nonce_parity, "nonce_parity", 1)
