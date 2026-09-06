@@ -181,9 +181,10 @@ def test_an_explicit_threshold_survives_either_kind_of_run() -> None:
     """Verify `--cov-fail-under` outranks both branches.
 
     The caller naming a threshold is the one thing the hook must not
-    overrule, and the dynamic-linkage step of `test.yml`'s coverage job
-    is the run that depends on it: what it collects cannot reach 100 on
-    its own, and it is the union of the two runs that is gated.
+    overrule, and `test.yml`'s coverage job depends on that: no
+    run of it reaches 100 on its own, so each asks for zero by name and
+    only the union after them is gated. `coverage_fail_under`'s own
+    docstring names the command that finds those runs.
     """
     subset = _options(cov_fail_under=90.0, file_or_dir=["tests/keys_test.py"])
     assert coverage_fail_under(100.0, subset, *_ARGS) == 90.0

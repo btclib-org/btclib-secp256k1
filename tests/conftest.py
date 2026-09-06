@@ -104,8 +104,9 @@ def coverage_fail_under(
     which carries only what the command line and `addopts` put there. An
     explicit `--cov-fail-under` is therefore handed back untouched
     whichever kind of run it is -- the caller naming the threshold is
-    the one thing this must not overrule, and the dynamic-linkage step
-    of `test.yml`'s coverage job is the run that asks for it.
+    the one thing this must not overrule, and
+    `git grep cov-fail-under -- .github/workflows/` finds the runs that
+    ask for it.
 
     Args:
         configured: what pytest-cov read out of the coverage
