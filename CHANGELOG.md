@@ -4783,6 +4783,34 @@ release-notes length in the first place, and are still in
   message, and a call into any entry point below it is what triggers
   that read on an unflagged build.
 
+### The vendored-vector re-check takes its issue title from the caller
+
+- **`check_vendored_vectors.py` reads the tracking issue's title from a
+  second positional argument, `vendored-vectors.yml` and
+  `CONTRIBUTING.md`'s by-hand command both passing
+  `Vendored vectors behind upstream`, which is the title the deleted
+  `_ISSUE_TITLE` held** (closes btclib-org/btclib#1732). btclib's copy
+  needs the argument because two ledgers pass through it -- a pin behind
+  upstream and a verdict read at a revision that has since moved are
+  different news, acted on differently, and one title over both would
+  name one issue for the pair, each run rewriting what the other wrote.
+  One ledger passes through this copy, so nothing here is fixed by the
+  change; what is owed is the argument list, that being the half of the
+  two files meant to stay identical, and this tracker's #445 is the
+  precedent for saying which half is not.
+- **`readme_path` keeps its name where btclib's copy renamed it
+  `ledger_path`**: that rename answers a script two ledgers pass
+  through, only one of which is a README, and `tests/README.md` is what
+  this tree calls that file everywhere else it names it -- the
+  workflow's paths filter, `CONTRIBUTING.md`, and the `_readme` helper
+  its own tests build a sample with. The module docstring carries the
+  declining, beside the one the skip-line collapse already had.
+- **The test that reads the search term asks for a title no caller in
+  this tree passes**: a search built from the argument and one built
+  from a constant that happens to match are the same assertion where the
+  test passes the production title, and the constant is what this change
+  removes.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

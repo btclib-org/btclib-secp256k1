@@ -137,6 +137,7 @@ jobs:
         run: >-
           python .github/scripts/check_vendored_vectors.py
           tests/README.md
+          "Vendored vectors behind upstream"
           ${{ github.event_name == 'pull_request' && '--dry-run' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

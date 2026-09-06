@@ -856,7 +856,8 @@ run locally.
 
   ```shell
   uv run --no-project python \
-      .github/scripts/check_vendored_vectors.py tests/README.md --dry-run
+      .github/scripts/check_vendored_vectors.py \
+      tests/README.md "Vendored vectors behind upstream" --dry-run
   ```
 
   `--no-project` because there is no environment to build for it: the

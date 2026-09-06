@@ -333,18 +333,22 @@ def test_the_tracking_issue_is_looked_for_by_its_title(
 ) -> None:
     """One open issue is reused; none means there is one to open.
 
+    The title asked for is a title no caller in this tree passes, which
+    is what tells a search built from the argument apart from one built
+    from a constant that happens to match.
+
     Args:
         monkeypatch: the fixture `subprocess.run` is replaced through.
     """
     run = _Run('[{"number": 7}]')
     monkeypatch.setattr(check.subprocess, "run", run)
 
-    assert check._open_issue_number() == "7"
-    assert f'"{check._ISSUE_TITLE}" in:title' in run.calls[-1]
+    assert check._open_issue_number("A title of the caller's own") == "7"
+    assert '"A title of the caller\'s own" in:title' in run.calls[-1]
 
     monkeypatch.setattr(check.subprocess, "run", _Run("[]"))
 
-    assert check._open_issue_number() is None
+    assert check._open_issue_number("A title of the caller's own") is None
 
 
 @pytest.mark.parametrize(
@@ -380,7 +384,7 @@ def test_the_report_is_one_gh_command_per_outcome(
     run = _Run(open_issues)
     monkeypatch.setattr(check.subprocess, "run", run)
 
-    check.report(_readme(tmp_path), drifted, [])
+    check.report(_readme(tmp_path), "Vendored vectors behind upstream", drifted, [])
 
     if expected is None:
         assert run.calls == [run.calls[0]], "only the question was asked"
@@ -389,14 +393,14 @@ def test_the_report_is_one_gh_command_per_outcome(
         assert run.calls[-1][1:3] == ["issue", expected]
 
 
-@pytest.mark.parametrize("argv", [[], ["one.md", "two.md"]])
+@pytest.mark.parametrize("argv", [[], ["one.md"], ["one.md", "a title", "extra"]])
 def test_a_run_that_names_no_one_readme_says_how_to_call_it(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], argv: list[str]
 ) -> None:
     """Two exit codes and one message: a human is the only caller here.
 
-    The workflow passes the path every time, so this is reachable by
-    hand alone -- and an IndexError naming a list is not an answer.
+    The workflow passes both every time, so this is reachable by hand
+    alone -- and an IndexError naming a list is not an answer.
 
     Args:
         monkeypatch: the fixture `sys.argv` is set through.
@@ -432,7 +436,12 @@ def test_a_dry_run_prints_the_finding_and_touches_no_issue(
     monkeypatch.setattr(
         check.sys,
         "argv",
-        ["check_vendored_vectors.py", str(_readme(tmp_path)), "--dry-run"],
+        [
+            "check_vendored_vectors.py",
+            str(_readme(tmp_path)),
+            "Vendored vectors behind upstream",
+            "--dry-run",
+        ],
     )
 
     assert check.main() == 0
@@ -459,7 +468,12 @@ def test_a_gone_path_is_printed_as_gone_rather_than_as_behind(
     monkeypatch.setattr(
         check.sys,
         "argv",
-        ["check_vendored_vectors.py", str(_readme(tmp_path)), "--dry-run"],
+        [
+            "check_vendored_vectors.py",
+            str(_readme(tmp_path)),
+            "Vendored vectors behind upstream",
+            "--dry-run",
+        ],
     )
 
     assert check.main() == 0
@@ -477,18 +491,29 @@ def test_a_clean_run_says_so_and_still_reports(
         tmp_path: where the sample README is written.
         capsys: the captured streams.
     """
-    reported: list[object] = []
+    reported: list[tuple[object, ...]] = []
     monkeypatch.setattr(
         check, "_latest_commit", lambda _repo, _path: (_PINNED, "2026-01-02")
     )
     monkeypatch.setattr(check, "report", lambda *args: reported.append(args))
+    readme = _readme(tmp_path)
     monkeypatch.setattr(
-        check.sys, "argv", ["check_vendored_vectors.py", str(_readme(tmp_path))]
+        check.sys,
+        "argv",
+        [
+            "check_vendored_vectors.py",
+            str(readme),
+            "Vendored vectors behind upstream",
+        ],
     )
 
     assert check.main() == 0
     assert "Every checked pin is still at upstream's tip." in capsys.readouterr().out
     assert len(reported) == 1
+    # the ledger and the title, in that order: `main` builds this call
+    # from two positionals a caller can hand over the wrong way round,
+    # and every other assertion here would pass if it did
+    assert reported[0][:2] == (readme, "Vendored vectors behind upstream")
 
 
 def test_the_entry_point_guard_runs_the_check_as___main__(
@@ -523,7 +548,12 @@ def test_the_entry_point_guard_runs_the_check_as___main__(
     monkeypatch.setattr(
         check.sys,
         "argv",
-        ["check_vendored_vectors.py", str(_readme(tmp_path)), "--dry-run"],
+        [
+            "check_vendored_vectors.py",
+            str(_readme(tmp_path)),
+            "Vendored vectors behind upstream",
+            "--dry-run",
+        ],
     )
 
     with pytest.raises(SystemExit) as raised:
