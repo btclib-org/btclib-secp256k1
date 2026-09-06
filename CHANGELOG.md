@@ -4598,6 +4598,34 @@ release-notes length in the first place, and are still in
   distribution rather than about the handler: `uv sync` installs this
   package editable, so the source the walk reads is the checkout's own.
 
+### The `__all__` census meets the build that carries the zkp extension
+
+- **`tests/all_test.py` carries a `zkp`-marked test asking that every
+  entry of `btclib_secp256k1.zkp.__all__` resolve** (closes #650).
+  That subpackage's module-level `__getattr__` reaches for the flagged
+  extension for every name its own `__all__` holds, and
+  `exported_name_exists` counts an `ImportError` naming the build flag
+  as a name the module serves -- which is what a deferred load reports
+  itself with -- so a run without the extension passes that module
+  whatever the list holds. `pytest.mark.zkp` and the
+  `pytest.importorskip("_btclib_secp256k1_zkp")` beside it are what put
+  the new test in a run that exists: `-m zkp` is the selector of both
+  flagged jobs in `.github/workflows/test.yml`, and an unflagged run
+  collects the file and reports this one test skipped.
+- **The `ImportError` arm of `exported_name_exists` is driven by a test
+  of its own, under either build** (closes #658). Under
+  `BTCLIB_LIBSECP256K1_ZKP=true` every `__all__` entry resolves, so no
+  run of a flagged build reached that arm: the whole suite -- the
+  command `CONTRIBUTING.md` gives a contributor -- ended on the 100%
+  ratchet with every test passing, and the way out of that red was
+  `--no-cov`, which switches the floor off for the tree rather than for
+  the arm that earned it. The new test hands the predicate a stand-in module
+  whose read raises the exception
+  `btclib_secp256k1.zkp._import_extension` composes, taken from that
+  function rather than written beside the reader of it, and a second
+  one raising an `ImportError` naming no flag: the arm and both its
+  answers are then exercised whichever build runs the suite.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

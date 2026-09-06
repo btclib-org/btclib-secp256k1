@@ -249,7 +249,9 @@ def exported_name_exists(module: ModuleType, name: str) -> bool:
     answers `ImportError` where no flagged build exists, this one
     included. `zkp.context`'s `__getattr__` names `ctx` rather than
     reading `__all__`, so an `__all__` entry it does not serve is one
-    this does report.
+    this does report. A flagged build answers those entries for real,
+    and `test_every_name_the_zkp_subpackage_exports_is_served` is where
+    the census gets to ask them.
 
     Args:
         module: the module declaring the name.
@@ -294,6 +296,83 @@ def test_an_exported_name_that_is_not_there_is_reported() -> None:
     assert not exported_name_exists(zkp_context, "no_such_name")
     # served, whether this build can load the extension or not
     assert exported_name_exists(zkp, "ffi")
+
+
+def _no_extension(name: str) -> object:
+    """Fail the import the way a build without the flagged extension does.
+
+    `btclib_secp256k1.zkp._import_extension` takes its importer as an
+    argument so that either branch is drivable whichever build runs the
+    suite, its own docstring giving that reason, and this is what
+    `importlib.import_module` meeting no such module does.
+
+    Args:
+        name: the module `_import_extension` asks for.
+
+    Raises:
+        ModuleNotFoundError: what the import system raises for a module
+            that is not there.
+    """
+    msg = f"No module named {name!r}"
+    raise ModuleNotFoundError(msg)
+
+
+def test_an_import_error_naming_the_flag_counts_as_a_name_it_serves() -> None:
+    """The arm that tells a deferred extension from a broken import.
+
+    Asked of stand-ins rather than of `btclib_secp256k1.zkp`, so that
+    both answers hold under either build: a flagged build serves `ffi`
+    and `lib` for real, and the arm is then unreachable through that
+    module however the census is run
+    (btclib-org/btclib-secp256k1#658).
+
+    What the first stand-in raises is `_import_extension`'s own
+    exception, taken from that function rather than written here from
+    reading the one under test; the second stands for an import that is
+    simply broken, whose message names no flag. Both serve the name
+    through a module-level `__getattr__`, PEP 562 being how
+    `btclib_secp256k1.zkp` serves its own.
+    """
+    with pytest.raises(ImportError) as caught:
+        zkp._import_extension(_no_extension)
+
+    def wants_the_extension(name: str) -> object:
+        assert name == "ffi"
+        raise caught.value
+
+    def is_simply_broken(name: str) -> object:
+        msg = f"cannot import name {name!r}"
+        raise ImportError(msg)
+
+    deferred = ModuleType("stand_in_for_a_build_without_the_extension")
+    deferred.__dict__["__getattr__"] = wants_the_extension
+    broken = ModuleType("stand_in_for_a_module_that_does_not_import")
+    broken.__dict__["__getattr__"] = is_simply_broken
+    assert exported_name_exists(deferred, "ffi")
+    assert not exported_name_exists(broken, "ffi")
+
+
+@pytest.mark.zkp
+def test_every_name_the_zkp_subpackage_exports_is_served() -> None:
+    """What `test_every_exported_name_exists` cannot ask of `zkp`.
+
+    That module's `__getattr__` reaches for the flagged extension for
+    every entry of its own `__all__`, so where the extension is absent
+    each of them answers `ImportError` and the census counts it served
+    whatever the list holds (btclib-org/btclib-secp256k1#650). Under
+    the extension a read resolves or it does not, which is the question
+    the census exists to ask.
+
+    Marked and guarded the way
+    `test_the_census_finds_lib_bound_to_the_real_extension` is: `-m
+    zkp` is the selector of both flagged jobs in
+    `.github/workflows/test.yml`, and the `importorskip` is what lets
+    an unflagged run collect this file and report this test skipped
+    rather than error on it.
+    """
+    pytest.importorskip("_btclib_secp256k1_zkp")
+    for name in zkp.__all__:
+        assert exported_name_exists(zkp, name), f"zkp.{name} is not there"
 
 
 def test_no_module_exports_a_name_it_imported() -> None:
