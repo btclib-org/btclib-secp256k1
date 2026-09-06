@@ -278,11 +278,36 @@ jobs:
           # all
           submodules: true
 
+      # Not keys.openpgp.org, which the pin job above fetches from: that
+      # server publishes a key's user IDs only where its owner has
+      # confirmed an address through it, and serves this one stripped of
+      # them. GnuPG skips a key carrying no user ID on import and exits 0
+      # having imported nothing, so a --recv-keys of this fingerprint
+      # there reports success over an empty keyring. The bundle Andrew
+      # Poelstra publishes carries the user IDs, and is the copy the
+      # block comment above cross-references this fingerprint against.
+      #
+      # The source is a convenience and the assertion is the guard: this
+      # step imports whatever that URL serves, and `gpg --list-keys` is
+      # what establishes that the keyring now holds FINGERPRINT, which is
+      # what the job trusts. It exits non-zero on a fingerprint the
+      # keyring does not hold, so an import that brings nothing in fails
+      # at the step that asked for the key rather than at the
+      # verification step below, where an absent key reads as a bad pin
+      # (issue #690)
       - name: Import the secp256k1-zkp signer's key
         env:
-          # Andrew Poelstra, https://www.wpsoftware.net/andrew/andrew.gpg
+          # Andrew Poelstra
           FINGERPRINT: 90F9CA3C3EC97BE922DF955EC588D63CE41B97C1
-        run: gpg --keyserver hkps://keys.openpgp.org --recv-keys "$FINGERPRINT"
+          KEY_URL: https://www.wpsoftware.net/andrew/andrew.gpg
+        run: |
+          curl --fail --silent --show-error --location \
+            --output "$RUNNER_TEMP/secp256k1-zkp-signer.gpg" "$KEY_URL"
+          gpg --import "$RUNNER_TEMP/secp256k1-zkp-signer.gpg"
+          if ! gpg --list-keys "$FINGERPRINT"; then
+            echo "::error::$KEY_URL serves no key $FINGERPRINT"
+            exit 1
+          fi
 
       # `git verify-commit --raw` over its own exit code, because that
       # exit code answers a stricter question than this one is: GnuPG
@@ -302,6 +327,15 @@ jobs:
       # prints, expired or not, and REVKEYSIG is the one status that
       # does mean stop trusting it, the owner's own act rather than a
       # calendar date
+      #
+      # Which status is printed instead of VALIDSIG decides what the
+      # error says. NO_PUBKEY names a key id the keyring has nothing to
+      # check the signature against, and past the import step's own
+      # assertion that is some key other than FINGERPRINT: the re-pin
+      # signed by somebody this job carries no fingerprint for, which
+      # the block comment above gives as the likely shape of the next
+      # one. BADSIG is the signature that does not verify against a key
+      # the keyring does hold (issue #690)
       - name: The pin is a commit signed by a recognized secp256k1-zkp contributor
         env:
           FINGERPRINT: 90F9CA3C3EC97BE922DF955EC588D63CE41B97C1
@@ -318,8 +352,16 @@ jobs:
           fi
           git -C secp256k1-zkp fetch --force origin "$pinned"
           raw=$(git -C secp256k1-zkp verify-commit --raw "$pinned" 2>&1) || true
+          absent=$(sed -n 's|^\[GNUPG:\] NO_PUBKEY ||p' <<< "$raw" | head -1)
           if ! grep -q "^\[GNUPG:\] VALIDSIG $FINGERPRINT " <<< "$raw"; then
-            echo "::error::$pinned carries no valid signature from $FINGERPRINT"
+            if [ -n "$absent" ]; then
+              echo "::error::$pinned is signed by $absent, which this job" \
+                "holds no key for"
+            elif grep -q "^\[GNUPG:\] BADSIG" <<< "$raw"; then
+              echo "::error::$pinned carries a signature that does not verify"
+            else
+              echo "::error::$pinned carries no valid signature from $FINGERPRINT"
+            fi
             echo "$raw"
             exit 1
           fi
