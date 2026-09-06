@@ -136,9 +136,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "scripts/hatch_build.py"
-# ffi_ext_zkp is always named, whether or not BTCLIB_LIBSECP256K1_ZKP is
-# set: the flag is read inside scripts/cffi_build.py, where that name
-# resolves to None when it is unset, and scripts/hatch_build.py's own
+# ffi_ext_zkp is always named, whatever BTCLIB_LIBSECP256K1_ZKP holds:
+# the flag is read inside scripts/cffi_build.py, which builds that
+# extension under BTCLIB_LIBSECP256K1_ZKP=true and resolves the name to
+# None at every other value, and scripts/hatch_build.py's own
 # initialize() skips a None entry rather than building it. A conditional
 # entry here would need this list itself to read the environment, which
 # a static pyproject.toml cannot do (btclib-org/btclib-secp256k1#605)

@@ -12,11 +12,13 @@ picks the third, `BTCLIB_LIBSECP256K1_CROSS_COMPILE` forces it for a
 target whose interpreter cannot be run here, and `CFFI_PLATFORM` names
 the platform being built for when it is not the one running.
 
-A fourth, orthogonal thing the environment decides: `BTCLIB_LIBSECP256K1_ZKP`
-builds a second extension, `_btclib_secp256k1_zkp`, over the vendored
-secp256k1-zkp submodule -- static only, `Secp256k1ZkpCFFIExtension`'s own
-docstring has the reason. Unset, nothing about the three paths above
-changes at all: `ffi_ext_zkp` below is `None`, and
+A fourth, orthogonal thing the environment decides:
+`BTCLIB_LIBSECP256K1_ZKP=true` builds a second extension,
+`_btclib_secp256k1_zkp`, over the vendored secp256k1-zkp submodule --
+static only, `Secp256k1ZkpCFFIExtension`'s own docstring has the reason.
+The comparison below is against that literal, so every other value
+leaves the fourth path off exactly as no value at all does: nothing
+about the three paths above changes, `ffi_ext_zkp` below is `None`, and
 `scripts/hatch_build.py` never calls into this module a second time.
 
 Three classes: `FFIExtension` is the shape of a build with the three
@@ -833,11 +835,13 @@ class Secp256k1ZkpCFFIExtension(VendoredCMakeExtension):
         """Name the sources, the headers and where the build output goes.
 
         Raises:
-            RuntimeError: if `BTCLIB_LIBSECP256K1_ZKP` is set alongside
-                `BTCLIB_LIBSECP256K1_DYNAMIC` or
-                `BTCLIB_LIBSECP256K1_CROSS_COMPILE`, either of which
-                takes the *other* extension down the dynamic path this
-                class's own docstring declines.
+            RuntimeError: where `BTCLIB_LIBSECP256K1_ZKP` is `true`
+                alongside `BTCLIB_LIBSECP256K1_DYNAMIC=true` or
+                `BTCLIB_LIBSECP256K1_CROSS_COMPILE=true`, either of
+                which takes the *other* extension down the dynamic path
+                this class's own docstring declines. Every other value
+                of the zkp flag leaves this class unconstructed, so
+                there is nothing here to raise.
         """
         if not static or cross_compile:
             msg = (
@@ -894,10 +898,10 @@ class Secp256k1ZkpCFFIExtension(VendoredCMakeExtension):
 
 
 ffi_ext = Secp256k1CFFIExtension()
-# None where the flag is unset, which is every build this project ships
-# today: scripts/hatch_build.py's own loop skips a cffi_modules entry
-# that resolves to None rather than building it, so the extension this
-# module's docstring calls a fourth path is, unflagged, not merely
+# None where the flag is not `true`, which is every build this project
+# ships today: scripts/hatch_build.py's own loop skips a cffi_modules
+# entry that resolves to None rather than building it, so the extension
+# this module's docstring calls a fourth path is, unflagged, not merely
 # empty but absent -- nothing here differs from what this file built
 # before this class existed
 ffi_ext_zkp = Secp256k1ZkpCFFIExtension() if zkp else None
