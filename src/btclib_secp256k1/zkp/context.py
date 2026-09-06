@@ -22,6 +22,17 @@ access, rather than at import of this module. That keeps
 -- which is what lets docs/source/btclib_secp256k1.rst document this
 module's own docstring, the documentation build never setting
 `BTCLIB_LIBSECP256K1_ZKP`.
+
+`_bindings` below is the one place every module wrapping a zkp-only
+entry point (#607 onward) reaches for `ffi`, `lib` and `ctx` together:
+each such module defers the three to its own first call rather than to
+its own top level, for the reason this module's `__getattr__` already
+states for `ctx` alone, and `_bindings` is that deferral made once,
+here, instead of once per module. Called through `context._bindings()`
+rather than copied, so that a fifth wrapper module takes on no ordering
+requirement of its own -- reading `ctx` first, as this module's
+`__getattr__` already does, is what makes `ffi` and `lib` real, and a
+caller of `_bindings` never reads either before that has happened.
 """
 
 from __future__ import annotations
@@ -126,52 +137,86 @@ def check() -> None:
         raise ValueError(f"libsecp256k1-zkp illegal argument: {illegal}")
 
 
+def _load(name: str) -> Any:
+    """Build this module's context on first access to `ctx`.
+
+    `__getattr__` below is this under the one name Python calls on its
+    own; `_bindings` calls it under this one instead, an ordinary
+    function unlike the dunder, so that a type checker -- which treats
+    `if TYPE_CHECKING:` as taken and so never sees a name `__getattr__`
+    only the `else` branch below binds -- has one to check `_bindings`'
+    own call against.
+
+    Imports `btclib_secp256k1.zkp` here, deferred rather than at
+    module scope, so that importing this module never reaches for
+    the extension on its own -- only reading `ctx` does, which the
+    modules wrapping zkp-only entry points (#607 onward) do inside
+    each call rather than at their own import.
+
+    Args:
+        name: the attribute being looked up.
+
+    Returns:
+        The context, for `ctx`.
+
+    Raises:
+        AttributeError: for any other name.
+        ImportError: from `btclib_secp256k1.zkp`, if the extension
+            this needs was never built.
+    """
+    if name != "ctx":
+        msg = f"module {__name__!r} has no attribute {name!r}"
+        raise AttributeError(msg)
+    from . import ffi, lib  # noqa: PLC0415
+
+    globals()["ffi"] = ffi
+    globals()["lib"] = lib
+
+    # the reference to each cffi callback has to outlive the
+    # context, hence the module-level names: context.py's own such
+    # comment has the reasoning, unchanged here
+    illegal_callback = ffi.callback("void(*)(const char *, void *)", _record_illegal)
+    error_callback = ffi.callback("void(*)(const char *, void *)", _record_error)
+    globals()["_illegal_callback"] = illegal_callback
+    globals()["_error_callback"] = error_callback
+
+    context = lib.secp256k1_context_create(1)
+    lib.secp256k1_context_set_illegal_callback(context, illegal_callback, ffi.NULL)
+    lib.secp256k1_context_set_error_callback(context, error_callback, ffi.NULL)
+    _randomize(context)
+
+    globals()["ctx"] = context
+    return context
+
+
+def _bindings() -> tuple[Any, Any, CData]:
+    """Return this module's `ffi`, `lib` and `ctx` together, building once.
+
+    Every module wrapping a zkp-only entry point calls this rather than
+    reading `ffi`, `lib` or `ctx` on its own. `context.ctx` -- an
+    ordinary attribute access -- calls `_load` only the first time,
+    Python's own attribute protocol finding `ctx` already in this
+    module's globals on every read after that; calling `_load`
+    unconditionally here would skip that check and rebuild a fresh
+    context, with fresh callback closures, on every call -- leaving
+    whichever earlier context a caller is still holding registered
+    against closures nothing references any more, freed under it. This
+    checks the same globals `_load` writes into before calling it,
+    which is what makes a call here answer the one context every other
+    caller in the process already has, built at most once.
+
+    Returns:
+        This module's own `ffi`, `lib` and `ctx`.
+
+    Raises:
+        ImportError: from `btclib_secp256k1.zkp`, if the flagged
+            extension this needs was never built.
+    """
+    ctx = globals()["ctx"] if "ctx" in globals() else _load("ctx")
+    return ffi, lib, ctx
+
+
 if TYPE_CHECKING:
     ctx: CData
 else:
-
-    def __getattr__(name: str) -> Any:
-        """Build this module's context on first access to `ctx`.
-
-        Imports `btclib_secp256k1.zkp` here, deferred rather than at
-        module scope, so that importing this module never reaches for
-        the extension on its own -- only reading `ctx` does, which the
-        modules wrapping zkp-only entry points (#607 onward) do inside
-        each call rather than at their own import.
-
-        Args:
-            name: the attribute being looked up.
-
-        Returns:
-            The context, for `ctx`.
-
-        Raises:
-            AttributeError: for any other name.
-            ImportError: from `btclib_secp256k1.zkp`, if the extension
-                this needs was never built.
-        """
-        if name != "ctx":
-            msg = f"module {__name__!r} has no attribute {name!r}"
-            raise AttributeError(msg)
-        from . import ffi, lib  # noqa: PLC0415
-
-        globals()["ffi"] = ffi
-        globals()["lib"] = lib
-
-        # the reference to each cffi callback has to outlive the
-        # context, hence the module-level names: context.py's own such
-        # comment has the reasoning, unchanged here
-        illegal_callback = ffi.callback(
-            "void(*)(const char *, void *)", _record_illegal
-        )
-        error_callback = ffi.callback("void(*)(const char *, void *)", _record_error)
-        globals()["_illegal_callback"] = illegal_callback
-        globals()["_error_callback"] = error_callback
-
-        context = lib.secp256k1_context_create(1)
-        lib.secp256k1_context_set_illegal_callback(context, illegal_callback, ffi.NULL)
-        lib.secp256k1_context_set_error_callback(context, error_callback, ffi.NULL)
-        _randomize(context)
-
-        globals()["ctx"] = context
-        return context
+    __getattr__ = _load

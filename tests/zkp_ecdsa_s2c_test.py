@@ -239,8 +239,8 @@ def _forget_cached_extension() -> None:
     stand-in ones below, in whichever order it draws. `zkp.context.ctx`
     caches itself as a plain attribute on first read, real or fake, so a
     real context built by one ordering is what the *next* test's own
-    `_bindings()` would silently reuse without this: called both before
-    the stand-in is installed and after it is removed, so neither
+    `context._bindings()` would silently reuse without this: called both
+    before the stand-in is installed and after it is removed, so neither
     direction of that leak survives one test.
 
     `vars(...)`, not `hasattr`: `zkp_context.ctx` unset raises
@@ -287,7 +287,7 @@ def stand_in(monkeypatch: pytest.MonkeyPatch) -> None:
     `STAND_IN`, one level lower, and the same `monkeypatch.setattr`
     rather than a hand-saved-and-restored assignment: `zkp._import_extension`
     is what `zkp.context`'s own `ctx` lazily calls, so patching it here is
-    what makes `ecdsa_s2c.py`'s own `_bindings()` -- which reads
+    what makes `context.py`'s own `_bindings()` -- which reads
     `zkp.context.ctx` -- build a working context out of `_FakeLib` instead
     of failing for want of a real build. `_clean_extension_cache` above is
     what the cache is clear for on entry.
@@ -296,9 +296,10 @@ def stand_in(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Argument validation: no extension needed for any of these, `_bindings()`
-# sitting after every octets()/scalar() call in ecdsa_s2c.py rather than
-# before it -- proved here by the plain absence of the `stand_in` fixture.
+# Argument validation: no extension needed for any of these,
+# `context._bindings()` sitting after every octets()/scalar() call in
+# ecdsa_s2c.py rather than before it -- proved here by the plain absence of
+# the `stand_in` fixture.
 # ---------------------------------------------------------------------------
 
 

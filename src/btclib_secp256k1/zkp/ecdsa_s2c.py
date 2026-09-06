@@ -25,12 +25,12 @@ signing device this package has no notion of; it is the four calls the
 steps that need one are made of -- the host's own reveal, step 3, needs
 none from this module.
 
-This module reads `btclib_secp256k1.zkp.context.ctx` -- and, through it,
-`btclib_secp256k1.zkp`'s own `ffi` and `lib` -- lazily, inside each
-function rather than at its own top level: `zkp.context`'s own docstring
-has the reasoning, and importing this module alone stays safe with no
-flagged build, which is what lets `docs/source/btclib_secp256k1.rst`
-document it.
+This module reads `context._bindings()` -- `btclib_secp256k1.zkp.context`'s
+own `ffi`, `lib` and `ctx`, forced together -- inside each function
+rather than at its own top level: `zkp.context`'s own docstring has the
+reasoning, and importing this module alone stays safe with no flagged
+build, which is what lets `docs/source/btclib_secp256k1.rst` document
+it.
 
 Signatures cross this boundary in the 64-byte compact form only, `r ||
 s`; a caller wanting DER has `btclib_secp256k1.dsa.to_der`, which is a
@@ -63,28 +63,6 @@ __all__ = [
 
 _OPENING_SIZE = 33
 _SIGNATURE_SIZE = 64
-
-
-def _bindings() -> tuple[Any, Any, CData]:
-    """Force the extension via the context, and answer ffi, lib and ctx.
-
-    Reading `context.ctx` is what makes `context.ffi` and `context.lib`
-    real: `zkp.context`'s own `__getattr__` populates both as a side
-    effect of building the context, the first time anything in this
-    process reads any of the three. This is the one place this module
-    reaches for any of them, which is what keeps its own top level free
-    of the extension -- `context.py`'s own docstring has the reasoning,
-    repeated here for a module that wraps zkp-only entry points rather
-    than for the context itself.
-
-    Returns:
-        The flagged extension's `ffi`, its `lib`, and the shared `ctx`.
-
-    Raises:
-        ImportError: if no flagged build exists. See `zkp.__init__`.
-    """
-    ctx = context.ctx
-    return context.ffi, context.lib, ctx
 
 
 def _pubkey_parse(ffi: Any, lib: Any, ctx: CData, pubkey_bytes: BytesLike) -> CData:
@@ -183,7 +161,7 @@ def opening_parse(opening_bytes: BytesLike) -> CData:
             point on the curve.
     """
     opening_bytes = octets(opening_bytes, "opening", _OPENING_SIZE)
-    ffi, lib, ctx = _bindings()
+    ffi, lib, ctx = context._bindings()
     opening = ffi.new("secp256k1_ecdsa_s2c_opening *")
     if not lib.secp256k1_ecdsa_s2c_opening_parse(ctx, opening, opening_bytes):
         raise ValueError("invalid opening")
@@ -205,7 +183,7 @@ def opening_serialize(opening: CData) -> bytes:
             cannot read -- or fails for any other reason, which an
             opening `opening_parse` produced cannot make it do.
     """
-    ffi, lib, ctx = _bindings()
+    ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_OPENING_SIZE}]")
     if not lib.secp256k1_ecdsa_s2c_opening_serialize(ctx, output, opening):
         raise RuntimeError("opening serialization failed")
@@ -249,7 +227,7 @@ def sign(
     msg_bytes = octets(msg_bytes, "message hash", 32)
     prvkey_bytes = scalar(prvkey, "private key")
     s2c_data32 = octets(s2c_data32, "s2c_data32", 32)
-    ffi, lib, ctx = _bindings()
+    ffi, lib, ctx = context._bindings()
 
     signature = ffi.new("secp256k1_ecdsa_signature *")
     opening = ffi.new("secp256k1_ecdsa_s2c_opening *")
@@ -295,7 +273,7 @@ def verify_commit(
     signature_bytes = octets(signature_bytes, "signature", _SIGNATURE_SIZE)
     data32 = octets(data32, "data32", 32)
     opening_bytes = octets(opening_bytes, "opening", _OPENING_SIZE)
-    ffi, lib, ctx = _bindings()
+    ffi, lib, ctx = context._bindings()
     signature = _signature_parse(ffi, lib, ctx, signature_bytes)
     opening = opening_parse(opening_bytes)
     return bool(lib.secp256k1_ecdsa_s2c_verify_commit(ctx, signature, data32, opening))
@@ -320,7 +298,7 @@ def anti_exfil_host_commit(rand32: BytesLike) -> bytes:
             commitment, which valid arguments cannot make it do.
     """
     rand32 = octets(rand32, "rand32", 32)
-    ffi, lib, ctx = _bindings()
+    ffi, lib, ctx = context._bindings()
     commitment = ffi.new("char[32]")
     if not lib.secp256k1_ecdsa_anti_exfil_host_commit(ctx, commitment, rand32):
         raise RuntimeError("host commitment failed")
@@ -356,7 +334,7 @@ def anti_exfil_signer_commit(
     msg_bytes = octets(msg_bytes, "message hash", 32)
     prvkey_bytes = scalar(prvkey, "private key")
     rand_commitment32 = octets(rand_commitment32, "rand_commitment32", 32)
-    ffi, lib, ctx = _bindings()
+    ffi, lib, ctx = context._bindings()
 
     opening = ffi.new("secp256k1_ecdsa_s2c_opening *")
     if not lib.secp256k1_ecdsa_anti_exfil_signer_commit(
@@ -394,7 +372,7 @@ def anti_exfil_sign(
     msg_bytes = octets(msg_bytes, "message hash", 32)
     prvkey_bytes = scalar(prvkey, "private key")
     host_data32 = octets(host_data32, "host_data32", 32)
-    ffi, lib, ctx = _bindings()
+    ffi, lib, ctx = context._bindings()
 
     signature = ffi.new("secp256k1_ecdsa_signature *")
     if not lib.secp256k1_anti_exfil_sign(
@@ -445,7 +423,7 @@ def anti_exfil_host_verify(
     pubkey_bytes = octets(pubkey_bytes, "public key")
     host_data32 = octets(host_data32, "host_data32", 32)
     opening_bytes = octets(opening_bytes, "opening", _OPENING_SIZE)
-    ffi, lib, ctx = _bindings()
+    ffi, lib, ctx = context._bindings()
     signature = _signature_parse(ffi, lib, ctx, signature_bytes)
     pubkey = _pubkey_parse(ffi, lib, ctx, pubkey_bytes)
     opening = opening_parse(opening_bytes)

@@ -19,8 +19,8 @@ x-coordinate of `secp256k1_generator_h`, independently of this library:
 itself rather than against a copied literal.
 
 Every function here needs `BTCLIB_LIBSECP256K1_ZKP`'s extension, and none
-of them reaches for it at import time: `_handles` is where each defers
-to it, on the first call rather than on `import
+of them reaches for it at import time: `context._bindings()` is where
+each defers to it, on the first call rather than on `import
 btclib_secp256k1.zkp.generator`, the same reason
 `btclib_secp256k1.zkp.context`'s own `__getattr__` docstring gives for
 deferring its own `ctx` -- so that importing that module never reaches
@@ -34,6 +34,8 @@ from typing import Any
 
 from btclib_secp256k1 import BytesLike, CData
 from btclib_secp256k1._scalar import in_range, octets, scalar
+
+from . import context
 
 __all__ = [
     "generate",
@@ -54,28 +56,6 @@ _COMMITMENT_SIZE = 33
 _BLIND_SIZE = 32
 
 
-def _handles() -> tuple[Any, Any, Any]:
-    """Return this subpackage's `ffi`, `lib` and `ctx`, deferred to first use.
-
-    Every public function below calls this rather than importing `ffi`,
-    `lib` or `ctx` at module scope, which is what keeps `import
-    btclib_secp256k1.zkp.generator` free of the flagged extension --
-    only a call into one of these functions reaches for it, and the
-    module docstring says why that boundary is drawn here.
-
-    Returns:
-        `ffi`, `lib` and `ctx` of the flagged secp256k1-zkp extension.
-
-    Raises:
-        ImportError: propagated from `btclib_secp256k1.zkp`, if the
-            extension was never built.
-    """
-    from . import ffi, lib  # noqa: PLC0415
-    from .context import ctx  # noqa: PLC0415
-
-    return ffi, lib, ctx
-
-
 def _ptr_array(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
     """Build the pointer array some calls require to be non-NULL.
 
@@ -84,7 +64,7 @@ def _ptr_array(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
     `secp256k1_pedersen_commitment` in its cdef at all -- an
     "undefined type name" `ffi.error`, measured rather than assumed, for
     any array of either struct built through it. This subpackage's own
-    `ffi`, `_handles` already resolved, is what every array here goes
+    `ffi`, `context._bindings()` already resolved, is what every array here goes
     through instead, whichever of the two element types it holds.
 
     Unlike `_array_or_null` below, this never answers NULL for an empty
@@ -96,7 +76,8 @@ def _ptr_array(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
     what this needs.
 
     Args:
-        ffi: this subpackage's own `ffi`, `_handles` already resolved.
+        ffi: this subpackage's own `ffi`, `context._bindings()` already
+            resolved.
         cdecl: the cffi declaration of the array type.
         items: the objects to point at, which the caller keeps alive.
 
@@ -115,7 +96,8 @@ def _array_or_null(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
     subpackage's own `ffi` rather than mainline's.
 
     Args:
-        ffi: this subpackage's own `ffi`, `_handles` already resolved.
+        ffi: this subpackage's own `ffi`, `context._bindings()` already
+            resolved.
         cdecl: the cffi declaration of the array type.
         items: the objects to point at, which the caller keeps alive.
 
@@ -139,7 +121,7 @@ def parse(generator_bytes: BytesLike, name: str = "generator") -> CData:
     Raises:
         ValueError: if it is not 33 bytes, or not a valid generator.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     generator_bytes = octets(generator_bytes, name, _GENERATOR_SIZE)
     gen = ffi.new("secp256k1_generator *")
     if not lib.secp256k1_generator_parse(ctx, gen, generator_bytes):
@@ -156,7 +138,7 @@ def serialize(gen: CData) -> bytes:
     Returns:
         Its 33 bytes.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_GENERATOR_SIZE}]")
     lib.secp256k1_generator_serialize(ctx, output, gen)
     return bytes(ffi.unpack(output, _GENERATOR_SIZE))
@@ -173,7 +155,7 @@ def h() -> bytes:
     Returns:
         Its 33 bytes.
     """
-    _ffi, lib, _ctx = _handles()
+    _ffi, lib, _ctx = context._bindings()
     return serialize(lib.secp256k1_generator_h)
 
 
@@ -195,7 +177,7 @@ def generate(seed32: BytesLike) -> bytes:
             "highly unlikely" in the header's own words and cannot
             happen for a seed this package generated.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     seed_bytes = octets(seed32, "seed32", 32)
     gen = ffi.new("secp256k1_generator *")
     if not lib.secp256k1_generator_generate(ctx, gen, seed_bytes):
@@ -226,7 +208,7 @@ def generate_blinded(seed32: BytesLike, blind32: BytesLike | int) -> bytes:
             package generated. The two failures share one return code
             and are not told apart.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     seed_bytes = octets(seed32, "seed32", 32)
     blind_bytes = scalar(blind32, "blind32")
     gen = ffi.new("secp256k1_generator *")
@@ -252,7 +234,7 @@ def pedersen_commitment_parse(
     Raises:
         ValueError: if it is not 33 bytes, or not a valid commitment.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     commitment_bytes = octets(commitment_bytes, name, _COMMITMENT_SIZE)
     commit = ffi.new("secp256k1_pedersen_commitment *")
     if not lib.secp256k1_pedersen_commitment_parse(ctx, commit, commitment_bytes):
@@ -270,7 +252,7 @@ def pedersen_commitment_serialize(commit: CData) -> bytes:
     Returns:
         Its 33 bytes.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_COMMITMENT_SIZE}]")
     lib.secp256k1_pedersen_commitment_serialize(ctx, output, commit)
     return bytes(ffi.unpack(output, _COMMITMENT_SIZE))
@@ -302,7 +284,7 @@ def pedersen_commit(
             which is a ~2**-127 event for a random one and cannot happen
             for a factor already verified.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     blind_bytes = scalar(blind, "blind")
     if not isinstance(value, int):
         raise TypeError(f"value must be an int, not {type(value).__name__}")
@@ -338,7 +320,7 @@ def pedersen_blind_sum(blinds: Sequence[BytesLike | int], npositive: int) -> byt
         RuntimeError: if libsecp256k1-zkp refuses one of the factors,
             which is a ~2**-127 event for a random one.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     npositive = in_range(npositive, "npositive", len(blinds))
     blind_buffers = [
         ffi.new(
@@ -381,7 +363,7 @@ def pedersen_verify_tally(
             valid one -- named by its position in whichever sequence it
             came from.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     commits = [
         pedersen_commitment_parse(commit_bytes, f"commitment at index {i}")
         for i, commit_bytes in enumerate(commits_bytes)
@@ -448,7 +430,7 @@ def pedersen_blind_generator_blind_sum(
         RuntimeError: if libsecp256k1-zkp refuses one of the factors,
             which is a ~2**-127 event for random ones.
     """
-    ffi, lib, ctx = _handles()
+    ffi, lib, ctx = context._bindings()
     n_total = len(values)
     if len(generator_blinds) != n_total or len(blinding_factors) != n_total:
         raise ValueError(

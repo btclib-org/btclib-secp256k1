@@ -204,7 +204,7 @@ def _forget_cached_extension() -> None:
     """Drop whatever `zkp` and `zkp.context` cached of the extension.
 
     `zkp.ffi`, `zkp.lib` and `zkp.context`'s own `ctx` are written into
-    their module globals on first read and stay there, so `_handles()`
+    their module globals on first read and stay there, so `context._bindings()`
     finds a plain attribute and the fake above is never consulted:
     whichever library answered first is the one the test runs against.
     Under a flagged build the other zkp test modules read the real one,
@@ -230,7 +230,7 @@ def _fake_extension(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Install the fake, over caches cleared before it and after it.
 
     Every test in this file calls a wrapper function and every one of
-    those calls `_handles()` first, so each needs the fake and leaves a
+    those calls `context._bindings()` first, so each needs the fake and leaves a
     cache of its own behind. Clearing on the way in as well as on the
     way out is what makes the order `pytest-randomly` draws not matter
     (btclib-org/btclib-secp256k1#646);
