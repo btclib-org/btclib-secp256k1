@@ -5408,6 +5408,19 @@ release-notes length in the first place, and are still in
   the section's opening sentence about who may bypass is what rests on
   it.
 
+### The manual pin recipe fetches `zkp-pin`'s key from `zkp-pin`'s own source
+
+- **The `pin` recipe's key grep is scoped to the `pin` job's own
+  `FINGERPRINTS` block, and a `zkp-pin` recipe fetches Andrew
+  Poelstra's key from the bundle that job fetches it from** (closes
+  #706). The grep previously read the whole workflow file, which also
+  picks up `zkp-pin`'s own fingerprint and asks `keys.openpgp.org` for
+  it — the server that serves it stripped of the user IDs GnuPG needs
+  before accepting it (#690) — so the prose beside the recipe said three
+  keys while the command asked for four. `CONTRIBUTING.md` had no manual
+  equivalent of `zkp-pin` at all; it now has one, sourced the way the
+  job itself is.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

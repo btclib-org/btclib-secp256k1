@@ -889,7 +889,9 @@ run locally.
 
   ```shell
   gpg --keyserver hkps://keys.openpgp.org --recv-keys \
-      $(grep -oE '\b[0-9A-F]{40}\b' .github/workflows/vendored-vectors.yml)
+      $(sed -n '/FINGERPRINTS:/,/run:/p' \
+          .github/workflows/vendored-vectors.yml \
+          | grep -oE '\b[0-9A-F]{40}\b')
   named=$(sed -n 's|.*secp256k1/releases/tag/\(v[0-9][0-9.]*\).*|\1|p' \
       README.md | head -1)
   git -C secp256k1 fetch --force origin "refs/tags/${named}:refs/tags/${named}"
@@ -899,15 +901,19 @@ run locally.
   ```
 
   the fingerprints are lifted out of the workflow rather than written
-  again here, a second list being one that drifts, and their case is
-  what selects them: the action pins in that same file are hex of the
-  same length in lower case. What the runner never has to care about and
-  a developer does is where the two writes land — `--recv-keys` puts
-  three third-party public keys in whichever keyring it is pointed at,
-  the default one unless `GNUPGHOME` says otherwise, and the
-  `fetch --force` moves the tag `README.md` names in the vendored clone
-  to what upstream serves, which is the question being asked and is also
-  what `submodule-pin` resolves against afterwards.
+  again here, a second list being one that drifts, and the `sed` range
+  is what keeps the lift to this job's own: `FINGERPRINTS` (plural) is
+  the `pin` job's env key alone, where `zkp-pin`'s own recipe further
+  down names a fingerprint under the singular `FINGERPRINT`, so stopping
+  at the block's own `run:` line excludes it rather than pulling it in
+  for a keyserver that cannot serve it. What the runner never has to
+  care about and a developer does is where the two writes land —
+  `--recv-keys` puts each of the pin job's own third-party public keys
+  in whichever keyring it is pointed at, the default one unless
+  `GNUPGHOME` says otherwise, and the `fetch --force` moves the tag
+  `README.md` names in the vendored clone to what upstream serves, which
+  is the question being asked and is also what `submodule-pin` resolves
+  against afterwards.
 
   `${named}` is braced against this shell rather than against the
   runner's. zsh reads the `:r` of an unbraced `$named:refs/tags/...` as
@@ -917,6 +923,31 @@ run locally.
   same asymmetry as `/usr/bin/grep` above, and in the same direction:
   what a local shell gets wrong here is the reproduction and not the
   workflow
+
+  `zkp-pin` asks the narrower question its own block comment states:
+  whether the pinned secp256k1-zkp commit is one Andrew Poelstra signed,
+  not whether it is a tagged release — secp256k1-zkp cuts none. The key
+  comes from his own published bundle rather than from
+  `keys.openpgp.org`, which serves this one stripped of the user IDs
+  GnuPG needs before it accepts a key (#690), and the fingerprint is
+  lifted from the job's own env key the same way the pin job's is:
+
+  ```shell
+  fingerprint=$(sed -n 's/^ *FINGERPRINT: //p' \
+      .github/workflows/vendored-vectors.yml | sort -u)
+  curl --fail --silent --show-error --location \
+      --output andrew.gpg https://www.wpsoftware.net/andrew/andrew.gpg
+  gpg --import andrew.gpg
+  pinned=$(git ls-tree HEAD secp256k1-zkp | awk '{print $3}')
+  git -C secp256k1-zkp fetch --force origin "$pinned"
+  git -C secp256k1-zkp verify-commit --raw "$pinned" 2>&1 | grep "$fingerprint"
+  ```
+
+  the last line's own output is the answer, read the way the job's own
+  comment reads it: `VALIDSIG` naming `$fingerprint` is the pin
+  verifying, `NO_PUBKEY` is the import above having failed, and
+  `BADSIG` is a pin that does not verify against a key the keyring does
+  hold.
 
 - `wheel-reproducibility`, which builds this commit's wheel twice, from
   two directories it extracts `HEAD` into, and diffs the two archives
