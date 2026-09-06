@@ -15,7 +15,7 @@ check-sdist's own bug in the ordinary sense: it is told to trust git's
 answer, and git gave a self-consistent one for the tree it was asked
 about. But the guarantee the hook exists to give -- that the sdist a
 user installs carries what this repository ships -- does not hold the
-moment a submodule is not checked out, and nothing said so before this.
+moment a submodule is not checked out.
 
 This hook is what says so, ahead of check-sdist in
 .pre-commit-config.yaml: `.gitmodules` names every submodule this

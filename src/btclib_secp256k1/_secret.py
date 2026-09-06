@@ -244,11 +244,11 @@ def scalar_buffer(prvkey: BytesLike | int | CData, name: str) -> CData:
     So a `bytes` or a cdata arrives here and 32 octets of ours leave, and
     `take` or an explicit `wipe` is what the caller of this owes in turn.
     `ffi.memmove` is what fills it, rather than `ffi.new(cdecl, ...)`:
-    that takes an initializer, which is `bytes` or a list and never a
-    cdata of another item type -- the four call sites used to spell it
-    that way and refused a caller's buffer with cffi's own message about
-    an internal `char[32]`. It also means no `bytes` of the secret is made
-    in between, which is the whole of what a caller holding a buffer came
+    that takes an initializer, which is `bytes`, a list or a tuple and
+    never a cdata of another item type, so spelled that way it refuses a
+    caller's buffer with cffi's own message about an internal
+    `char[32]`. It also means no `bytes` of the secret is made in
+    between, which is the whole of what a caller holding a buffer came
     for.
 
     Args:
