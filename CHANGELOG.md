@@ -5331,6 +5331,28 @@ release-notes length in the first place, and are still in
   behaviour beside it is a fact about that service rather than about a
   former revision, and it stays.
 
+### The `git-only` comment says what the entry permits
+
+- **`[tool.check-sdist]`'s comment above `git-only` states what the entry
+  permits rather than what the archive holds** (closes #727). `git
+  check-ignore -v --no-index -- .python-version` exits 1 and `git
+  ls-files -i -c --exclude-standard` prints nothing, so the clause
+  calling that file tracked and `.gitignore`-matched described a state
+  the tree does not have; check-sdist reads `git-only` against the
+  tracked files an sdist leaves out, and the sdist built here is not
+  missing this one. `### Packaging metadata` above, in this same open
+  section, closes on that file being "both tracked and
+  `.gitignore`-matched": that was so when it landed and stopped being so
+  when the ignore entry went (issue #469), and it stays exactly as
+  landed -- this entry is what says which of the two the tree holds.
+  Only comment lines are touched, and the parsed `pyproject.toml` is
+  unchanged.
+- **The comment points at `.gitignore` for why that file carries no
+  entry for `.python-version`, rather than restating the reason**
+  (closes #727). Section 9 of the organization standard puts one fact in
+  one place, and `.gitignore`'s own comment is the copy a reader editing
+  the ignore rules already has open.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
