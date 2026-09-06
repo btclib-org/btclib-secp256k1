@@ -5215,6 +5215,21 @@ release-notes length in the first place, and are still in
   flag in `test.yml` already says none of its steps is the ratchet on
   its own any more.
 
+### `.gitignore` states its virtual-environment rule in one place
+
+- **The virtual-environment patterns are one list, with the reason for
+  the wildcard spelling above it** (closes #709). `.venv*/` and `venv*/`
+  are the spellings, a suffix making a different name and
+  `UV_PROJECT_ENVIRONMENT=.venv-3.10` creating one. Git takes the union
+  of the patterns however they are arranged, so an arrangement decides
+  what a reader is told rather than what git ignores: `git check-ignore
+  -v` answers ignored, or not, exactly as it did before for every name
+  the two blocks between them named, and `git ls-files -i -c
+  --exclude-standard` stays empty. The bare `.venv` stays in the list
+  for that reason -- the trailing slash on `.venv*/` holds it to
+  directories, so the literal is what still answers for a file of that
+  name.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
