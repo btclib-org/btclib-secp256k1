@@ -128,11 +128,12 @@ spells it `#include`.
   by searching every candidate directory CMake may have used, skipping
   the versioned names of a symlink chain
 
-`Secp256k1ZkpCFFIExtension.__init__` raises before any of the three if
-`BTCLIB_LIBSECP256K1_ZKP` is set alongside `BTCLIB_LIBSECP256K1_DYNAMIC`
-or `BTCLIB_LIBSECP256K1_CROSS_COMPILE`: the flagged extension is static
-only, its own docstring has the reason, and declining with a message is
-what stands in for the dynamic path it does not have.
+`Secp256k1ZkpCFFIExtension.__init__` raises before any of the three
+where `BTCLIB_LIBSECP256K1_ZKP=true` is passed alongside
+`BTCLIB_LIBSECP256K1_DYNAMIC=true` or
+`BTCLIB_LIBSECP256K1_CROSS_COMPILE=true`: the flagged extension is
+static only, its own docstring has the reason, and declining with a
+message is what stands in for the dynamic path it does not have.
 
 Running this file directly performs the same work with the current
 directory as the build directory, which is useful for an in-place build

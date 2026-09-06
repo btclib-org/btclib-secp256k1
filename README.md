@@ -1294,13 +1294,13 @@ The dynamic (ABI mode) Windows wheel is instead cross-compiled on Linux
 with mingw-w64, through the vendored CMake toolchain file, and is
 x86_64 only.
 
-`BTCLIB_LIBSECP256K1_ZKP` builds a second static extension, over the
-vendored secp256k1-zkp, beside the one every wheel carries: it is what
-`btclib_secp256k1.zkp` loads, and no published wheel carries it.
+`BTCLIB_LIBSECP256K1_ZKP=true` builds a second static extension, over
+the vendored secp256k1-zkp, beside the one every wheel carries: it is
+what `btclib_secp256k1.zkp` loads, and no published wheel carries it.
 [scripts/README.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/scripts/README.md)
 has that variable beside the ones choosing among the paths above, and
-says what setting it alongside one of them does: the build declines,
-this extension having no dynamic form.
+says what `BTCLIB_LIBSECP256K1_ZKP=true` alongside one of them does:
+the build declines, this extension having no dynamic form.
 
 How to get the submodule, set up the development environment, run the
 suite, reproduce each CI job locally, and what a change is expected to

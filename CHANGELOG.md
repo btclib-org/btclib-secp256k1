@@ -4731,6 +4731,58 @@ release-notes length in the first place, and are still in
   declares to a submodule ref, and the `file_parser.rb` beside it makes a
   dependency per section, named by its `path` and sourced from its `url`.
 
+### The zkp build flag turns on for the value `true`, not for being set
+
+- **`scripts/cffi_build.py`'s prose names the literal the flag is
+  compared against** (closes #661). The module docstring, the `Raises:`
+  clause of `Secp256k1ZkpCFFIExtension.__init__` and the comment on
+  `ffi_ext_zkp` each turned on whether `BTCLIB_LIBSECP256K1_ZKP` is set
+  rather than on what it holds, where the line that decides is
+  `os.environ.get("BTCLIB_LIBSECP256K1_ZKP", "false") == "true"`: with
+  the variable at `1` the class is never constructed, so the
+  `RuntimeError` the clause promised alongside a dynamic build is not
+  raised and an ordinary dynamic build is what runs.
+- **That `Raises:` clause names `BTCLIB_LIBSECP256K1_DYNAMIC=true` and
+  `BTCLIB_LIBSECP256K1_CROSS_COMPILE=true`** (closes #661). Those two
+  are read against the same literal, so `BTCLIB_LIBSECP256K1_ZKP=true`
+  alongside `BTCLIB_LIBSECP256K1_DYNAMIC=1` builds the flagged extension
+  rather than refusing it.
+- **`SECURITY.md` names the value a build carrying the `zkp` extension
+  was given** (closes #661). That file is where a reporter decides
+  whether their own build can hold the code they are reporting about,
+  so it says the extension is built only under
+  `BTCLIB_LIBSECP256K1_ZKP=true` and names `scripts/cffi_build.py` as
+  what compares the variable against that literal.
+- **`pyproject.toml` and `scripts/hatch_build.py` say the `ffi_ext_zkp`
+  entry resolves to `None` at every value that is not `true`** (closes
+  #661). Both comments are there to explain why the entry is
+  unconditional in a static file, and the condition for the `None` is
+  what a reader checks their own build against.
+- **`scripts/README.md` and `README.md` say the static-only refusal
+  needs `BTCLIB_LIBSECP256K1_ZKP=true` alongside
+  `BTCLIB_LIBSECP256K1_DYNAMIC=true` or
+  `BTCLIB_LIBSECP256K1_CROSS_COMPILE=true`** (closes #661). The refusal
+  is `Secp256k1ZkpCFFIExtension.__init__`'s, so a build that spells the
+  flag any other way meets neither it nor the extension.
+
+### `CONTRIBUTING.md` names what a zkp entry point does, not one spelling
+
+- **The paragraph explaining why a plain `pytest` reports short of 100%
+  says every entry point under `zkp` reads `ffi`, `lib` or `ctx` inside
+  the call rather than at module scope** (closes #643). `_boundary()` is
+  `zkp/musig.py`'s name for the helper that does it and no other
+  module's, so a contributor who goes looking for it in
+  `zkp/generator.py` finds nothing; `git grep -n -E '^def
+  (_boundary|_bindings|_handles)' -- src/btclib_secp256k1/zkp/` is the
+  read that names the spellings. The sentence stays true whichever name
+  btclib-org/btclib-secp256k1#636 settles on, that being the decision
+  about the helpers themselves.
+- **The `ImportError` that read raises is `btclib_secp256k1.zkp`'s**
+  (closes #643). The subpackage's module-level `__getattr__` is what
+  reaches for the flagged extension and what names the flag in its
+  message, and a call into any entry point below it is what triggers
+  that read on an unflagged build.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

@@ -133,12 +133,13 @@ class CustomBuildHook(BuildHookInterface[Any]):
             ext = self.get_ext_object(script, ext_name)
             # a cffi_modules entry that is always in pyproject.toml but
             # names a build-time question, not a build: scripts/cffi_build.py's
-            # zkp extension resolves to None where BTCLIB_LIBSECP256K1_ZKP
-            # is unset, which is every wheel this project ships. get_ext_object
-            # would otherwise raise on an absent name, and the entry has
-            # to be present unconditionally for the flag to turn a build
-            # of it on or off -- pyproject.toml's own list holds no
-            # environment variable to be conditioned on
+            # zkp extension resolves to None wherever
+            # BTCLIB_LIBSECP256K1_ZKP is anything but true, which is
+            # every wheel this project ships. get_ext_object would
+            # otherwise raise on an absent name, and the entry has to be
+            # present unconditionally for the flag to turn a build of it
+            # on or off -- pyproject.toml's own list holds no environment
+            # variable to be conditioned on
             if ext is None:
                 continue
 

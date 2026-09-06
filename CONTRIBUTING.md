@@ -360,9 +360,10 @@ it for its own `:members:` — so what an unflagged run executes there is
 its module-level lines and no function body. Nothing drives it: a test
 that does carries `pytest.importorskip("_btclib_secp256k1_zkp")` and the
 `zkp` marker, so an unflagged run skips it. Nothing in it can be
-*called* there either: every entry point opens with a `_boundary()` that
-raises `ImportError` naming the flag. This command reports short of 100%
-on an ordinary checkout —
+*called* there either: every entry point reads `ffi`, `lib` or `ctx`
+inside the call rather than at module scope, and that read is what
+raises `btclib_secp256k1.zkp`'s `ImportError` naming the flag. This
+command reports short of 100% on an ordinary checkout —
 that shortfall is not the module alone: `[tool.coverage.run]` names
 `tests` in `source` too, so `tests/zkp_musig_test.py` and
 `tests/zkp_musig_vectors_test.py` are measured the same way, and each

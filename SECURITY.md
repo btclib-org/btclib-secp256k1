@@ -29,9 +29,10 @@ its own and pinned where README.md's Versioning section says. It is
 release to anchor its pin against, and every entry under the fork's own
 README heading *Added features* is an experimental module, "the APIs of
 these features should not be considered stable". No published wheel
-carries the extension behind that namespace, which is built only where
-`BTCLIB_LIBSECP256K1_ZKP` was set, so a report about anything under
-`zkp` is a report about a build somebody made from source. The fork's own
+carries the extension behind that namespace: it is built only under
+`BTCLIB_LIBSECP256K1_ZKP=true`, the literal `scripts/cffi_build.py`
+compares that variable against, so a report about anything under `zkp`
+is a report about a build somebody made from source. The fork's own
 [security policy](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/SECURITY.md)
 names the same address mainline's does.
 
