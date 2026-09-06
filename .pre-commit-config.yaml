@@ -749,8 +749,9 @@ repos:
   # the length of the run. git-only below cannot be what keeps it out --
   # it is read against files git tracks, and an injected directory is
   # never one -- .gitignore's own "*.egg-info/" is what hatchling's
-  # sdist target drops it on, the same VCS-ignore reading the comment
-  # above names for .python-version's absence
+  # sdist target drops it on, a VCS-ignore reading; [tool.check-sdist]
+  # below carries no entry, .python-version being tracked and shipped
+  # rather than VCS-ignore-dropped (btclib-org/btclib-secp256k1#743)
   - repo: https://github.com/henryiii/check-sdist
     rev: v1.6.0
     hooks:

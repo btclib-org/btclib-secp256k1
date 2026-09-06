@@ -43,7 +43,6 @@ wheelhouse/
 .venv
 .venv*/
 env/
-envtest/
 venv*/
 ENV/
 env.bak/

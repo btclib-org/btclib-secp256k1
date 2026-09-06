@@ -5408,6 +5408,32 @@ release-notes length in the first place, and are still in
   the section's opening sentence about who may bypass is what rests on
   it.
 
+### `[tool.check-sdist]` carries no `git-only` entry
+
+- **`git-only` named `.python-version`, a file the sdist ships rather
+  than leaves out, so `[tool.check-sdist]` now carries no entry**
+  (closes #743). `git-only` is consulted only for a tracked file the
+  archive omits, and `tar tzf` on a built sdist lists `.python-version`
+  among its members; restoring an ignore rule for the file instead, the
+  other answer this question had, would undo the on-purpose decision
+  `.gitignore`'s own comment beside it already recorded.
+- **`.pre-commit-config.yaml`'s `check-sdist` comment no longer credits
+  a VCS-ignore reading for `.python-version`'s absence from the sdist**
+  (closes #739). `git check-ignore -v --no-index -- .python-version`
+  exits 1 and the built sdist contains the file, so the clause naming
+  that reading described a state the tree does not have; the comment
+  now says `[tool.check-sdist]` carries no entry for a file that is
+  tracked and shipped.
+
+### `.gitignore` drops `envtest/`, a name nothing here writes
+
+- **The environment list no longer carries `envtest/`** (closes #722).
+  `git grep -In -F 'envtest' -- . ':!.gitignore'` finds no tracked file
+  naming it -- proved against `CONTRIBUTING.md`'s own `pytest` mentions
+  as a control that the pattern matches something -- and
+  `git check-ignore -v --no-index -- envtest/` now exits 1 where it
+  named the removed line.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
