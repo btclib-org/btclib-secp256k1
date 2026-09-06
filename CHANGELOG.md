@@ -4929,6 +4929,21 @@ release-notes length in the first place, and are still in
   `docs/source/btclib_secp256k1.rst` renders this docstring onto the
   API page that documents each of them beneath it.
 
+### The wheel test names the test that replaces `subprocess.run`
+
+- **`tests/wheel_reproducibility_test.py`'s docstring cited
+  `tests/check_vendored_vectors.py`, which is no file of this tree.**
+  The parallel it draws is real, and the other half of it is right:
+  `check.subprocess.run` is replaced here the way
+  `tests/submodule_pin_test.py` replaces it, and the second test that
+  does the same is `tests/vendored_vectors_test.py`, whose own
+  `monkeypatch.setattr(check.subprocess, "run", run)` is what the
+  sentence points at. What was written is the script's name,
+  `.github/scripts/check_vendored_vectors.py`, moved under `tests/` —
+  the thing checked put where the test that checks it belongs. Nothing
+  reads a path inside a docstring, so it is read rather than resolved,
+  and a reader following it finds no file.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
