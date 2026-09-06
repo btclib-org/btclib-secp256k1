@@ -577,7 +577,20 @@ def test_build_dynamic_wheel_carries_the_linkage_its_environment_names(
 def test_repair_wheel_runs_delocate_on_macos(
     check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`build-dynamic` repairs a macOS wheel with delocate, so this does."""
+    """`build-dynamic` repairs a macOS wheel with delocate, so this does.
+
+    Two assertions, because there are two things to get wrong and one
+    of them is invisible to the other. Which branch ran is the constant
+    the argument list was built from, and the two constants differ
+    whether they resolved or fell back to their own literals. Which
+    tool that constant names is the stem, and it is asked for
+    separately because both sides of the first comparison come from the
+    same module: definitions swapped between them would satisfy it.
+
+    Neither reads the whole of `shutil.which`'s answer, which is a path
+    where the tool is installed and a bare name where it is not, and on
+    Windows carries a `.EXE` the stem drops.
+    """
     monkeypatch.setattr(check.sys, "platform", "darwin")
     built = tmp_path / "out" / _WHEEL
     write_wheel(built, [("pkg/a.py", b"x")])
@@ -589,7 +602,8 @@ def test_repair_wheel_runs_delocate_on_macos(
     repaired = check.repair_wheel(built, tmp_path / "repaired")
 
     assert repaired == tmp_path / "repaired" / _WHEEL
-    assert record[0][0].endswith("delocate-wheel")
+    assert record[0][0] == check._DELOCATE
+    assert Path(check._DELOCATE).stem.lower() == "delocate-wheel"
 
 
 def test_repair_wheel_runs_auditwheel_off_macos(
@@ -606,7 +620,8 @@ def test_repair_wheel_runs_auditwheel_off_macos(
 
     check.repair_wheel(built, tmp_path / "repaired")
 
-    assert record[0][0].endswith("auditwheel")
+    assert record[0][0] == check._AUDITWHEEL
+    assert Path(check._AUDITWHEEL).stem.lower() == "auditwheel"
     assert record[0][1] == "repair"
 
 
