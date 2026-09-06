@@ -5087,6 +5087,16 @@ release-notes length in the first place, and are still in
   that moves one of the mypy hook's declarations fails the first run
   and the steps after it -- the union among them -- never run.
 
+### `.vscode/settings.json` says which comments `W505` holds to 80
+
+- **The `editor.rulers` comment names what `max-doc-length` reaches**
+  (closes #707): a whole-line comment and a docstring line. A comment
+  following code on its line is outside that key, and `W505` does not
+  reach it -- `E501`, at `max-line-length = 130`, is what bounds such a
+  line here. What it said instead -- that `W505` holds "a comment" to 80,
+  unqualified -- left a reader checking the setting's own reasoning
+  against ruff with the qualification missing.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
