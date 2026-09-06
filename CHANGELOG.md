@@ -5353,6 +5353,19 @@ release-notes length in the first place, and are still in
   one place, and `.gitignore`'s own comment is the copy a reader editing
   the ignore rules already has open.
 
+### `_secret.py`'s module docstring ends on what a reader can check
+
+- **The module docstring's first paragraph closes on the copy these
+  buffers hold being the one copy that can be taken back** (closes
+  #740). The clause after it called leaving that copy an omission
+  rather than a limit, a past-tense verdict on a revision of this
+  package the file does not hold, and section 9 of the organization
+  standard keeps that out of prose that lands. Deleting it loses
+  nothing a reader can check: that these buffers are cffi allocated,
+  writable and never seen outside the wrappers is what the sentence
+  rests on, and `_zero`, which `wipe` and `take` both reach, is what
+  takes the copy back.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

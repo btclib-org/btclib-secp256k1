@@ -10,8 +10,7 @@ in the process until the garbage collector gets to them, and may have
 been copied on the way. The buffers here are not that. They are memory
 cffi allocated and this package owns, they are writable, and nothing
 outside these wrappers ever sees them -- so the copy they hold is the
-one copy that can be taken back, and leaving it was an omission rather
-than a limit.
+one copy that can be taken back.
 
 It buys one copy, not safety: the `bytes` returned to the caller holds
 the same secret and cannot be overwritten. Scalar work that must not
