@@ -555,18 +555,18 @@ class VendoredCMakeExtension(FFIExtension):
         its result into a second, separate toolchain:
         `compile_static_unix` links CMake's own archive into an
         extension compiled by the interpreter's own `cc`, whose CFLAGS
-        already carry `-mmacosx-version-min`. Where CMake's own
-        `CMAKE_OSX_DEPLOYMENT_TARGET` was never given a value, that
-        archive was instead compiled for whatever the build machine
-        runs, and `ld` warned on every member of it built newer than
-        the extension's own floor (btclib-org/btclib-secp256k1#526). A
-        dynamic build compiles nothing this extension links against --
-        the shared object it produces is `dlopen`ed at import, by a
-        process whose own toolchain never touches it -- so guarding to
-        `self.static` is what keeps this from reaching that path at
-        all, leaving `dynamic_platform_tag`'s own coupling between the
-        environment variable and the library CMake builds (see
-        scripts/README.md) exactly as it was.
+        already carry `-mmacosx-version-min`. Where nothing sets
+        `CMAKE_OSX_DEPLOYMENT_TARGET`, CMake compiles that archive for
+        whatever the build machine runs, and `ld` warns on every member
+        of it built newer than the extension's own floor
+        (btclib-org/btclib-secp256k1#526). A dynamic build compiles
+        nothing this extension links against -- the shared object it
+        produces is `dlopen`ed at import, by a process whose own
+        toolchain never touches it -- so guarding to `self.static` is
+        what keeps this from reaching that path at all, leaving
+        `dynamic_platform_tag`'s own coupling between the environment
+        variable and the library CMake builds (see scripts/README.md)
+        untouched.
 
         Where `MACOSX_DEPLOYMENT_TARGET` is already exported --
         `cibuildwheel` sets it itself for every static release wheel --

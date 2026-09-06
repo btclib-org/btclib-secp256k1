@@ -5243,6 +5243,23 @@ release-notes length in the first place, and are still in
   Its section 8 citation, and the `exclude_also` alternative it records
   as rejected, are unchanged.
 
+### The `scripts/` comments say why the code is as it is
+
+- **`macos_deployment_target_options`'s docstring states what CMake does
+  where nothing sets `CMAKE_OSX_DEPLOYMENT_TARGET`** (closes #700). The
+  method passes one where it applies, so an archive compiled for
+  whatever the build machine runs, and the `ld` warning on every member
+  of it built newer than the extension's own floor, are the alternative
+  that option declines rather than a state a reader can go and look at. The same
+  paragraph closes on the dynamic path's own coupling between the
+  environment variable and the library CMake builds being left
+  untouched.
+- **The comment above `get_ext_object`'s `RuntimeError` keeps the reason
+  the message names both halves of the `pyproject.toml` entry** (closes
+  #700). The coverage exclusion beside it is what makes that message the
+  whole of what a maintainer would have to go on; the clause deleted
+  next to it described a revision of the `raise` the file does not hold.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
