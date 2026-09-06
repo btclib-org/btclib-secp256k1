@@ -28,8 +28,8 @@ on:
     # second table -- neither is this file's to restate.
     - cron: "8 5 * * 0"
 
-# least privilege for the GITHUB_TOKEN at the workflow level, with one
-# elevation on the job below: the analysis reads the tree, requests a
+# least privilege for the GITHUB_TOKEN at the workflow level, elevated
+# on the job below: the analysis reads the tree, requests a
 # transparency-log entry for its own result and files that result as
 # code-scanning alerts, and pushes nothing back to the tree.
 permissions:

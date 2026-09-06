@@ -527,11 +527,14 @@ jobs:
       # first wheel: the toolchain, the CMake build of the vendored
       # library and the cffi extension are what differ per platform, and
       # they do not differ per interpreter. The rest of an image's wheels
-      # are that build again for another ABI tag. Measured on the macOS
-      # and Windows images, the four jobs were 39.0 of the 59.5
-      # runner-minutes the six wheel jobs cost and came to 7.2 with it:
-      # 14.4 and 5.7 on the two macOS images became 1.5 and 1.2, and 8.7
-      # and 10.2 on the two Windows ones became 1.8 and 2.7.
+      # are that build again for another ABI tag. What that saves is
+      # measured on the macOS and Windows wheel jobs. Building every
+      # interpreter, in run 31942556787, they were 39.0 of the 59.5
+      # runner-minutes the `Build wheels on` jobs cost -- macos-26-intel
+      # 14.4, macos-latest 5.7, windows-11-arm 10.2, windows-latest 8.7.
+      # Building one, in run 34012526148, they came to 8.8 --
+      # macos-26-intel 2.0, macos-latest 1.6, windows-11-arm 2.7,
+      # windows-latest 2.5.
       #
       # Every image, ubuntu included: nothing on a pull request reads past
       # the first build of an image. check-dist installs one wheel by

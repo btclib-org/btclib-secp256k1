@@ -4872,6 +4872,34 @@ release-notes length in the first place, and are still in
   `.zkp.lib` come from a build under `BTCLIB_LIBSECP256K1_ZKP=true`,
   where `btclib_secp256k1.ffi` and `.lib` are always available.
 
+### `vendored-vectors.yml` and `scorecard.yml` describe their own grants
+
+- **`.github/workflows/vendored-vectors.yml`'s header says what its own
+  job takes, and points at `links.yml` for the opposite choice** (closes
+  #693). The clause generalizing that to every other scheduled workflow
+  stopping at `contents: read` is gone: `codeql.yml` and `scorecard.yml`
+  are scheduled, carry `contents: read` at the top and elevate inside a
+  job.
+- **`.github/workflows/scorecard.yml`'s header describes the analysis
+  job's elevation without counting it** (closes #693). The clause after
+  it names the transparency-log entry and the code-scanning alerts, and
+  those are `id-token: write` and `security-events: write` in that job's
+  own `permissions:` block.
+
+### `test.yml`'s wheel-matrix comment names the runs its figures come from
+
+- **Every runner-minute figure above the wheel matrix sits beside the
+  run it comes from** (closes #694): run `31942556787` for the macOS and
+  Windows wheel jobs building every interpreter, run `34012526148` for
+  the same jobs building one. Each is a job's wall time, or a sum of
+  those, in the run named with it, which a later matrix change leaves
+  true.
+- **The job counts are gone** (closes #694). What they demonstrated is
+  that an image's remaining wheels are its first build again for another
+  ABI tag, which the paragraph argues from the toolchain, the CMake
+  build of the vendored library and the cffi extension being what
+  differs per platform.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

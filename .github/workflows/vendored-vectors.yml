@@ -9,13 +9,12 @@ name: vendored vectors
 # refreshing a vector file is a decision the script does not get to
 # make. Matches btclib's own workflow of the same name, script included.
 #
-# issues: write is new to this repository -- links.yml's own comment
-# explains why every other scheduled workflow here stops at contents:
-# read, an automatic issue being the usual next step it deliberately
-# does not take. This one does take it, on purpose: a link is noticed
-# the next time somebody follows it, where a vendored vector is trusted
-# without anybody looking at it again, and that is exactly what an
-# opened issue is for
+# issues: write is what the job below takes, and links.yml's own comment
+# is where the opposite choice is argued: an automatic issue is the usual
+# next step, and that workflow deliberately does not take it. This one
+# does, on purpose: a link is noticed the next time somebody follows it,
+# where a vendored vector is trusted without anybody looking at it again,
+# and that is exactly what an opened issue is for
 
 on:
   schedule:
