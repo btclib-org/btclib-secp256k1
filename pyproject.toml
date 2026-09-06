@@ -902,16 +902,19 @@ skip = "pp*-win* cp310-win_arm64"
 # the clean CMake tree every build gets.
 #
 # What that costs today is measured rather than assumed: in run
-# 31942556787 the six wheel jobs were 59.5 of the workflow's 81.8
+# 31942556787 the wheel jobs were 59.5 of the workflow's 81.8
 # runner-minutes, and each of them compiles the whole vendored
-# libsecp256k1 once per wheel it builds -- seven interpreters on macOS
-# and Windows, and twice that on Linux, manylinux and musllinux being
-# separate images. scripts/cffi_build.py deletes the CMake directory
-# before every build, deliberately, a stale CMake cache being a
-# configuration nobody asked for; ccache does not have that failure
-# mode, hashing the preprocessed source and the compiler flags rather
-# than trusting a directory to describe itself. So the delete stays and
-# the compiler stops doing the same work seven times.
+# libsecp256k1 once per wheel it builds -- a wheel per interpreter
+# `requires-python`, `enable` and `skip` leave standing for that job's
+# platform, and one such set per image on Linux, manylinux and
+# musllinux being built separately. `cibuildwheel
+# --print-build-identifiers --platform linux` names them for one
+# platform. scripts/cffi_build.py deletes the CMake directory before
+# every build, deliberately, a stale CMake cache being a configuration
+# nobody asked for; ccache does not have that failure mode, hashing the
+# preprocessed source and the compiler flags rather than trusting a
+# directory to describe itself. So the delete stays and ccache is what
+# stops the compiler repeating that work.
 #
 # CMake initializes CMAKE_C_COMPILER_LAUNCHER from the environment
 # variable of the same name, so no build script changes. The value is a
