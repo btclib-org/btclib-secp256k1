@@ -116,8 +116,8 @@ more than that checkout gives: `submodule-pin` resolves the release
 than reasoned about — with it the submodule arrives and the hook still
 fails, `the vendored clone is shallow and carries no v0.8.0 tag`. There is
 no `fetch-depth` key to ask that service for, so the hook is the one
-entry in the `ci:` `skip` list. What that costs is one of the hook's two
-runners: the one the rule names, `Lint and type-check`, checks the
+entry in the `ci:` `skip` list. What that costs is pre-commit.ci's run
+of it: the runner the rule names, `Lint and type-check`, checks the
 submodule out with `fetch-depth: 0` precisely so it has what the hook
 needs, and so does a developer's own commit. Re-read that skip list
 before adding to it: an entry may join for a reason of that kind and no
@@ -385,7 +385,7 @@ reaches `main` through the rules above.
 
 ## The rulesets, and what their bypass is for
 
-Two rulesets sit on `main` beside that protection, and what separates
+The rulesets on `main` sit beside that protection, and what separates
 them is who may bypass:
 
 ```shell
@@ -393,15 +393,14 @@ gh api repos/btclib-org/btclib-secp256k1/rulesets \
   --jq '.[] | "\(.name) \(.enforcement) bypass=\(.bypass_actors | length)"'
 ```
 
-`main-integrity` is the four [section 11 of the organization
+`main-integrity` is what [section 11 of the organization
 standard](https://github.com/btclib-org/.github#11-github-settings)
 names — a verified signature, linear history, no force push, no branch
-deletion — with **no
-bypass actor at all**, which is what makes "on every commit, not at
-review time" true of an administrator too, `enforce_admins` above being
-off. `main-self-merge` is the pull request rule, and names the maintainer
-as one; the listing above answers each ruleset's id, and the rules and
-the bypass of either are read from it:
+deletion — with **no bypass actor at all**, which is what makes "on
+every commit, not at review time" true of an administrator too,
+`enforce_admins` above being off. `main-self-merge` is the pull request
+rule, and names the maintainer as one; the listing above answers each
+ruleset's id, and the rules and the bypass of each are read from it:
 
 ```shell
 gh api --jq '{rules: [.rules[].type], bypass: [.bypass_actors[].actor_type]}' \
@@ -413,10 +412,10 @@ line ends in the placeholder and a paste made before it is filled in has
 nothing for its `>` to open — section 9 of the organization standard is
 where that rule is.
 
-The split is the point of there being two. The review is the rule a solo
-maintainer cannot satisfy, GitHub refusing a self-approval; the integrity
-four are the rules nobody should be able to. One ruleset each is what
-lets the first be bypassed without the second going with it.
+The split is the point. The review is the rule a solo maintainer cannot
+satisfy, GitHub refusing a self-approval; the integrity rules are the
+ones nobody should be able to. One ruleset each is what lets the first
+be bypassed without the second going with it.
 
 **What the bypass is for is the review, and nothing else.** It is set to
 `pull_request` mode, which excuses its holder from the rule *while
@@ -617,10 +616,10 @@ git grep -n ': write$' -- .github/workflows
 ```
 
 `release.yml` takes `contents: write` on `github-release` and `id-token:
-write` on the two publish jobs, which is what Trusted Publishing
-exchanges, with `attestations: write` beside it on `attest`.
-`claude-review.yml` takes `pull-requests: write` and `id-token: write` on
-each of its two jobs. `codeql.yml` and `scorecard.yml` take
+write` on its publish jobs, which is what Trusted Publishing exchanges,
+with `attestations: write` beside it on `attest`. `claude-review.yml`
+takes `pull-requests: write` and `id-token: write` on each of its jobs.
+`codeql.yml` and `scorecard.yml` take
 `security-events: write` on the job that files a SARIF as code scanning
 alerts, and `scorecard.yml` takes `id-token: write` besides, for the
 transparency-log entry its published score rests on.

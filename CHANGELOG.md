@@ -5281,6 +5281,30 @@ release-notes length in the first place, and are still in
   disagreeing about it, and the second points at the first. The comment
   is the copy a reader editing the configuration already has open.
 
+### `REPOSITORY.md` says what the rulesets and the grants are, not how many
+
+- **The rulesets section opens on the rulesets that sit on `main`, and
+  says what `main-integrity` enforces without saying how many rules that
+  is** (closes #732). Section 9 of the organization standard asks that
+  prose never state how many of anything a file holds, a stated total
+  being a line every open branch has to edit. Each sentence keeps what it
+  claims: the `gh api .../rulesets` listing under the first prints each
+  ruleset and its enforcement, the `--jq` call below it is what reads a
+  ruleset's rules and its bypass, and the rules
+  section 11 of that standard names -- a verified signature, linear
+  history, no force push, no branch deletion -- are enumerated where
+  `main-integrity` is described.
+- **The token-permissions paragraph names where a grant sits without
+  counting the jobs, and the `ci:` `skip` paragraph says what skipping
+  `submodule-pin` costs rather than counting the hook's runners** (closes
+  #735). The `git grep -n ': write$'` block above the first enumerates
+  the grants rather than the jobs, so nothing beside those sentences
+  re-derives a number of jobs; `release.yml` takes `id-token: write` on
+  its publish jobs and `claude-review.yml` on each of its jobs, which is
+  what they claim. What the skip costs is pre-commit.ci's run of the
+  hook, `Lint and type-check` and a developer's own commit still having
+  the checkout it needs.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
