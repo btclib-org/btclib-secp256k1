@@ -66,10 +66,9 @@ class CustomBuildHook(BuildHookInterface[Any]):
         exec(code, build_vars, build_vars)
         if ext_name not in build_vars:
             # the message names both halves of the pyproject.toml entry,
-            # that entry being the only thing that can be wrong here: a
-            # bare `raise RuntimeError` said nothing at all, and this line
-            # is excluded from the coverage measure, so the message is the
-            # whole of what a maintainer would have to go on
+            # that entry being the only thing that can be wrong here: this
+            # line is excluded from the coverage measure, so the message is
+            # the whole of what a maintainer would have to go on
             msg = f"{script} defines no {ext_name}: stale cffi_modules entry"
             raise RuntimeError(msg)
         return build_vars[ext_name]
