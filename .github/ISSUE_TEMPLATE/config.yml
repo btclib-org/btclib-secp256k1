@@ -1,5 +1,5 @@
 ---
-# the forms already say which of the three projects a report belongs in;
+# the forms already say which project a report belongs in;
 # these links are the same routing, offered before the report is written
 # rather than after. Blank issues are off because the choice of project
 # is the one thing the forms exist to get right
@@ -19,8 +19,17 @@ contact_links:
       Anything with state of its own — a wallet, a transaction, a signing
       session — belongs in the library these bindings are for.
 
+  # one row per vendored library: a contact link carries a single url, so
+  # a row naming both libraries in its text would still send the reporter
+  # to one of the two trackers
   - name: Something in libsecp256k1 itself
     url: https://github.com/bitcoin-core/secp256k1/issues
     about: >
       The cryptography is upstream, vendored here as a submodule and only
-      ever read from.
+      ever read from. This is what answers outside btclib_secp256k1.zkp.
+
+  - name: Something in secp256k1-zkp itself
+    url: https://github.com/BlockstreamResearch/secp256k1-zkp/issues
+    about: >
+      Blockstream Research's fork of libsecp256k1, vendored as a submodule
+      of its own. This is what answers under btclib_secp256k1.zkp.

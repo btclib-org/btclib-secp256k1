@@ -713,10 +713,14 @@ gh api repos/btclib-org/btclib-secp256k1/contents/.github/dependabot.yml \
 ```
 
 `github-actions` moves the SHA pins, `uv` the locked dependencies, and
-`gitsubmodule` signals that the vendored secp256k1 has moved upstream —
-which tracks the upstream *default branch*, so a release still needs a
-manual bump to the tagged commit. `.github/dependabot.yml` is validated by
-the `check-dependabot` hook, a typo there otherwise updating nothing and
+`gitsubmodule` signals that a vendored library has moved upstream. The
+`gitsubmodule` ecosystem is configured per directory rather than per
+submodule: it reads the `.gitmodules` at that directory, so the entry at
+the repository root covers every submodule that file names. It tracks each
+upstream's *default branch*, so its pull request says that a bump is
+available and not which commit to pin; `CONTRIBUTING.md`'s conventions say
+what a bump then owes. `.github/dependabot.yml` is validated by the
+`check-dependabot` hook, a typo there otherwise updating nothing and
 saying nothing.
 
 Dependabot security updates are a repository setting rather than a line
