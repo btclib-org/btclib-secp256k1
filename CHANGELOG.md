@@ -5198,6 +5198,23 @@ release-notes length in the first place, and are still in
   build sits at plain module scope -- and read, uncorrected, as a
   claim about every context this package holds.
 
+### The coverage-threshold docstrings name no run as the only one
+
+- **The `coverage_fail_under` docstring points at `git grep
+  cov-fail-under -- .github/workflows/` for which runs ask for a
+  threshold of their own** (closes #703). The static, dynamic and
+  zkp-marked steps of `test.yml`'s coverage job each pass
+  `--cov-fail-under=0`, and so does every pytest step of
+  `deps-latest.yml`; the command is what a step added to either of
+  them cannot falsify.
+- **`tests/conftest_test.py` carried the same clause, and a staler one
+  beside it** (closes #703). Its own docstring named the
+  dynamic-linkage step as the run depending on the hook, and called
+  what is gated the union of two runs, where the step doing the
+  combining is *Combine the three runs*; the comment beside that
+  flag in `test.yml` already says none of its steps is the ratchet on
+  its own any more.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
