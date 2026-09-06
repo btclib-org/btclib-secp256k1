@@ -305,15 +305,14 @@ test = ["pytest", "pytest-cov", "pytest-randomly"]
 # errors the gate does not (and passes what the gate would reject)
 lint = ["pre-commit", "ruff", "mypy", "types-cffi", "hatchling"]
 # what the wheel jobs build with, for the same reason as the check group
-# below: they used to `pip install -U` these, which gave each job whatever
-# the index held that morning, and these four decide what the artifacts
-# are. cibuildwheel picks the interpreters, the manylinux images and the
-# identifiers the skip in [tool.cibuildwheel] names, so a release of it
-# reshapes that matrix; auditwheel and delocate decide the platform tag of
-# the dynamic wheel, which is the file name pip matches against. With the
-# versions pinned by uv.lock and moved by dependabot, a release of any of
-# them is a pull request that runs the matrix, instead of a matrix that
-# breaks on a morning nothing here changed
+# below: these decide what the artifacts are. cibuildwheel picks the
+# interpreters, the manylinux images and the identifiers the skip in
+# [tool.cibuildwheel] names, so a release of it reshapes that matrix;
+# auditwheel and delocate decide the platform tag of the dynamic wheel,
+# which is the file name pip matches against. With the versions pinned by
+# uv.lock and moved by dependabot, a release of any of them is a pull
+# request that runs the matrix, instead of a matrix that breaks on a
+# morning nothing here changed
 build = ["build", "cibuildwheel", "auditwheel", "delocate"]
 # what the check-dist job validates the distribution files with. A group,
 # rather than uvx fetching each tool at run time, so that the versions are
@@ -656,14 +655,16 @@ convention = "pep257"
 # the formatter owns the code width (88 columns); E501 only guards
 # against the runaway comments and URLs it cannot wrap
 max-line-length = 130
-# and this is the half of a file the formatter never reaches. ruff-format
-# reflows code and never a comment or a docstring, so the prose that
-# carries the reasoning was the one width nothing measured -- in a
-# repository that is mostly prose. 80, the same as markdownlint gives every
-# markdown file here, and the same rule W505 already in the selected "W"
-# set applies, inert until this line names a length. It costs nothing
-# today, which is the point of taking it now: zero findings over
-# src/btclib_secp256k1, tests and scripts
+# and this is the width a standalone comment and a docstring are held
+# to, which neither the formatter nor E501 sets. ruff-format reflows
+# code and never a comment or a docstring, and E501 above bounds every
+# line at 130, so 80 is the standard nothing else here holds the
+# reasoning to -- in a repository that is mostly prose. It is the width
+# markdownlint gives every markdown file here, and W505, already in the
+# selected "W" set, applies it: the rule is inert until this line names
+# a length, and with one named an overlong standalone comment or
+# docstring line is a ruff-check finding, with the same amnesty for an
+# unbreakable URL that markdownlint gives
 max-doc-length = 80
 
 [tool.ruff.lint.mccabe]
@@ -681,13 +682,12 @@ max-complexity = 10
 # the build scripts drive CMake and load the cffi build description by
 # exec(): both are inherent to compiling a C dependency from a build
 # backend, and neither ever sees untrusted input.
-# suspicious-subprocess-import stood in this list and suppressed nothing:
-# it is a preview rule, and a preview rule is not reached through the "S"
-# family that selects the rest of them -- it has to be named, and no line
-# names it. An exemption for a check nobody runs claims a decision that
-# was never taken, so it goes. Naming the rule in `select` is what would
-# bring it back, and this line with it -- wider than it was, the import
-# being in the mutation counter and the vendored-vector check too.
+# suspicious-subprocess-import is deliberately *not* here: it is a preview
+# rule, and `explicit-preview-rules` above reaches one only where a line
+# names it exactly, which no line does. An exemption for a check nobody
+# runs claims a decision nobody took. Naming the rule in `select` is what
+# calls for the exemption, and for a wider one than this entry: `import
+# subprocess` is not confined to this file.
 # implicit-namespace-package joins it for the reason the glob entry below
 # gives: a standalone entry point, never imported as a package
 "scripts/cffi_build.py" = [
@@ -778,20 +778,13 @@ max-complexity = 10
 # notice-rgx is COPYRIGHT's text as one regex, anchored with ^ so a
 # match has to open the file rather than merely occur somewhere in its
 # first 4096 bytes -- unanchored, an import or a docstring placed above
-# the notice would still pass, which is not the question the retired
-# hook's substring search over the whole file asked either. No source
-# file here opens with a shebang, so nothing legitimate sits between
-# byte zero and the notice for the anchor to exclude.
-# CPY001 checks against a file's own first 4096 bytes regardless of
-# which files pre-commit was told to look at -- unlike the retired
-# hook, which needed --enforce-all or it intersected only newly *added*
-# staged files, checking nothing at all under "pre-commit run
-# --all-files", the very invocation the lint workflow runs.
-# It also needs no files: pattern of its own the way that hook did:
-# stubs/_btclib_secp256k1.pyi kept a pre-MIT header for as long as
-# the hook's pattern matched only \.py$ and not \.pyi$, and ruff lints
-# .pyi files by default, so there is no second extension to remember
-# this time
+# the notice would still pass. No source file here opens with a
+# shebang, so nothing legitimate sits between byte zero and the notice
+# for the anchor to exclude.
+# Which files carry the notice is ruff's own selection rather than a
+# `files:` pattern beside the hook: ruff lints .pyi by default, so
+# stubs/_btclib_secp256k1.pyi answers to this regex like every .py file,
+# with no second extension named beside it.
 notice-rgx = "^# Copyright \\(c\\) The btclib developers\\n# Distributed under the MIT software license, see the accompanying\\n# LICENSE file or https://opensource\\.org/license/mit for the full text\\."
 
 [tool.pytest.ini_options]
@@ -899,9 +892,9 @@ enable = ["pypy"]
 # the ABI-mode dynamic wheel (py3-none-win_amd64), the cffi mode
 # recommended on PyPy, which pip falls back to; a static pp3 wheel
 # would take precedence over it and perform worse
-# cp310 has no Windows arm64 build: cibuildwheel lists that identifier
-# (it used to cross-compile it from an x86_64 host) but on the native
-# arm64 runner there is no interpreter to build it with
+# cp310 has no Windows arm64 build: cibuildwheel lists that identifier,
+# but on the native arm64 runner there is no interpreter to build it
+# with
 skip = "pp*-win* cp310-win_arm64"
 
 # One C compilation per job instead of one per wheel, without giving up

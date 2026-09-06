@@ -4626,6 +4626,53 @@ release-notes length in the first place, and are still in
   one raising an `ImportError` naming no flag: the arm and both its
   answers are then exercised whichever build runs the suite.
 
+### `pyproject.toml`'s remaining comments say why, in the present tense
+
+- **The `build` dependency group's comment argues the pin and says
+  nothing about how the wheel jobs once installed these tools** (closes
+  #653). Section 9 of the organization standard keeps history out of
+  prose that lands, and the sentence already there gives the reason in
+  the present tense: with the versions pinned by `uv.lock` and moved by
+  Dependabot, a release of cibuildwheel, auditwheel or delocate is a
+  pull request that runs the matrix.
+- **`[tool.cibuildwheel]`'s `skip` says why `cp310-win_arm64` is
+  skipped without narrating cibuildwheel's own past** (closes #653). The
+  entry is there because the native arm64 runner carries no cp310
+  interpreter to build that identifier with; how cibuildwheel came to
+  list it is a fact about another project, and a reader of this tree
+  cannot look at it.
+- **`[tool.ruff.lint.per-file-ignores]` states why
+  `suspicious-subprocess-import` is absent from the entry** (closes
+  #653). This is the site where deleting the clause loses the reason a
+  rule is *not* in a list, so it is rewritten rather than dropped: the
+  rule is preview, and `explicit-preview-rules` above reaches a preview
+  rule only where a line names it exactly. `ruff check --config
+  pyproject.toml --extend-select S404` reports the import in
+  `scripts/cffi_build.py` and the same run without `--extend-select`
+  reports nothing, which is what makes naming the rule in `select` the
+  thing that would call for an exemption -- and for a wider one than
+  this entry, `import subprocess` not being confined to this file.
+- **`[tool.ruff.lint.flake8-copyright]`'s comment argues the anchor and
+  `.pyi` coverage without comparing them to a hook this tree does not
+  have** (closes #653). The comparison is with a retired hook no
+  configuration file here carries, so it sends a reader looking for
+  something the tree does not hold.
+  What the configuration still needs from it is that ruff lints `.pyi`
+  by default, so `stubs/_btclib_secp256k1.pyi` answers to `notice-rgx`
+  with no second extension named beside the pattern.
+- **`max-doc-length`'s comment names what 80 adds, and states the
+  invariant instead of a finding count** (closes #653).
+  `max-line-length = 130` sits above it in the same table, so comment and
+  docstring prose is measured whether or not this line exists: what 80
+  adds is the standard markdownlint gives every markdown file here, not
+  measurement where there was none (btclib-org/.github#841). The
+  closing "zero findings over `src/btclib_secp256k1`, tests and
+  scripts" was a measurement written as a standing fact with no command
+  beside it, and what stands in its place is what the rule does once a
+  length is named: an overlong standalone comment or docstring line is
+  a `ruff-check` finding, with the amnesty ruff gives a line ending in
+  an unbreakable URL.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
