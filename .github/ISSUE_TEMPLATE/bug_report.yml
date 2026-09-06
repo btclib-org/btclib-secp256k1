@@ -51,8 +51,8 @@ body:
     attributes:
       label: How it was installed
       description: >
-        The three artifacts differ in how libsecp256k1 is linked, and a
-        bug is rarely in all of them. If unsure, run
+        The artifacts differ in how libsecp256k1 is linked, and a bug
+        is rarely in all of them. If unsure, run
         `python -c "import _btclib_secp256k1 as m; print(m.__file__, hasattr(m, 'lib'))"`:
         `True` means the library is linked into the extension, i.e. a
         static build, `False` that it is a shared object loaded at run

@@ -4844,6 +4844,34 @@ release-notes length in the first place, and are still in
   is what has to be caught, and a running flag catches it in one order
   of them only.
 
+### The bug form and `CONTRIBUTING.md` say the artifacts differ
+
+- **`.github/ISSUE_TEMPLATE/bug_report.yml`'s install dropdown says the
+  artifacts differ in how libsecp256k1 is linked and that a bug is
+  rarely in all of them** (closes #682). The dropdown's own options are
+  the list, so a linkage added to the wheel matrix adds an option there
+  instead of falsifying the sentence above it.
+- **`CONTRIBUTING.md`'s sentence about that dropdown says the same
+  thing** (closes #682). It is there to explain the form, and what is
+  written in one and not the other leaves the tree saying two things
+  about one list.
+
+### The feature form asks for what either vendored library offers
+
+- **`.github/ISSUE_TEMPLATE/feature_request.yml` describes a request as
+  wrapping what libsecp256k1 or secp256k1-zkp offers** (closes #687).
+  `.gitmodules` names both libraries, and `src/btclib_secp256k1/zkp/`
+  holds a wrapper module per secp256k1-zkp module wrapped, so a request
+  about the fork is one these bindings take.
+- **The form routes by the import line: libsecp256k1 outside
+  `btclib_secp256k1.zkp`, secp256k1-zkp under it** (closes #687). That
+  is the discriminator `config.yml`, `SECURITY.md`, `bug_report.yml`
+  and the README's Design section already route by.
+- **The field asking what the raw cffi surface cannot do names the
+  fork's own surface** (closes #687). `btclib_secp256k1.zkp.ffi` and
+  `.zkp.lib` come from a build under `BTCLIB_LIBSECP256K1_ZKP=true`,
+  where `btclib_secp256k1.ffi` and `.lib` are always available.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

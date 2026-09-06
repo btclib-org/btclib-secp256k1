@@ -255,9 +255,9 @@ the wrong repository is slow to route:
   wrapping, the argument validation at the cffi boundary, the packaging,
   and the wheels
 
-The bug form asks which of the three artifacts is installed — a static
-wheel, a dynamic one, or a build from the sdist — because they differ in
-how libsecp256k1 is linked and a bug is rarely in all three. A
+The bug form asks which artifact is installed — a static wheel, a
+dynamic one, or a build from the sdist — because they differ in how
+libsecp256k1 is linked and a bug is rarely in all of them. A
 vulnerability is never an issue: see the
 [security policy](./SECURITY.md).
 
