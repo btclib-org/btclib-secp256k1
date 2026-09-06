@@ -438,12 +438,11 @@ class VendoredCMakeExtension(FFIExtension):
     ) -> None:
         """Name the sources, the headers and where the build output goes.
 
-        Called by a subclass's own `__init__`, in place of setting these
-        attributes by hand and calling `FFIExtension.__init__` itself, so
-        that the two subclasses read the same way: each names what is
-        its own and defers the rest to this method, which ends by making
-        the same call `Secp256k1CFFIExtension.__init__` used to make
-        directly.
+        Called by a subclass's own `__init__` so that the two subclasses
+        read the same way: each names what is its own and defers the
+        rest to this method, which sets every attribute
+        `FFIExtension.__init__` requires of a subclass and ends by
+        calling it.
 
         Also decides whether this build is static: the dynamic path is
         asked for by environment variable, and cross-compilation forces
@@ -902,8 +901,7 @@ ffi_ext = Secp256k1CFFIExtension()
 # ships today: scripts/hatch_build.py's own loop skips a cffi_modules
 # entry that resolves to None rather than building it, so the extension
 # this module's docstring calls a fourth path is, unflagged, not merely
-# empty but absent -- nothing here differs from what this file built
-# before this class existed
+# empty but absent
 ffi_ext_zkp = Secp256k1ZkpCFFIExtension() if zkp else None
 
 if __name__ == "__main__":

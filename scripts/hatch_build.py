@@ -125,8 +125,7 @@ class CustomBuildHook(BuildHookInterface[Any]):
         # one entry per module, True where libsecp256k1 is linked into the
         # extension. A set rather than a running flag: the disagreement is
         # what has to be caught, and a flag catches it in one order of the
-        # modules only -- a dynamic module after a static one used to leave
-        # the wheel tagged py3-none with no message at all
+        # modules only
         modes = set()
 
         for script, ext_name in cffi_config:

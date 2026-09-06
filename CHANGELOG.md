@@ -4811,6 +4811,39 @@ release-notes length in the first place, and are still in
   test passes the production title, and the constant is what this change
   removes.
 
+### The ccache comment names what fixes the wheels a job builds
+
+- **`[tool.cibuildwheel]`'s ccache comment argues the redundancy from
+  `requires-python`, `enable` and `skip`, in place of the interpreter
+  and job counts it stated** (closes #679). Section 9 of the
+  organization standard asks for no count that nothing checks, and
+  `CLAUDE.md`'s opening paragraph names that hazard for this very file:
+  a number here is a line every matrix change has to edit, with nothing
+  red when it is not edited. What the counts were there to demonstrate
+  -- that a job compiles the vendored library once per wheel, so the
+  same C is compiled again for every interpreter of that platform, and
+  again per image on Linux -- is what the comment now says, with
+  `cibuildwheel --print-build-identifiers --platform linux` beside it
+  as the command that names the set. The runner-minutes stay as they
+  are: run 31942556787 is named, so they can be re-derived.
+
+### The build scripts' comments say what the code does
+
+- **`VendoredCMakeExtension.configure`'s docstring says what the method
+  ends by doing** (closes #685): it sets every attribute
+  `FFIExtension.__init__` requires of a subclass, then calls it. The
+  clause naming where that call sat before is gone, a reader checking
+  it against the file having nothing to check.
+- **The comment above `ffi_ext_zkp` ends at what is checkable** (closes
+  #685): unflagged the name is `None`, and `scripts/hatch_build.py`'s
+  loop skips a `cffi_modules` entry that resolves to `None` rather than
+  building it. The reassurance that followed was about a state of the
+  file no reader can look at.
+- **`scripts/hatch_build.py`'s comment above `modes` argues the set on
+  its own terms** (closes #685): the disagreement between the modules
+  is what has to be caught, and a running flag catches it in one order
+  of them only.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
