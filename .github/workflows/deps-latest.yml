@@ -36,12 +36,22 @@ name: deps-latest
 # pinned by rev in .pre-commit-config.yaml and moved by pre-commit.ci's
 # weekly pull request, which runs the whole matrix. mypy is one of those
 # and not an exception to it: its hook is `mirrors-mypy` at a pinned rev,
-# and the stub packages it type-checks against are pinned by hand in
-# `additional_dependencies`, so nothing `uv lock --upgrade` writes reaches
-# it. That is the second of the two answers section 4 of the organization
+# and the packages it type-checks against are pinned by hand in
+# `additional_dependencies`, which `uv lock --upgrade` does not write.
+# That is the second of the two answers section 4 of the organization
 # standard gives, and the right one for a package whose types rest on a
 # handful of stubs rather than on itself. It is also why the lint job
 # below reaches less here than the job of the same name in btclib.
+#
+# What an upgrade writes and what it falsifies are two questions, and
+# that hook's declarations are outside the first and inside the second:
+# tests/hook_pins_test.py reads them against the lock, the rev against
+# the mypy uv.lock resolves and each additional dependency against its
+# own package there. So an upgrade moving one of those packages fails
+# that module in the suite below, and the failure names a declaration in
+# .pre-commit-config.yaml the lock has moved past -- the rev being
+# pre-commit.ci's to move and the pins moved by hand, as the comment on
+# them there says -- rather than anything about what uv resolves.
 #
 # Nothing here gates anything, by construction: a workflow of its own, no
 # aggregate job, named by no branch protection rule (see REPOSITORY.md).
@@ -145,18 +155,120 @@ jobs:
       # keeps the convention that no uv command here installs from a lock
       # it has not checked.
       #
-      # No --no-cov here, where the platform sentinels and the wheel,
-      # sdist and mutation runs all pass it: --cov comes from addopts, so
-      # this step gates the ratchet against the newest resolution of
-      # every dependency. The header names coverage's fail_under of 100
-      # beside filterwarnings = ["error"] as the ways an upstream release
-      # turns this tree red with nobody having touched it, and that is
-      # what this workflow is for: it gates no merge, so a release moving
-      # the number is read here, ahead of the dependabot pull request the
-      # cron above runs one day in front of
+      # --cov-fail-under=0 rather than --no-cov: --cov comes from
+      # addopts, so the report is still printed and only the floor is
+      # given up. btclib_secp256k1.zkp.musig runs under
+      # BTCLIB_LIBSECP256K1_ZKP, which this step does not set, so a run
+      # of the suite here is below fail_under whatever PyPI resolves --
+      # what the report is missing is that module and the test files
+      # that skip without the flag, not anything a dependency release
+      # did.
+      # What these cells gate is the suite against the newest resolution
+      # of every dependency, on each platform and at both ends of the
+      # supported interpreter range, with filterwarnings = ["error"]
+      # live: the first of the two mechanisms the header names. The
+      # second, coverage's fail_under of 100, is coverage-latest's
+      # below, that job being the one that can combine the runs which
+      # reach the flagged module
       - name: Run pytest
         shell: bash
-        run: uv run --locked --no-default-groups --group test pytest
+        run: >
+          uv run --locked --no-default-groups --group test pytest
+          --cov-fail-under=0
+
+  # coverage's fail_under of 100, which the cells above cannot hold and
+  # which this workflow would otherwise stop watching altogether. The
+  # tool that measures it is upgraded here like everything else:
+  # pytest-cov comes from the test group and coverage with it. Where a
+  # release of either moves the total, what goes red is test.yml's
+  # coverage job, which `test: every job passed` waits on -- a merge
+  # blocked on a branch whose author changed none of it, and so exactly
+  # what this workflow reports a day ahead of the dependabot pull
+  # request the cron above sits in front of.
+  #
+  # The first two runs below are the whole suite, tests/hook_pins_test.py
+  # included, and --cov-fail-under=0 gives up a run's coverage floor
+  # rather than a failing test. So an upgrade that moves one of that
+  # hook's declarations fails the first run, and the steps after it --
+  # the union among them -- never run. The header above is what tells
+  # that red apart from the one this job watches for.
+  #
+  # No matrix, and the interpreter is .python-version's, which is the
+  # shape of the job this predicts: coverage is a property of the python
+  # wrapper layer rather than of the platform. test.yml's coverage job
+  # carries that reasoning, and the reason each of the runs below is
+  # short of 100 on its own; what belongs to this job and not to that
+  # one is the upgrade in front of them
+  coverage-latest:
+    name: Measure coverage against the latest dependencies, gated at 100%
+    runs-on: ubuntu-latest
+    # the extension is built once per run below rather than once for the
+    # job, and on a cold uv cache when a dependency moved
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # both vendored libraries: the flagged run below compiles
+          # secp256k1-zkp, which a run without the flag does not
+          submodules: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+
+      - name: Upgrade every dependency to its latest release
+        run: uv lock --upgrade
+
+      # each run names its own data file and is gated at zero, the
+      # files being combined below: 100 is asked for of the union, at
+      # the last step, and nowhere else
+      - name: Run the suite against a static build
+        env:
+          COVERAGE_FILE: coverage-data-static
+        run: >
+          uv run --locked --no-default-groups --group test pytest
+          --cov-fail-under=0
+
+      # --reinstall-package and --no-cache here and below because this
+      # run and the one after it are each selected by an environment
+      # variable that neither the installed environment nor the build
+      # cache is keyed on, so the extension already installed is not the
+      # one the run needs
+      - name: Run the suite against a dynamic build
+        env:
+          BTCLIB_LIBSECP256K1_DYNAMIC: "true"
+          COVERAGE_FILE: coverage-data-dynamic
+        run: >
+          uv run --locked --no-default-groups --group test
+          --reinstall-package btclib-secp256k1 --no-cache pytest
+          --cov-fail-under=0
+
+      - name: Run the tests marked zkp against the flagged build
+        env:
+          BTCLIB_LIBSECP256K1_ZKP: "true"
+          COVERAGE_FILE: coverage-data-zkp
+        run: >
+          uv run --locked --no-default-groups --group test
+          --reinstall-package btclib-secp256k1 --no-cache pytest
+          -m zkp --cov-fail-under=0
+
+      - name: Combine the runs
+        run: >
+          uv run --locked --no-default-groups --group test
+          coverage combine coverage-data-static coverage-data-dynamic
+          coverage-data-zkp
+
+      # no --fail-under: coverage reads [tool.coverage.report]'s own,
+      # which is where the number lives, and this is the step a
+      # dependency release moving it turns red
+      - name: Report the union, gated at 100%
+        run: >
+          uv run --locked --no-default-groups --group test
+          coverage report
 
   # what this adds over the lint gate is one release, and it is worth
   # being explicit about which: the hooks are pinned by rev in

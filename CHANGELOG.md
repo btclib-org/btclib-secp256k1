@@ -5033,6 +5033,60 @@ release-notes length in the first place, and are still in
   `tests/zkp_test.py` drives it through the stand-in extension that file
   already carries.
 
+### `deps-latest.yml`'s header says where an upgrade reaches the pins
+
+- **The header says `uv lock --upgrade` writes none of the mypy hook's
+  declarations and that `tests/hook_pins_test.py` reads them against the
+  lock, so an upgrade moving mypy or one of the stubs fails that module**
+  (closes #676). What an upgrade writes and what it falsifies are
+  different questions, and a reader of a red scheduled run can tell from
+  the header that such a failure is a declaration in
+  `.pre-commit-config.yaml` the lock has moved past rather than drift in
+  what `uv` resolves.
+- **The same paragraph names what `additional_dependencies` holds,
+  rather than calling all of it stubs**: the key pins the packages
+  mypy resolves its imports against, a stub package among them.
+
+### `deps-latest` gates the suite on its cells and coverage on a job of its own
+
+- **The suite step passes `--cov-fail-under=0`, so a cell reports
+  coverage instead of failing on it** (closes #697).
+  `btclib_secp256k1.zkp.musig` runs under `BTCLIB_LIBSECP256K1_ZKP`,
+  which a bare `pytest` does not set, so the floor there answers that
+  module and the test files that skip without the flag rather than the
+  resolution this workflow watches. What the cells gate is the suite
+  against the newest release of every dependency, on each platform
+  and at both ends of the supported interpreter range, with
+  `filterwarnings = ["error"]` live.
+- **A `coverage-latest` job holds the floor, combining a static run, a
+  dynamic run and a flagged `-m zkp` run the way `test.yml`'s coverage
+  job does** (closes #697). `pytest-cov` and `coverage` are resolved
+  from `uv.lock` like everything else here, so a release of either that
+  moves the total turns `test.yml`'s coverage job red on a branch whose
+  author changed none of it; this job reads the same number on the
+  schedule, ahead of the Dependabot pull request that carries the
+  upgrade.
+- **`CONTRIBUTING.md`'s local reproduction of this workflow carries
+  the flag the cell now carries** (closes #697). It gave the bare
+  command, which a contributor following it runs to the exact
+  coverage red this entry removes from CI; the document promises the
+  local command that reproduces a job, so the flag is part of the
+  promise rather than a convenience. The paragraph beneath the block
+  names `Measure coverage, gated at 100%`'s block as the one the new
+  job runs against an upgraded lock, rather than writing "the block
+  above", whose nearest antecedent is the block it sits under; and
+  that block is said to be one cell of the workflow's matrix, which
+  is the caveat the `os-*` bullet already carries about its own.
+- **`RELEASING.md` names the coverage union among what a dispatch of
+  this workflow before a tag answers** (closes #697). Its sentence
+  enumerates the workflow's jobs, and that enumeration was the whole
+  of the workflow until this entry added one to it.
+- **The `coverage-latest` header says what silences the job**: its
+  first two runs are the whole suite, and `--cov-fail-under=0` gives
+  up a run's coverage floor rather than a failing test, so an upgrade
+  that moves one of the mypy hook's declarations fails the first run
+  and the steps after it -- the union among them -- never run.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

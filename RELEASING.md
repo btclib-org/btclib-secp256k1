@@ -125,10 +125,10 @@ the release it rehearses.
 cron, because what it answers is cheaper to know before a version is
 consumed than after. It gates nothing, so it will not stop you: reading
 it is the point. It resolves every dependency at its newest and then runs
-the suite, the lint gate and the packaging checks; a release ships what
-`uv.lock` pins, so a red run here does not make the release wrong — it
-says the next dependency bump is going to be work, and that is worth
-knowing before rather than during.
+the suite, the coverage union, the lint gate and the packaging checks; a
+release ships what `uv.lock` pins, so a red run here does not make the
+release wrong — it says the next dependency bump is going to be work, and
+that is worth knowing before rather than during.
 
 `mutation` is not: it asks whether the suite would notice a wrong line,
 which a release does not change the answer to, and a session is measured

@@ -782,14 +782,26 @@ run locally.
   interpreter) pair passes, and coverage is measured and gated once, on
   the gate's cell
 
-- `deps-latest`, which resolves every dependency at its newest before
-  running the suite. The upgrade rewrites `uv.lock`, so restore it
-  afterwards with `git checkout uv.lock`:
+- `deps-latest`, which resolves every dependency at its newest and then
+  runs the suite over a matrix of its own, narrower than `test.yml`'s,
+  and the coverage union in a job of its own. The block below is one
+  cell of that matrix, so only the row matching the machine and the
+  interpreter at hand reproduces. The upgrade rewrites `uv.lock`, so
+  restore it afterwards with `git checkout uv.lock`:
 
   ```shell
   uv lock --upgrade
-  uv run --locked --no-default-groups --group test pytest
+  uv run --locked --no-default-groups --group test pytest \
+      --cov-fail-under=0
   ```
+
+  `--cov-fail-under=0` is the cell's own flag, not a local
+  convenience: a bare `pytest` cannot reach the ratchet, so the cells
+  report the number and `Measure coverage against the latest
+  dependencies, gated at 100%` is what holds it. That job is
+  `Measure coverage, gated at 100%`'s block above run against an
+  upgraded lock, so reproducing it is `uv lock --upgrade` in front of
+  that block rather than a recipe of its own.
 
 - `links` needs a tool uv does not provide, lychee being a rust binary, so
   the workflow uses the action. `.lycheeignore` holds the URLs a checker
