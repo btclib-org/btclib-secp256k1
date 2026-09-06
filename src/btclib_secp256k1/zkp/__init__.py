@@ -12,8 +12,12 @@ extensions) build incompatible session objects, and cannot be confused
 for one another once the caller has to write `zkp.musig` to reach the
 second. #603 is the plan this subpackage executes, and the criterion
 that promotes it into the published wheels; #606 is this subpackage
-itself, its loader and its own context -- the modules it will hold
-follow one at a time, #607 first, and none is exposed here yet.
+itself, its loader and its own context; a wrapper module per
+secp256k1-zkp module wrapped sits beneath it, imported by the caller
+that reaches for one rather than by this module. `__all__` here is the
+allowlist `__getattr__` below checks a name against, and holds `ffi` and
+`lib` because those are the names that loader binds; it is not an index
+of what sits beneath.
 
 **beta** is a fact about the fork this subpackage draws from, not about
 the wrapping: secp256k1-zkp cuts no tagged release, so the pin has
