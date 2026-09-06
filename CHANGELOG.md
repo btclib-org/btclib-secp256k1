@@ -5173,6 +5173,31 @@ release-notes length in the first place, and are still in
   without it logs no `Contents` scope, the job declaring no block logs
   `Contents: read`.
 
+### `zkp.context`'s lazy build is now safe under several threads
+
+- **A lock guards the first build of `zkp`'s own context, so racing
+  threads build it once rather than one each** (closes #717). Nothing
+  serialized `_load`'s build before this: unlike the primary package's
+  own context, built at plain module scope where Python's import lock
+  does the serializing for free, `zkp`'s is deferred to the first call
+  by decision (#607 onward), and eight threads on a barrier racing
+  that first call built more than one context on every one of thirty
+  attempts -- as many as one each -- the last builder's callback
+  closures overwriting the module globals the earlier
+  contexts' own closures were the only reference to, freeing them
+  under those still-registered contexts. `context._lock`, held for
+  the whole of `_load` and rechecked once acquired, is what makes a
+  thread that waited for it answer the one context already built
+  rather than a second one to discard; `tests/zkp_test.py`'s
+  `test_racing_threads_build_the_context_once` races the same eight
+  threads and asserts one context among their answers.
+- **README.md's Thread safety section now says `zkp`'s own context is
+  not built the way the primary package's is** (closes #717). Its
+  opening paragraph's "runs once before any thread exists" was a claim
+  about the shared context's own module -- true there because the
+  build sits at plain module scope -- and read, uncorrected, as a
+  claim about every context this package holds.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
