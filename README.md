@@ -1163,6 +1163,18 @@ This matters on a free-threaded interpreter, for which a wheel is built
 (`cp314t`), where those calls are no longer serialized;
 `tests/concurrency_test.py` exercises it.
 
+`btclib_secp256k1.zkp.context` holds a second, separate context, one
+library over, and does not build it the same way: the guarantee above
+rests on the shared context above being built at plain module scope,
+which Python's own import lock serializes for every thread that reaches
+it; `zkp`'s is deferred to the first call instead, by decision (#607
+onward), so that importing the subpackage never reaches for the flagged
+extension on its own. `context._lock` is what makes that deferred build
+safe under several threads (#717): held for the whole of it, so two
+threads racing the first call still build one context between them
+rather than one each, freeing the other's callback closures out from
+under it.
+
 The outposts above are what hold a buffer across calls, and they answer
 differently. `ssa.Signer` does not cost that guarantee: libsecp256k1
 takes a keypair const, so several threads may sign through one signer.

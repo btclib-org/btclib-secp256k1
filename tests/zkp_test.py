@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import threading
 import types
 from typing import TYPE_CHECKING, Any
 
@@ -342,6 +343,52 @@ def test_bindings_builds_the_context_once(monkeypatch: pytest.MonkeyPatch) -> No
     assert lib_2 is lib_1
     assert vars(zkp_context)["_illegal_callback"] is illegal_callback
     assert vars(zkp_context)["_error_callback"] is error_callback
+
+
+@pytest.mark.usefixtures("without_the_extension")
+def test_racing_threads_build_the_context_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The `workers` threads racing the first read of `ctx` build one.
+
+    `_load`'s own `"ctx" not in globals()` -- inside `_lock` -- is what a
+    thread with no lock at all can pass while another is still building,
+    each thread that passes going on to build its own context and its
+    own callback closures, the last one to finish overwriting the module
+    globals the earlier ones' closures were the only reference to
+    (#717). Every thread's own answer is asserted the same object, not
+    merely that none raised: `id()` on a distinct-per-race context is a
+    real difference `is` would miss two threads at a time but a set of
+    ids does not.
+
+    A bare `threading.Thread` hands its own exception to
+    `threading.excepthook` rather than out of `join`, so a race in which
+    *every* thread raised would leave `contexts` all `None` -- one id,
+    passing the identity assertion below on a test that had tested
+    nothing. Asserting each entry arrived is what closes that.
+
+    `STAND_IN`'s own `lib.secp256k1_context_create` is a real C call
+    into mainline libsecp256k1, releasing the GIL exactly as
+    secp256k1-zkp's own does, which is what makes the barrier below
+    race a real window rather than one only a mock could open.
+    """
+    monkeypatch.setattr(zkp, "_import_extension", lambda: STAND_IN)
+    workers = 8
+    barrier = threading.Barrier(workers)
+    contexts: list[object] = [None] * workers
+
+    def read_ctx(index: int) -> None:
+        barrier.wait()
+        contexts[index] = zkp_context.ctx
+
+    threads = [threading.Thread(target=read_ctx, args=(i,)) for i in range(workers)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert all(context is not None for context in contexts)
+    assert len({id(context) for context in contexts}) == 1
 
 
 def test_check_with_nothing_reported() -> None:

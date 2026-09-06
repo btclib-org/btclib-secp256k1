@@ -33,6 +33,21 @@ rather than copied, so that a fifth wrapper module takes on no ordering
 requirement of its own -- reading `ctx` first, as this module's
 `__getattr__` already does, is what makes `ffi` and `lib` real, and a
 caller of `_bindings` never reads either before that has happened.
+
+Deferred to the first call is also what the primary package's own
+`context.py` is not: that one builds at plain module scope, which
+Python's own import lock serializes -- every thread importing it blocks
+on the same lock, and one of them runs the module body while the rest
+wait for the result already sitting in `sys.modules`. Nothing here
+imports the extension at module scope, by decision, so nothing plays
+that part for `_load` below: two threads whose first touch of `ctx`
+overlaps both pass its `"ctx" not in globals()` check before either has
+written anything, and both build a context, `README.md`'s Thread safety
+section's own guarantee -- "it runs once before any thread exists" --
+holding only of the sequential path (#717). `_lock` is what `_load`
+takes instead, held for the whole build and rechecked once acquired: a
+thread that waited for it finds `ctx` already there and returns that
+one, never a second context built to be discarded.
 """
 
 from __future__ import annotations
@@ -64,6 +79,11 @@ class _Reported(threading.local):
 
 
 _reported = _Reported()
+
+# guards the build `_load` below runs: held for the whole of it, and
+# rechecked once acquired, so that two threads racing the first call
+# build the context once between them rather than one each (#717)
+_lock = threading.Lock()
 
 # real, unconditional bindings -- unlike `ctx` below, `ffi` and `lib` are
 # read as bare globals inside the callbacks and `_randomize`, so ruff's
@@ -151,7 +171,11 @@ def _load(name: str) -> Any:
     module scope, so that importing this module never reaches for
     the extension on its own -- only reading `ctx` does, which the
     modules wrapping zkp-only entry points (#607 onward) do inside
-    each call rather than at their own import.
+    each call rather than at their own import. `_lock` is what makes
+    that deferral safe under several threads (#717): held for the
+    whole build, and the module docstring has the reasoning for why
+    that is needed here and not in the primary package's own
+    `context.py`, which builds at module scope instead.
 
     Args:
         name: the attribute being looked up.
@@ -167,26 +191,38 @@ def _load(name: str) -> Any:
     if name != "ctx":
         msg = f"module {__name__!r} has no attribute {name!r}"
         raise AttributeError(msg)
-    from . import ffi, lib  # noqa: PLC0415
+    with _lock:
+        if "ctx" in globals():
+            # lost the race for the lock, not the build: whichever
+            # thread got there first already wrote every name below
+            return globals()["ctx"]
+        from . import ffi, lib  # noqa: PLC0415
 
-    globals()["ffi"] = ffi
-    globals()["lib"] = lib
+        globals()["ffi"] = ffi
+        globals()["lib"] = lib
 
-    # the reference to each cffi callback has to outlive the
-    # context, hence the module-level names: context.py's own such
-    # comment has the reasoning, unchanged here
-    illegal_callback = ffi.callback("void(*)(const char *, void *)", _record_illegal)
-    error_callback = ffi.callback("void(*)(const char *, void *)", _record_error)
-    globals()["_illegal_callback"] = illegal_callback
-    globals()["_error_callback"] = error_callback
+        # the reference to each cffi callback has to outlive the
+        # context, hence the module-level names: context.py's own such
+        # comment has the reasoning, unchanged here
+        illegal_callback = ffi.callback(
+            "void(*)(const char *, void *)", _record_illegal
+        )
+        error_callback = ffi.callback("void(*)(const char *, void *)", _record_error)
+        globals()["_illegal_callback"] = illegal_callback
+        globals()["_error_callback"] = error_callback
 
-    context = lib.secp256k1_context_create(1)
-    lib.secp256k1_context_set_illegal_callback(context, illegal_callback, ffi.NULL)
-    lib.secp256k1_context_set_error_callback(context, error_callback, ffi.NULL)
-    _randomize(context)
+        context = lib.secp256k1_context_create(1)
+        lib.secp256k1_context_set_illegal_callback(context, illegal_callback, ffi.NULL)
+        lib.secp256k1_context_set_error_callback(context, error_callback, ffi.NULL)
+        _randomize(context)
 
-    globals()["ctx"] = context
-    return context
+        # the last of the five globals this builds, written after
+        # `ffi`, `lib` and both closures rather than beside them:
+        # `_bindings` reads `ctx` alone, taking no lock, to decide the
+        # other four are there, so it is this assignment's position
+        # that makes that read safe (#717)
+        globals()["ctx"] = context
+        return context
 
 
 def _bindings() -> tuple[Any, Any, CData]:
@@ -203,7 +239,10 @@ def _bindings() -> tuple[Any, Any, CData]:
     against closures nothing references any more, freed under it. This
     checks the same globals `_load` writes into before calling it,
     which is what makes a call here answer the one context every other
-    caller in the process already has, built at most once.
+    caller in the process already has, built at most once. The check
+    itself takes no lock -- `_load`'s own docstring has the reasoning
+    for why one call here still answers the single context two racing
+    threads would otherwise each build (#717).
 
     Returns:
         This module's own `ffi`, `lib` and `ctx`.
