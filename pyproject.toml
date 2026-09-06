@@ -279,10 +279,16 @@ ignore = ["W003", "W009"]
 # of the exclude list, and check-sdist's plugin does not read
 # .gitignore to explain the gap.
 #
-# .python-version is tracked and .gitignore-matched both, one of the
-# few files here that are: it pins the interpreter `uv run` and CI
-# resolve against a checkout, which is the only place anything reads
-# it, so its absence from an installed sdist costs nothing
+# git-only permits the archive to omit a tracked file rather than
+# recording that it omits one: check-sdist subtracts these patterns
+# from the tracked files it would otherwise report missing. Nothing
+# consumes an sdist by running uv in it -- a build frontend takes the
+# ambient interpreter and requires-python is the gate -- so an sdist
+# without the pin is complete. Not because an unpacked sdist could not
+# be read for one: uv finds .python-version by walking the filesystem,
+# and would read it there as in a checkout.
+# .gitignore holds no entry for the file on purpose, and says why
+# there.
 git-only = [".python-version"]
 
 # PEP 735 groups, resolved by uv (or by pip --group): they replace the
