@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Re-check every vendored-vector pin against upstream, weekly.
+r"""Re-check every vendored-vector pin against upstream, weekly.
 
 tests/README.md pins each vendored vector to a commit and a git blob
 SHA-1, with a documented manual procedure to re-check one.
@@ -44,7 +44,19 @@ block, so no skip line this script builds ever repeats today -- a
 property of this file, not a shape the parsing above forbids, and not
 carried here for that reason.
 
-    python .github/scripts/check_vendored_vectors.py tests/README.md
+The issue title is the caller's, which is what the copies owe each
+other: btclib passes two ledgers through one script -- a pin behind
+upstream and a verdict read at a revision that has moved are different
+news, acted on differently -- so a title fixed in the module would name
+one issue for the pair, each run rewriting what the other wrote. One
+ledger passes through this copy, so the argument buys nothing here on
+its own; it is taken because a caller's argument list is the half of
+the two files that is meant to stay identical. What answers to btclib's
+own two-ledger shape is not taken: `readme_path` keeps its name, this
+tree calling that file a README everywhere else it names it.
+
+    python .github/scripts/check_vendored_vectors.py \
+        tests/README.md "Vendored vectors behind upstream"
 """
 
 from __future__ import annotations
@@ -56,8 +68,6 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-
-_ISSUE_TITLE = "Vendored vectors behind upstream"
 
 # resolved once: S607 is what a bare "gh" in a subprocess list would be,
 # a partial executable path relying on PATH's own search order rather
@@ -228,7 +238,7 @@ def _issue_body(readme_path: Path, drifted: list[Drift], skipped: list[str]) -> 
     return "\n".join(lines)
 
 
-def _open_issue_number() -> str | None:
+def _open_issue_number(title: str) -> str | None:
     result = subprocess.run(  # noqa: S603
         [
             _GH,
@@ -237,7 +247,7 @@ def _open_issue_number() -> str | None:
             "--state",
             "open",
             "--search",
-            f'"{_ISSUE_TITLE}" in:title',
+            f'"{title}" in:title',
             "--json",
             "number",
         ],
@@ -249,9 +259,17 @@ def _open_issue_number() -> str | None:
     return str(issues[0]["number"]) if issues else None
 
 
-def report(readme_path: Path, drifted: list[Drift], skipped: list[str]) -> None:
-    """Open, update, or close the tracking issue, whichever applies."""
-    number = _open_issue_number()
+def report(
+    readme_path: Path, title: str, drifted: list[Drift], skipped: list[str]
+) -> None:
+    """Open, update, or close this ledger's tracking issue, whichever applies.
+
+    The title is what tells one ledger's issue from another's: it is the
+    search term that finds an issue already open as well as the title a
+    new one is created under, so a caller passing a title of its own
+    gets an issue of its own.
+    """
+    number = _open_issue_number(title)
     if not drifted:
         if number is not None:
             subprocess.run(  # noqa: S603
@@ -269,7 +287,7 @@ def report(readme_path: Path, drifted: list[Drift], skipped: list[str]) -> None:
     body = _issue_body(readme_path, drifted, skipped)
     if number is None:
         subprocess.run(  # noqa: S603
-            [_GH, "issue", "create", "--title", _ISSUE_TITLE, "--body", body],
+            [_GH, "issue", "create", "--title", title, "--body", body],
             check=True,
         )
     else:
@@ -281,6 +299,13 @@ def report(readme_path: Path, drifted: list[Drift], skipped: list[str]) -> None:
 def main() -> int:
     """Check the README named on argv, report drift, and say so on stdout.
 
+    The title names the issue this run opens, updates or closes. It is
+    required, which is what makes it a positional beside the path: a
+    default would be this file's own opinion about an issue the caller
+    owns, and the caller is the one thing this script shares with
+    btclib's copy. The one option here is a boolean, so what reads it is
+    the filter below rather than a parser.
+
     --dry-run skips opening, updating or closing the issue: what the
     pull_request trigger of vendored-vectors.yml passes, so a change to
     this script or to the README is exercised without the run editing
@@ -288,16 +313,16 @@ def main() -> int:
     """
     args = [a for a in sys.argv[1:] if a != "--dry-run"]
     dry_run = len(args) != len(sys.argv) - 1
-    if len(args) != 1:
+    if len(args) != 2:
         # a human running this by hand is the only way here, the workflow
-        # passing the path every time: without this check, `args[0]`
-        # below would answer with an IndexError naming a list instead
+        # passing both every time: without this check, the indexing below
+        # would answer with an IndexError naming a list instead
         print(
-            f"usage: {Path(sys.argv[0]).name} <README path> [--dry-run]",
+            f"usage: {Path(sys.argv[0]).name} <README path> <issue title> [--dry-run]",
             file=sys.stderr,
         )
         return 2
-    readme_path = Path(args[0])
+    readme_path, title = Path(args[0]), args[1]
     drifted, skipped = find_drift(readme_path)
     for drift in drifted:
         if drift.path_is_gone:
@@ -316,7 +341,7 @@ def main() -> int:
     if not drifted:
         print("Every checked pin is still at upstream's tip.")
     if not dry_run:
-        report(readme_path, drifted, skipped)
+        report(readme_path, title, drifted, skipped)
     return 0
 
 
