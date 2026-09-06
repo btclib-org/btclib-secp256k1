@@ -5378,6 +5378,36 @@ release-notes length in the first place, and are still in
   sentences true, where a stated total is a line every open branch has
   to edit -- section 9 of the organization standard.
 
+### `REPOSITORY.md` counts nothing, and its rulesets listing answers the id
+
+- **The sentinel, required-check, branch, skip-list, seat and
+  environment sentences name what the configuration holds instead of how
+  much of it there is** (closes #738). Section 9 of the organization
+  standard asks that prose never state how many of anything a file
+  holds. `os-ubuntu.yml`, `os-macos.yml` and `os-windows.yml` stand
+  where a positional count did; `submodule-pin` is what the `ci:` `skip`
+  list names; the app binding holds of every check the rule names;
+  protection reaches `main` and no other branch, over a `branches`
+  listing that prints each branch's own flag; and `pypi`'s deployment
+  branch policy is named by the tag pattern it admits, its block taking
+  a `--jq` so that what it prints is the comment beside it. The
+  `environments` block selects the rule types and the reviewer's login
+  out of an array that otherwise answers with a public profile, which is
+  what the sentences under it claim. GitHub's published plan limits stay
+  as figures: the link above them is the authority the file cites for
+  them, and the paragraphs below them reason from each.
+- **The rulesets listing feeds each id to the per-ruleset endpoint,
+  which is what makes it answer the id, the ref and the bypass** (closes
+  #741). The list endpoint returns neither `bypass_actors` nor
+  `conditions`, so a filter reading either off it answers the same for
+  every ruleset, and the `rulesets/<id>` blocks below it have no id to
+  be given. `.[].id` off the list, piped through `gh api
+  .../rulesets/{}`, prints the id, the name, the enforcement, the ref
+  that ruleset's condition includes and how many bypass actors it
+  carries: `main-self-merge` is the one that differs in the last, and
+  the section's opening sentence about who may bypass is what rests on
+  it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
