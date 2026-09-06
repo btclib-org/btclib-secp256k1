@@ -5366,6 +5366,18 @@ release-notes length in the first place, and are still in
   rests on, and `_zero`, which `wipe` and `take` both reach, is what
   takes the copy back.
 
+### `tests/bytes_like_test.py`'s docstrings count no call sites
+
+- **Both docstrings describe the call sites that copy a scalar into a
+  buffer of their own and state no total** (closes #742). The module
+  docstring counted them, and the sweep's own docstring carried the
+  same figure split across the two reasons, naming none of the sites.
+  The reason either gives stands: libsecp256k1 writes through the
+  pointer, or this package wipes the buffer afterwards. A wrapper added
+  to `keys` or to `silentpayments` that has to copy leaves both
+  sentences true, where a stated total is a line every open branch has
+  to edit -- section 9 of the organization standard.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

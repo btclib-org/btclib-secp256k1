@@ -8,9 +8,9 @@ And every argument that takes a *scalar* takes a cffi array of 32 octets
 besides, which is memory the caller owns rather than a value: the second
 sweep here drives the same table with the private keys and tweaks handed
 in that way. It asserts the same answer and one thing more -- that the
-caller's octets are still there afterwards, since four call sites copy
-into a buffer of their own precisely because libsecp256k1 writes through
-the pointer or because this package wipes it.
+caller's octets are still there afterwards, since the call sites that
+copy into a buffer of their own do so precisely because libsecp256k1
+writes through the pointer or because this package wipes it.
 
 The check is a normalization, so it has to be the normalized value that
 reaches libsecp256k1: a call site that checks its argument and then
@@ -532,9 +532,9 @@ def test_a_scalar_may_be_a_buffer_at_every_entry_point(
     taking the other.
 
     The second assertion is the half a comparison of answers cannot see:
-    a caller's buffer must come back holding what it held. Three sites
-    have libsecp256k1 write through the pointer and one wipes what it was
-    given, so each has to copy first, and a copy left out would show up
+    a caller's buffer must come back holding what it held. A site has to
+    copy first wherever libsecp256k1 writes through the pointer or this
+    package wipes what it was given, and a copy left out would show up
     as a negated key or 32 zeros in the caller's own memory.
 
     Args:
