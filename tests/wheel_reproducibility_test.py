@@ -21,7 +21,7 @@ archive that tells a filter is in force names a parent directory, which
 `build_wheel` and `main` never invoke the real `uv build`,
 though: what they are asked to build is a fake, `check.subprocess.run`
 replaced the way `tests/submodule_pin_test.py` and
-`tests/check_vendored_vectors.py` replace it, so the suite measures this
+`tests/vendored_vectors_test.py` replace it, so the suite measures this
 script's plumbing rather than a real compile. The fake answers a `git
 archive` call too, now that `main` calls `copy_source_tree` before every
 build, with a real, empty tar archive -- `_extract_archive`'s own
