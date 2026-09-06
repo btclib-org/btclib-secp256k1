@@ -504,7 +504,10 @@ because that document, and not this one, is where the rule lives.
   instead? `CONTRIBUTING.md`'s last section states that file as the
   single definition of clean, and a check discovered by CI after a push
   is a check in the wrong place.
-- A move of the `secp256k1` submodule: is it a pull request of its own,
-  with the version named in the README and in `RELEASE_NOTES.md` moved
-  with it? Bumping it changes what this package wraps, and Dependabot
-  tracks upstream's default branch rather than its tags.
+- A move of a vendored submodule: is it a pull request of its own,
+  carrying what a bump of *that* submodule owes — the README's
+  Versioning section moved with it, and, where the upstream cuts
+  releases, the version named in `RELEASE_NOTES.md`? `CONTRIBUTING.md`'s
+  *What a change here has to satisfy* is where that condition lives.
+  Bumping one changes what this package wraps, and Dependabot tracks each
+  upstream's default branch rather than its tags.

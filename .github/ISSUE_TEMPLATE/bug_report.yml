@@ -10,8 +10,11 @@ body:
         This repository is the python bindings to libsecp256k1. Bugs in
         the btclib library itself belong in
         [btclib-org/btclib](https://github.com/btclib-org/btclib/issues),
-        and bugs in the C library itself in
-        [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1/issues).
+        and a bug in the C itself belongs to the library that answered:
+        [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1/issues)
+        outside `btclib_secp256k1.zkp`, and
+        [BlockstreamResearch/secp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp/issues)
+        under it.
 
   - type: textarea
     id: what

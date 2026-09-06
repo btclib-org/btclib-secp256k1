@@ -4694,6 +4694,43 @@ release-notes length in the first place, and are still in
   drops the `.EXE` with it, so neither assertion reads the whole of a
   path the test does not control.
 
+### The issue forms route a bug in the C to the library that answered
+
+- **`.github/ISSUE_TEMPLATE/config.yml` offers secp256k1-zkp a contact
+  link of its own, beside the one to bitcoin-core/secp256k1** (closes
+  #668). A contact link carries a single `url`, so a row whose text named
+  both libraries would still send the reporter to one of them.
+  `blank_issues_enabled: false` removes the blank-issue escape, so what
+  the chooser offers is what this file and the forms name, and a library
+  with no row of its own is not among them.
+  `gh api repos/BlockstreamResearch/secp256k1-zkp --jq .has_issues`
+  answers `true`, so the fork's tracker takes what the row sends it. Each
+  row says which library answered, by the import line `CONTRIBUTING.md`
+  and `SECURITY.md` route by.
+- **`.github/ISSUE_TEMPLATE/bug_report.yml`'s opening paragraph routes a
+  bug in the C the same way** (closes #668), naming each vendored
+  library's tracker and the import line that picks between them.
+- **`config.yml`'s header comment counts no projects** (closes #668).
+  Section 9 of the organization standard asks for no counts, and a count
+  of projects is a line a second vendored library falsifies.
+
+### The review question and the Dependabot section hold for every vendored submodule
+
+- **`REVIEWING.md` asks what a bump of *that* submodule owes** (closes
+  #670), rather than naming one submodule: the README's Versioning
+  section moved with it, and the version named in `RELEASE_NOTES.md`
+  where the upstream cuts releases. `CONTRIBUTING.md`'s *What a change
+  here has to satisfy* is named as where the condition lives, so a
+  reviewer meeting a submodule vendored later is asked the same question.
+- **`REPOSITORY.md` describes the `gitsubmodule` entry by what it
+  covers** (closes #670): configured per directory, it reads the
+  `.gitmodules` there, so the entry at the repository root covers every
+  submodule that file names. dependabot-core's
+  `git_submodules/lib/dependabot/git_submodules/file_fetcher.rb`, read at
+  `dependabot/dependabot-core` c76bfd0f745c, maps every `path` that file
+  declares to a submodule ref, and the `file_parser.rb` beside it makes a
+  dependency per section, named by its `path` and sourced from its `url`.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
