@@ -46,7 +46,8 @@
     // the one place here that copies a number instead of naming a tool, so
     // it is the one to revisit when either moves: 88 is what ruff-format
     // reflows code to, and 80 is [tool.ruff.lint.pycodestyle]
-    // max-doc-length, which W505 holds a comment and a docstring to
+    // max-doc-length, which W505 holds a whole-line comment and a
+    // docstring line to
     "editor.rulers": [80, 88]
   },
 
