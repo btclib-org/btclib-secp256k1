@@ -298,7 +298,7 @@ jobs:
       - name: Import the secp256k1-zkp signer's key
         env:
           # Andrew Poelstra
-          FINGERPRINT: 90F9CA3C3EC97BE922DF955EC588D63CE41B97C1
+          FINGERPRINT: DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF
           KEY_URL: https://www.wpsoftware.net/andrew/andrew.gpg
         run: |
           curl --fail --silent --show-error --location \
