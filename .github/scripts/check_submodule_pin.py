@@ -258,11 +258,11 @@ def commit_of(tag: str) -> str | None:
 def why_no_tag(tag: str) -> str:
     """Say which of the three states a clone without that tag is in.
 
-    One message for all three used to be enough for a developer, who has
-    one of them; it is not enough for a checkout somebody else makes,
-    where which state it is *is* the finding. pre-commit.ci is that
-    checkout: told to take the submodule it takes it, and the hook failed
-    all the same, with a message that could not say whether the clone was
+    One message for all three is enough for a developer, who has one of
+    them; it is not enough for a checkout somebody else makes, where
+    which state it is *is* the finding. pre-commit.ci is that checkout:
+    told to take the submodule it takes it, and the hook failed all the
+    same, with a message that could not say whether the clone was
     missing or merely shallow.
 
     Args:

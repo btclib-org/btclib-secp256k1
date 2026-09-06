@@ -231,11 +231,11 @@ def scalar(num: BytesLike | int | CData, name: str) -> bytes | CData:
     Where it matters is not the per-signature path, the private halves
     handing libsecp256k1 the pointer without coming through here at all,
     but the *derivation*:
-    `keys._pubkey_from_prvkey_` asks for a scalar, so before this a key
-    held in a buffer could not have its public key derived -- and
+    `keys._pubkey_from_prvkey_` asks for a scalar, so a key held in a
+    buffer has its public key derived from the buffer itself -- and
     `dsa._checked`'s failing branch, which derives in order to tell a
-    wrong argument from a fault, answered a `TypeError` about the
-    argument instead of the diagnosis it exists for.
+    wrong argument from a fault, gives that diagnosis rather than a
+    `TypeError` about the argument.
 
     A secret is better passed as bytes, for a narrow reason. Not the
     serialization, which is a loop over nine CPython digits and measures

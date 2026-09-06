@@ -5305,6 +5305,32 @@ release-notes length in the first place, and are still in
   hook, `Lint and type-check` and a developer's own commit still having
   the checkout it needs.
 
+### The `src/` and `.github/scripts/` prose says why the code is as it is
+
+- **`_secret.scalar_buffer`'s and `_scalar.scalar`'s docstrings state
+  what `ffi.new` and the derivation call sites do, not what an earlier
+  revision of them did** (closes #730). `ffi.new(cdecl, init)` takes an
+  initializer that is never a cdata of another item type, so it refuses
+  a caller's buffer with cffi's own message about an internal
+  `char[32]`: that is the alternative `ffi.memmove` declines, and the
+  clause deleted beside it counted the call sites, which section 9 of
+  the organization standard refuses in prose that lands. What an
+  initializer may be gains the tuple that message names and cffi
+  accepts. `_scalar.scalar` hands a cffi array back as it stands, so
+  `keys._pubkey_from_prvkey_` derives from a buffer and `dsa._checked`'s
+  failing branch gives its own diagnosis, the `ValueError` naming a
+  public key that is not this private key's.
+- **`check_submodules_checked_out.py`'s module docstring rests on the
+  hook it introduces, and `why_no_tag`'s on the single message it
+  declines** (closes #731). The first drops a clause about the tree
+  before that hook existed; the sentence after it names the hook and
+  where in `.pre-commit-config.yaml` it runs, which is the whole of the
+  claim a reader can check. The second says a single message suffices
+  for a developer, who has whichever state their own clone is in, and
+  not for a checkout somebody else makes; the measured pre-commit.ci
+  behaviour beside it is a fact about that service rather than about a
+  former revision, and it stays.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
