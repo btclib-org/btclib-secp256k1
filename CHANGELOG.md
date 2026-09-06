@@ -5230,6 +5230,19 @@ release-notes length in the first place, and are still in
   directories, so the literal is what still answers for a file of that
   name.
 
+### The coverage job's account of itself matches what the job runs
+
+- **`pyproject.toml`'s comment over `fail_under = 100` says what meets
+  the ratchet: the union the coverage job of `test.yml` combines, not a
+  static build** (closes #723). Every run of that job passes
+  `--cov-fail-under=0`. Its section 8 citation is unchanged.
+- **`test.yml`'s coverage-job header names the run against the flagged
+  build, and says the union alone is gated** (closes #724). The header
+  is the first thing read about that job, and it agrees with the step
+  comments below it, which say no run there is the ratchet on its own.
+  Its section 8 citation, and the `exclude_also` alternative it records
+  as rejected, are unchanged.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

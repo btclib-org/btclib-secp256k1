@@ -867,12 +867,14 @@ precision = 2
 exclude_also = ["raise RuntimeError", "raise AssertionError"]
 # with those excluded the suite reaches every line and every branch, so
 # the ratchet can be the only value that fails on a single new untested
-# one. It is what a static build meets: on a dynamic one the linked-in
-# branch of _load_lib is the unexecuted one, so the coverage job of
-# test.yml runs that linkage at --cov-fail-under=0 and reports the two
-# runs combined against this same number, beside the static run's own
-# gate rather than instead of it -- section 8 of the organization
-# standard, at "where an optional native dependency splits the code"
+# one. What meets it is the union the coverage job of test.yml
+# combines, not a run of that job on its own: a build takes one branch
+# of _load_lib and not the other, and btclib_secp256k1.zkp.musig needs
+# the extension only a run setting BTCLIB_LIBSECP256K1_ZKP has. So
+# every run there passes --cov-fail-under=0, and it is the job's
+# Report the union, gated at 100% step that this number gates --
+# section 8 of the organization standard, at "where an optional native
+# dependency splits the code"
 fail_under = 100
 
 [tool.cibuildwheel]

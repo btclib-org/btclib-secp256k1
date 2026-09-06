@@ -225,13 +225,16 @@ jobs:
   # pyproject.toml is what makes the number mean something.
   # Once per platform, and once per linkage: `_load_lib` has a branch
   # per linkage and any given build has one of them, so this job runs
-  # the suite against a static extension and against a dynamic one,
-  # names each run's data file, and gates the union of the two beside
-  # the static run's own 100%. That is section 8 of the organization
-  # standard, at "where an optional native dependency splits the code",
-  # and the alternative it rejects is an exclude_also naming the
-  # linked-in branch -- honest only where the dynamic build is not
-  # shipped, and this repository ships both
+  # the suite against a static extension and against a dynamic one, and
+  # the tests marked zkp against a build with BTCLIB_LIBSECP256K1_ZKP
+  # set. It names each run's data file and gates their union: no run
+  # here meets the ratchet alone, each carrying --cov-fail-under=0 for
+  # what it does not reach, so the Report the union, gated at 100% step
+  # below is where the ratchet is asked for. That is section 8 of the
+  # organization standard, at "where an optional native dependency
+  # splits the code", and the alternative it rejects is an exclude_also
+  # naming the linked-in branch -- honest only where the dynamic build
+  # is not shipped, and this repository ships both
   coverage:
     name: Measure coverage, gated at 100%
     # a draft pull request is work in progress: every push to one spends
