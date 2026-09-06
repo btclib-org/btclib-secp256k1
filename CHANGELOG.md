@@ -5145,6 +5145,34 @@ release-notes length in the first place, and are still in
   two calls and the same closures with it, the closures being the
   lifetime a rebuild breaks rather than a proxy for it.
 
+### `deps-latest.yml` declines `issues: write` on its own reasoning
+
+- **The comment no longer claims that declining `issues: write` would
+  cost this repository its only workflow able to write** (closes
+  #714). `vendored-vectors.yml`'s own `issues: write` grant
+  contradicts that claim; what the comment states now -- that a
+  failed scheduled run notifies the last person to have touched the
+  cron, and that this is the signal -- does not depend on it.
+
+### `scorecard.yml`'s header points at the block instead of re-describing it
+
+- **The workflow-level header points at the job's `permissions:`
+  block instead of re-describing what each grant is for** (closes
+  #715). Each grant there already carries its own comment, so the
+  header's enumeration duplicated that description without being tied
+  to it.
+
+### `scorecard.yml` says where the analysis job's `contents: read` comes from
+
+- **The comment over `contents: read` says the grant is made at the job
+  rather than inherited** (closes #719). A job's own `permissions:`
+  block replaces the workflow-level one rather than adding to it, so a
+  scope the block omits is `none` for that job and no default is
+  operating on the ones it lists. Measured on two jobs of one run under
+  one workflow-level `contents: read`: the job declaring a block
+  without it logs no `Contents` scope, the job declaring no block logs
+  `Contents: read`.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

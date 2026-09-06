@@ -57,9 +57,8 @@ name: deps-latest
 # aggregate job, named by no branch protection rule (see REPOSITORY.md).
 # That is the point. This is expected to go red for reasons no pull request
 # introduced, and a red check nobody can act on from a branch is noise. It
-# opens no issue either, which would cost this repository its only workflow
-# able to write: a failed scheduled run notifies the last person to have
-# touched the cron below, and that is the signal.
+# opens no issue either: a failed scheduled run notifies the last person to
+# have touched the cron below, and that is the signal.
 
 on:
   schedule:
