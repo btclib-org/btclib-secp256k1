@@ -253,6 +253,33 @@ def test_getattr_builds_and_caches_ffi_and_lib(
     assert calls == ["called"]
 
 
+@pytest.mark.usefixtures("without_the_extension")
+def test_getattr_on_an_exported_name_the_loader_leaves_unbound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An `__all__` entry the loader does not bind is an `AttributeError`.
+
+    `__all__` gains a name the loader has no binding for, which is the
+    state a name added to that list alone would leave the module in.
+    What the raise has to be is python's to decide rather than this
+    module's: `hasattr` and `getattr` with a default swallow
+    `AttributeError` alone, so the two of them are what this asks
+    beside the raise, an exception of any other type reaching the
+    caller through both. The stand-in is what carries the loader past
+    `_import_extension`, which a build without the flag raises
+    `ImportError` from before the lookup under test, and the fixture
+    puts back what the loader caches into this module's globals on the
+    way.
+    """
+    monkeypatch.setattr(zkp, "_import_extension", lambda: STAND_IN)
+    monkeypatch.setattr(zkp, "__all__", [*zkp.__all__, "nonesuch"])
+    with pytest.raises(AttributeError, match="no attribute 'nonesuch'"):
+        _ = zkp.nonesuch  # type: ignore[attr-defined]
+    assert not hasattr(zkp, "nonesuch")
+    sentinel = object()
+    assert getattr(zkp, "nonesuch", sentinel) is sentinel
+
+
 def test_context_no_such_attribute() -> None:
     """The same contract, one module over."""
     with pytest.raises(AttributeError, match="no attribute 'nonesuch'"):

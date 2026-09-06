@@ -5016,6 +5016,23 @@ release-notes length in the first place, and are still in
   and what reading had achieved before it, is history, and history has
   two files of its own.
 
+### `btclib_secp256k1.zkp`'s loader refuses an unbound export as an attribute
+
+- **`btclib_secp256k1.zkp.__getattr__` raises `AttributeError` for an
+  `__all__` entry its loader does not bind** (closes #677), where the
+  namespace lookup that answers a bound name raised `KeyError` for one it
+  does not. That is the type this `__getattr__`'s own `Raises:` section
+  names, and the one `zkp.context`'s `__getattr__` refuses every name but
+  `ctx` with. It is also what the protocol asks for: `hasattr` and
+  `getattr(module, name, default)` swallow `AttributeError` alone, so any
+  other exception raises out of a caller's ordinary probe instead of
+  answering it, and reaches `tests/all_test.py`'s census as an error
+  escaping `exported_name_exists` rather than as the miss it is. Only a
+  build under `BTCLIB_LIBSECP256K1_ZKP` reaches that lookup at all, an
+  unflagged one failing at the extension import above it, so
+  `tests/zkp_test.py` drives it through the stand-in extension that file
+  already carries.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
