@@ -4673,6 +4673,27 @@ release-notes length in the first place, and are still in
   a `ruff-check` finding, with the amnesty ruff gives a line ending in
   an unbreakable URL.
 
+### The repair-tool tests name the constant the branch reads
+
+- **`test_repair_wheel_runs_delocate_on_macos` and
+  `test_repair_wheel_runs_auditwheel_off_macos` compare `repair_wheel`'s
+  first argument with `check._DELOCATE` and `check._AUDITWHEEL` rather
+  than asking whether it ends in a tool's bare file name** (closes #659).
+  Each constant is `shutil.which`'s answer where its own tool is
+  installed, so a Windows runner resolves them to paths ending
+  `delocate-wheel.EXE` and `auditwheel.EXE`, and each then failed an
+  assertion the platform fake had already carried past its own guard.
+  The wheel jobs run the suite through cibuildwheel's `test-command`,
+  which is how two tests that name no platform reddened the aggregate
+  there.
+- **Each of the two also asserts the stem of the constant it read**:
+  comparing the recorded argument with the constant says which branch
+  ran, and says nothing about which tool that constant names, both
+  sides of it coming from the same module -- definitions swapped
+  between the two would satisfy it. The stem answers that half and
+  drops the `.EXE` with it, so neither assertion reads the whole of a
+  path the test does not control.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
