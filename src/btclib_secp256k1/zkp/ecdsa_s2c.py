@@ -14,14 +14,15 @@ makes it, and `verify_commit` is what checks it.
 The anti-exfil half is the reason this module exists rather than being
 deferred: a hardware wallet could claim to produce RFC6979 nonces and
 instead bias them to leak the private key one signature at a time, with
-nothing on the host side able to tell the two apart, and the four
-`anti_exfil_*` functions are the commit-reveal protocol the
+nothing on the host side able to tell the two apart, and
+`anti_exfil_host_commit`, `anti_exfil_signer_commit`, `anti_exfil_sign`
+and `anti_exfil_host_verify` are the commit-reveal protocol the
 header's own module docstring lays out -- host commits to randomness,
 signer's public nonce commits to that commitment, host reveals the
 randomness, signer signs committing to it for real, host checks the
 signature's nonce matches what was committed to at each step. Nothing
 here drives the protocol itself, which needs two round trips with a
-signing device this package has no notion of; it is the four calls the
+signing device this package has no notion of; those are the calls the
 steps that need one are made of -- the host's own reveal, step 3, needs
 none from this module.
 

@@ -526,9 +526,10 @@ def test_a_scalar_may_be_a_buffer_at_every_entry_point(
 
     Driven over the whole table rather than over the entry points that
     looked interesting: which sites copy is not visible from the outside,
-    and the two that were wrong were `keys.prvkey_negate` -- reached by
+    and a selective sweep would miss `keys.prvkey_negate` -- reached by
     `ssa.nonce_bip340` for half of all keys and by nothing else here --
-    and `silentpayments._create_outputs_`, each refusing one cdecl and
+    and `silentpayments._create_outputs_`, which builds its scalar
+    buffers inside a generator expression, each refusing one cdecl and
     taking the other.
 
     The second assertion is the half a comparison of answers cannot see:

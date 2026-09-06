@@ -87,7 +87,8 @@ _XONLY_SIZE = 32
 # at a serialization, not a figure per site. In `ssa` and `ellswift` it is
 # that same hundredth of calls of 15 to 31 microseconds, where timing a
 # call against itself already moves as much or more: nothing those
-# measurements resolve. Those four sites are spelled this way regardless,
+# measurements resolve. `ellswift.create`, `ellswift._encode_`,
+# `ssa._sign32` and `ssa._sign_custom` are spelled this way regardless,
 # because a reader cannot see the cost of a host -- two spellings of one
 # shape would leave the difference unexplainable at both of them
 _XONLY_BUFFER_TYPE = ffi.typeof(f"char[{_XONLY_SIZE}]")
