@@ -5260,6 +5260,27 @@ release-notes length in the first place, and are still in
   whole of what a maintainer would have to go on; the clause deleted
   next to it described a revision of the `raise` the file does not hold.
 
+### The Dependabot prose counts nothing, and points instead of restating
+
+- **`REPOSITORY.md`'s Dependabot section opens on the `target-branch`
+  setting, and `.github/dependabot.yml`'s header comment on what
+  dependabot tracks here, neither of them on a number** (closes #681).
+  Section 9 of the organization standard asks that prose never state
+  how many of anything a file holds, a stated total being a line every
+  open branch has to edit. What each sentence claims -- that no entry
+  names a `target-branch`, and that the pre-commit hook revisions are
+  tracked by pre-commit.ci rather than by dependabot -- stands without
+  one, and the section's own `gh api ... | grep -E
+  'package-ecosystem|target-branch'` is what enumerates the entries. In
+  `.github/dependabot.yml` only comment lines are touched; every setting
+  it declares stays as it is.
+- **The `gitsubmodule` mechanism is stated beside the entry it
+  configures, in `.github/dependabot.yml`'s comment, and `REPOSITORY.md`
+  points at that comment rather than restating it** (closes #681).
+  Section 9 again: two files stating the same thing become two files
+  disagreeing about it, and the second points at the first. The comment
+  is the copy a reader editing the configuration already has open.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
