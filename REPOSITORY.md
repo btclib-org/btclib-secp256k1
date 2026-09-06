@@ -702,10 +702,10 @@ fails again with `invalid-publisher`, that is the first thing to check.
 
 ## Dependabot
 
-Three ecosystems, and none of them names a target: with no
-`target-branch` Dependabot opens against the default branch, which is the
-only branch a change lands on. A setting that names nothing cannot name
-something that is gone, which is what the `dev` it used to name became.
+No entry names a target: with no `target-branch` Dependabot opens
+against the default branch, which is the only branch a change lands on. A
+setting that names nothing cannot name something that is gone, which is
+what the `dev` it used to name became.
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/contents/.github/dependabot.yml \
@@ -714,14 +714,10 @@ gh api repos/btclib-org/btclib-secp256k1/contents/.github/dependabot.yml \
 
 `github-actions` moves the SHA pins, `uv` the locked dependencies, and
 `gitsubmodule` signals that a vendored library has moved upstream. The
-`gitsubmodule` ecosystem is configured per directory rather than per
-submodule: it reads the `.gitmodules` at that directory, so the entry at
-the repository root covers every submodule that file names. It tracks each
-upstream's *default branch*, so its pull request says that a bump is
-available and not which commit to pin; `CONTRIBUTING.md`'s conventions say
-what a bump then owes. `.github/dependabot.yml` is validated by the
-`check-dependabot` hook, a typo there otherwise updating nothing and
-saying nothing.
+comment beside that last entry in `.github/dependabot.yml` says how it
+reaches the submodules and what its pull request leaves open. That file
+is validated by the `check-dependabot` hook, a typo there otherwise
+updating nothing and saying nothing.
 
 Dependabot security updates are a repository setting rather than a line
 in that file, and they are on:

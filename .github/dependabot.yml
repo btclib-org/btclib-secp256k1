@@ -1,6 +1,6 @@
 ---
-# three of the four things this repository tracks. The pre-commit hook
-# revisions are the one left out, dependabot having no pre-commit
+# the things this repository tracks with dependabot. The pre-commit hook
+# revisions are not among them, dependabot having no pre-commit
 # ecosystem: pre-commit.ci opens that pull request instead, weekly, as
 # configured in .pre-commit-config.yaml
 #
