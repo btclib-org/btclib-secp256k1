@@ -340,7 +340,7 @@ def test_every_function_that_takes_a_secret_out_offers_into() -> None:
                 continue
             try:
                 called[where, name] = _calls(function)
-            except OSError:  # pragma: no cover - source ships with the wheel
+            except OSError:  # pragma: no cover -- a module with no source file
                 continue
             functions[where, name] = function
 
