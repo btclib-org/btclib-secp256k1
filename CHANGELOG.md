@@ -5002,6 +5002,20 @@ release-notes length in the first place, and are still in
   step greps for, and the comment above it argues reading the
   machine-readable status over `verify-commit`'s own exit code.
 
+### `.pre-commit-config.yaml` says which comments ruff holds to 80
+
+- **The `toml-comment-width` comment names what `max-doc-length`
+  reaches** (closes #678): a docstring and a whole-line Python comment.
+  A comment following code on its line is outside that key -- `E501`
+  bounds such a line at 130 in this tree, and nothing holds the comment
+  to 80. What it said instead -- that ruff holds every Python comment to
+  80 -- left a reader checking the hook's own argument against ruff with
+  half of it false and no way to tell which half.
+- **The same comment argues the hook in the present tense** (closes
+  #678): what a toml comment is held to, and why. How the hook arrived,
+  and what reading had achieved before it, is history, and history has
+  two files of its own.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

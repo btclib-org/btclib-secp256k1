@@ -416,13 +416,12 @@ repos:
       - id: taplo-format
         name: taplo (toml, in place fixes)
         exclude: ^uv\.lock$
-  # the width of a toml comment, which was the last prose here held to
-  # nothing but reading: markdownlint holds markdown to 80 columns, ruff
-  # holds Python comments and docstrings to the same and yamllint the
-  # workflows, and pyproject.toml carries more reasoning than any single
-  # file those cover. Every comment there was at the width when this hook
-  # arrived, which is what reading had achieved and what nothing would
-  # have noticed the first time it stopped being true.
+  # the width of a toml comment, which is prose: 80 columns, the width
+  # markdownlint holds markdown to and ruff's max-doc-length holds a
+  # Python docstring and a whole-line comment to. A comment following
+  # code on its line is outside that key -- E501 bounds the line at 130
+  # here, and nothing holds the comment to 80 -- so it is the whole-line
+  # half this hook mirrors, over the reasoning pyproject.toml carries.
   # A local pygrep rule because nothing off the shelf does it: taplo
   # formats values and leaves comments alone, by design, a formatter that
   # reflowed prose being a formatter that rewrites it.
