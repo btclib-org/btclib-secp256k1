@@ -4944,6 +4944,42 @@ release-notes length in the first place, and are still in
   reads a path inside a docstring, so it is read rather than resolved,
   and a reader following it finds no file.
 
+### `CLAUDE.md`'s worktree fence names the worktree by path
+
+- **The fence binds each of its commands to the worktree -- `git -C
+  "$WT" submodule update --init`, `env -C "$WT" uv sync --locked` and
+  `git -C "$WT" push origin HEAD:refs/heads/<branch>` -- in place of a
+  `cd "$WT"` above them** (issue btclib-org/.github#824). A `cd` binds
+  the shell that runs it, so a session running each line as its own
+  command starts the next one in the directory it began in, the primary
+  checkout, and the push offers that checkout's `HEAD`. The paragraph
+  below the fence gives the binding and its limit, and is
+  `btclib-org/.github`'s at `20ad654` byte for byte: `git -C ""` is
+  documented to leave the working directory unchanged, so a `-C` written
+  against a `WT` the session has lost lands in the same wrong tree, exit
+  0 and no diagnostic.
+- **The paragraph above the fence says the block carries `git submodule
+  update --init`, where it named the `cd` the fence no longer has**
+  (issue btclib-org/.github#824). Its clause calling `uv sync --locked`
+  a second venv and a second build of the extension is what the cost
+  paragraph further down refers back to, and stays.
+- **The create's condition is the placeholder's own name** (issue
+  btclib-org/.github#824). The `<` and the `>` of `<branch>` are
+  redirections performed left to right, so the `>` takes `"$WT"` as its
+  target only where the reader's own directory already holds the name
+  `branch`; ordinarily nothing holds it, the `<` fails first and the
+  line ends before the `>` opens anything. A directory of that name lets
+  the `<` succeed as a file of it does, which is why the condition is
+  the name rather than a file. These are `btclib-org/.github`'s own
+  sentences at `20ad654`, with the citation clause ahead of them naming
+  the organization standard as this file does elsewhere.
+- **The removal guard fails on an unset or empty `WT`** (issue
+  btclib-org/.github#824), where the sentence said "with no `$WT` set".
+  The sentence after it names what the guard does not catch: a `$WT` an
+  earlier session or command left holding a path expands, and the
+  removal runs against whatever worktree that path names. Both are
+  `btclib-org/.github`'s at `20ad654` byte for byte.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
