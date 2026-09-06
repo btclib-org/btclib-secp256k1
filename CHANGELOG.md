@@ -4900,6 +4900,35 @@ release-notes length in the first place, and are still in
   build of the vendored library and the cffi extension being what
   differs per platform.
 
+### The build scripts' docstrings argue their flags in the present tense
+
+- **`scripts/hatch_build.py`'s `initialize` docstring says what
+  `WheelBuilder.get_default_tag` composes** (closes #691): a tag ending
+  `-none-any` whatever the wheel carries, which is why the editable
+  paths' overwrite has to be met by rebinding that call on the live
+  instance. The clause naming what an editable wheel came out as
+  without that rebinding is gone: the rebinding is in the code below
+  it, so a reader checking the clause against the file has nothing to
+  check.
+- **`scripts/cffi_build.py`'s `compile_static_unix` docstring argues
+  CFLAGS and the splitting on the code's own terms** (closes #691):
+  CFLAGS is where the optimization and a universal2 interpreter's
+  `-arch` pair reach the compile, and each variable is split because
+  unsplit, CCSHARED is a single argv element -- empty on a mac, and
+  unrecognized the day it carries two flags. What a past revision of
+  the method got wrong is not a state the file shows.
+
+### `btclib_secp256k1.zkp`'s docstring says what the subpackage holds
+
+- **The module docstring says that a wrapper module per secp256k1-zkp
+  module wrapped sits beneath the subpackage, and that `__all__` here
+  is the allowlist `__getattr__` checks a name against rather than an
+  index of what sits beneath** (closes #692).
+  The sentence it replaces put those modules in the future and named
+  the issue for the next of them;
+  `docs/source/btclib_secp256k1.rst` renders this docstring onto the
+  API page that documents each of them beneath it.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

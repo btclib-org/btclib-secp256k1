@@ -102,15 +102,14 @@ class CustomBuildHook(BuildHookInterface[Any]):
         `build_data["tag"]`: `WheelBuilder.build_editable_detection` and
         `build_editable_explicit` (hatchling 1.32.0,
         `hatchling/builders/wheel.py`) each overwrite
-        `build_data["tag"]` from `self.get_default_tag()` as their first
-        statement, whatever this method already put there, so an
-        editable wheel carrying a `cpNN` extension came out
-        `py3-none-any` regardless. `get_default_tag` is the call both
-        editable paths make in place of the check above, so it is
-        rebound on the live `WheelBuilder` instance to return the same
-        tag this method already decided for a standard build -- the
-        only point `hatchling.build.build_editable` leaves open to a
-        hook.
+        `build_data["tag"]` from `self.get_default_tag()` before anything
+        reads it, whatever this method already put there, and the tag
+        it composes ends `-none-any` whatever the wheel carries.
+        `get_default_tag` is the call both editable paths make in place
+        of the check above, so it is rebound on the live `WheelBuilder`
+        instance to return the same tag this method already decided for
+        a standard build -- the only point
+        `hatchling.build.build_editable` leaves open to a hook.
         """
         if self.target_name != "wheel":
             return

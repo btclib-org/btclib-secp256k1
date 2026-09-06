@@ -251,21 +251,23 @@ class FFIExtension:
 
         CC, CFLAGS and CCSHARED in that order is what `customize_compiler`
         composes for the extensions the interpreter builds for itself, and
-        composing anything else here is how the two come apart. Dropping
-        CFLAGS was two bugs at once: the glue was compiled with no
-        optimization at all, unlike everything CMake builds beside it, and
-        on a universal2 interpreter the `-arch x86_64 -arch arm64` it
-        carries went to the link (LDSHARED has them too) but not to the
-        compile, so a single-arch object was linked dual-arch -- the one
-        macOS configuration target_architecture_options exists to support.
+        composing anything else here is how the two come apart. CFLAGS is
+        where the optimization comes from: without it the glue alone is
+        compiled unoptimized, beside a vendored library `build_c` builds
+        Release. It is also where a universal2 interpreter's
+        `-arch x86_64 -arch arm64` reaches the compile -- LDSHARED
+        carries them to the link either way, so a compile without them
+        hands the link a single-arch object to make dual-arch -- the
+        universal2 case among the macOS ones target_architecture_options
+        covers.
 
         Nothing is filtered out of them: on macOS `sysconfig` has already
         run the flags through `_osx_support`, which is what rewrites an
         `-arch` the toolchain cannot build and an `-isysroot` pointing at
-        an SDK that is not installed. What was missing here was the
-        splitting -- CCSHARED went in as one argv element, which is empty
+        an SDK that is not installed. Each is split rather than passed
+        whole: unsplit, CCSHARED is a single argv element, an empty one
         on a mac (clang tolerates it, gcc reads it as a missing input
-        file) and wrong the day it carries two flags.
+        file) and an unrecognized one the day it carries two flags.
         """
         c_filename = f"{self.name}.c"
         o_filename = f"{self.name}.o"
