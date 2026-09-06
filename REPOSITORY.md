@@ -88,13 +88,14 @@ the aggregate a required check needs is what a matrix needs.
 What such a rule would cost is the ceiling: the plan caps how many jobs
 an organization may run at once, shared across every repository in it,
 and *Plan-gated settings* below has the figure and the command that
-re-derives it. This one, bitcoin-core-rpc and one more repository each
-ask for more jobs than that cap on every commit, so a pull request in any
-of the three spends wall clock waiting for a slot, and this workflow's
-matrix and aggregate are among what it waits behind. Requiring the
-aggregate would put that wait on the merge path; leaving it unrequired
-keeps a finding in the Actions tab and in the Security tab beside it,
-where it is read without a merge being held.
+re-derives it. This repository asks for more jobs than that cap on every
+commit, and it is not the only one in the organization that does —
+bitcoin-core-rpc is another — so a pull request here spends wall clock
+waiting for a slot, and this workflow's matrix and aggregate are among
+what it waits behind. Requiring the aggregate would put that wait on the
+merge path; leaving it unrequired keeps a finding in the Actions tab and
+in the Security tab beside it, where it is read without a merge being
+held.
 
 `zizmor` is the workflow half of the same question and is required: it is
 a `pre-commit` hook, so `lint.yml` audits these very files for an injected
@@ -115,9 +116,9 @@ more than that checkout gives: `submodule-pin` resolves the release
 `ci:` is the documented key for the clone, and it was tried on #132 rather
 than reasoned about — with it the submodule arrives and the hook still
 fails, `the vendored clone is shallow and carries no v0.8.0 tag`. There is
-no `fetch-depth` key to ask that service for, so the hook is the one
-entry in the `ci:` `skip` list. What that costs is pre-commit.ci's run
-of it: the runner the rule names, `Lint and type-check`, checks the
+no `fetch-depth` key to ask that service for, so `submodule-pin` is what
+the `ci:` `skip` list names. What that costs is pre-commit.ci's run of
+it: the runner the rule names, `Lint and type-check`, checks the
 submodule out with `fetch-depth: 0` precisely so it has what the hook
 needs, and so does a developer's own commit. Re-read that skip list
 before adding to it: an entry may join for a reason of that kind and no
@@ -135,18 +136,19 @@ exists to catch. What keeps it out of the rule instead is the gap
 platform do not build one wheel yet, one half of that gap open and
 pinned by an issue, the other declined outright. Requiring the check
 would fail a pull request for that gap rather than for what the pull
-request itself did. The first three are the ones worth naming twice,
-because they do run the suite: what a merge no longer waits for is
-every cell of it but one, the reasoning being in `os-ubuntu.yml`'s
-header and the numbers in `test.yml`'s, and `release.yml` calls all
-three so that a publication still does. `scorecard.yml` is outside the
-rule for a reason of its own: it carries no `pull_request` trigger, so
-it produces no context a branch rule could name.
+request itself did. `os-ubuntu.yml`, `os-macos.yml` and `os-windows.yml`
+are the ones worth naming twice, because they do run the suite: what a
+merge no longer waits for is every cell of it but one, the reasoning
+being in `os-ubuntu.yml`'s header and the numbers in `test.yml`'s, and
+`release.yml` calls each of them so that a publication still does.
+`scorecard.yml` is outside the rule for a reason of its own: it carries
+no `pull_request` trigger, so it produces no context a branch rule could
+name.
 
 A check can be bound to the app that produces it — `checks` with an
 `app_id` rather than the bare `contexts` list — so that nothing else can
-satisfy it, and 15368 is Actions, which produces them all. All three carry
-that binding, and the two that did not are why it is worth stating: an
+satisfy it, and 15368 is Actions, which produces them all. Every check
+the rule names carries that binding, and it is worth stating because an
 unbound context reads `app_id: null` and is satisfied by *any* app
 reporting a check run of that name, so anything installed on the
 organization with `checks: write` could turn one green with no workflow
@@ -342,8 +344,8 @@ gh api repos/btclib-org/btclib-secp256k1 --jq '.default_branch'
 # main
 ```
 
-Its protection is all read from the endpoint above: `strict` with the three
-checks already described, one approving review with
+Its protection is all read from the endpoint above: `strict` with the
+checks the table above names, one approving review with
 `dismiss_stale_reviews`, **required signatures**, linear history, no force
 pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off** — an administrator can bypass all of it, matching
@@ -369,8 +371,9 @@ what it attests to rather than restore anything. What changed is only
 whether the next incident has the same escape hatch another repository in
 the organization already keeps.
 
-One protected branch is the whole of it, which is a consequence of there
-being one long-lived branch:
+Protection reaches `main` and no other branch. That is a consequence of
+the branching model — `main` is the trunk, and every other branch is a
+short-lived working branch, whatever becomes of it:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/branches \
@@ -385,12 +388,18 @@ reaches `main` through the rules above.
 
 ## The rulesets, and what their bypass is for
 
-The rulesets on `main` sit beside that protection, and what separates
-them is who may bypass:
+The rulesets sit beside that protection, and what separates the ones on
+`main` is who may bypass. The list endpoint answers neither
+`bypass_actors` nor `conditions`, so what it is asked for is the id, and
+the id is what reads each ruleset back with the ref it applies to and
+the bypass it carries:
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/rulesets \
-  --jq '.[] | "\(.name) \(.enforcement) bypass=\(.bypass_actors | length)"'
+gh api repos/btclib-org/btclib-secp256k1/rulesets --jq '.[].id' \
+  | xargs -I{} gh api repos/btclib-org/btclib-secp256k1/rulesets/{} \
+    --jq '[(.id | tostring), .name, .enforcement,
+           .conditions.ref_name.include[],
+           "bypass=\(.bypass_actors | length)"] | join(" ")'
 ```
 
 `main-integrity` is what [section 11 of the organization
@@ -400,7 +409,8 @@ deletion — with **no bypass actor at all**, which is what makes "on
 every commit, not at review time" true of an administrator too,
 `enforce_admins` above being off. `main-self-merge` is the pull request
 rule, and names the maintainer as one; the listing above answers each
-ruleset's id, and the rules and the bypass of each are read from it:
+ruleset's id, and that id is what reads back the rule types and the
+bypass actors:
 
 ```shell
 gh api --jq '{rules: [.rules[].type], bypass: [.bypass_actors[].actor_type]}' \
@@ -523,8 +533,8 @@ gh api repos/btclib-org/btclib-secp256k1 \
 #  "squash_merge_commit_title":"COMMIT_OR_PR_TITLE"}
 ```
 
-The two `squash_merge_commit_*` fields shape the commit the button
-writes, and section 11 states what they are set to: `COMMIT_OR_PR_TITLE`
+The `squash_merge_commit_*` fields shape the commit the button writes,
+and section 11 states what they are set to: `COMMIT_OR_PR_TITLE`
 lands a single-commit branch under its own subject and a longer one
 under the pull request's title, and `COMMIT_MESSAGES` makes the branch's
 commit messages the body — never the pull request's description, which
@@ -660,23 +670,26 @@ gh api -X PUT repos/btclib-org/btclib-secp256k1/actions/permissions/workflow \
 
 ## Publishing
 
-Both environments require a review, so an upload waits for a person:
+Each environment requires a review, so an upload waits for a person. The
+whole `protection_rules` array carries a reviewer's public profile
+besides, so what is selected out of it is the rule types and the login:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/environments \
-  --jq '.environments[] | {name, protection_rules}'
+  --jq '.environments[] | {name, rules: [.protection_rules[].type],
+        reviewers: [.protection_rules[].reviewers[]?.reviewer.login]}'
 ```
 
-`pypi` and `testpypi` each have `fametrano` as the required reviewer.
-`pypi` carries a deployment branch policy besides — one custom rule
-admitting the tag pattern `v*`, that environment being reachable only from
-a tag — while `testpypi` has none, being reached from a branch by
-dispatch:
+`pypi` and `testpypi` each have `fametrano` as the required reviewer, and
+only `pypi` carries `branch_policy` beside it. That policy admits the tag
+pattern `v*`, that environment being reachable only from a tag, while
+`testpypi` has none, being reached from a branch by dispatch — the
+endpoint 404s for it rather than answering an empty list:
 
 ```shell
-gh api \
+gh api --jq '.branch_policies[] | {name, type}' \
   repos/btclib-org/btclib-secp256k1/environments/pypi/deployment-branch-policies
-# {"name": "v*", "type": "tag"}
+# {"name":"v*","type":"tag"}
 ```
 
 The asymmetry is worth reading rather than assuming: a policy admitting
@@ -779,10 +792,10 @@ it does not exist.
 
 What Team would buy is the rest: the Linux and Windows crowding, and the
 contention with the other repositories of the organization,
-`bitcoin-core-rpc` and one more each asking for well more than the twenty
-on their own commits too. Whether that is worth three seats is a question
-for whoever pays for them, and it is recorded here so that it is asked
-with the second number in view.
+`bitcoin-core-rpc` asking for more than the twenty on its own commits
+too. Whether that is worth what Team charges per seat is a question for
+whoever pays, and it is recorded here so that it is asked with the
+second number in view.
 
 ## Features
 
