@@ -5474,6 +5474,19 @@ release-notes length in the first place, and are still in
   offer it as that count in no rule, test or preamble of their own, so
   nothing outside this file is left for the issue either.
 
+### `scorecard.yml`'s `contents: read` comment names the scope it is about
+
+- **The comment says what omitting `contents` from the analysis job's
+  block would do rather than what omitting any scope would do** (issue
+  btclib-org/.github#893). `metadata` is where the wider reading fails:
+  `actionlint`, which the lint gate runs, refuses it as a scope a
+  `permissions:` block may name, and the analysis job's
+  `GITHUB_TOKEN Permissions` group logs `Metadata: read` all the same.
+  *`scorecard.yml` says where the analysis job's `contents: read` comes
+  from* above states that consequence for every scope, and this entry
+  supersedes that sentence, which holds of `contents`, the scope the run
+  recorded there measured.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
