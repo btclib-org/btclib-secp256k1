@@ -5408,6 +5408,23 @@ release-notes length in the first place, and are still in
   the section's opening sentence about who may bypass is what rests on
   it.
 
+### The `toml-comment-width` comment states its pattern's own predicate
+
+- **The comment above the hook gave its exemption to markdownlint and
+  to `ruff` alike; what stands there now is what `.{80}\S*[ \t]` does**
+  (issue btclib-org/.github#843): a line is reported only where
+  whitespace is left past column 80, so a comment whose overflow is one
+  unbroken token is exempt. The attribution was false in its `ruff` half
+  -- a whole-line Python comment whose overflow is one unbroken token
+  holding no `://` is a `W505` finding at the width the hook exempts it
+  at, measured at ruff 0.16.5 under both `preview` settings -- and a
+  sentence about the pattern's own predicate is checkable against the
+  pattern, which is why it replaces the comparison rather than
+  correcting it. The wording is `btclib-node`'s, landed there for this
+  defect. The hook's `name:` and `entry:` are untouched, and what the
+  one states against what the other implements is the rest of that
+  issue.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
