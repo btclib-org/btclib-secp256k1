@@ -5425,6 +5425,21 @@ release-notes length in the first place, and are still in
   one states against what the other implements is the rest of that
   issue.
 
+### The primary-checkout section says what moves `main`
+
+- **The section ends on the paragraph naming the ref a session does not
+  move and the route that does** (closes btclib-org/.github#860), which
+  is `btclib-org/.github`'s own wording at `891b20c` byte for byte: do
+  not rewrite `refs/heads/main` or advance it with work that is not
+  yours, your own branch is what you push, and the pull request is what
+  moves `main`. The section stopped at the `git checkout -- <file>`
+  paragraph, which left a reader of this copy the prohibitions without
+  the route out of them. Both sentences hold of this tree as the
+  standard writes them: the ruleset `REPOSITORY.md` calls
+  `main-self-merge` refuses a direct push to `main` to everyone, the
+  bypass holder included, and the fence in this same section pushes
+  `HEAD:refs/heads/<branch>` rather than `main`.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for

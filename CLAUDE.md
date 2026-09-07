@@ -262,6 +262,10 @@ quietly: it restores from the index, so an edit made and not staged is
 gone with no output at all. Reverting a deliberate experiment is what a
 copy is for — `cp file file.bak`, then put it back.
 
+**Do not rewrite `refs/heads/main`, or advance it with work that is not
+yours.** Your own branch is what you push, and the pull request is what
+moves `main`.
+
 ## Model
 
 The default model for this repository is Sonnet. Switch to Opus only
