@@ -5440,6 +5440,40 @@ release-notes length in the first place, and are still in
   bypass holder included, and the fence in this same section pushes
   `HEAD:refs/heads/<branch>` rather than `main`.
 
+### The create's condition falsifies this file's redirection sentence
+
+- **The create's condition is the reader's own directory already holding
+  the placeholder's name** (closes btclib-org/.github#863). The `>` is
+  reached only where the `<` succeeds, and the `<` succeeds only where
+  that directory already holds the name `branch`, a directory of that
+  name serving as well as a file; where neither stands there the line
+  ends at the `<` with nothing created, measured in `/bin/zsh`,
+  `/bin/bash`, `/bin/sh` and `/bin/dash`, which do not all print the same
+  diagnostic. *The worktree recipe ends `git worktree add` in its
+  placeholder* above has the `<` open a file for reading and the `>`
+  create a file at the path `$WT` holds, a conjunction with no condition
+  on it, and this entry supersedes that sentence. *`CLAUDE.md`'s worktree
+  fence names the worktree by path* states the condition and names no
+  earlier entry of this file. `portanode` and `bbt` carry the same
+  supersession, so nothing outside this file is left for the issue.
+
+### Counting this file's entries is a reading, not a command
+
+- **Neither a bullet count nor a heading count answers how many entries
+  this file holds** (closes btclib-org/.github#829). `grep -c '^- '`
+  counts the separate claims an entry's list body makes rather than the
+  entries, and section 9 of the organization standard lets an entry
+  making a single claim carry no bullet at all; a `###` heading answers
+  no better, *CI* and *Documentation* standing over entries that each
+  carry their own citation where a heading naming one entry stands over
+  that entry alone. Counting them is a reading of the file.
+  `## v0.7.1.2`'s own opening prose says `grep -c '^- '` does it; that is
+  landed text and stands as written, this entry being where the
+  correction is read instead. The command is named in no other file of
+  this tree, and `btclib`, `bitcoin-core-rpc` and `btclib-org/.github`
+  offer it as that count in no rule, test or preamble of their own, so
+  nothing outside this file is left for the issue either.
+
 ## v0.8.0.4
 
 ### `musig` wraps MuSig2, closing the one exception `lib` was for
