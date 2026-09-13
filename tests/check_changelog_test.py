@@ -9,7 +9,7 @@ why; this exercises both readings of it.
 `test_this_trees_own_open_section_is_clean` runs it unmodified, against
 this tree's own file, which is the same question the `pre-commit` hook
 asks on every commit. Every other test builds a small file of its own
-instead, one for each of the three checks and the shapes each must not
+instead, one for each of the four checks and the shapes each must not
 answer to. `[tool.coverage.run]` measures the script by path, so what
 this tree's own file never takes is here too -- a file with no release
 heading -- and so is the entry-point guard, run as `__main__`.
@@ -189,6 +189,39 @@ def test_a_file_with_no_release_heading_is_one_open_section(
     text = "# Changelog\n\n- **only thing** (closes #1): one.\n"
     assert script.open_section(text) == (text, 0)
     assert script.problems(text) == []
+
+
+_LONG = "- one\n- two\n- three\n- four\n"
+
+
+def test_a_long_body_after_the_rule_entry_is_caught(script: ModuleType) -> None:
+    """The fourth check reads from the entry the rule entered with."""
+    rule = f"### {script.RULE_HEADING}\n\n- rule.\n"
+    found = script.problems(f"{_CLEAN}\n{rule}\n### Long\n\n{_LONG}")
+    assert len(found) == 1
+    assert "'Long'" in found[0]
+    assert "4 lines" in found[0]
+
+
+def test_a_long_body_before_the_rule_entry_is_not_reported(script: ModuleType) -> None:
+    """An entry above the rule entry predates the rule and stays."""
+    rule = f"### {script.RULE_HEADING}\n\n- rule.\n"
+    assert script.problems(f"{_CLEAN}\n### Long\n\n{_LONG}\n{rule}") == []
+
+
+def test_link_definitions_are_not_lines_of_the_body(script: ModuleType) -> None:
+    """btclib-benchmarks ends its file with a block of reference links."""
+    links = "".join(f"[iss{n}]: https://example.invalid/{n}\n" for n in range(9))
+    assert script.problems(f"{_CLEAN}\n### Short\n\n- one\n\n{links}") == []
+
+
+def test_every_entry_is_measured_where_the_rule_entry_is_released(
+    script: ModuleType,
+) -> None:
+    """With no rule entry in the open section, the bound reaches every entry."""
+    found = script.problems(f"{_CLEAN}\n### Long\n\n{_LONG}")
+    assert len(found) == 1
+    assert "'Long'" in found[0]
 
 
 def test_main_reports_a_problem_and_returns_1(
