@@ -486,6 +486,77 @@ release-notes length in the first place, and are still in
   What the reader answers for `test.yml` is unchanged, its own items
   carrying neither a comment nor a blank line.
 
+### The tree gains the `deps-oldest` sentinel, and the badge with it
+
+- **`.github/workflows/deps-oldest.yml` runs the suite weekly with every
+  direct dependency at the oldest release `pyproject.toml`'s own specifier
+  allows** (issue btclib-org/.github#323): section 10's *Which trees carry
+  which sentinel* names this repository for that row, and `git grep -l
+  'lowest-direct' -- .github/workflows/` answered nothing here, with `uv
+  lock` in `deps-latest.yml` and `release.yml` as the control that the path
+  was read -- the tree resolved upward and nothing resolved down, leaving
+  every `>=` it declares a claim no run had installed. The cron is
+  `8 3 * * 4`, read off section 10's two tables: the workflow table's
+  `deps-oldest` row gives Thursday and hour 03, the repository table's
+  `btclib-secp256k1` row gives minute 08. It gates nothing -- no aggregate
+  job, and `REPOSITORY.md`'s list of the sentinels no branch rule may name
+  gains it. `README.md`'s badge line gains it where the calendar puts it,
+  section 2 fixing that order; `CONTRIBUTING.md`'s census of what gates and
+  what only reports gains it beside `deps-latest`, the row it mirrors, that
+  table being grouped by kind rather than by the calendar.
+- **The cell is 3.10 and there is no matrix**: `requires-python` names that
+  floor, where `.python-version` pins 3.14, the newest of the range the
+  classifiers declare, and a floor run asks the other end. One cell because
+  a floor is one claim to verify rather than a range to scan, the range
+  being `deps-latest.yml`'s and the platform sweeps'.
+- **`UV_RESOLUTION: lowest-direct` is declared on the job and not passed to
+  the step that resolves**: `uv lock` records a non-default mode inside
+  `uv.lock`, and a later uv command under the default `highest` reads that
+  lock as stale, so `--locked` refuses the lock the step above it just
+  wrote. Measured with uv 0.12.7 on a probe project outside this tree
+  declaring one specifier: against a `lowest-direct` lock `uv run --locked`
+  exits 2 naming the lock, and 0 with the variable set.
+- **`--no-cov` on the pytest step**, which section 10 gives a sentinel cell
+  that runs the suite: one run reports under `fail_under` whatever it
+  resolved, the ratchet being asked of the union `test.yml` combines out of
+  three runs, so a cell keeping the flag would go red on the ratchet every
+  week and name the ratchet where the question was the floor.
+- **None of the lint, coverage and dist jobs of `deps-latest.yml` is
+  mirrored, and the three are refused for three different reasons.** That
+  lint job exists to meet a new release of `pre-commit` itself, the hook
+  revisions being pinned by rev in `.pre-commit-config.yaml` and moved by
+  pre-commit.ci rather than by anything uv resolves, where a floor
+  resolution moves `pre-commit` backward instead. A floor run reproducing
+  the three-arm coverage union would be asking what a floor does to the
+  ratchet, where this file asks whether the declared floors install and the
+  suite holds on them. And the `check` group declares no bound, so an old
+  twine, check-wheel-contents and pyroma would rate metadata this
+  resolution does not move, while the floors `[build-system]` does declare
+  -- `hatchling>=1.27` and `cmake>=3.22` -- are outside `uv.lock`, which
+  names no `cmake` at all where it names `hatchling` from the `lint` group.
+- **The resolution fails on a group entry rather than at any floor this
+  tree declares, so the sentinel is red before it reaches the suite**: `uv
+  lock --resolution lowest-direct --dry-run`, uv 0.12.7, warns on each
+  `[dependency-groups]` entry -- no entry of any group declares a lower
+  bound -- and then exits 1 building `pytest==2.0.0`; `--python 3.10`
+  answers the same. `uv lock --help` lists one option naming a group,
+  `--upgrade-group`, and none that selects or excludes one, where `uv sync
+  --help` names several, so a lock is over every group there is and cannot
+  be narrowed to what carries a bound. `cffi` is not among what uv warns
+  about: its three specifiers in `dependencies` are the floor this tree
+  declares to whoever installs, and they are what the run would reach.
+  What bound each entry owes is #875, filed while this branch was open,
+  and the workflow's header names it, so the first weekly red points at
+  an open issue rather than at nothing.
+- **`CONTRIBUTING.md`'s sentence on how the gate supplies a tool the
+  developer may not have gave `zizmor` as a `local` hook pinned to a
+  version**, where `.pre-commit-config.yaml` takes it from
+  `zizmorcore/zizmor-pre-commit` at a pinned `rev` with no
+  `additional_dependencies` at all; the sentence is corrected while this
+  diff is in that section, and the reason it gives is the one the config's
+  own comment gives -- pre-commit.ci moves a `rev` and moves an
+  `additional_dependencies` pin by nothing.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

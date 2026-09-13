@@ -118,13 +118,13 @@ the `skip` list holds are written in that block's own comment, beside
 the keys they are about, where somebody editing the list reads them.
 
 Neither `os-ubuntu.yml`, `os-macos.yml`, `os-windows.yml`, `deps-latest.yml`,
-`links.yml`, `mutation.yml`, `pypi-install.yml`, `vendored-vectors.yml` nor
-`wheel-reproducibility.yml` appears in the rule, and none of them must: every
-one but the last is expected to go red for a reason no pull request
-introduced. `wheel-reproducibility.yml` is the exception, and by design —
-issue #508 gave it a `pull_request` trigger precisely so that a branch's own
-change to the build can turn a cell red, which is what a required check
-exists to catch. What keeps it out of the rule instead is the gap
+`deps-oldest.yml`, `links.yml`, `mutation.yml`, `pypi-install.yml`,
+`vendored-vectors.yml` nor `wheel-reproducibility.yml` appears in the rule, and
+none of them must: every one but the last is expected to go red for a reason
+no pull request introduced. `wheel-reproducibility.yml` is the exception, and
+by design — issue #508 gave it a `pull_request` trigger precisely so that a
+branch's own change to the build can turn a cell red, which is what a required
+check exists to catch. What keeps it out of the rule instead is the gap
 `wheel-reproducibility.yml`'s own header names: two images of one
 platform do not build one wheel yet, one half of that gap open and
 pinned by an issue, the other declined outright. Requiring the check
