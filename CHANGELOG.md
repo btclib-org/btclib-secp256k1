@@ -557,6 +557,62 @@ release-notes length in the first place, and are still in
   own comment gives -- pre-commit.ci moves a `rev` and moves an
   `additional_dependencies` pin by nothing.
 
+### Every `needs:` shape earns its own closure, and both are named
+
+- **`tests/interpreters_test.py`'s shape test asserted one closure for
+  every shape against a job dict in which `changes` waited on `coverage`,
+  so the rows a whole-line comment among the items and a blank line
+  between two of them are written for held under a reader carrying no
+  whole-line alternative at all** (issue btclib-org/.github#1053): that
+  chain is a second route to `coverage`, and an item dropped below a
+  residue is reached by it anyway. The dict is flat and each case asserts
+  the closure its own text earns -- the aggregate and the one job a
+  scalar names, where a list of either shape reaches both -- in
+  `bitcoin-core-rpc@ca9db975`'s shape: the shapes written under the key
+  as a named dict asserted in a loop, so a red names the shape, and each
+  comment case's stripped form spelled out as its own case rather than
+  reached through a keyword. Measured by rebinding `_NEEDS` in a
+  standalone interpreter to mutants of the pattern as written: an item
+  alternative with no trailing-comment tolerance is killed by *a comment
+  on an item*, one with no `[ \t]*` by *a comment on an item* and *that
+  one stripped*, a whole-line alternative with no comment tolerance by *a
+  comment among the items*, and no whole-line alternative at all by *a
+  comment among the items*, *that comment stripped* and *a blank line
+  between two items*.
+- **One chained dict stands below the flat rows** (issue
+  btclib-org/.github#1053): flat, one hop is the whole closure, and
+  `test.yml`'s `test-passed` names each job it waits on directly, so a
+  `_closure` reading a job's direct `needs:` and stopping answers every
+  flat row and the real gate alike. That case asserts its own closure and
+  nothing about a shape, and it is this module's only assertion that a
+  job reached only through another is reached at all. Measured by
+  replacing the walk with a single lookup over the same `_NEEDS`, over
+  the whole module: every assertion above that case passes and it is the
+  one that fails.
+- **The comment above `_NEEDS` gave one of the two things a reader blind
+  to the block shape does** (issue btclib-org/.github#1057): it named the
+  biconditional passing on a gate it has not read, which is what happens
+  where the jobs the narrowing keeps still name an interpreter. Where the
+  narrowing leaves the aggregate alone, the aggregate's own job names
+  none and the `the jobs test.yml's gate waits on name no interpreter`
+  assertion ahead of that biconditional fires instead. Both halves are
+  measured against the real gate rather than argued: the reader narrowed
+  to the key's own line collapses the closure to `test-passed` and fires
+  that assertion, that job writing its `needs:` under the key; with a job
+  naming a free-threaded interpreter listed below a comment line among
+  those items, the reader as written puts it in the tuple the
+  biconditional reads, where a reader with no whole-line alternative
+  answers `3.14` alone and passes on a gate it has not read. The
+  comment's third paragraph ends in a full stop.
+- **This bears on *The `needs:` reader takes a comment, a blank line and
+  an annotated item* above** (issue btclib-org/.github#1038): that entry
+  gives the comment above `_NEEDS` as `btclib-node`'s at `07bc1b1d`, and
+  it is this tree's own from here -- the sentence it gains quotes the
+  message this module's own assertion carries, which is not the message
+  `btclib-node` writes. `_NEEDS` and `_ITEM` are untouched and stay
+  `bitcoin-core-rpc`'s at `ca9db975` byte for byte, so what that entry
+  says about them, and about its second paragraph's two residues, stands.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
