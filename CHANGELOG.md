@@ -696,6 +696,12 @@ release-notes length in the first place, and are still in
   `btclib-org/.github`** (issue btclib-org/.github#1075): what is filed
   is one test, and an entry's body past three lines is refused.
 
+### The lint gate's prose names a local run, not a commit
+
+- **`.pre-commit-config.yaml`, `.vscode/extensions.json` and `CONTRIBUTING.md`
+  say what a local run enforces and the inert `git commit` recipe goes** (issue
+  btclib-org/.github#966).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
