@@ -673,6 +673,23 @@ release-notes length in the first place, and are still in
   passes with the removal in place -- and so does that entry's own case,
   which fails there asking for no symlink and no privilege.
 
+### The yamllint preamble names the width `.yamllint.yaml` sets
+
+- **The comment above the yamllint hook gave `118 columns` as a width a
+  line might have grown to, a number no command re-derives** (issue
+  btclib-org/.github#880): the clause reads "past the width
+  `.yamllint.yaml` sets" instead, naming the file the same comment
+  already points at for its arithmetic, where `line-length` is set to 100.
+  Section 9's *Measure, don't assert* is the ground, and
+  btclib-org/.github#880 took that reading for the family from
+  `5ef2ede8c753c65c22ad9a68268e229d5fcf427e`, the commit that added the
+  hook here -- written in full because `typos` reads the abbreviation as a
+  misspelling and rewrites it, which is btclib-org/.github#1074 -- whose
+  body states every width it measured, 118 not among them.
+  btclib-org/.github#880 still holds `bitcoin-core-rpc`'s past tense and
+  `btclib`'s own two sentences open, so this cites it rather than closing
+  it.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
