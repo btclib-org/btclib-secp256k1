@@ -1228,9 +1228,11 @@ and the `lint` workflow runs that very file, so what CI enforces is what
 the local gate enforces. Never add a check that exists only in a
 workflow, and never leave a hook weaker locally than on a runner: a hook
 that needs a tool the developer may not have carries it in
-`additional_dependencies`, which is why `actionlint` ships `shellcheck-py`
-and `zizmor` is a `local` hook pinned to a version. A check discovered by
-CI after a push is a check in the wrong place.
+`additional_dependencies`, which is why `actionlint` ships `shellcheck-py`;
+`zizmor` reaches the same end from its own repository at a pinned `rev`,
+which pre-commit.ci moves where an `additional_dependencies` pin is moved
+by nothing, rather than from a `local` hook naming the tool by hand. A
+check discovered by CI after a push is a check in the wrong place.
 
 The aggregate of `test`, the `lint` job and the documentation build are
 the required checks, and `REPOSITORY.md` reads that rule back from the
@@ -1254,6 +1256,7 @@ can act on from a branch is noise.
 | `os-macos` | weekly, a release | both macOS images × every interpreter |
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
 | `deps-latest` | weekly | the dependencies, at their newest |
+| `deps-oldest` | weekly | the dependencies, at their floors |
 | `links` | weekly, a pull request touching its own configuration | — |
 | `mutation` | weekly | — |
 | `wheel-reproducibility` | weekly, a pull request touching what it builds | every wheel platform, on two images, built twice on each, and the repaired, dynamic and cross-compiled wheels, built twice on one image per platform |

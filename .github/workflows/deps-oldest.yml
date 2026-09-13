@@ -1,0 +1,165 @@
+---
+name: deps-oldest
+
+# the floor sentinel: every dependency uv resolves, taken down to the
+# oldest release pyproject.toml's own specifier still allows, on the
+# interpreter requires-python names, and then put through the suite.
+# deps-latest.yml asks whether a newer release still works; this asks
+# whether the oldest one this tree still claims does -- section 10 of
+# btclib-org/.github calls the two a mirrored pair.
+#
+# What a floor claims here is a build and not only an import. cffi is
+# the whole of `dependencies` and the only floor this tree declares to
+# whoever installs it, in three specifiers keyed on the interpreter,
+# and [build-system] repeats them because the cdef is compiled through
+# the cffi that gets resolved. Nothing else installs an old release of
+# anything: every other workflow passes --locked and gets the one
+# resolution somebody wrote down, and deps-latest.yml resolves the
+# other way.
+#
+# --resolution lowest-direct, not lowest: lowest takes every transitive
+# dependency to its own minimum as well, resolving environments nothing
+# published has ever run and turning a red into noise about a release
+# this tree never claimed to support. lowest-direct moves what
+# pyproject.toml itself declares a floor for, which is the claim being
+# checked. Where the mode is declared, and why it is not a flag on the
+# step that resolves, is beside the job below.
+#
+# A group entry declaring no lower bound has no floor to verify, and uv
+# warns on each one it finds; no entry of [dependency-groups] here
+# declares one. Those warnings are what the run reports, and the
+# resolution then fails among the releases they name rather than at
+# cffi's floor or anywhere else this tree wrote a bound. uv lock --help
+# lists one option naming a group, --upgrade-group, and none that
+# selects or excludes one, so a lock is necessarily over every group
+# there is. What bound each entry owes is #875, this tree's question
+# rather than this file's.
+#
+# 3.10, and not the 3.14 .python-version pins: requires-python is
+# >=3.10 and the classifiers reach 3.14, so the pin is the newest end
+# of the supported range where section 10 gives this sentinel the
+# oldest. mypy is aimed at the same 3.10 for a related reason, stated
+# at python_version in pyproject.toml. One cell and one image, because
+# a floor is one claim to verify rather than a range to scan, and the
+# range is already deps-latest.yml's and the three platform sweeps'.
+#
+# No lint job, unlike deps-latest.yml's. That job exists to meet a new
+# release of pre-commit itself, the hook revisions being pinned by rev
+# in .pre-commit-config.yaml and moved by pre-commit.ci rather than by
+# anything uv resolves. A floor resolution moves pre-commit backward
+# instead, which asks whether an old runner still drives pinned hooks,
+# and section 10 gives this sentinel the claim a floor makes to whoever
+# installs rather than a second opinion on the tooling.
+#
+# No coverage job either, and it is a different question rather than a
+# cheaper one: a floor run reproducing the three-arm union of test.yml
+# would be asking what a floor resolution does to the ratchet, where
+# what this file asks is whether the declared floors install and the
+# suite holds on them. The ratchet is section 8's claim about one
+# interpreter on one image, and test.yml's coverage job is where it is
+# measured and gated.
+#
+# No dist job, for a reason each end of the resolution gives. The check
+# group declares no bound, so the oldest twine, check-wheel-contents
+# and pyroma an index still serves are no floor this tree wrote down;
+# and the floors [build-system] does write down -- hatchling and cmake
+# -- are outside uv.lock, which names no cmake at all.
+#
+# Nothing here gates anything, by construction: a separate workflow,
+# with no aggregate job, named by no branch protection rule (see
+# REPOSITORY.md). This job is expected to go red for reasons no pull
+# request introduced, and a red check nobody can act on from a branch
+# is noise. It opens no issue on failure either, which would cost
+# issues: write in a job that needs nothing but read; a failed
+# scheduled run notifies the last person to have touched the cron
+# below, and that is the signal
+
+on:
+  schedule:
+    # The instant is section 10's grid in btclib-org/.github, the
+    # workflow's day and hour in one of its two tables and this
+    # repository's minute in the other, and neither is this file's to
+    # restate.
+    # Only the default branch schedules workflows, so on any other
+    # branch this is reachable through the dispatch below alone
+    - cron: "8 3 * * 4"
+  # the escape hatch: worth reaching for on a branch that moves a floor
+  # in pyproject.toml, which is the one edit whose effect this workflow
+  # is the only thing that measures
+  workflow_dispatch:
+
+# least privilege for the GITHUB_TOKEN: everything running in a job
+# (actions, dependencies, the vendored library's own build) can read
+# the token, so it must not be able to write to the repository
+permissions:
+  contents: read
+
+# named literally rather than through github.workflow: nothing calls
+# this workflow today, but that expression is the caller's name when
+# something does, and the convention is what keeps the groups distinct
+concurrency:
+  group: deps-oldest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite-oldest:
+    name: Run the suite, dependencies at their declared floor
+    runs-on: ubuntu-latest
+    # the resolution mode, declared once for the whole job rather than
+    # passed to the step that resolves. `uv lock` records a non-default
+    # mode inside uv.lock, and a later uv command running under the
+    # default `highest` reads that lock as stale -- so the --locked
+    # below would refuse the lock the step above it had just written,
+    # before installing anything and before reaching pytest. Setting it
+    # here is what makes both commands agree, and keeps --locked
+    # meaning what it says
+    env:
+      UV_RESOLUTION: lowest-direct
+    # far above what a run of the suite needs, the resolution and the
+    # CMake build of the vendored library included: what it bounds is a
+    # hung job holding a runner
+    timeout-minutes: 40
+
+    steps:
+      # every action is pinned to a commit SHA, the tag in the comment:
+      # a tag, let alone a branch, is a name its owner can move, and
+      # these run in a job that can read the workflow token
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # installing this package compiles libsecp256k1 out of the
+          # vendored clone, so the suite step below needs it, exactly
+          # as deps-latest.yml's own cells do
+          submodules: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          # cached for the reason deps-latest.yml gives beside its own
+          enable-cache: true
+          python-version: "3.10"
+
+      # re-resolves every direct dependency to the oldest release its
+      # own specifier allows, the mode coming from the job's env above.
+      # This rewrites uv.lock, harmless on an ephemeral checkout and
+      # worth knowing before running the same command in a working tree
+      - name: Resolve every direct dependency to its declared floor
+        run: uv lock
+
+      # still --locked, which is not a contradiction: the step above
+      # just wrote that lock under this job's own mode, so this asserts
+      # nothing moved between the two.
+      # --no-cov, against the --cov addopts carries: one run of the
+      # suite reports under fail_under whatever it resolved, the
+      # ratchet being asked of the union test.yml combines out of three
+      # runs, so a cell keeping the flag would go red on the ratchet
+      # every week and name it where the question was the floor.
+      # deps-latest.yml reaches the same end by --cov-fail-under=0,
+      # keeping the report and giving up only the floor; section 10 is
+      # what makes this file's the other spelling, giving a sentinel
+      # cell that runs the suite --no-cov by name
+      - name: Run pytest
+        run: >
+          uv run --locked --no-default-groups --group test pytest
+          --no-cov
