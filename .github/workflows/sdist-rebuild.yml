@@ -1,0 +1,113 @@
+---
+name: sdist-rebuild
+
+# the sentinel on what the attestation vouches for: the latest release's
+# tag, rebuilt the way RELEASING.md's *Rebuild a release from its tag*
+# rebuilds it, and `gh attestation verify` over the rebuilt sdist, which
+# passes only where its digest is one the release signed.
+#
+# What moves between a release and this run is the runner image, uv, and
+# the build backend, which `python -m build` resolves afresh within the
+# range the tag's pyproject.toml allows; that interval is what a weekly
+# run covers and a check inside release.yml does not.
+#
+# The sdist alone: section 10 of btclib-org/.github's README.md makes
+# the row the sdist's, the compiled wheels being outside the property
+# section 12 states, and wheel-reproducibility.yml is what asks about
+# them. A red run is an issue against this tree. It gates nothing, and
+# REPOSITORY.md says why no branch rule names it
+
+on:
+  schedule:
+    # Sunday, hour 03, between wheel-reproducibility and codeql. The
+    # time is the organization grid -- section 10 of
+    # btclib-org/.github's README.md -- which gives a workflow its day
+    # and its hour and this repository its minute, and is not this
+    # file's to restate. Only the default branch schedules workflows, so
+    # on any other branch this is reachable through the dispatch below,
+    # and through the pull_request trigger further down.
+    - cron: "8 3 * * 0"
+  # the escape hatch, and the way to ask without waiting for the day
+  workflow_dispatch:
+  # so a change to this file is checked by the thing it configures. What
+  # the job runs besides this file is the tag's own, so nothing else a
+  # pull request touches changes the answer. The types are links.yml's,
+  # for the reasons its own trigger gives
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, closed]
+    paths:
+      - .github/workflows/sdist-rebuild.yml
+
+# least privilege for the GITHUB_TOKEN, elevated per job below
+permissions:
+  contents: read
+
+# grouped by the pull request's number where there is one, and a merged
+# pull request's closed run not cancelling the run in flight, for the
+# reasons links.yml gives beside its own group
+concurrency:
+  group: sdist-rebuild-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
+
+jobs:
+  rebuild:
+    name: Rebuild the latest release's sdist and verify its attestation
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # build-sdist in test.yml, whose upload is what release.yml attested
+    env:
+      UV_PYTHON_DOWNLOADS: never
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      # the release GitHub marks latest, not the newest tag: a tag whose
+      # release never published has no attestation to verify against
+      - name: Find the latest release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" \
+            --json tagName --jq .tagName)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      # recursive: the sdist carries the vendored libraries
+      - name: Checkout the release's tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      # no cache, so nothing an earlier run stored enters the build
+      - name: Setup uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: false
+
+      # the steps of build-sdist in test.yml, where the reason for each is
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
+      - name: Build source
+        run: uv run --locked --only-group build python -m build -s
+
+      - name: Make the sdist's determinism this tree's own
+        run: |
+          uv run --no-project --python 3.14 \
+            .github/scripts/normalize_sdist.py dist/
+          sha256sum dist/*.tar.gz
+
+      - name: Verify the rebuilt sdist against the release's attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify dist/*.tar.gz --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"

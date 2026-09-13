@@ -18,9 +18,9 @@ another wheel job, or a matrix split in two, is written by copying a
 neighbour that may not be one of these -- the drift
 `tests/wheel_reproducibility_platforms_test.py` documents one axis over,
 where a hand-typed copy of a matrix goes stale with nothing red. This
-finds the job rather than trusting a list of them: it reads both
-workflows, asks which of their jobs run a build frontend, and requires
-the pin of each -- of the commands each job runs, its comments being
+finds the job rather than trusting a list of them: it reads the
+workflows below, asks which of their jobs run a build frontend, and
+requires the pin of each -- of the commands each job runs, its comments being
 prose about a step and not the step.
 
 The frontends it knows are the spellings this tree uses: `cibuildwheel`,
@@ -30,13 +30,13 @@ which runs one of them itself. A job reaching a build another way --
 not discovered, and `test_a_job_of_each_shape_was_read` is what turns a
 pattern that has stopped matching red rather than silently exempt.
 
-`test.yml` and `wheel-reproducibility.yml` are the two files, and
-between them they hold every build whose bytes are published or
-compared: `release.yml` builds nothing of its own and calls `test.yml`
-for the files it uploads. A build elsewhere -- `deps-latest.yml` builds
-a wheel to run the suite against unpinned dependencies -- is neither
-published nor diffed, and pinning its timestamp would answer no question
-asked of it.
+`test.yml`, `wheel-reproducibility.yml` and `sdist-rebuild.yml` are
+the files, and between them they hold every build whose bytes are
+published or compared: `release.yml` builds nothing of its own and calls
+`test.yml` for the files it uploads. A build elsewhere --
+`deps-latest.yml` builds a wheel to run the suite against unpinned
+dependencies -- is neither published nor diffed, and pinning its
+timestamp would answer no question asked of it.
 
 Read with a regex rather than parsed, for the reason
 `interpreters_test.py` gives: a workflow is yaml and no group here
@@ -50,6 +50,7 @@ _ROOT = Path(__file__).parents[1]
 _WORKFLOWS = (
     ".github/workflows/test.yml",
     ".github/workflows/wheel-reproducibility.yml",
+    ".github/workflows/sdist-rebuild.yml",
 )
 
 # where the jobs start: everything above is triggers and permissions,
@@ -96,7 +97,7 @@ def _jobs(text: str) -> dict[str, str]:
 
 
 def _building_jobs() -> dict[str, str]:
-    """Return the commands of both workflows' jobs that build.
+    """Return the commands of the workflows' jobs that build.
 
     The comments go before anything is asked, and what is stored is what
     is left: a job's comments name the step and the command as readily

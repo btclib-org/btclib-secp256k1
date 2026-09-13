@@ -731,6 +731,12 @@ release-notes length in the first place, and are still in
 - **`REPOSITORY.md` records both as `false`** (issue
   btclib-org/.github#550), the settings having been turned off.
 
+### `sdist-rebuild.yml` verifies the latest release's sdist weekly
+
+- **The tag is rebuilt as `RELEASING.md` rebuilds it** (issue
+  btclib-org/.github#523), and `gh attestation verify` over the rebuilt
+  sdist fails the run where no attestation of the release carries its digest.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
