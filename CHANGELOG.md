@@ -720,6 +720,12 @@ release-notes length in the first place, and are still in
   `RELEASE_NOTES.md` and `.pre-commit-config.yaml`** (issue
   btclib-org/.github#1074): an abbreviated sha quoted there is not rewritten.
 
+### The `needs:` shape test reads hyphenated job keys
+
+- **A block list of `- test-passed` and `- free-threaded` is asserted beside
+  its rows** (issue btclib-org/.github#1063): `\w+` in place of `\S+` for the
+  item token fails it.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
