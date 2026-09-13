@@ -458,6 +458,14 @@ cpy = "cpy"
 # it rewrites the vector it read
 extend-ignore-re = ['"[0-9a-fA-F]+"']
 
+[tool.typos.type.verbatim]
+# a backticked span in these files quotes its text rather than using it,
+# an abbreviated commit sha among them: the dictionary reads a run of its
+# hex digits as a misspelt word, and this hook runs with --write-changes,
+# so without this table it rewrites the citation into one naming no commit
+extend-glob = ["CHANGELOG.md", "RELEASE_NOTES.md", ".pre-commit-config.yaml"]
+extend-ignore-re = ['`[^`]*`']
+
 [tool.ruff]
 # the vendored upstream sources are not ours to lint or reformat
 extend-exclude = ["secp256k1"]
