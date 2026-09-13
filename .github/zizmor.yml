@@ -24,6 +24,12 @@
 # the only backstop is a person reading the diff of these two files in
 # review.
 rules:
+  # the reusable workflows of btclib-org/.github are called at @main, not at
+  # a commit: section 10 of that repository's README.md gives the reason
+  unpinned-uses:
+    config:
+      policies:
+        "btclib-org/.github/*": ref-pin
   self-repository:
     ignore:
       - release.yml

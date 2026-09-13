@@ -702,6 +702,12 @@ release-notes length in the first place, and are still in
   say what a local run enforces and the inert `git commit` recipe goes** (issue
   btclib-org/.github#966).
 
+### `links.yml` calls the organization's reusable workflow
+
+- **The lychee job lives in `btclib-org/.github`** (issue
+  btclib-org/.github#35): this file keeps the trigger, the schedule and
+  the files it checks.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
