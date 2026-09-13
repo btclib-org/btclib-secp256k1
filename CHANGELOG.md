@@ -714,6 +714,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github#1067): `uv run` resolves the interpreter that file
   names, so the step's `"3.14"` was the same number declared twice.
 
+### `typos` leaves a backticked quotation as written
+
+- **`[tool.typos.type.verbatim]` ignores a backticked span in `CHANGELOG.md`,
+  `RELEASE_NOTES.md` and `.pre-commit-config.yaml`** (issue
+  btclib-org/.github#1074): an abbreviated sha quoted there is not rewritten.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
