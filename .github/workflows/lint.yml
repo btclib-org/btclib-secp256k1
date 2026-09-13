@@ -128,11 +128,6 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
-
       # what the cache key has to distinguish, and why a step computes it.
       # ImageOS is set by the runner image ("ubuntu24"), not by this
       # workflow, and the env context holds only what a workflow, job or
@@ -179,6 +174,9 @@ jobs:
           # the hook environments are the cache step above
           enable-cache: true
 
+      # no setup-python step: uv run resolves the interpreter
+      # .python-version names, installing it where the runner lacks it, so
+      # a version written here would be that file's number a second time.
       # pre-commit from the lint group of pyproject.toml, pinned by
       # uv.lock, rather than from uvx, which fetched whatever the index
       # held that morning: this is the gate, and what a developer runs is
