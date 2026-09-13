@@ -96,81 +96,11 @@ concurrency:
   cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
 
 jobs:
+  # the job itself is btclib-org/.github's, called at @main so a fix there
+  # reaches this tree in one landing (section 10 of its README.md); what
+  # stays here is the trigger, the schedule and which files are this
+  # tree's documentation
   links:
-    name: Check the documentation links
-    # a draft pull request is work in progress and spends no runner
-    # here either: the same condition lint.yml and test.yml carry, and
-    # ready_for_review is a trigger type above for the same reason.
-    # A closed pull request spends none either, merged or not -- the
-    # concurrency block above is what stops a merged one's own run from
-    # cancelling the run this condition already let finish (#523)
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
-    runs-on: ubuntu-latest
-    # a few hundred requests with retries; a job past this is hung on one
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          # no `submodules:`, which is what keeps the vendored tree out of
-          # this sweep without an exclusion: secp256k1/ is not checked out
-          # at all here, and its own CHANGELOG and CONTRIBUTING carry links
-          # that are upstream's to maintain. Measured before writing this:
-          # every URL that did not answer cleanly was inside that submodule
-
-      - name: Check the links
-        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
-        with:
-          # the prose, and named by path rather than as `**/*.md`, so that
-          # adding `submodules: true` above could not silently widen the
-          # sweep to upstream's documentation. Narrower than a sibling
-          # repository's and bitcoin-core-rpc's own globs, which reach
-          # docs/ and tests/, and not by omission: what those two would
-          # add carries no external URL, which
-          # `grep -rl http --include='*.md' docs tests` is what says
-          # rather than a claim here about what those pages are.
-          # The retries and the timeout are what keep a slow or throttling
-          # host from being reported as a dead one, and the measurement
-          # behind them is this repository's own: a URL here answered 418
-          # to the first request and 200 to the second, which is a bot-block
-          # and not rot. 429 is accepted for the same reason -- a rate
-          # limit is the runner's address being judged,
-          # not the link. The accepted list replaces lychee's default
-          # rather than adding to it, so the default -- `100..=103,200..=299`,
-          # what `lychee --help` prints for the flag -- is spelled out
-          # before the 429: a list naming 200 alone turns a 204 to a HEAD,
-          # or a redirect ending in a 201, into a dead link without anybody
-          # touching the tree.
-          # No cache flag: a run starts from a fresh workspace and no step
-          # restores the file lychee would write, so it decided nothing
-          # between runs, and within one lychee already requests each
-          # unique URL once.
-          # --include-fragments, or a heading renamed in the tree a link
-          # here points into breaks that link with nothing red anywhere:
-          # the forge serves the page and drops a fragment it cannot
-          # resolve, so the run that notices is the linking tree's. The
-          # check reads the page already fetched for the link, so it adds
-          # no request. What can override it is the token below: on a
-          # failed github.com/<owner>/<repo> link lychee falls back to the
-          # repositories API, so a missing fragment on that shape -- how
-          # CONTRIBUTING.md and REPOSITORY.md cite the standard -- is
-          # read, found missing, and then answered OK because the
-          # repository exists; the blob/main/README.md form REPOSITORY.md
-          # also carries names a path the API declines and stays red.
-          # btclib-org/.github#630 is where that is weighed.
-          args: >-
-            --no-progress
-            --max-retries 3
-            --retry-wait-time 10
-            --timeout 45
-            --accept 100..=103,200..=299,429
-            --include-fragments
-            "*.md" "scripts/*.md" ".github/*.md"
-          # fail the job rather than only summarizing: a green run that
-          # found dead links is the state this workflow exists to end
-          fail: true
-        env:
-          # for github.com links only, per the permissions comment above
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: btclib-org/.github/.github/workflows/reusable-links.yml@main
+    with:
+      targets: '"*.md" "scripts/*.md" ".github/*.md"'
