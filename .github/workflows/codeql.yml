@@ -125,98 +125,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # the analysis itself is btclib-org/.github's, called at @main so a fix
+  # there reaches this tree in one landing (section 10 of its README.md);
+  # what stays here is the trigger, the schedule, the concurrency group and
+  # the aggregate job below. No inputs: this tree and every sibling
+  # carrying codeql.yml scan the same two languages the same way, and an
+  # input for a difference none of them has would be a copy in disguise
+  # (btclib-org/.github#35)
   analyze:
-    # one job per language, so a failure says which analysis failed instead
-    # of leaving two to be told apart in a log. Default setup's own two jobs
-    # were `Analyze (actions)` and `Analyze (python)`; these are named for
-    # the question they answer, as every job here is. Neither name is a
-    # required check, and neither is the aggregate below: the three this
-    # repository requires are `Lint and type-check`, `Build the
-    # documentation` and `test: every job passed`, which REPOSITORY.md
-    # records and the branches/main/protection endpoint answers
-    name: Analyze ${{ matrix.language }} with CodeQL
-    # the same draft and closed condition every job of test.yml carries: a
-    # draft is not asking to be reviewed, and a closed pull request's run
-    # exists only to cancel the one its group is holding
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
-    runs-on: ubuntu-latest
-    # the two analyses of default setup took 41 to 48 seconds each, measured
-    # on the last pull request it ran on, so this is tolerance for a cold
-    # tools download rather than a budget:
-    #
-    #     gh api repos/{owner}/{repo}/commits/<sha>/check-runs --paginate \
-    #       --jq '.check_runs[] | select(.name | test("Analyze"))
-    #             | {name, started_at, completed_at}'
-    timeout-minutes: 15
+    uses: btclib-org/.github/.github/workflows/reusable-codeql.yml@main
+    # permissions do not inherit through a call, and the called workflow
+    # names what it needs in its own header: security-events: write for
+    # the SARIF upload, contents: read to check out the tree, and
+    # actions: read for CodeQL to read run metadata in a private
+    # repository, inert here and kept so that making this repository
+    # private is not also a broken required check
     permissions:
-      # what uploads the SARIF and what the alerts are written with.
-      # scorecard.yml's analysis job asks for the same; REPOSITORY.md's
-      # Token permissions is where every elevation here is listed
       security-events: write
       contents: read
-      # what CodeQL reads workflow run data with, required for a private
-      # repository and inert in a public one. Declared so that making this
-      # repository private is not also a broken required check
       actions: read
 
-    strategy:
-      # fail-fast would cancel the other language on the first failure, and
-      # a cancelled analysis is not a verdict: the aggregate below reads
-      # `cancelled` as a failure precisely because it is no evidence either
-      # way, so leaving it on would turn one real finding into two red cells
-      # with one cause between them
-      fail-fast: false
-      matrix:
-        # exactly what default setup analyzed. `actions` is the workflows
-        # themselves, and it is worth as much here as the package is: what
-        # they do is check out a tree, run a build script and hold a
-        # publishing token, and `zizmor` is a hook rather than the only
-        # thing that reads them for a reason. The vendored C is not among
-        # them and was not before -- libsecp256k1 is upstream's code,
-        # upstream scans it, and adding `c-cpp` would report its findings on
-        # every pull request that touches a docstring
-        language: [actions, python]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          # no `submodules:`, and that is the analysis default setup ran:
-          # the vendored tree is not checked out, so nothing of upstream's
-          # is scanned here, and the python extractor has less to walk
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
-        with:
-          languages: ${{ matrix.language }}
-          # nothing is compiled to be analyzed, which for these two
-          # languages is both the only mode available and the default --
-          # stated anyway, because this package *does* build C, and a reader
-          # who knows that would otherwise have to check whether the scan
-          # waits for cmake. It does not
-          build-mode: none
-          # no `queries:`, no `packs:` and no `config:`, which is how the
-          # `default` query suite default setup reported is asked for: there
-          # is no input that names it, and the suite widens the moment one
-          # of those three appears. `security-extended` would be a decision
-          # about how much noise a pull request is worth, and the setting
-          # this file replaces had not taken it
-
-      - name: Analyze
-        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
-        with:
-          # the category is what ties an upload to the analyses before it,
-          # so it is spelled as default setup spelled it -- see the header.
-          # Get this wrong and every existing alert is closed as fixed while
-          # a copy of it is opened by this workflow
-          category: "/language:${{ matrix.language }}"
-
   # one context for a branch rule to name, in place of job names that
-  # move: the matrix above produces one per language, a set that changes
-  # whenever CodeQL gains a language worth adding, and the step below
-  # judges every job of the run, so a language added there is covered
-  # without touching this.
+  # move: the matrix the called workflow runs produces one row per
+  # language, under a name this job's own id prefixes -- "analyze /
+  # Analyze actions", "analyze / Analyze python" -- and the step below
+  # judges every job of the run by its conclusion and its status, never by
+  # its name, so a row's prefix changes nothing it reads.
   # A required status check reports on the run a pull request has, so this
   # name is requirable only because the pull_request trigger above exists
   # — btclib-org/.github#90 is where the organization settled that reading
@@ -233,7 +167,7 @@ jobs:
     # ordering, and nothing else: nothing in this tree calls this workflow
     # (btclib-org/.github#982), so the step below reads the run's own job
     # listing rather than `needs.*.result`, and `needs` here only
-    # sequences this job after the matrix
+    # sequences this job after the call above
     needs: [analyze]
     # not success(): a job whose dependencies failed is skipped, and a
     # skipped check reports "skipped", which reads as satisfied wherever a

@@ -737,6 +737,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github#523), and `gh attestation verify` over the rebuilt
   sdist fails the run where no attestation of the release carries its digest.
 
+### `codeql.yml` calls the organization's reusable workflow
+
+- **The matrix and its two CodeQL steps live in `btclib-org/.github`**
+  (issue btclib-org/.github#35): this file keeps the trigger, the
+  schedule, the concurrency group and the aggregate job.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
