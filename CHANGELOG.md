@@ -708,6 +708,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github#35): this file keeps the trigger, the schedule and
   the files it checks.
 
+### The lint gate reads its interpreter from `.python-version` alone
+
+- **`lint.yml` drops its `setup-python` step** (issue
+  btclib-org/.github#1067): `uv run` resolves the interpreter that file
+  names, so the step's `"3.14"` was the same number declared twice.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
