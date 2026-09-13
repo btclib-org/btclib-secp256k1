@@ -807,7 +807,7 @@ second number in view.
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 \
   --jq '{visibility, has_issues, wiki: .has_wiki, projects: .has_projects}'
-# {"has_issues":true,"projects":true,"visibility":"public","wiki":true}
+# {"has_issues":true,"projects":false,"visibility":"public","wiki":false}
 ```
 
 Section 10's `scorecard` sentinel rests on the first answer: public is
@@ -820,12 +820,11 @@ an issue about this tree alone stays here — and so does the
 `.github/ISSUE_TEMPLATE/` section 16's checklist gives every repository.
 
 [Section 11 of the organization
-standard](https://github.com/btclib-org/.github#11-github-settings) turns
-the wiki and the projects board off on every tree: an unused wiki is a
-second place a reader can land looking for what the tracker already
-records, and the projects board is a per-user view of the same issues the
-tracker holds. The call above still answers `true` for both, so neither
-has been turned off here yet.
+standard](https://github.com/btclib-org/.github#11-github-settings)
+turns the wiki and the projects board off on every tree: an unused wiki
+is a second place a reader can land looking for what the tracker already
+records, and the projects board is a per-user view of the same issues
+the tracker holds.
 
 ## Topics
 

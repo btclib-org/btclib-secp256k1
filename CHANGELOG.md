@@ -726,6 +726,11 @@ release-notes length in the first place, and are still in
   its rows** (issue btclib-org/.github#1063): `\w+` in place of `\S+` for the
   item token fails it.
 
+### The wiki and the projects board are off
+
+- **`REPOSITORY.md` records both as `false`** (issue
+  btclib-org/.github#550), the settings having been turned off.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
