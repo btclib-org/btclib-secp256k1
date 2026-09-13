@@ -613,6 +613,63 @@ release-notes length in the first place, and are still in
   `bitcoin-core-rpc`'s at `ca9db975` byte for byte, so what that entry
   says about them, and about its second paragraph's two residues, stands.
 
+### The command-line resolution takes a `..` case and a symlinked one
+
+- **`tests/conftest_test.py` asks the coverage gate about a command line
+  naming the whole suite with a `..` segment in it** (closes
+  btclib-org/.github#1051): `tests/../tests` from the rootdir and
+  `../tests` from `tests/` each collect what a bare run collects, and
+  `pathlib` keeps that segment where it collapses `.` and a trailing
+  separator -- so with the command line's side left unresolved each
+  reads as a selection, the floor drops to zero for the run that is the
+  suite, and its report still prints. The case asks for no symlink and
+  no privilege.
+- **A second case names one directory through a symbolic link on one
+  side of the comparison and directly on the other**, an assertion per
+  side, and makes the link itself rather than taking one from the
+  machine. Creating one is a privilege a Windows runner need not hold,
+  so a platform that refuses says so as a skip.
+- **That case's `# pragma: no cover` sits on its `def` and not on its
+  `except`**, `tests` being inside `[tool.coverage.run]`'s `source`: an
+  exclusion on the `except` reaches the handler and the `pytest.skip`
+  alone, so the platform the guard is written for meets a skip and a
+  floor it cannot reach in the same run. Measured here with a plugin
+  making `Path.symlink_to` refuse -- the assertions after the guard are
+  reported missing and the documented command fails its floor.
+  `bitcoin-core-rpc` at `c73a51f7` is where the comment above the `def`
+  comes from, and btclib-org/.github#1042 is that shape in the trees
+  still carrying it.
+- **The pair is measured against the ways the call can be rewritten and
+  not only against its removal.** `Path(path).absolute()` is another
+  spelling of "make this absolute" and is green over every case the file
+  already held; it dies on the `..`. Reaching for `os.path.abspath`
+  instead normalizes that segment lexically, survives the `..` too, and
+  dies only where a link has to be followed.
+- **The whole suite is what says the call was defended against deletion
+  and against nothing weaker.** With either rewrite in place and both
+  cases deselected, `uv run --locked --no-default-groups --group test
+  pytest --cov-fail-under=0` exits 0 and every other test passes; with
+  them selected it exits 1, the failures being both cases under
+  `.absolute()` and the linked one alone under the lexical spelling.
+- **The `..` spelled from `tests/` also pins which directory the command
+  line is read against**: a `given` joined onto `rootpath` instead
+  leaves the rest of the suite green and fails there.
+- **Both names are the family's.**
+  `test_a_parent_directory_segment_names_the_whole_suite_too` and
+  `test_a_symlinked_spelling_of_one_tree_is_still_the_whole_suite` are
+  `bitcoin-core-rpc`'s at `c73a51f7` and `btclib-benchmarks`'s at
+  `63435e87`, which carry both; `btclib` at `1a1a8708` carries the
+  linked one, and btclib-org/.github#1049 is the `..` half open in
+  `btclib` and `btclib-node`.
+- **This bears on *The `testpaths` resolution takes a case that asks for
+  no symlink* above** (issue btclib-org/.github#1041): its whole-suite
+  claim -- with `wanted`'s `.resolve()` removed and its own case out of
+  the file the suite exits 0 -- is no longer the tree's, the linked
+  case's second assertion failing under that same removal. What else it
+  says stands: its own case still fails under the removal with no
+  symlink and no privilege, and a `testpaths` entry with no `..` in it
+  still leaves the removal undetected.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

@@ -201,6 +201,93 @@ def test_a_path_that_collects_the_suite_is_a_whole_run(
     )
 
 
+def test_a_parent_directory_segment_names_the_whole_suite_too(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`..` survives into the path object, so the command line resolves.
+
+    `.` and the trailing separator are collapsed as the path is built,
+    which is why they sit in
+    `test_a_path_that_collects_the_suite_is_a_whole_run` and this is its
+    own case: a `..` segment is kept instead, so `tests/../tests` and
+    `tests` are two objects that compare unequal until the command
+    line's side is resolved. Both spellings here collect the suite, and
+    with the call on `given` gone each reads as a selection and is gated
+    at nothing. Neither asks for a symlink or a privilege.
+
+    The second is spelled from `tests/`, and that is the case pinning
+    which directory the command line is read against: a positional
+    argument is joined onto the directory pytest was invoked from and a
+    `testpaths` entry onto the rootdir, so a `given` built from
+    `rootpath` instead answers `../tests` with the directory above the
+    tree. No other test in the suite tells that rewrite from the call.
+    """
+    monkeypatch.chdir(_ROOT)
+    re_entering_the_directory = coverage_fail_under(
+        100.0, _options(file_or_dir=["tests/../tests"]), *_ARGS
+    )
+    assert re_entering_the_directory == 100.0
+    monkeypatch.chdir(_ROOT / "tests")
+    from_the_tests_directory = coverage_fail_under(
+        100.0, _options(file_or_dir=["../tests"]), *_ARGS
+    )
+    assert from_the_tests_directory == 100.0
+
+
+# the pragma sits on the `def` because an exclusion on a line that
+# introduces a block takes the whole block: this case's body is reachable
+# only where the platform makes a symbolic link, so a floor over a
+# `source` naming `tests` asks about the runner rather than about the
+# suite. An exclusion on the `except` reaches the handler and the
+# `pytest.skip` alone, which are the lines that do not run wherever the
+# link is made, and the platform the guard is for then meets a skip and a
+# floor it cannot reach in the same run. What it costs is that dead code
+# inside the case stops being flagged; the case's assertions are its
+# whole subject, so the trade is cheap and is still a trade.
+def test_a_symlinked_spelling_of_one_tree_is_still_the_whole_suite(  # pragma: no cover -- the body needs a symlink
+    tmp_path: Path,
+) -> None:
+    """Both sides are resolved, so one directory named twice is one path.
+
+    A path on the command line and a `testpaths` entry joined onto the
+    rootdir can each be spelled through a symlink -- `/tmp` is one on
+    macOS, and a checkout under a linked home is another. pytest builds
+    `rootpath` with `os.path.abspath`, which leaves the link alone, so
+    the two sides meet only once `Path.resolve` has followed it:
+    unresolved on one side, `/tmp/...` neither equals `/private/tmp/...`
+    nor is above it, and the run that collects everything is gated at
+    nothing.
+
+    One assertion per call, and neither stands in for the other: the
+    first fails with the command line's own call gone and passes with
+    the `testpaths` side's gone, the second the other way round. This
+    case is also what reaches a rewrite making the path absolute without
+    following a link, which the `..` above leaves green.
+
+    The link is made here rather than taken from the machine, so what
+    the case is about is the comparison and not which directories an
+    operating system happens to link. Creating one on Windows takes a
+    privilege a runner need not hold, so a platform that refuses says so
+    as a skip, which `-ra` reports.
+    """
+    base = tmp_path.resolve()
+    real = base / "real"
+    (real / "tests").mkdir(parents=True)
+    link = base / "link"
+    try:
+        link.symlink_to(real, target_is_directory=True)
+    except OSError as refused:
+        pytest.skip(f"this platform will not create a symlink: {refused}")
+    named_through_the_link = coverage_fail_under(
+        100.0, _options(file_or_dir=[str(link / "tests")]), _TESTPATHS, real
+    )
+    assert named_through_the_link == 100.0
+    rootdir_through_the_link = coverage_fail_under(
+        100.0, _options(file_or_dir=[str(real / "tests")]), _TESTPATHS, link
+    )
+    assert rootdir_through_the_link == 100.0
+
+
 def test_a_testpaths_entry_is_the_directory_its_parent_segment_reaches(
     tmp_path: Path,
 ) -> None:
