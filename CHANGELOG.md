@@ -743,6 +743,12 @@ release-notes length in the first place, and are still in
   (issue btclib-org/.github#35): this file keeps the trigger, the
   schedule, the concurrency group and the aggregate job.
 
+### `docs.yml` calls the organization's reusable workflow
+
+- **The checkout, the build and the link check move to
+  `btclib-org/.github`'s `reusable-docs.yml`** (issue btclib-org/.github#35):
+  `main`'s required check renames to `docs / Build the documentation`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

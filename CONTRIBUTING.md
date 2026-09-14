@@ -801,8 +801,8 @@ command at all, for the reason below, and nothing requires its result.
   reads the conclusions of the jobs above it and runs no command of its
   own. What turned it red is one of them, in the run
 
-- `Build the documentation`, the same command `.readthedocs.yaml` runs
-  and `docs/README.rst` documents
+- `docs / Build the documentation`, the same command `.readthedocs.yaml`
+  runs and `docs/README.rst` documents
 
   ```shell
   uv run --locked --no-default-groups --group docs \

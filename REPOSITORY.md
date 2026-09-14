@@ -71,7 +71,7 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 | --- | --- |
 | `test: every job passed` | `test.yml`, aggregate over its jobs |
 | `Lint and type-check` | `lint.yml`, its only job |
-| `Build the documentation` | `docs.yml`, its only job |
+| `docs / Build the documentation` | `docs.yml`, calling `reusable-docs.yml` |
 
 `codeql: every job passed` is not among them, and its absence is a
 decision rather than an impossibility: `codeql.yml` runs on a pull
@@ -101,12 +101,20 @@ held.
 a `pre-commit` hook, so `lint.yml` audits these very files for an injected
 expression on every pull request.
 
-`Build the documentation` is named on its own on purpose: a rule naming
-`Lint and type-check` alone would leave a red documentation build outside
-the required checks entirely. It moved from `lint.yml` to `docs.yml`
-without the rule changing, which is worth knowing before renaming
-anything — a context is matched by name, not by the workflow that reported
-it, so moving a job is free and renaming one is not.
+`docs / Build the documentation` is named on its own on purpose: a rule
+naming `Lint and type-check` alone would leave a red documentation build
+outside the required checks entirely. It moved from `lint.yml` to
+`docs.yml` without the rule changing, which is worth knowing before
+renaming anything — a context is matched by name, not by the workflow
+that reported it, so moving a job is free and renaming one is not.
+
+`docs.yml`'s own job contributes no name of its own, which is a shape
+neither of the other two rows takes: its whole body is a call to
+`btclib-org/.github`'s `reusable-docs.yml`, so the context joins the
+calling job's id to the called job's own name, `docs.yml`'s `docs` job
+calling `reusable-docs.yml` whose own job is still named
+`Build the documentation`, together producing
+`docs / Build the documentation` (issue btclib-org/.github#35).
 
 `pre-commit.ci` is not in the rule either, and nothing here makes it
 one. It runs the hooks of `.pre-commit-config.yaml` from a checkout of
@@ -263,7 +271,7 @@ sub=branches/main/protection/required_status_checks
 gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=true \
   -F 'checks[][context]=test: every job passed' -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=Lint and type-check' -F 'checks[][app_id]=15368' \
-  -F 'checks[][context]=Build the documentation' -F 'checks[][app_id]=15368'
+  -F 'checks[][context]=docs / Build the documentation' -F 'checks[][app_id]=15368'
 ```
 
 `checks[][…]` repeated is how one array of objects is written: `-F` pairs
