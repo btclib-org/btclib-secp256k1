@@ -7,15 +7,12 @@ name: docs
 # a docstring, or a module sphinx cannot import because the extension did not
 # compile, would surface after the merge and somewhere else.
 #
-# No hook can take this over: markdownlint does not read .rst, and ruff's
-# pydocstyle rules check the form of a docstring rather than whether its body
-# is valid rst.
-#
-# A workflow of its own rather than a job in lint.yml, where it started: a
-# failed docs build and a failed hook are two different verdicts about two
-# different things, and one badge and one line in the checks list each is
-# what says so. It also installs a different dependency group and needs the
-# submodule and no pre-commit cache, so the two share nothing but a checkout
+# The build itself, the checkout and the unresolved-link check are
+# btclib-org/.github's: reusable-docs.yml, called at @main so a fix there
+# reaches this tree in one landing (section 10 of its README.md). What
+# stays here is the trigger, the concurrency group and the submodule this
+# tree's own build needs that the standard asks of nobody else
+# (btclib-org/.github#35)
 
 on:
   push:
@@ -64,7 +61,8 @@ on:
 
 # least privilege for the GITHUB_TOKEN: everything running in a job
 # (actions, dependencies, build scripts) can read the token, so it must not
-# be able to write to the repository
+# be able to write to the repository. The called job needs no elevation of
+# its own, reusable-docs.yml's own header naming the same contents: read
 permissions:
   contents: read
 
@@ -79,80 +77,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # the checkout, the uv setup, the build and the unresolved-link check
+  # are btclib-org/.github's; the draft and closed declines are the called
+  # workflow's own, reading github.event.pull_request.draft and
+  # github.event.action off this caller's trigger. Every automodule
+  # directive here imports this package, which compiles the vendored
+  # libsecp256k1 out of the checked-out submodule to do that, so
+  # `submodules` is passed rather than left at its default -- measured by
+  # running the build against an unregistered submodule directory, which
+  # fails CMake on the missing CMakeLists.txt before sphinx ever gets to
+  # autodoc. This tree has no script of its own to run against the built
+  # pages, so `post-build-script` is left at its default
   docs:
-    # the name is a required check, and it did not change when this job left
-    # lint.yml: branch protection matches a context by name and not by the
-    # workflow that reported it, which is what let the move happen without
-    # touching the rule
-    name: Build the documentation
-    # a draft pull request is work in progress and spends no runner here
-    # either. Neither does a closed one -- the trigger above takes the
-    # closed event only to let cancel-in-progress supersede a run still
-    # holding in this ref's group
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          # every automodule directive imports this package, which compiles
-          # the vendored libsecp256k1 to do that
-          submodules: true
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          enable-cache: true
-
-      # the same command .readthedocs.yaml runs and docs/README.rst
-      # documents, so what CI checks is what gets published. -W turns a
-      # module sphinx cannot import into a failed build rather than a bare
-      # heading, and reports every warning the build raises before failing
-      # at the end of it, so one broken module does not hide the next. -n
-      # turns an unresolved cross-reference into a warning for -W to fail on --
-      # without it a renamed class or a moved function in a :class: role
-      # builds green and links nowhere. conf.py's intersphinx_mapping is
-      # what -n resolves a stdlib name against; nitpick_ignore is where a
-      # reference that genuinely cannot resolve would be excepted, and
-      # carries no entry today
-      - name: Build the docs
-        run: >
-          uv run --locked --no-default-groups --group docs
-          sphinx-build -n -W -b html docs/source docs/build/html
-
-      # the one defect the build above cannot report on itself, matching
-      # a sibling repository's own second step and the reasoning in its
-      # docs/source/conf.py:
-      # a link myst cannot resolve becomes an anchor on the page it is
-      # already on -- an id nothing has -- rather than a warning, which
-      # conf.py's RootFileLinks transform exists to prevent. This is the
-      # same claim made about the artifact rather than about the
-      # configuration, and what would catch a suppression added back.
-      #
-      # One grep, because there is one spelling to look for. myst's
-      # fallback renders the destination verbatim, so what this can match
-      # is decided upstream of here, in how the link was written -- and
-      # the local-link-prefix hook in .pre-commit-config.yaml refuses a
-      # local destination that does not begin "./", in the commit that
-      # writes it. Every destination the included root files carry
-      # therefore renders "#./<destination>" when it breaks, anchor,
-      # extension and nested path alike, which this pattern catches
-      # whole (issue btclib-org/.github#20; the hook's own comment has
-      # the measurement).
-      #
-      # Not a second grep for a bare destination beside it. It would be
-      # unreachable with the hook in place, and it is no superset of this
-      # one even without: a character class of name characters stops at
-      # the "#" of an anchor, so "#README.md#build" is a shape both
-      # patterns pass over. That is the whole argument for the hook. A
-      # check downstream of the rendering has to anticipate every way a
-      # link can be written; a rule upstream of it permits one.
-      - name: Check the built pages for unresolved links
-        run: |
-          if grep -rn 'href="#\./' docs/build/html --include='*.html'; then
-            echo "::error::the links above resolve to no page (unresolved relative path)"
-            exit 1
-          fi
+    uses: btclib-org/.github/.github/workflows/reusable-docs.yml@main
+    with:
+      submodules: true
