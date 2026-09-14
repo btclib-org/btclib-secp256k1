@@ -69,7 +69,7 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 
 | Check | Produced by |
 | --- | --- |
-| `Lint and type-check` | `lint.yml`, its only job |
+| `lint / Lint and type-check` | `lint.yml`, calling `reusable-lint.yml` |
 | `test: every job passed` | `test.yml`, aggregate over its jobs |
 | `docs / Build the documentation` | `docs.yml`, calling `reusable-docs.yml` |
 
@@ -102,24 +102,26 @@ a `pre-commit` hook, so `lint.yml` audits these very files for an injected
 expression on every pull request.
 
 `docs / Build the documentation` is named on its own on purpose: a rule
-naming `Lint and type-check` alone would leave a red documentation build
-outside the required checks entirely. It moved from `lint.yml` to
+naming `lint / Lint and type-check` alone would leave a red documentation
+build outside the required checks entirely. It moved from `lint.yml` to
 `docs.yml` without the rule changing, which is worth knowing before
 renaming anything — a context is matched by name, not by the workflow
 that reported it, so moving a job is free and renaming one is not.
 
-`docs.yml`'s own job contributes no name of its own, which is a shape
-neither of the other two rows takes: its whole body is a call to
-`btclib-org/.github`'s `reusable-docs.yml`, so the context joins the
-calling job's id to the called job's own name, `docs.yml`'s `docs` job
-calling `reusable-docs.yml` whose own job is still named
-`Build the documentation`, together producing
+`lint.yml`'s `lint` job and `docs.yml`'s `docs` job contribute no name of
+their own, a shape `test: every job passed` does not take: each job's
+whole body is a call to a `btclib-org/.github` reusable workflow, so the
+context joins the calling job's id to the called job's own name.
+`lint.yml`'s `lint` job calls `reusable-lint.yml`, whose own job is still
+named `Lint and type-check`, producing `lint / Lint and type-check`;
+`docs.yml`'s `docs` job calls `reusable-docs.yml` the same way, whose own
+job is still named `Build the documentation`, producing
 `docs / Build the documentation` (issue btclib-org/.github#35).
 
 `pre-commit.ci` is not in the rule either, and nothing here makes it
 one. It runs the hooks of `.pre-commit-config.yaml` from a checkout of
-its own, where the required `Lint and type-check` runs the same file
-from one this repository controls, `lint.yml` checking out what the
+its own, where the required `lint / Lint and type-check` runs the same
+file from one this repository controls, `lint.yml` checking out what the
 hooks that read the vendored clone need. What that file's `ci:` block
 asks of the service, which hooks it can therefore run and which entry
 the `skip` list holds are written in that block's own comment, beside
@@ -269,7 +271,8 @@ and GitHub refuses `"true"` where a boolean is declared:
 ```shell
 sub=branches/main/protection/required_status_checks
 gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=true \
-  -F 'checks[][context]=Lint and type-check' -F 'checks[][app_id]=15368' \
+  -F 'checks[][context]=lint / Lint and type-check' \
+  -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=test: every job passed' -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=docs / Build the documentation' -F 'checks[][app_id]=15368'
 ```

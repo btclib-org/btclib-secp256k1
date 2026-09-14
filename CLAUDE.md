@@ -355,11 +355,12 @@ Do not use Fable unless explicitly instructed.
   a pull request touching no workflow file -- `pyproject.toml`, source
   and tests, no CI configuration -- returned a transient `502`, then
   `405 Merge already in progress`, and stayed unmerged until all three
-  required contexts -- `Lint and type-check`, `Build the documentation`,
-  `test: every job passed` -- reported: the full matrix triggers on the
-  push regardless of which file changed. The bypass a `pull_request`
-  ruleset's `bypass_actors` entry grants covers the review requirement,
-  not those checks. `gh pr checks <n>` naming the three, not a retried
+  required contexts -- `lint / Lint and type-check`,
+  `docs / Build the documentation`, `test: every job passed` -- reported:
+  the full matrix triggers on the push regardless of which file changed.
+  The bypass a `pull_request` ruleset's `bypass_actors` entry grants
+  covers the review requirement, not those checks. `gh pr checks <n>`
+  naming the three, not a retried
   merge call, is what says whether it is time to try again
 - **A `###` in the open section names one entry, never a theme several
   entries share** (issue btclib-org/.github#586). Section 9's

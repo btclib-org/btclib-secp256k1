@@ -596,7 +596,7 @@ that reproduces it. Two of them cannot be reproduced on a machine that is
 not the runner, and that is worth knowing before trying; `codeql` has no
 command at all, for the reason below, and nothing requires its result.
 
-- `Lint and type-check`
+- `lint / Lint and type-check`
 
   ```shell
   uv run --locked --only-group lint pre-commit run --all-files \
@@ -872,8 +872,8 @@ run locally.
   that block rather than a recipe of its own.
 
   `Lint and type-check, dependencies at latest` is the same shape:
-  `uv lock --upgrade` in front of `Lint and type-check`'s own block
-  above, the identical `pre-commit run --all-files
+  `uv lock --upgrade` in front of `lint / Lint and type-check`'s own
+  block above, the identical `pre-commit run --all-files
   --show-diff-on-failure` run against the upgraded lock rather than
   the pinned one, so it is not repeated here.
 
