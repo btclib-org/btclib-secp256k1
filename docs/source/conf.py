@@ -41,9 +41,10 @@ project_copyright = re.search(
     re.MULTILINE,
 ).group(1)
 author = "The btclib developers"
-# read from pyproject.toml, the one place the version is declared, and not
-# from importlib.metadata: that would need this package installed in the
-# environment building the documentation, which read the docs does not do
+# read from pyproject.toml, the one place the version is declared, rather
+# than from importlib.metadata, so the value does not depend on whether
+# this package happens to be installed in the environment building the
+# documentation (btclib-org/.github#1098)
 release = PYPROJECT["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
