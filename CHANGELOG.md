@@ -767,6 +767,12 @@ release-notes length in the first place, and are still in
   `lint / Lint and type-check` to the endpoint's tail** (issue
   btclib-org/.github#35), leaving the preceding entry's order stale.
 
+### `conf.py`'s version-reading comment states the true reason
+
+- **The second clause was false: `.readthedocs.yaml` installs the
+  package rather than declining it, so `importlib.metadata` would
+  answer too** (issue btclib-org/.github#1098).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
