@@ -283,9 +283,10 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      # this job runs the same .pre-commit-config.yaml as lint.yml's, whose
-      # checkout step carries the same two keys and the comment saying why
-      # the submodule-pin hook needs them: what this job needs is the same
+      # this job runs the same .pre-commit-config.yaml as lint.yml's,
+      # whose call to reusable-lint.yml passes the same two keys and
+      # carries the comment saying why the submodule-pin hook needs them:
+      # what this job needs is the same
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

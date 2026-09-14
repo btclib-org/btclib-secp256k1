@@ -755,6 +755,12 @@ release-notes length in the first place, and are still in
   `Lint and type-check` before `test: every job passed`** (issue
   btclib-org/.github#35), a fresh read rather than the rename's leftover.
 
+### `lint.yml` calls the organization's reusable workflow
+
+- **The checkout, the uv setup, the hook cache and the pre-commit run move to
+  `btclib-org/.github`'s `reusable-lint.yml`** (issue btclib-org/.github#35):
+  `main`'s required check renames to `lint / Lint and type-check`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

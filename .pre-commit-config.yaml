@@ -49,7 +49,7 @@ ci:
   # file with `submodules: true` and `fetch-depth: 0`, so what the list
   # costs is pre-commit.ci's run of submodule-pin rather than the hook
   # itself: it still gates a commit on this machine and the required
-  # `Lint and type-check` check.
+  # `lint / Lint and type-check` check.
   skip: [submodule-pin]
 
 repos:
