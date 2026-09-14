@@ -749,6 +749,12 @@ release-notes length in the first place, and are still in
   `btclib-org/.github`'s `reusable-docs.yml`** (issue btclib-org/.github#35):
   `main`'s required check renames to `docs / Build the documentation`.
 
+### `REPOSITORY.md` reads the required checks back in the endpoint's order
+
+- **The required-checks table and the `PATCH` example put
+  `Lint and type-check` before `test: every job passed`** (issue
+  btclib-org/.github#35), a fresh read rather than the rename's leftover.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
