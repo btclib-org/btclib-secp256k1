@@ -69,9 +69,9 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 
 | Check | Produced by |
 | --- | --- |
-| `lint / Lint and type-check` | `lint.yml`, calling `reusable-lint.yml` |
 | `test: every job passed` | `test.yml`, aggregate over its jobs |
 | `docs / Build the documentation` | `docs.yml`, calling `reusable-docs.yml` |
+| `lint / Lint and type-check` | `lint.yml`, calling `reusable-lint.yml` |
 
 `codeql: every job passed` is not among them, and its absence is a
 decision rather than an impossibility: `codeql.yml` runs on a pull
@@ -271,10 +271,11 @@ and GitHub refuses `"true"` where a boolean is declared:
 ```shell
 sub=branches/main/protection/required_status_checks
 gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=true \
-  -F 'checks[][context]=lint / Lint and type-check' \
+  -F 'checks[][context]=test: every job passed' \
   -F 'checks[][app_id]=15368' \
-  -F 'checks[][context]=test: every job passed' -F 'checks[][app_id]=15368' \
-  -F 'checks[][context]=docs / Build the documentation' -F 'checks[][app_id]=15368'
+  -F 'checks[][context]=docs / Build the documentation' \
+  -F 'checks[][app_id]=15368' \
+  -F 'checks[][context]=lint / Lint and type-check' -F 'checks[][app_id]=15368'
 ```
 
 `checks[][…]` repeated is how one array of objects is written: `-F` pairs

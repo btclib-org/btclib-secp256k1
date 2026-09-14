@@ -761,6 +761,12 @@ release-notes length in the first place, and are still in
   `btclib-org/.github`'s `reusable-lint.yml`** (issue btclib-org/.github#35):
   `main`'s required check renames to `lint / Lint and type-check`.
 
+### `REPOSITORY.md` puts the lint rename's check at the rule's tail
+
+- **The required-checks table and the `PATCH` example move
+  `lint / Lint and type-check` to the endpoint's tail** (issue
+  btclib-org/.github#35), leaving the preceding entry's order stale.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
