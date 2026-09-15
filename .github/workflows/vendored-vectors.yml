@@ -149,9 +149,9 @@ jobs:
   # things already on the machine, which is what lets it gate a commit.
   # This asks the two that need somebody else to answer: whether that tag
   # is the one upstream publishes, and whether it carries the signature of
-  # a libsecp256k1 maintainer. `version-check` in release.yml asks the
-  # first of those before publishing and neither of them earlier, which is
-  # what issue #126 is about.
+  # a libsecp256k1 maintainer. `submodule-pin-release` in release.yml asks
+  # the first of those before publishing and neither of them earlier,
+  # which is what issue #126 is about.
   #
   # A sentinel and not a gate, for the reason every network check here is
   # one: a keyserver that is down is nothing a pull request introduced. It
