@@ -7,31 +7,23 @@ choose at dispatch time: a `v*` tag publishes to PyPI, a manual run
 publishes to TestPyPI. Both go through
 [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so no
 long-lived token exists anywhere, and both upload PEP 740 attestations.
-The `attest` job then signs a build provenance statement for the sdist,
-which is the file the GitHub release attaches and therefore the one copy
-the index's attestation says nothing about.
+The `attest` job then signs one build provenance statement over the
+sdist and the bill of materials: the copy of the sdist the GitHub
+release attaches is the one the index's attestation says nothing about,
+and the document is served nowhere else at all.
 
-**No CycloneDX bill of materials is attached, on purpose.** This
-package's `Requires-Dist` names only `cffi` — the dependency it
-actually wraps, the vendored libsecp256k1 C library at its pinned
-commit in the `secp256k1` submodule, does not appear there and so is
-invisible to a generator that builds its components from
-`Requires-Dist`. That holds for both wheels this package ships, not
-only the static one: a static build links the library into the
-extension, a dynamic (ABI-mode) build ships it as a shared object
-beside the extension instead (see CLAUDE.md's Architecture section) —
-`Requires-Dist` says nothing about the pin either way, so a document
-built from it would look complete while staying silent about the one
-component a verifier would most want described. That was the
-generator's own limit rather than this package's, and it no longer
-holds:
-[btclib-org/btclib#1280](https://github.com/btclib-org/btclib/issues/1280)
-taught a generator to read a submodule's pinned commit from its
-`.gitmodules` entry and gitlink instead of from `Requires-Dist`. What
-is still missing is adoption here, not a technical inability.
-[btclib-org/.github#24](https://github.com/btclib-org/.github/issues/24)
-stays open until that adoption lands; an issue no longer open watches
-nothing.
+**A CycloneDX 1.6 bill of materials is attached**,
+`btclib_secp256k1-<version>.cdx.json`, written by
+`.github/scripts/generate_sbom.py` in `test.yml`'s `build-sdist` job. It
+describes the sdist: the archive and its SHA-256, the licence, the
+dependencies the metadata declares, and each vendored submodule at the
+commit its gitlink pins — which is what `Requires-Dist`, naming `cffi`
+alone, cannot state. The sdist and not the wheels, because the document
+is attested with the file it describes and rebuilds with it, where a
+compiled wheel is outside that property: "Rebuild a release from its
+tag" below is where this repository says which of its wheels a stranger
+can rebuild at all, and section 12 of the organization standard is where
+the sdist is asked for it.
 
 The version published is the one in `pyproject.toml`; the tag only
 decides which index is reached. The `version-check` job cross-checks
@@ -596,6 +588,8 @@ Then:
    gh run download "${run:?}" --repo "${repo:?}" \
      --name sdist --dir dist &&
    gh run download "${run:?}" --repo "${repo:?}" \
+     --name sbom --dir sbom &&
+   gh run download "${run:?}" --repo "${repo:?}" \
      --name attestation --dir attestation &&
    cp attestation/attestation.jsonl "${tag:?}.attestation.jsonl" &&
    awk -v tag="${tag:?}" '
@@ -603,7 +597,7 @@ Then:
      /^## / && found {exit}
      found {print}
    ' RELEASE_NOTES.md > notes.md &&
-   gh release create "${tag:?}" dist/* "${tag:?}.attestation.jsonl" \
+   gh release create "${tag:?}" dist/* sbom/* "${tag:?}.attestation.jsonl" \
      --repo "${repo:?}" --title "${tag:?}" \
      --notes-file notes.md --verify-tag
    ```
@@ -613,8 +607,11 @@ Then:
    Verify the sdist this produces the same way the step below does: the
    hash has to match the file `pypi.org/pypi/<project>/<version>/json`
    already lists, since nothing rebuilt it. Its notes are the tag's
-   section of `RELEASE_NOTES.md`, and the sdist is attached, with
-   `<tag>.attestation.jsonl` beside it. A run that warns
+   section of `RELEASE_NOTES.md`, and the sdist is attached, with the
+   bill of materials and `<tag>.attestation.jsonl` beside it. The three
+   artifacts are all downloaded above because a release missing the
+   `sbom` one leaves the step below nothing to read and the attestation
+   a subject short. A run that warns
    `RELEASE_NOTES.md has no v0.7.1 section` generated the notes from
    the merged pull requests instead, and they are worth replacing by
    hand either way
@@ -640,7 +637,27 @@ Then:
    repository passes. Adding `--bundle "$dir/$tag.attestation.jsonl"`
    asks the same question of the statement downloaded beside the file
    rather than of the attestations API, which is the form for whoever
-   mirrors the page instead of trusting it live
+   mirrors the page instead of trusting it live.
+
+   One statement covers both subjects the `attest` job was given, so the
+   same command run over `"$dir"/*.cdx.json` verifies the bill of
+   materials against it; the bundle is that statement and is not among
+   its subjects
+1. read the bill of materials attached to the release,
+   `btclib_secp256k1-<version>.cdx.json`: a CycloneDX 1.6 document
+   naming the distribution, its licence, the sdist with its SHA-256, the
+   dependencies the metadata declares, and each vendored submodule at
+   the commit its gitlink pins. `secp256k1` and `secp256k1-zkp` are
+   there with the commit under `version`, and that pin is the whole
+   reason this repository attaches a document at all — the C library the
+   package wraps is named in no `Requires-Dist`. It is read out of the
+   built archive and not out of `pyproject.toml`, which is what lets a
+   rehearsal describe the `.dev` version it actually built, and it is
+   covered by the attestation the step above checked.
+
+   What it does not name is the wheels: they are on PyPI with their own
+   PEP 740 attestations, and the document describes the file it is
+   attached to
 1. read the `documented` job rather than the site. Read the docs
    activates and builds a new release tag from an automation rule of its
    own, and that job waits for
@@ -790,10 +807,20 @@ already built.
    dir=$(mktemp -d) &&
    gh run download "${run:?}" --repo "${repo:?}" \
      --name sdist --dir "${dir:?}" &&
+   gh run download "${run:?}" --repo "${repo:?}" \
+     --name sbom --dir "${dir:?}" &&
    gh attestation verify "${dir:?}"/*.tar.gz \
+     --repo "${repo:?}" \
+     --signer-workflow "${repo:?}/.github/workflows/release.yml" &&
+   gh attestation verify "${dir:?}"/*.cdx.json \
      --repo "${repo:?}" \
      --signer-workflow "${repo:?}/.github/workflows/release.yml"
    ```
+
+   The document is the second subject of that one statement, and the
+   rehearsal is where it is checked: its version carries the `.dev`
+   suffix the run patched in, which is the half of the generator a
+   release never exercises.
 
    This is the whole reason `attest` runs in a rehearsal at all: the
    permissions and the API it needs are exercised here, where a failure
@@ -805,9 +832,9 @@ suffix only ever exists inside the run that built it.
 
 What the rehearsal covers is the OIDC exchange, the approval gate, the
 artifacts the publish job collects — sixty-three wheels and one sdist, at
-0.7.1 — the PEP 740 attestations, the Sigstore signature `attest` writes,
-and a real Warehouse accepting the metadata, which is more than
-`twine check --strict` can say. What it
+0.7.1 — the PEP 740 attestations, the Sigstore signature `attest` writes
+over the sdist and the bill of materials, and a real Warehouse accepting
+the metadata, which is more than `twine check --strict` can say. What it
 cannot cover is the trusted publisher on PyPI itself, a separate
 registration that can be wrong on its own, nor the deployment branch
 policy of the `pypi` environment, which the environment a rehearsal does
@@ -844,8 +871,13 @@ export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) &&
 uv run --locked --only-group build python -m build -s &&
 uv run --no-project --python 3.14 \
   .github/scripts/normalize_sdist.py dist/ &&
+uv run --no-project --python 3.14 \
+  .github/scripts/generate_sbom.py dist/ sbom/ &&
 repo=btclib-org/btclib-secp256k1 &&
 gh attestation verify "dist/btclib_secp256k1-${tag#v}.tar.gz" \
+  --repo "${repo:?}" \
+  --signer-workflow "${repo:?}/.github/workflows/release.yml" &&
+gh attestation verify "sbom/btclib_secp256k1-${tag#v}.cdx.json" \
   --repo "${repo:?}" \
   --signer-workflow "${repo:?}/.github/workflows/release.yml"
 ```
@@ -860,6 +892,16 @@ sdist on the releases page" step above: it can only pass if the file
 `gh attestation verify` hashes is the one the signed statement covers,
 where a digest compared against the index only says PyPI serves what it
 always served.
+
+The bill of materials is rebuilt with the archive and verified like it:
+its timestamp is `SOURCE_DATE_EPOCH` and its serial number is derived
+from the archive's digest, so it is the same bytes as the released copy
+— which is the only reason the second `gh attestation verify` can pass
+at all. It is no steadier than the archive, though: whatever moves the
+sdist's digest moves this document's serial number with it, so that
+command fails wherever the first one does. A tag whose release carries
+no such document has nothing for it to check, and it is the line to
+leave out there.
 
 **What the script rewrites here, and what it leaves alone.** This
 repository's `build-system.build-backend` is `hatchling.build`, unlike

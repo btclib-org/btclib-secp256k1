@@ -789,6 +789,10 @@ max-complexity = 10
 # the terminal of whoever's commit it refused: what it prints is each
 # line it refuses and the reason, which is the whole of its report
 ".github/scripts/check_changelog.py" = ["print"]
+# and the bill of materials generator, whose usage message and the path
+# it names on success are what the build-sdist step that runs it shows in
+# its own log: same exemption, same reason as the scripts above
+".github/scripts/generate_sbom.py" = ["print"]
 # one keyword per sdist member field the script and its tests care
 # about; splitting it into a dataclass would move the same seven names
 # one level down rather than removing any of them
