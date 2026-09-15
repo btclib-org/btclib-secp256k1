@@ -779,6 +779,18 @@ release-notes length in the first place, and are still in
   leaves the repository is not a property of the line it is written on**
   (issue btclib-org/.github#1095); `links.yml`'s lychee run checks it.
 
+### `links.yml`'s `targets:` reaches every tracked markdown file
+
+- **The lychee target list left tracked markdown files unchecked**
+  (issue btclib-org/.github#1104): `targets:` becomes `"**/*.md"
+  ".github/**/*.md" ".claude/**/*.md"`, matching `git ls-files '*.md'`.
+
+### `CONTRIBUTING.md`'s docs-gate grep matches the widened pattern
+
+- **The local reproduction of the docs gate still read `href="#\./"`,
+  missing a broken `../` destination `reusable-docs.yml` already
+  catches** (issue btclib-org/.github#1105); the grep becomes `href="#\.\.\?/"`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
