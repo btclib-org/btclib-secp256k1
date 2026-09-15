@@ -324,12 +324,13 @@ repos:
         args: [--fix]
   # how a link destination is spelled, which markdownlint has no rule for
   # and the documentation build turns out to depend on. docs.yml greps the
-  # built html for `href="#./`: that is what myst renders in place of a
-  # link the RootFileLinks transform in docs/source/conf.py cannot
+  # built html for `href="#\.\.\?/`: that is what myst renders in place
+  # of a link the RootFileLinks transform in docs/source/conf.py cannot
   # resolve -- an anchor to an id no page has, which -W reports today and
-  # would stop reporting the day a suppression went back into conf.py. A
-  # grep can key on one spelling only, so the destinations are spelled one
-  # way and this hook is what keeps them that way.
+  # would stop reporting the day a suppression went back into conf.py.
+  # That grep keys on "./" and "../" alike, and this hook is what keeps
+  # every local destination explicitly relative so it has one of those
+  # two prefixes to key on.
   #
   # Measured, by building this repository's documentation with an
   # unresolvable link written each way: a destination beginning "./"
@@ -343,21 +344,24 @@ repos:
   #
   # The rule is therefore the prefix and not the extension, and that
   # issue's table is what decides it: "DOES_NOT_EXIST.txt",
-  # "sub/DOES_NOT_EXIST.md", "DOES_NOT_EXIST" and "../DOES_NOT_EXIST.md"
-  # each reach myst's fallback, and each is missed by the union of both
-  # greps a repository ran. An ".md"-scoped rule leaves all four
-  # writable; a prefix refuses all four where they are written, which is
-  # a pattern per shape fewer.
+  # "sub/DOES_NOT_EXIST.md" and "DOES_NOT_EXIST" each reach myst's
+  # fallback, and each is missed by the union of both greps a repository
+  # ran. An ".md"-scoped rule leaves all three writable; a prefix
+  # refuses all three where they are written, which is a pattern per
+  # shape fewer. The table's fourth row, "../DOES_NOT_EXIST.md", is
+  # answered by the paragraph below rather than by this rule.
   #
-  # "../" is the row with nothing downstream behind it at all, which is
-  # why it is refused here rather than allowed as an ordinary relative
-  # path: the transform declines a target that normalizes above the
-  # repository root -- nothing above the root is a document this build
-  # can answer for -- so that shape reaches myst's fallback by design
-  # rather than by a gap in the transform, and renders
-  # href="#../page.md", which the grep in docs.yml does not match and
-  # should not be widened to. This hook is the only place it can be
-  # caught. No link here climbs out of the root.
+  # "../" is accepted, unlike the three rows above: the transform still
+  # declines a target that normalizes above the repository root --
+  # nothing above the root is a document this build can answer for -- so
+  # that shape still reaches myst's fallback by design rather than by a
+  # gap in the transform, and still renders href="#../page.md". That
+  # fallback is caught downstream now that the grep keys on both
+  # prefixes, so this hook no longer has to be the only place it is
+  # caught. Whether a "../" destination actually leaves the repository
+  # was never a property of the line it is written on either; that is
+  # links.yml's lychee run to answer, resolving the destination for real
+  # rather than reading its prefix (btclib-org/.github#1095).
   #
   # The first branch steps over a nested image, and it has to: a badge is
   # "[![alt](src)](href)", and link text written "[^]]*" stops at the "]"
@@ -368,8 +372,8 @@ repos:
   # whole "](...)" group, which steps over the image and, by
   # backtracking, still checks the src on the way. Measured: a badge href
   # renders exactly what a plain href renders, so every row of the table
-  # above can be written as a badge destination and only the "./" one is
-  # caught downstream.
+  # above can be written as a badge destination and is caught downstream
+  # the same way a plain link's would be, "./" and "../" alike.
   #
   # pygrep, and the same hook in every repository of this organization
   # (btclib-org/.github#20): there is no shared hook repository to put it
@@ -397,7 +401,7 @@ repos:
   - repo: local
     hooks:
       - id: local-link-prefix
-        name: a local markdown link destination begins with ./
+        name: a local markdown link destination begins with ./ or ../
         language: pygrep
         # one line, and no literal space in it -- "\x20" is the space the
         # reference branch allows -- so yamllint reads the value as a
@@ -406,7 +410,7 @@ repos:
         # folded scalar was rejected: folding joins lines with a space,
         # which would land inside the regex
         entry: |-
-          (?<![`!\[])(?:!?\[(?:[^]]|\]\([^)]*\))*\]\(|^\x20{0,3}\[[^]]+\]:\s*)(?!\./|#|[A-Za-z][A-Za-z0-9+.-]*:)[^)\s]
+          (?<![`!\[])(?:!?\[(?:[^]]|\]\([^)]*\))*\]\(|^\x20{0,3}\[[^]]+\]:\s*)(?!\.\.?/|#|[A-Za-z][A-Za-z0-9+.-]*:)[^)\s]
         types: [markdown]
       # a line that ends inside a word, at that word's own hyphen. Section 4 of
       # the organization standard is the rule: what such a line renders as, why
