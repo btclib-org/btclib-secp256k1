@@ -791,6 +791,12 @@ release-notes length in the first place, and are still in
   missing a broken `../` destination `reusable-docs.yml` already
   catches** (issue btclib-org/.github#1105); the grep becomes `href="#\.\.\?/"`.
 
+### `release.yml`'s group 1 jobs call the organization's reusable workflows
+
+- **`version-check`, `public-api` and `documented` now call
+  `btclib-org/.github`'s reusable workflows** (issue btclib-org/.github#35):
+  `submodule-pin-release` is a new job, gating the two publish jobs.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

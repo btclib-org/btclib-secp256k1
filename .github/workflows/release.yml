@@ -81,155 +81,57 @@ jobs:
   # anything is built and long before anything is uploaded: a version is
   # consumed by the upload that carries it, and can then only be yanked.
   # The rehearsal runs this too, so a mismatch cannot wait for release
-  # day to surface; only the tag comparison is release-only, there being
-  # no tag to compare against otherwise
+  # day to surface.
+  #
+  # The checkout, the lock check, the ancestry check, the version
+  # comparison, the retitling check and the rehearsal suffix are
+  # btclib-org/.github's: reusable-version-check.yml, called at @main so
+  # a fix there reaches this tree in one landing (section 10 of its
+  # README.md). tag-requires-day is false, the one non-default caller in
+  # the family: 0.8.0.7 tracks libsecp256k1's own release rather than a
+  # calendar date, and the shared check would refuse every release this
+  # tree can cut otherwise. submodule-pin-release, below, is this tree's
+  # own job, kept out of the called workflow for the reason its own
+  # header gives (btclib-org/.github#35)
   version-check:
-    name: Check the declared versions
+    uses: btclib-org/.github/.github/workflows/reusable-version-check.yml@main
+    with:
+      tag-requires-day: false
+
+  # the version of the wrapped library is a second thing this package
+  # declares twice: the tag named in README.md, and the commit the
+  # submodule is pinned to. This does not come into
+  # reusable-version-check.yml, in any shape: an input whose only
+  # non-default caller is one repository is the copy-in-disguise failure
+  # btclib-org/.github#35's own test refuses, and this gates a fact about
+  # the tree rather than about the tag or the declared version, which is
+  # what every step of that shared job is about. It stays as this
+  # repository's own job, beside the publishing jobs that already stay.
+  #
+  # The tag is resolved at the source rather than through a submodule
+  # checkout, whose shallow clone carries no tags, so this job's checkout
+  # takes neither `submodules:` nor `fetch-depth: 0`: `git ls-tree HEAD
+  # secp256k1` reads the pinned commit off the tree object HEAD already
+  # carries, and `git ls-remote` resolves the upstream tag directly, over
+  # the network.
+  # Why README.md's prose stays the one declared claim, and the hazard of
+  # the sed expression below taking the *first* such link in the file
+  # rather than the "## Versioning" one by name, is
+  # check_submodule_pin.py's module docstring
+  # (btclib-org/btclib-secp256k1#429): this step's sed is that hook's
+  # `_NAMED` again, kept in step with it. Gated on publishing below
+  # through `needs`, the same way version-check was before this job split
+  # out of it
+  submodule-pin-release:
+    name: Check that README.md names the pinned libsecp256k1
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    outputs:
-      version-suffix: ${{ steps.suffix.outputs.version-suffix }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # the whole history, and every branch with it: the ancestry
-          # check below has nothing to read in the single commit the
-          # default shallow clone fetches
-          fetch-depth: 0
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          # off, unlike everywhere else, and not by omission: a cache is
-          # written by the jobs of a pull request and restored by this one,
-          # which runs on a tag and decides whether a release proceeds.
-          # There is nothing to gain here anyway — the two commands below
-          # install nothing — and the default of this action is to cache
-          enable-cache: false
-
-      # uv.lock carries the project version too, so a bump that was not
-      # followed by uv lock leaves the two disagreeing, and the sdist
-      # ships the lock file
-      - name: Check that uv.lock is up to date
-        run: uv lock --check
-
-      - name: Check that the tag matches the declared version (release only)
-        if: github.event_name == 'push'
-        run: |
-          version=$(uv version --short)
-          echo "pyproject.toml declares $version"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match the declared version $version"
-            exit 1
-          fi
-          # the trigger picks the index, so a tagged pre-release goes to
-          # PyPI itself: a v0.7.1rc1 tag on a tree declaring 0.7.1rc1
-          # passes the comparison above and burns a version that --pre
-          # installs would then resolve. RELEASING.md forbids it in words;
-          # this is the check. Digits and dots only: the versioning scheme
-          # of README.md, its fourth number included, and nothing PEP 440
-          # reads as a pre-release, a dev build or a post release
-          if ! echo "$version" | grep -Eq '^[0-9]+(\.[0-9]+)*$'; then
-            hint="rehearse on TestPyPI via workflow_dispatch instead"
-            echo "::error::$version is not a final version; $hint"
-            exit 1
-          fi
-
-      # RELEASING.md says a release is a tag on a commit on main, every
-      # invariant a release rests on resting on that; nothing enforced
-      # it. The deployment tag policy of the pypi environment constrains
-      # the *name* of the ref and nothing else, so a v* tag on a branch
-      # head, on a stale state or on a fork-synced commit reaches the
-      # environment exactly as the release tag does -- and the reviewer
-      # approving sees the tag name, not its ancestry. This is the
-      # ancestry, before the matrix builds anything.
-      # origin/main rather than a fetch of its own: the checkout above
-      # takes the whole history, remote-tracking branches included, and a
-      # missing origin/main fails the step, which is the safe way round
-      - name: Check that the tag is on main (release only)
-        if: github.event_name == 'push'
-        run: |
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::$GITHUB_REF_NAME is on $GITHUB_SHA, which is not on main"
-            exit 1
-          fi
-          echo "$GITHUB_SHA is on main"
-
-      # the fourth invariant, and the last one that was checked only
-      # after the point of no return: github-release reads the tag's
-      # section out of RELEASE_NOTES.md for the release notes, and a
-      # section that is not there is a ::warning:: with generated notes
-      # as the fallback -- correct there, PyPI having accepted the
-      # upload already, and no use at all as the place the omission is
-      # found.
-      # The fallback downstream stays: it covers the release deleted by
-      # hand and recreated.
-      #
-      # Existence is not the whole question: that fallback fires on an
-      # *empty* section, and "## v0.8.0 (work in progress, not released
-      # yet)" is not empty: it matches github-release's heading regex
-      # too, the tag being followed by a space, so a forgotten retitle
-      # publishes the work-in-progress text as the release notes and
-      # nothing says a word. RELEASING.md's `close the release notes`
-      # step is what drops those five words, and this step checks that
-      # it did.
-      #
-      # CHANGELOG.md is checked beside it because RELEASING.md retitles
-      # the two together, and RELEASE_NOTES.md's section points at
-      # CHANGELOG.md for the detail: a heading left open there makes
-      # that a link into nothing. Matching a sibling repository and
-      # bitcoin-core-rpc, which carry this same step -- the awk is
-      # theirs, and the three repositories now refuse the same tag for
-      # the same three reasons.
-      #
-      # Release-only, like the comparison above and for the same reason: a
-      # rehearsal is what runs *before* the retitle, so requiring it there
-      # would forbid the dry run it exists to be. The tag rather than
-      # `uv version --short`, which the step above has just proven equal
-      # to it, so the errors below name the ref that was pushed.
-      # String comparison rather than a regex, so that the dots of the
-      # version match dots and not any character, and awk rather than
-      # grep, one pass answering all three questions
-      - name: Check that the release notes are retitled for the tag (release only)
-        if: github.event_name == 'push'
-        run: |
-          for file in RELEASE_NOTES.md CHANGELOG.md; do
-            awk -v tag="$GITHUB_REF_NAME" -v file="$file" '
-              $0 == "## " tag {heading = NR; next}
-              index($0, "## " tag " ") == 1 {heading = NR; extra = $0; next}
-              /^## / && heading {exit}
-              heading && NF {body = 1}
-              END {
-                if (!heading) {
-                  printf "::error::%s has no \"## %s\" section\n", file, tag
-                  exit 1
-                }
-                if (extra) {
-                  printf "::error::%s:%d is \"%s\"; the heading must be \"## %s\" alone\n",
-                    file, heading, extra, tag
-                  exit 1
-                }
-                if (!body) {
-                  printf "::error::%s section \"## %s\" is empty\n", file, tag
-                  exit 1
-                }
-                printf "%s has a non-empty \"## %s\" section\n", file, tag
-              }
-            ' "$file"
-          done
-
-      # the version of the wrapped library is a second thing this package
-      # declares twice: the tag named in README.md, and the commit the
-      # submodule is pinned to. The tag is resolved at the source rather
-      # than through the submodule checkout, whose shallow clone carries
-      # no tags. Why README.md's prose stays the one declared claim, and
-      # the hazard of the sed expression below taking the *first* such
-      # link in the file rather than the "## Versioning" one by name, is
-      # check_submodule_pin.py's module docstring (btclib-org/btclib-secp256k1#429):
-      # this step's sed is that hook's `_NAMED` again, kept in step with it
       - name: Check that README.md names the pinned libsecp256k1
         run: |
           named=$(sed -n 's|.*secp256k1/releases/tag/\(v[0-9][0-9.]*\).*|\1|p' README.md | head -1)
@@ -246,36 +148,6 @@ jobs:
             exit 1
           fi
 
-      # a release ships the version the tree declares; a rehearsal cannot,
-      # TestPyPI refusing a version it has already seen, so it appends a
-      # .dev segment -- which sorts before the release it rehearses
-      # whatever the number, PEP 440 ordering every dev release below the
-      # release itself.
-      #
-      # The number is the run number and the attempt together, and the
-      # attempt is the whole reason this is a step and not the expression
-      # it used to be. A re-run keeps the run id *and* the run number of
-      # the run it repeats; only run_attempt rises. So .dev<run number>
-      # was unique per dispatch and identical across the re-runs of one,
-      # and the collision surfaced as a TestPyPI 400 after the
-      # three-quarters of an hour the matrix takes. Expressions have no
-      # arithmetic, and concatenating the two numbers is unique only while
-      # their digit counts happen to line up -- so the arithmetic happens
-      # here, where the two digits reserved for the attempt can be
-      # checked rather than assumed. The job that needs the value runs
-      # after this one already
-      - name: Compute the rehearsal version suffix
-        id: suffix
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          if [ "$GITHUB_RUN_ATTEMPT" -gt 99 ]; then
-            echo "::error::attempt $GITHUB_RUN_ATTEMPT exceeds the two digits reserved for it"
-            exit 1
-          fi
-          suffix=".dev$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))"
-          echo "run $GITHUB_RUN_NUMBER attempt $GITHUB_RUN_ATTEMPT: $suffix"
-          echo "version-suffix=$suffix" >> "$GITHUB_OUTPUT"
-
   # walks the public API of the release before this one against the one
   # being cut and reports what broke: a removed object, a changed
   # parameter kind or default, a narrowed type. It runs here rather than
@@ -285,116 +157,17 @@ jobs:
   # about which ones are allowed. Here the answer arrives while
   # RELEASE_NOTES.md is already being written, so a break with no entry
   # is refused at the moment somebody is already writing entries.
-  # Matches a sibling repository's own job of the same name, the landed
-  # precedent for this check (that sibling's own
-  # .github/workflows/release.yml)
+  #
+  # The checkout, the previous-tag resolution and the griffe walk are
+  # btclib-org/.github's: reusable-public-api.yml, called at @main so a
+  # fix there reaches this tree in one landing (section 10 of its
+  # README.md). package is the one input the family has no default for,
+  # the equality with the repository name being a coincidence of four
+  # trees and not a rule (btclib-org/.github#35)
   public-api:
-    name: Check the public API against the last release
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          # the previous tag has to be reachable in this checkout for the
-          # step below to find it, and a single-commit checkout -- what
-          # every other job's checkout takes -- would not carry it
-          fetch-depth: 0
-          fetch-tags: true
-
-      # a release tag is already on the remote by the time this job runs,
-      # so the "latest tag" griffe would resolve on its own is the release
-      # being cut, not the one before it -- comparing a tag against itself
-      # reports no break whatever changed. The previous tag is resolved
-      # explicitly instead, by walking the ref's own ancestry rather than
-      # a version sort, so a tag pushed on a branch this history never
-      # merged is not picked up as "previous". A rehearsal has no tag of
-      # its own, so it asks from HEAD directly rather than HEAD^
-      - name: Resolve the previous release
-        id: previous
-        env:
-          REF: >-
-            ${{ github.event_name == 'push' && format('{0}^', github.ref_name)
-            || 'HEAD' }}
-        run: |
-          if tag=$(git describe --tags --abbrev=0 --match 'v*' "$REF" 2>&1); then
-            echo "previous release: $tag"
-            echo "tag=$tag" >> "$GITHUB_OUTPUT"
-            echo "has-previous=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "no previous v* tag reachable from $REF: $tag"
-            echo "has-previous=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      # caching off, as in version-check above: this job runs on the same
-      # tag-push and workflow_dispatch triggers that job's own comment
-      # gives for downloading fresh rather than trusting a cache entry
-      # written by a run this one cannot vouch for
-      - name: Setup uv
-        if: steps.previous.outputs.has-previous == 'true'
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          enable-cache: false
-
-      # griffe runs from PyPI through uvx rather than from a pyproject.toml
-      # dependency group: unlike pre-commit -- pinned by uv.lock because
-      # every contributor's own run has to agree with the gate's -- this
-      # runs at release time only, on the maintainer's own action, so a
-      # dependency group buys reproducibility nothing here needs. The
-      # version pin on the line below is what still keeps this comparison
-      # from answering differently on two release days for a reason that
-      # has nothing to do with either release.
-      #
-      # griffe does static analysis -- it parses source, it does not
-      # import the package -- so this needs no C toolchain, no submodule
-      # checkout and no built extension: measured against this tree's own
-      # history, a comparison against v0.8.0.4 (btclib_secp256k1/ at the
-      # repository root) succeeds unbuilt in a bare checkout of that tag.
-      # `_btclib_secp256k1`, the compiled cffi extension `__init__.py`
-      # imports, is never resolved by griffe's loader either way -- it is
-      # a leading-underscore name, so it is out of the public surface on
-      # both sides of every comparison, `stubs/_btclib_secp256k1.pyi`
-      # included on the search path or not, measured both ways.
-      #
-      # -s . and -s src each serve one end of the comparison: v0.8.0.4,
-      # the tag the step above resolves, keeps btclib_secp256k1/ at the
-      # repository root, and this tree keeps it under src/. griffe reads
-      # the package through whichever of the two holds it at that end,
-      # and errors where neither does rather than reporting no break:
-      # measured across that exact move, the pair passes v0.8.0.4
-      # against a src-layout tree, and either path alone raises
-      # ModuleNotFoundError at the end the other one serves. -s . comes
-      # off the day the tag resolved above carries src/ itself. That
-      # resolution never reaches back past v0.8.0.4, so the tags naming
-      # the package btclib_libsecp256k1 are neither end of this
-      # comparison.
-      #
-      # No base ref on a rehearsal: workflow_dispatch has no tag to check
-      # a public surface at, so the comparison falls back to griffe's own
-      # default, the current code
-      - name: Check the public API against the previous release
-        if: steps.previous.outputs.has-previous == 'true'
-        env:
-          PREVIOUS_TAG: ${{ steps.previous.outputs.tag }}
-          BASE_REF: ${{ github.event_name == 'push' && github.ref_name || '' }}
-        run: |
-          base_args=()
-          if [ -n "$BASE_REF" ]; then
-            base_args=(-b "$BASE_REF")
-          fi
-          if ! uvx griffe==2.2.0 check btclib_secp256k1 -s . -s src \
-              -a "$PREVIOUS_TAG" "${base_args[@]}" -f github; then
-            msg="the public API changed since $PREVIOUS_TAG:"
-            echo "::error::$msg add a breaking-changes bullet to" \
-              "RELEASE_NOTES.md, or say here why the change is not one"
-            exit 1
-          fi
-      - name: Skip the check (no previous release to compare against)
-        if: steps.previous.outputs.has-previous == 'false'
-        run: |
-          echo "::notice::no previous v* tag is reachable; nothing to" \
-            "compare this release's public API against"
+    uses: btclib-org/.github/.github/workflows/reusable-public-api.yml@main
+    with:
+      package: btclib_secp256k1
 
   # reuse the whole build/test pipeline: every artifact the release ships
   # is built and tested here, by the very matrices that run on a push
@@ -461,14 +234,30 @@ jobs:
     # and the `.result` checks beside it are what keep every other listed
     # job the gate it is. Section 12 of the organization standard has the
     # rule; github-release's comment below is this tree's own measurement
-    # of the same refusal, behind a skipped job rather than a failed one
+    # of the same refusal, behind a skipped job rather than a failed one.
+    # submodule-pin-release is checked for its result unlike public-api: before
+    # this job split out of version-check, a mismatched pin failed that
+    # job outright, which skipped `test` (a bare `needs: version-check`)
+    # and so refused this job through `needs.test.result`. The split
+    # keeps that refusal explicit rather than losing it to the new shape
     if: >-
       always() && github.event_name == 'workflow_dispatch'
       && github.repository == 'btclib-org/btclib-secp256k1'
       && needs.test.result == 'success' && needs.lint.result == 'success'
       && needs.docs.result == 'success' && needs.ubuntu.result == 'success'
       && needs.macos.result == 'success' && needs.windows.result == 'success'
-    needs: [public-api, test, lint, docs, ubuntu, macos, windows]
+      && needs.submodule-pin-release.result == 'success'
+    needs:
+      [
+        public-api,
+        test,
+        lint,
+        docs,
+        ubuntu,
+        macos,
+        windows,
+        submodule-pin-release,
+      ]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -505,14 +294,26 @@ jobs:
     name: Publish to PyPI
     # see publish-testpypi for the repository condition, and for the
     # `always()`: public-api is a need for the ordering and not for its
-    # result on a tag exactly as on a rehearsal
+    # result on a tag exactly as on a rehearsal; submodule-pin-release is checked
+    # for its result there for the same reason as on that job
     if: >-
       always() && github.event_name == 'push'
       && github.repository == 'btclib-org/btclib-secp256k1'
       && needs.test.result == 'success' && needs.lint.result == 'success'
       && needs.docs.result == 'success' && needs.ubuntu.result == 'success'
       && needs.macos.result == 'success' && needs.windows.result == 'success'
-    needs: [public-api, test, lint, docs, ubuntu, macos, windows]
+      && needs.submodule-pin-release.result == 'success'
+    needs:
+      [
+        public-api,
+        test,
+        lint,
+        docs,
+        ubuntu,
+        macos,
+        windows,
+        submodule-pin-release,
+      ]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -748,75 +549,24 @@ jobs:
   # rather than anything a pull request reaches, and btclib-org/.github#26
   # carries it; .readthedocs.yaml says what that leaves this repository
   # unable to declare for itself.
-  # The rendered URL and not the v3 API, which is the reverse of what
-  # published above does with PyPI's: /en/<tag>/ is CDN-served, answers
-  # 404 for a version that is inactive or has no successful build, and is
-  # the URL a reader follows anyway, where the API answers about read the
-  # docs' own database under whatever limits it puts on a caller holding
-  # no token -- a credential to store for a check that gates nothing.
   # Release-only, a rehearsal never being tagged; after version-check, so
   # a tag it refuses produces one verdict and not two; and nothing needs
   # it: a late documentation build is not a reason to withhold a wheel,
   # and the fix for a red run here is a build on their side, never a
-  # moved tag. Matches a sibling repository's own job of the same name,
-  # the landed precedent for this check (that sibling's own
-  # .github/workflows/release.yml)
+  # moved tag.
   #
-  # What the wait bounds is a read the docs build's own latency -- their
-  # queue, then a build that checks the vendored submodule out and
-  # compiles it -- rather than a network blip, which one attempt already
-  # covers. Its figures are that job's, kept rather than shortened for
-  # the smaller documentation set here: the build's own duration is the
-  # small term against this budget, the queue ahead of it is no property
-  # of this tree's documentation at all, and a check that gates nothing
-  # buys nothing by giving up sooner.
-  #
-  # The wait itself is `.github/scripts/wait_for_readthedocs_build.py`
-  # rather than a shell loop written out here, which is what gives it a
-  # test: a tag is the only trigger that reaches it, so a loop kept in
-  # this file is first executed on the day a release depends on it. The
-  # script's budget is a deadline and not a count of attempts, and that
-  # deadline is set below this job's timeout-minutes, so the script's
-  # `::error::` runs rather than being killed inside the wait it exists
-  # to report on (btclib-org/btclib#1165).
-  # `tests/wait_for_readthedocs_build_test.py` is what drives the retry,
-  # the deadline and the annotation.
-  #
-  # What the wait cannot do is tell "still building" from "will never
-  # build" -- /en/<tag>/ answers 404 in both cases, and separating them
-  # needs the API this job declines. So it names the last status it saw
-  # and sends the reader to the builds page, which says why
+  # The checkout and the wait are btclib-org/.github's:
+  # reusable-documented.yml, called at @main so a fix there reaches this
+  # tree in one landing (section 10 of its README.md). The wait script
+  # itself, .github/scripts/wait_for_readthedocs_build.py, and its test
+  # stay in this tree -- the callee checks out the caller's own tree, so
+  # a change to the script is a change here, not in btclib-org/.github.
+  # readthedocs-slug is the one input the family has no default for, and
+  # it equals this repository's own name only by coincidence
+  # (btclib-org/.github#35)
   documented:
-    name: Check read the docs built the tag
     needs: version-check
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      # sparse, for the reason pypi-install.yml's wait job gives: what
-      # lands is .github/scripts plus the repository root, cone mode
-      # being the default and root files always being in the cone. This
-      # job builds nothing and installs nothing, and the root's
-      # pyproject.toml is inert besides, --no-project ignoring it
-      - name: Check out the wait script
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          sparse-checkout: .github/scripts
-      # caching off, as in version-check above: this job runs on the
-      # tag push that job's own comment gives for downloading fresh
-      # rather than trusting a cache entry a pull request's jobs wrote
-      # and this run cannot vouch for. There is little to cache here in
-      # any case, the step below installing nothing
-      - name: Setup uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          enable-cache: false
-      # --no-project, so it runs on the interpreter uv fetches and
-      # installs nothing: the script takes the standard library alone
-      - name: Wait for the tag's documentation to be served
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          uv run --no-project --python 3.14 \
-            .github/scripts/wait_for_readthedocs_build.py btclib-secp256k1 "$TAG"
+    uses: btclib-org/.github/.github/workflows/reusable-documented.yml@main
+    with:
+      readthedocs-slug: btclib-secp256k1

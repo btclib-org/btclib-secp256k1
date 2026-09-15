@@ -4,13 +4,14 @@
 
 """The vendored libsecp256k1 is the release README.md says it is.
 
-`version-check` in .github/workflows/release.yml asks this of upstream,
-over the network, and refuses to publish when the answer is no. That is
-the last gate before publication and it stays. What this is, is the same
-question asked of every commit instead of every release, so that a
-submodule bump and the prose about it cannot disagree for the length of
-a cycle -- which is the window in which CHANGELOG.md, RELEASE_NOTES.md
-and README.md are written about the version nobody has confirmed.
+`submodule-pin-release` in .github/workflows/release.yml asks this of
+upstream, over the network, and refuses to publish when the answer is
+no. That is the last gate before publication and it stays. What this is,
+is the same question asked of every commit instead of every release, so
+that a submodule bump and the prose about it cannot disagree for the
+length of a cycle -- which is the window in which CHANGELOG.md,
+RELEASE_NOTES.md and README.md are written about the version nobody has
+confirmed.
 
 Offline is what makes it a hook rather than a workflow step. The tag is
 resolved in the vendored clone, whose refs are already on the machine, so
@@ -35,13 +36,14 @@ README.md is the one declared value, on purpose: btclib-org/btclib-secp256k1#429
 asked whether the wrapped release should live there or in a fourth,
 machine-written place, and the answer is that README.md stays it. The
 submodule pin is already the machine's ground truth -- what this hook and
-`version-check` both resolve a tag against -- so a fourth file would only
-be one more thing to move in step with the submodule, not a smaller
-number of places that read it. What README.md's prose gives that the pin
-alone cannot is a human-legible claim of which release that commit is,
-which is what `release.yml` and `vendored-vectors.yml` compare it
-against too, each with its own copy of `_NAMED` (the three are named in
-#429; a fix to the parsing is owed to all of them in one campaign).
+`submodule-pin-release` both resolve a tag against -- so a fourth file
+would only be one more thing to move in step with the submodule, not a
+smaller number of places that read it. What README.md's prose gives that
+the pin alone cannot is a human-legible claim of which release that
+commit is, which is what `release.yml` and `vendored-vectors.yml`
+compare it against too, each with its own copy of `_NAMED` (the three
+are named in #429; a fix to the parsing is owed to all of them in one
+campaign).
 
 That leaves one hazard #429 also names: `_NAMED.search` and the two
 workflows' `sed ... | head -1` both take the *first* match in the file,
