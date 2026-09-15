@@ -773,6 +773,12 @@ release-notes length in the first place, and are still in
   package rather than declining it, so `importlib.metadata` would
   answer too** (issue btclib-org/.github#1098).
 
+### `local-link-prefix` permits `../` as well as `./`
+
+- **A local link destination may begin `../` as well as `./`: whether it
+  leaves the repository is not a property of the line it is written on**
+  (issue btclib-org/.github#1095); `links.yml`'s lychee run checks it.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
