@@ -73,6 +73,21 @@ _FREE_THREADING_CLASSIFIER = re.compile(
 _PYTHONS = re.compile(
     r'^        python-version:\n(?P<block>(?:^          - "\S+"\n)+)', re.MULTILINE
 )
+# the shape a caller of the sentinels' own reusable-os-suite.yml will
+# carry, once one of them becomes a caller (btclib-org/.github#35). No
+# such caller exists yet -- this is derived, not read off a landed file:
+# reusable-deps-oldest.yml's own five callers already establish the
+# `with:` indent and the quoting for one interpreter,
+# `python-version: "3.10"`, and a `workflow_call` input can only be a
+# string, so the list a caller will pass arrives JSON-encoded inside
+# one -- `python-versions: '["3.10", "3.11"]'`. Read alongside
+# `_PYTHONS` rather than instead of it: every sentinel still declares
+# the block sequence above until that merge lands, and a pattern that
+# read only the caller shape would turn the suite red today
+# (btclib-org/.github#1119)
+_PYTHONS_CALLER = re.compile(
+    r"^      python-versions: '(?P<block>\[.*?\])'$", re.MULTILINE
+)
 # the merge gate, and inside it the jobs a landing waits on: the
 # aggregate's own `needs:` closure, which is what section 3 of the
 # organization standard asks for. It declares a free-threading classifier
@@ -208,12 +223,26 @@ def _gate_interpreters() -> tuple[str, ...]:
 
 
 def _matrix(text: str) -> tuple[str, ...]:
-    """Return the interpreters one sentinel's suite matrix names, in order."""
-    return tuple(
+    """Return the interpreters one sentinel's suite matrix names, in order.
+
+    `_PYTHONS`'s block sequence, still what every sentinel writes today,
+    and `_PYTHONS_CALLER`'s JSON-encoded list, the shape a caller of
+    `reusable-os-suite.yml` will carry once one exists
+    (btclib-org/.github#1119) -- both read here so a tree on either side
+    of that migration is read correctly. A sentinel carries one shape or
+    the other, never both, so the two are simply concatenated.
+    """
+    block = tuple(
         line.strip().lstrip("- ").strip('"')
         for match in _PYTHONS.finditer(text)
         for line in match["block"].splitlines()
     )
+    caller = tuple(
+        version
+        for match in _PYTHONS_CALLER.finditer(text)
+        for version in re.findall(r'"(\S+?)"', match["block"])
+    )
+    return block + caller
 
 
 _CLASSIFIED = _versions(_CLASSIFIER, _PYPROJECT)
@@ -538,3 +567,40 @@ def test_the_closure_takes_no_token_of_a_comment_on_the_needs_line(
     with pytest.raises(KeyError) as widened:
         closure(annotated)
     assert widened.value.args == ("gate",)
+
+
+def test_a_caller_shaped_with_reads_the_same_interpreters_as_a_block() -> None:
+    """The shape a caller of `reusable-os-suite.yml` will carry.
+
+    No such caller exists yet: `os-ubuntu.yml`, `os-macos.yml` and
+    `os-windows.yml` still declare `_PYTHONS`'s own block sequence
+    (btclib-org/.github#1119). This constructs the shape
+    `reusable-deps-oldest.yml`'s own five callers already establish for
+    one interpreter -- `python-version: "3.10"` -- widened the only way
+    a `workflow_call` input can carry a list, JSON-encoded inside a
+    quoted string, and checks that `_matrix` reads it the same as the
+    block sequence it stands beside.
+    """
+    block = (
+        '        python-version:\n          - "3.10"\n          - "3.11"\n'
+        '          - "3.12"\n'
+    )
+    caller = '    with:\n      python-versions: \'["3.10", "3.11", "3.12"]\'\n'
+    listed = ("3.10", "3.11", "3.12")
+    assert _matrix(block) == listed
+    assert _matrix(caller) == listed
+
+
+def test_a_bare_with_and_a_matrix_expression_read_no_interpreter() -> None:
+    """Neither an unrelated `with:` nor an expression is an interpreter list.
+
+    The negative control the positive above needs: a pattern widened
+    until it matches anything passes that one regardless. `with:` naming
+    something other than the interpreters, and `python-versions:` naming
+    an expression rather than a JSON string, are the two ways a caller's
+    block can hold neither without the key itself being absent.
+    """
+    unrelated = "    with:\n      submodules: true\n"
+    expression = "    with:\n      python-versions: ${{ matrix.python }}\n"
+    assert _matrix(unrelated) == ()
+    assert _matrix(expression) == ()
