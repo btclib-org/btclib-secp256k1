@@ -491,7 +491,7 @@ jobs:
       # context is empty unless this workflow was called, and an empty
       # string is what the release passes for a tag push
       - name: Make the version unique for TestPyPI (rehearsal only)
-        uses: ./.github/actions/dev-version
+        uses: ./.github/actions/dev-version # zizmor: ignore[self-repository]
         if: inputs.version-suffix != ''
         with:
           suffix: ${{ inputs.version-suffix }}
@@ -636,7 +636,7 @@ jobs:
 
       # see build-cibuildwheel
       - name: Make the version unique for TestPyPI (rehearsal only)
-        uses: ./.github/actions/dev-version
+        uses: ./.github/actions/dev-version # zizmor: ignore[self-repository]
         if: inputs.version-suffix != ''
         with:
           suffix: ${{ inputs.version-suffix }}
@@ -718,7 +718,7 @@ jobs:
 
       # see build-cibuildwheel
       - name: Make the version unique for TestPyPI (rehearsal only)
-        uses: ./.github/actions/dev-version
+        uses: ./.github/actions/dev-version # zizmor: ignore[self-repository]
         if: inputs.version-suffix != ''
         with:
           suffix: ${{ inputs.version-suffix }}
@@ -930,7 +930,7 @@ jobs:
 
       # see build-cibuildwheel
       - name: Make the version unique for TestPyPI (rehearsal only)
-        uses: ./.github/actions/dev-version
+        uses: ./.github/actions/dev-version # zizmor: ignore[self-repository]
         if: inputs.version-suffix != ''
         with:
           suffix: ${{ inputs.version-suffix }}
