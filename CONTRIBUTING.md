@@ -627,12 +627,16 @@ command at all, for the reason below, and nothing requires its result.
   the diff printed
 
 - `Ask which files the pull request touches`, whose answer decides whether
-  the rest of `test.yml` runs at all
+  the rest of `test.yml` runs at all -- a step of `btclib-org/.github`'s
+  `reusable-changes.yml` now, `test.yml`'s own `changes` job being a bare
+  `uses:` call to it with no `steps:` of its own, so this reproduces what
+  that step does rather than what this repository runs
 
   ```shell
   gh api "repos/btclib-org/btclib-secp256k1/pulls/<number>/files" \
       --paginate --jq '.[].filename' > files.txt
-  eval "$(/usr/bin/grep -m1 '^ *prose=' .github/workflows/test.yml)"
+  prose=$(/usr/bin/grep -A1 'prose-pattern: |-' .github/workflows/test.yml \
+      | tail -1 | sed 's/^ *//')
   if [ ! -s files.txt ] || /usr/bin/grep -qvE "$prose" files.txt; then
       echo "everything runs"
   else
@@ -640,19 +644,21 @@ command at all, for the reason below, and nothing requires its result.
   fi
   ```
 
-  The second line lifts the pattern out of the workflow rather than
-  restating it here, so the two cannot drift. `/usr/bin/grep` rather than
-  `grep`, because where the shell's is [ugrep](https://ugrep.com) the
-  third line answers the opposite question: ugrep takes the status from
-  whether the *pattern* matched anywhere and inverts that, rather than
-  from whether `-v` selected a line. A list of only prose and a list of
-  only code come out right either way; one mixing the two exits 1 and
-  reads as "prose only", which is the direction that skips a matrix that
-  should have run, and nothing says it has. `-q` is what asks the
-  question of the file rather than of the lines, and ugrep takes the same
-  path when the output is discarded, so `-cvE` and a numeric test agree
-  with both greps. The runner's `grep` is GNU's, so what ugrep can get
-  wrong here is the reproduction and not the workflow
+  The second line lifts the pattern out of `test.yml`'s own `with:` block
+  rather than restating it here, so the two cannot drift; the rest of the
+  step is `btclib-org/.github`'s own, and a change there is not one this
+  block would notice. `/usr/bin/grep` rather than `grep`, because where
+  the shell's is [ugrep](https://ugrep.com) the third line answers the
+  opposite question: ugrep takes the status from whether the *pattern*
+  matched anywhere and inverts that, rather than from whether `-v`
+  selected a line. A list of only prose and a list of only code come out
+  right either way; one mixing the two exits 1 and reads as "prose
+  only", which is the direction that skips a matrix that should have
+  run, and nothing says it has. `-q` is what asks the question of the
+  file rather than of the lines, and ugrep takes the same path when the
+  output is discarded, so `-cvE` and a numeric test agree with both
+  greps. The runner's `grep` is GNU's, so what ugrep can get wrong here
+  is the reproduction and not the workflow
   (<https://github.com/btclib-org/btclib-secp256k1/issues/242>)
 
 - `Measure coverage, gated at 100%`, which is the suite against each

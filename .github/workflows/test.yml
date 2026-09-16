@@ -126,99 +126,84 @@ jobs:
   # one as a `needs` and reads its output; the jobs downstream of those
   # skip on their own, a job whose needs are skipped being skipped too.
   #
-  # Three things this must not get wrong:
+  # test-passed takes this job as a `needs` too, so a failure here fails
+  # the gate instead of skipping every job below and being read as a
+  # pass; `needs.changes.outputs.code` is undefined in an expression
+  # unless the job reading it names `changes` in its own `needs`, which
+  # every job below already does.
   #
-  # - it runs on every trigger, and answers `true` on all but one. A
-  #   `changes` job that skipped itself off the pull_request path would
-  #   leave every dependent reading an empty output, which is not 'true',
-  #   and the whole workflow would skip on main and on a release
-  # - README.md is not prose for this purpose. It is the long description
-  #   of the package, and check-dist renders it with twine and rates it
-  #   with pyroma, so an edit to it is a change the matrix can fail on
-  # - test-passed takes this job as a `needs` as well, so a failure here
-  #   fails the gate. Without that, an error listing the files would skip
-  #   everything and be reported as a pass
+  # The event handling, the pagination and the decision are
+  # btclib-org/.github's own, called at @main so a fix there reaches
+  # this tree in one landing (section 10 of its README.md); what
+  # stays here is which of this tree's own files are prose, in
+  # `with:` below (issue btclib-org/.github#35)
   changes:
     name: Decide whether the matrix has anything to check
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    # the file list of a pull request, which contents: read does not carry
+    uses: btclib-org/.github/.github/workflows/reusable-changes.yml@main
+    # A job's permissions replace the workflow's map rather than adding
+    # to it. This job held only pull-requests: read before the call --
+    # it made no checkout of its own, so contents: read cost nothing to
+    # leave off -- but the callee's own `changes` job declares both, and
+    # a scope it declares that this block leaves off is a
+    # startup_failure before any job in the run starts, with no job log
+    # to read. So contents: read is named here too, alongside
+    # pull-requests: read for the file list of a pull request.
     permissions:
+      contents: read
       pull-requests: read
-    outputs:
-      code: ${{ steps.decide.outputs.code }}
-
-    steps:
-      - name: Ask which files the pull request touches
-        id: decide
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT: ${{ github.event_name }}
-          REPO: ${{ github.repository }}
-          NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          # a push to main, a release call and a dispatch build everything:
-          # only a pull request has a base to be a diff against
-          if [ "$EVENT" != pull_request ]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "$EVENT is not a pull request: everything runs"
-            exit 0
-          fi
-          gh api "repos/$REPO/pulls/$NUMBER/files" --paginate \
-            --jq '.[].filename' > files.txt
-          echo "files changed:"
-          cat files.txt
-          # the allowlist is what nothing built reads: the prose files of
-          # the root and of .github, and neither README.md nor a file
-          # under docs/, which the sdist carries. AUTHORS.md is off it for
-          # the same reason as README.md rather than by oversight: the
-          # wheel carries it as a license file, `WHEEL_LICENSE_FILES` in
-          # .github/scripts/verify_wheel_contents.py names it and
-          # tests/wheel_contents_test.py asserts it is there, so adding it
-          # would skip the matrix on a change check-dist reads. An empty
-          # list is not a documentation change, it is a question this
-          # could not answer, so the count is checked before the pattern.
-          #
-          # The mutation configuration and the detect-secrets baselines are
-          # on it for the same reason as the prose and were measured off it:
-          # a change to bindings.toml alone cost 23 jobs and 45.7
-          # runner-minutes (#239), and cosmic-ray takes that path as an
-          # argument from mutation.yml, which is a workflow the matrix does
-          # not contain. A baseline is detect-secrets' own output, read by a
-          # hook -- and by lint.yml, which has no changed-file gate at all,
-          # so a malformed one is still caught by the job that catches it
-          # today.
-          #
-          # Anchored on the *file* and not on the directory, which is the
-          # same staleness this comment declines below in the direction that
-          # looks cheap: `^\.github/mutation/` would exempt in advance any
-          # file a later change drops there, and tests already load a
-          # script by path one directory over (`.github/scripts/`), so such
-          # a script would skip the matrix and take its own test with it.
-          # `.toml` rather than `bindings\.toml` so a second configuration
-          # needs no edit here; a script belongs in .github/scripts/, which
-          # is where all of them are, and `git ls-files .github/scripts` is
-          # what counts them rather than a number here.
-          #
-          # A workflow is *not* on it, deliberately, and that is the answer
-          # to the other half of #239 rather than an omission. Which
-          # workflows the matrix reads is a judgement -- this file and what
-          # it calls, plus release.yml -- and naming the rest would be right
-          # today and stale the first time a sentinel is folded into the
-          # gate or one of these is split out, both of which have happened
-          # here. A stale list of that kind skips a matrix that should have
-          # run, which is the expensive direction; leaving every workflow
-          # change to run everything is the cheap one, at the cost this
-          # comment now records
-          prose='^(CHANGELOG|CLAUDE|CONTRIBUTING|RELEASE_NOTES|RELEASING|REPOSITORY|REVIEWING|SECURITY)\.md$|^\.github/[^/]*\.md$|^\.github/mutation/[^/]*\.toml$|^\.secrets\..*baseline$'
-          if [ ! -s files.txt ] || grep -qvE "$prose" files.txt; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "something the matrix reads changed: everything runs"
-          else
-            echo "code=false" >> "$GITHUB_OUTPUT"
-            echo "prose only: the matrix has nothing to check"
-          fi
+    with:
+      # the allowlist is what nothing built reads: the prose files of
+      # the root and of .github, and neither README.md nor a file
+      # under docs/, which the sdist carries. README.md is off it
+      # because it is the package's own long description, which
+      # check-dist renders with twine and rates with pyroma, so an
+      # edit to it is a change the matrix can fail on. AUTHORS.md is
+      # off it for a reason of its own rather than by oversight: the
+      # wheel carries it as a license file, `WHEEL_LICENSE_FILES` in
+      # .github/scripts/verify_wheel_contents.py names it and
+      # tests/wheel_contents_test.py asserts it is there, so adding it
+      # would skip the matrix on a change check-dist reads.
+      #
+      # The mutation configuration and the detect-secrets baselines are
+      # on it for the same reason as the prose and were measured off it:
+      # a change to bindings.toml alone cost 23 jobs and 45.7
+      # runner-minutes (#239), and cosmic-ray takes that path as an
+      # argument from mutation.yml, which is a workflow the matrix does
+      # not contain. A baseline is detect-secrets' own output, read by a
+      # hook -- and by lint.yml, which has no changed-file gate at all,
+      # so a malformed one is still caught by the job that catches it
+      # today.
+      #
+      # Anchored on the *file* and not on the directory, which is the
+      # same staleness this comment declines below in the direction that
+      # looks cheap: `^\.github/mutation/` would exempt in advance any
+      # file a later change drops there, and tests already load a
+      # script by path one directory over (`.github/scripts/`), so such
+      # a script would skip the matrix and take its own test with it.
+      # `.toml` rather than `bindings\.toml` so a second configuration
+      # needs no edit here; a script belongs in .github/scripts/, which
+      # is where all of them are, and `git ls-files .github/scripts` is
+      # what counts them rather than a number here.
+      #
+      # A workflow is *not* on it, deliberately, and that is the answer
+      # to the other half of #239 rather than an omission. Which
+      # workflows the matrix reads is a judgement -- this file and what
+      # it calls, plus release.yml -- and naming the rest would be right
+      # today and stale the first time a sentinel is folded into the
+      # gate or one of these is split out, both of which have happened
+      # here. A stale list of that kind skips a matrix that should have
+      # run, which is the expensive direction; leaving every workflow
+      # change to run everything is the cheap one, at the cost this
+      # comment now records
+      #
+      # a literal block scalar rather than a quoted one on the key's own
+      # line, for the reason .pre-commit-config.yaml's own
+      # local-link-prefix and no-downstream-name-in-package hooks give
+      # for their `entry:`: the pattern has no space in it, so yamllint
+      # reads it as one unbreakable word and its 100-column rule
+      # (allow-non-breakable-words) does not fire on it
+      prose-pattern: |-
+        ^(CHANGELOG|CLAUDE|CONTRIBUTING|RELEASE_NOTES|RELEASING|REPOSITORY|REVIEWING|SECURITY)\.md$|^\.github/[^/]*\.md$|^\.github/mutation/[^/]*\.toml$|^\.secrets\..*baseline$
 
   # coverage is a property of the python wrapper layer, not of the
   # platform: measuring it once is enough, and the fail_under ratchet in

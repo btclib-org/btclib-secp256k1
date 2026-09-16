@@ -833,6 +833,12 @@ release-notes length in the first place, and are still in
   headings, and `REVIEWING.md` a question asking whether the branch's
   own entry is last** (issue btclib-org/.github#1097): no gate reads it.
 
+### `test.yml`'s `changes` job calls the organization's reusable workflow
+
+- **`changes` becomes a call to `reusable-changes.yml`** (issue
+  btclib-org/.github#35): the event handling and the pagination move
+  with it; this tree's own prose-pattern stays, passed as `with:`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

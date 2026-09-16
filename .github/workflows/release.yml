@@ -181,7 +181,8 @@ jobs:
     # A scope a job over there declares and this list leaves off is not
     # quietly dropped: the run is refused before a single job starts,
     # version-check included. This workflow's contents: read alone left
-    # `changes`, which asks for pull-requests: read to list a pull
+    # `changes`, whose own call to `btclib-org/.github`'s
+    # `reusable-changes.yml` asks for pull-requests: read to list a pull
     # request's files, "only allowed pull-requests: none". `changes` never
     # runs on a pull request here -- it answers code=true unconditionally
     # and reads no file list -- but the check is against what the job
