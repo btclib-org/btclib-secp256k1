@@ -815,6 +815,12 @@ release-notes length in the first place, and are still in
   `btclib-org/.github`'s `reusable-deps-oldest.yml`** (issue
   btclib-org/.github#35): `submodules: true` stays.
 
+### `interpreters_test.py` reads a caller's `with:` beside the block
+
+- **`_PYTHONS_CALLER` reads the JSON-encoded interpreter list a caller
+  of `reusable-os-suite.yml` will carry, beside `_PYTHONS`'s own block
+  sequence** (issue btclib-org/.github#1119): no such caller exists yet.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
