@@ -821,6 +821,12 @@ release-notes length in the first place, and are still in
   of `reusable-os-suite.yml` will carry, beside `_PYTHONS`'s own block
   sequence** (issue btclib-org/.github#1119): no such caller exists yet.
 
+### `links.yml`'s `targets` reach the tree's tracked `.rst` files (issue btclib-org/.github#1117)
+
+- **`targets:` becomes `"**/*.md" ".github/**/*.md" ".claude/**/*.md" "docs/**/*.rst"`**:
+  the tracked `.rst` files -- `docs/README.rst` and those under
+  `docs/source/` -- reached no `targets:` term before this.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
