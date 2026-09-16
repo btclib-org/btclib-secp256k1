@@ -851,6 +851,12 @@ release-notes length in the first place, and are still in
   rebasing*, a heading no tracked file holds** (issue
   btclib-org/.github#1137): it now states the discipline in its own words.
 
+### The `self-repository` ignore moves off `.github/zizmor.yml` onto each site
+
+- **An inline `# zizmor: ignore[self-repository]` on each `uses: ./...` site
+  in `release.yml` and `test.yml` replaces the file-level block** (closes
+  #909): a new site now turns the gate red instead of passing silently.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

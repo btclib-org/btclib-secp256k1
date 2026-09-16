@@ -35,7 +35,7 @@ jobs:
   # its documentation, or does not pass the suite on a platform
   lint:
     name: Run the lint workflow
-    uses: ./.github/workflows/lint.yml
+    uses: ./.github/workflows/lint.yml # zizmor: ignore[self-repository]
     with:
       # what keeps this run out of the branch concurrency groups: inside a
       # called workflow github.ref is the ref of this workflow's own run,
@@ -47,7 +47,7 @@ jobs:
 
   docs:
     name: Run the docs workflow
-    uses: ./.github/workflows/docs.yml
+    uses: ./.github/workflows/docs.yml # zizmor: ignore[self-repository]
     with:
       # see the lint job above
       concurrency-suffix: "-release"
@@ -58,21 +58,21 @@ jobs:
   # and the wrong one for a version that cannot be unpublished
   ubuntu:
     name: Run the ubuntu workflow
-    uses: ./.github/workflows/os-ubuntu.yml
+    uses: ./.github/workflows/os-ubuntu.yml # zizmor: ignore[self-repository]
     with:
       # see the lint job above
       concurrency-suffix: "-release"
 
   macos:
     name: Run the macos workflow
-    uses: ./.github/workflows/os-macos.yml
+    uses: ./.github/workflows/os-macos.yml # zizmor: ignore[self-repository]
     with:
       # see the lint job above
       concurrency-suffix: "-release"
 
   windows:
     name: Run the windows workflow
-    uses: ./.github/workflows/os-windows.yml
+    uses: ./.github/workflows/os-windows.yml # zizmor: ignore[self-repository]
     with:
       # see the lint job above
       concurrency-suffix: "-release"
@@ -176,7 +176,7 @@ jobs:
     # a minute of checking, ahead of an hour of building: a tag that does
     # not match the tree is worth discovering before the matrices start
     needs: version-check
-    uses: ./.github/workflows/test.yml
+    uses: ./.github/workflows/test.yml # zizmor: ignore[self-repository]
     # a called workflow's jobs are capped at what the caller grants here.
     # A scope a job over there declares and this list leaves off is not
     # quietly dropped: the run is refused before a single job starts,
@@ -563,7 +563,7 @@ jobs:
     # dependency it lists succeeded. The same shape github-release's
     # comment above measured on v0.8.0.2
     if: always() && needs.publish-pypi.result == 'success'
-    uses: ./.github/workflows/pypi-install.yml
+    uses: ./.github/workflows/pypi-install.yml # zizmor: ignore[self-repository]
     with:
       version: ${{ github.ref_name }}
 

@@ -679,10 +679,9 @@ repos:
     rev: v1.7.12.24
     # pre-commit.ci's weekly autoupdate is what moves this rev, so a pull
     # request bumping it is the moment to re-test whether the actionlint
-    # it now pins parses GitHub's `$/...` syntax. If it does, drop
-    # .github/zizmor.yml's self-repository ignores together with the
-    # workspace-relative `uses:` migration in release.yml and test.yml
-    # (issue #512)
+    # it now pins parses GitHub's `$/...` syntax. If it does, drop the
+    # self-repository ignores in release.yml and test.yml together with
+    # the workspace-relative `uses:` migration there (issue #512)
     hooks:
       - id: actionlint
         # actionlint runs shellcheck over every run: script, but only if
@@ -718,6 +717,19 @@ repos:
       - id: zizmor
         name: zizmor (workflow security)
         args: [--offline, --no-progress]
+        # v1.30.0 added the self-repository audit, which flags every
+        # workspace-relative `uses: ./...` in release.yml and test.yml
+        # and recommends GitHub's `$/...` form instead (issue #512).
+        # That form is declined rather than adopted: actionlint --
+        # pinned above, and the latest release there is -- does not
+        # parse `$/`. rhysd/actionlint#711 asks for support and
+        # rhysd/actionlint#732 is its open, unmerged pull request.
+        # Adopting `$/` now would trade a zizmor finding for an
+        # actionlint one on the same lines, so each `uses: ./...` in
+        # those two files carries its own inline
+        # `# zizmor: ignore[self-repository]` instead. The
+        # `actionlint-py` entry above carries the prompt to revisit
+        # this once a released actionlint parses it.
 
   # the server-side net GitHub does not give this repository: its secret
   # scanning covers the tokens of partner providers, while the generic
