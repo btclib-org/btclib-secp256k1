@@ -803,6 +803,12 @@ release-notes length in the first place, and are still in
   signs it with the archive** (issue btclib-org/.github#144): it names
   each vendored library at the commit its gitlink pins.
 
+### `CONTRIBUTING.md`'s submodule transcript prints the url `.gitmodules` carries
+
+- **The `git submodule init` transcript named `BlockstreamResearch`
+  rather than the fork `.gitmodules` vendors** (closes #901): it now
+  reads `fametrano/secp256k1-zkp`, agreeing with `.gitmodules`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

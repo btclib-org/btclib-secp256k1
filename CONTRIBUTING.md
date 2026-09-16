@@ -291,7 +291,7 @@ before it is anything:
 ```console
 $ git submodule init
 Submodule 'secp256k1' (https://github.com/bitcoin-core/secp256k1.git) registered for path 'secp256k1'
-Submodule 'secp256k1-zkp' (https://github.com/BlockstreamResearch/secp256k1-zkp.git) registered for path 'secp256k1-zkp'
+Submodule 'secp256k1-zkp' (https://github.com/fametrano/secp256k1-zkp.git) registered for path 'secp256k1-zkp'
 $ git submodule update
 Cloning into '.../secp256k1'...
 Cloning into '.../secp256k1-zkp'...
