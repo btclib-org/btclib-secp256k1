@@ -839,6 +839,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github#35): the event handling and the pagination move
   with it; this tree's own prose-pattern stays, passed as `with:`.
 
+### `check-changelog` runs on every invocation of the gate
+
+- **`always_run: true`, and no `files:`** (issue btclib-org/.github#1138):
+  the script reads the open section off disk, and the rebase that eats
+  the seam stages nothing.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
