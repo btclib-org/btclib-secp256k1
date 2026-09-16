@@ -809,6 +809,12 @@ release-notes length in the first place, and are still in
   rather than the fork `.gitmodules` vendors** (closes #901): it now
   reads `fametrano/secp256k1-zkp`, agreeing with `.gitmodules`.
 
+### `deps-oldest.yml` calls `btclib-org/.github`'s reusable workflow
+
+- **The floor sentinel's own job becomes a call to
+  `btclib-org/.github`'s `reusable-deps-oldest.yml`** (issue
+  btclib-org/.github#35): `submodules: true` stays.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
