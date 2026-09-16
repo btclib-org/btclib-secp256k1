@@ -827,6 +827,12 @@ release-notes length in the first place, and are still in
   the tracked `.rst` files -- `docs/README.rst` and those under
   `docs/source/` -- reached no `targets:` term before this.
 
+### `CONTRIBUTING.md` gains the command naming an open section's order
+
+- **`CONTRIBUTING.md` gains the `awk` command naming the open section's
+  headings, and `REVIEWING.md` a question asking whether the branch's
+  own entry is last** (issue btclib-org/.github#1097): no gate reads it.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
