@@ -845,6 +845,12 @@ release-notes length in the first place, and are still in
   the script reads the open section off disk, and the rebase that eats
   the seam stages nothing.
 
+### `check_changelog.py`'s docstring states its own rebase discipline
+
+- **The module docstring cited `CONTRIBUTING.md`'s *Committing and
+  rebasing*, a heading no tracked file holds** (issue
+  btclib-org/.github#1137): it now states the discipline in its own words.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
