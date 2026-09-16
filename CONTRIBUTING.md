@@ -765,16 +765,21 @@ command at all, for the reason below, and nothing requires its result.
   after it. The build timestamp is pinned as in `Build wheels on <os>`
   above, and the normalizer that follows the build reads that same
   variable to rewrite every member's `mtime`, refusing to run without
-  it -- its own docstring has the reasoning. That job installs with pip
-  rather than uv, its subject being pip resolving the published artifact
-  rather than uv reading the lock, so reproducing the install wants a
-  fresh venv rather than the project's own:
+  it -- its own docstring has the reasoning. The bill of materials reads
+  it too, as the document's own timestamp, and is written after the
+  normalizer because the rewrite moves the digest it records; `sbom/`
+  rather than `dist/`, an index taking distribution files. That job
+  installs with pip rather than uv, its subject being pip resolving the
+  published artifact rather than uv reading the lock, so reproducing the
+  install wants a fresh venv rather than the project's own:
 
   ```shell
   export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
   uv run --locked --only-group build python -m build -s
   uv run --no-project --python 3.14 \
       .github/scripts/normalize_sdist.py dist/
+  uv run --no-project --python 3.14 \
+      .github/scripts/generate_sbom.py dist/ sbom/
   python -m pip install --verbose dist/*.tar.gz
   ```
 

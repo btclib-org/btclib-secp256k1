@@ -21,6 +21,10 @@ sdist/
 var/
 wheels/
 wheelhouse/
+# RELEASING.md's rebuild from a tag and CONTRIBUTING.md's `Build sdist`
+# block both write the bill of materials here, beside the dist/ above:
+# build output, not source
+sbom/
 *.egg-info/
 .installed.cfg
 *.egg

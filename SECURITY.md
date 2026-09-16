@@ -96,6 +96,17 @@ disk instead of asking GitHub for it — the form for whoever mirrors the
 releases page rather than trusting it live. The wheels are on PyPI and
 nowhere else, so what verifies them is their PEP 740 attestation there.
 
+A CycloneDX 1.6 bill of materials is attached beside the sdist,
+`btclib_secp256k1-<version>.cdx.json`: the archive with its SHA-256, the
+licence, the dependencies its metadata declares, and each vendored C
+library at the commit the submodule gitlink pins it to. That pin is what
+the package's own metadata cannot state — `Requires-Dist` names `cffi`
+and says nothing of libsecp256k1 — so a reader asking which
+libsecp256k1 a release carries has the answer in a signed document
+rather than in prose. One attestation covers the sdist and the document,
+that command run over the `.cdx.json` verifying it the same way; the
+bundle is that attestation and is not among its subjects.
+
 ## Limitations of the binding layer
 
 These are known and inherent, not vulnerabilities:

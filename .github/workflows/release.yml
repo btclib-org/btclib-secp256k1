@@ -349,10 +349,13 @@ jobs:
   # the copy on the index, while the copy github-release attaches below
   # carried nothing at all. This job signs it, and the digest is the
   # index's own, the artifact being downloaded here rather than rebuilt.
-  # The sdist alone, and not every file published: the wheels are attached
-  # to no release, so their only public copy is the one PyPI already
-  # attests, and a second attestation of a file nobody can obtain
-  # elsewhere closes no gap.
+  # The sdist and the bill of materials, and not every file published:
+  # the wheels are attached to no release, so their only public copy is
+  # the one PyPI already attests, and a second attestation of a file
+  # nobody can obtain elsewhere closes no gap. The document describes
+  # that same sdist, so it is signed with it rather than after it -- one
+  # nobody can check the provenance of says only what whoever wrote it
+  # wanted said.
   # A job of its own rather than two more permissions on github-release:
   # this workflow elevates one job at a time, and the one that writes
   # releases has no reason to also hold an OIDC token. Not in the build
@@ -368,7 +371,7 @@ jobs:
   # for the first time on release day, where a failure lands after PyPI
   # has the files and the tag can no longer be moved
   attest:
-    name: Attest the source distribution
+    name: Attest the release assets
     needs: [publish-pypi, publish-testpypi]
     # always(), the other publish job being skipped rather than run, and a
     # skipped job is one `needs` treats as failed
@@ -390,17 +393,30 @@ jobs:
           name: sdist
           path: dist
 
+      # into a directory of its own, as in the job below and for the same
+      # reason: the dist/* glob has to stay the distribution files
+      - name: Download the bill of materials
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sbom
+          path: sbom
+
       # actions/attest, and not the attest-build-provenance wrapper: that
       # one is a composite whose only step is this action, pinned there to
       # v4.2.1, so calling it would leave the version that signs decided
       # by somebody else's pin rather than by the line below. No predicate
       # input is what selects SLSA build provenance, which is what the
-      # wrapper's own name promises
-      - name: Sign a build provenance statement for the sdist
+      # wrapper's own name promises.
+      #
+      # One statement over both subjects the globs match, so verifying
+      # either the sdist or the document against the bundle below works
+      - name: Sign a build provenance statement for the release assets
         id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: dist/*
+          subject-path: |
+            dist/*
+            sbom/*
 
       # the bundle is the signed statement itself, and the job below
       # attaches it to the release: that is what lets `gh attestation
@@ -481,13 +497,19 @@ jobs:
           name: sdist
           path: dist
 
-      # into a directory of its own, so that the dist/* glob below stays
-      # the distribution files and nothing else
+      # each into a directory of its own, so that the dist/* glob below
+      # stays the distribution files and nothing else
       - name: Download the attestation bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: attestation
           path: attestation
+
+      - name: Download the bill of materials
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sbom
+          path: sbom
 
       - name: Create the release, with RELEASE_NOTES.md as its notes
         env:
@@ -507,12 +529,15 @@ jobs:
           # the sdist's own file name does
           bundle="$GITHUB_REF_NAME.attestation.jsonl"
           cp attestation/attestation.jsonl "$bundle"
+          # the bill of materials needs no renaming, unlike the bundle: it
+          # carries the version in its own name, the sdist being where it
+          # took it from
           if [ -s "$RUNNER_TEMP/notes.md" ]; then
-            gh release create "$GITHUB_REF_NAME" dist/* "$bundle" \
+            gh release create "$GITHUB_REF_NAME" dist/* sbom/* "$bundle" \
               --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
           else
             echo "::warning::RELEASE_NOTES.md has no $GITHUB_REF_NAME section"
-            gh release create "$GITHUB_REF_NAME" dist/* "$bundle" \
+            gh release create "$GITHUB_REF_NAME" dist/* sbom/* "$bundle" \
               --title "$GITHUB_REF_NAME" --generate-notes
           fi
 

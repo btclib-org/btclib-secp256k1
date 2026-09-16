@@ -768,11 +768,36 @@ jobs:
             .github/scripts/normalize_sdist.py dist/
           sha256sum dist/*
 
+      # and what nothing said at all: what the archive contains, as a
+      # document rather than as a check. It describes the sdist and not
+      # the wheels -- the script's own docstring has why -- and it is
+      # reproducible for the reason the step above is: SOURCE_DATE_EPOCH
+      # is its timestamp and the sdist's digest its serial number, so a
+      # rebuild of a released tag writes this file too, and
+      # release.yml's `attest` job signs it beside the archive. Into a
+      # directory of its own and not dist/: the publish jobs download
+      # this job's artifact into a dist/ they hand to an index whole, and
+      # an index takes distribution files
+      - name: Write the bill of materials
+        run: |
+          uv run --no-project --python 3.14 \
+            .github/scripts/generate_sbom.py dist/ sbom/
+
       - name: Upload the source distribution
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sdist
           path: dist/*.tar.gz
+
+      # an artifact of its own, for the reason the step that writes it
+      # gives: release.yml's `attest` and `github-release` jobs both hand
+      # every file in it to a signature or a release, the same way they
+      # do the sdist's
+      - name: Upload the bill of materials
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom
+          path: sbom/
 
   # installing from sdist is the one path that has to compile the
   # vendored libsecp256k1 on the user's machine: the wheel jobs never

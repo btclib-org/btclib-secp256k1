@@ -797,6 +797,12 @@ release-notes length in the first place, and are still in
   `btclib-org/.github`'s reusable workflows** (issue btclib-org/.github#35):
   `submodule-pin-release` is a new job, gating the two publish jobs.
 
+### The release attaches a CycloneDX bill of materials
+
+- **`build-sdist` writes a document describing the sdist and `attest`
+  signs it with the archive** (issue btclib-org/.github#144): it names
+  each vendored library at the commit its gitlink pins.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
