@@ -654,10 +654,10 @@ the repository. `scorecard.yml`'s `analysis` holds `id-token: write` with
 `security-events: write`: the transparency-log entry `publish_results`
 asks for, and the SARIF filed as code scanning alerts.
 `claude-review.yml` holds `pull-requests: write` with `id-token: write`
-on each of its jobs, where only the first is a write of theirs: the
-action mints a GitHub OIDC token during its own startup whatever the
-Anthropic credential is, and without it the run dies before reaching
-authentication at all.
+on its one calling job, where only the first is a write of that job's:
+the action the called workflow runs mints a GitHub OIDC token during
+its own startup whatever the Anthropic credential is, and without it
+the run dies before reaching authentication at all.
 
 What the call above cannot say is whether either value is this
 repository's own or the organization's, no endpoint reporting an
@@ -978,9 +978,9 @@ an organization secret at `visibility=all`, in both stores, so a
 repository adopting the workflow configures nothing for it, and a copy
 of it in a store here would be that decision undone.
 
-**A switch this repository does not set.** `claude-review.yml` guards
-its jobs with `vars.CLAUDE_REVIEW_ENABLED`, and neither variable store
-holds it:
+**A switch this repository does not set.** `claude-review.yml` calls a
+workflow -- `btclib-org/.github`'s -- whose own jobs guard themselves
+with `vars.CLAUDE_REVIEW_ENABLED`, and neither variable store holds it:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/actions/variables --jq .total_count

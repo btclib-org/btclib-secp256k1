@@ -893,6 +893,12 @@ release-notes length in the first place, and are still in
   passing `btclib-secp256k1` and the forwarded `version`** (issue
   btclib-org/.github#35): its `setup-uv` pin moves from v10.0.1 to v10.1.0.
 
+### `claude-review.yml`'s two jobs become one call to the organization's workflow
+
+- **`review` and `mention` become one `uses:` job, `claude-review`**
+  (issue btclib-org/.github#35): the verdict jq and the action pin were
+  already the callee's own; the calling job drops the old `if:`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
