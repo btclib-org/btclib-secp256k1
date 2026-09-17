@@ -881,6 +881,12 @@ release-notes length in the first place, and are still in
   and `coverage-latest` staying** (issue btclib-org/.github#35): the
   callee's `--no-cov` costs nothing, already gated by `coverage-latest`.
 
+### `sdist-rebuild.yml`'s `rebuild` job calls the organization's reusable workflow
+
+- **`rebuild` becomes a call to `reusable-sdist-rebuild.yml`, passing
+  `build-module`, `recursive` and `"3.14"`** (issue btclib-org/.github#35):
+  its `setup-uv` pin moves to v10.1.0, this tree's only site past v10.0.1.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
