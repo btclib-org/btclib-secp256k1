@@ -1341,10 +1341,11 @@ costs beside each other.
 
 Every workflow here takes `workflow_dispatch`, the gates included, except
 `claude-review` and `scorecard`, and for the three platform workflows it is
-the only way to ask about a branch at all. Both of `claude-review`'s jobs
-read the pull request or the comment that triggered them, so a manual run
-would start with nothing to read. `scorecard`'s triggers are its action's
-rather than this organization's: `ossf/scorecard-action`'s own README names
+the only way to ask about a branch at all. Both of the jobs
+`claude-review.yml` calls into read the pull request or the comment that
+triggered them, so a manual run would start with nothing to read.
+`scorecard`'s triggers are its action's rather than this organization's:
+`ossf/scorecard-action`'s own README names
 push and schedule on the default branch as what it supports, and calls
 `workflow_dispatch` experimental.
 

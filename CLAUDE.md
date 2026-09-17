@@ -418,8 +418,8 @@ Do not use Fable unless explicitly instructed.
   `all`), which is what makes `gh api orgs/btclib-org/actions/variables`
   answering `total_count: 0` a real absence rather than an endpoint
   nobody populates. Organization level is also where to ask in the
-  first place: `CLAUDE_REVIEW_ENABLED`, `claude-review.yml`'s own
-  switch, is an organization variable
+  first place: `CLAUDE_REVIEW_ENABLED`, the switch the workflow
+  `claude-review.yml` calls reads, is an organization variable
 - **The `merge=union` driver's blank-line damage to `CHANGELOG.md` is
   invisible to `git diff --numstat` and to `git rebase`'s own exit
   code.** Where a rebase's two sides both append at the end of the open

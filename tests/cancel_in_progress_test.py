@@ -38,9 +38,9 @@ brings along -- this defect one level up.
 top-level `concurrency:` block alone: GitHub accepts the key on a job's
 own `concurrency:` block too, and nothing here assumes a workflow keeps
 its group at one level rather than the other. No workflow in this tree
-does that today -- `claude-review.yml` moved its own group from the
-review job to the workflow (#593), which is what lets the closed event
-reach it before either job's own `if` is read, rather than leave that
+does that today -- `claude-review.yml` keeps its group at the workflow
+level (#593), which is what lets the closed event reach it before the
+called workflow's jobs read their own `if`, rather than leave that
 reliant on whether a job-level group ever claims anything for a job an
 `if` skips, a question #593 leaves open.
 
