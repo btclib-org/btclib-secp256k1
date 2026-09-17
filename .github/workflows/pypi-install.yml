@@ -135,7 +135,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github/scripts
       - name: Setup uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       # --no-project, so it runs on the interpreter uv fetches and
       # installs nothing: the script takes the standard library alone,
       # which is what lets it run before anything of this project exists
