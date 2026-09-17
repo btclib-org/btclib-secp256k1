@@ -875,6 +875,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github#35): the calling job now carries the permissions
   the callee cannot restore, and `upload-sarif` moves from v4.37.9 to v4.38.0.
 
+### `deps-latest.yml`'s `suite-latest` and `lint-latest` become a call
+
+- **`suite-latest` and `lint-latest` become one `uses:` job, `dist-latest`
+  and `coverage-latest` staying** (issue btclib-org/.github#35): the
+  callee's `--no-cov` costs nothing, already gated by `coverage-latest`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
