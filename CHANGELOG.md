@@ -869,6 +869,12 @@ release-notes length in the first place, and are still in
   `reusable-mutation.yml`** (issue btclib-org/.github#35): the run ends
   `success` under its own budget instead of `cancelled` at the ceiling.
 
+### `scorecard.yml`'s `analysis` job calls the organization's reusable workflow
+
+- **`analysis` becomes a call to `reusable-scorecard.yml`** (issue
+  btclib-org/.github#35): the calling job now carries the permissions
+  the callee cannot restore, and `upload-sarif` moves from v4.37.9 to v4.38.0.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
