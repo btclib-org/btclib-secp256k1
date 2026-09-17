@@ -30,6 +30,7 @@ import sys
 from contextlib import closing, contextmanager
 from email.message import Message
 from http import HTTPStatus
+from http.client import HTTPException
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, NamedTuple
@@ -114,6 +115,12 @@ def _timed_out() -> Iterator[Exception]:
 def _reset() -> Iterator[Exception]:
     """Refuse the way a connection dropped mid-answer does."""
     yield ConnectionResetError("reset by peer")
+
+
+@contextmanager
+def _truncated() -> Iterator[Exception]:
+    """Refuse the way an answer cut off mid-body does."""
+    yield HTTPException("truncated")
 
 
 @pytest.fixture
@@ -322,7 +329,7 @@ def test_a_2xx_that_is_not_ok_is_not_the_index_serving_it(
     assert not script.served(_URL, 10.0)
 
 
-@pytest.mark.parametrize("refusal", [_not_found, _timed_out, _reset])
+@pytest.mark.parametrize("refusal", [_not_found, _timed_out, _reset, _truncated])
 def test_an_index_that_does_not_answer_is_not_serving_the_version(
     script: ModuleType,
     monkeypatch: pytest.MonkeyPatch,
