@@ -863,6 +863,12 @@ release-notes length in the first place, and are still in
   `starmap`, the ported-from note -- is replaced by the copy `btclib`
   and `btclib-benchmarks` carry** (issue btclib-org/.github#1152).
 
+### `mutation.yml` calls `btclib-org/.github`'s reusable workflow
+
+- **The mutation job becomes a call to `btclib-org/.github`'s
+  `reusable-mutation.yml`** (issue btclib-org/.github#35): the run ends
+  `success` under its own budget instead of `cancelled` at the ceiling.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
