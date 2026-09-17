@@ -905,6 +905,12 @@ release-notes length in the first place, and are still in
   as where the draft condition is, their comments having pointed below
   at a condition the conversion moved** (issue btclib-org/.github#1177)
 
+### `attest` and `github-release` call the organization's reusable workflows
+
+- **`attest` and `github-release` become calls to
+  `reusable-attest.yml` and `reusable-github-release.yml`**
+  (issue btclib-org/.github#35): both pass `dist-artifact: sdist`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
