@@ -899,6 +899,12 @@ release-notes length in the first place, and are still in
   (issue btclib-org/.github#35): the verdict jq and the action pin were
   already the callee's own; the calling job drops the old `if:`.
 
+### The `ready_for_review` comments name the workflow the draft condition is in
+
+- **`docs.yml`, `links.yml` and `lint.yml` name the workflow each calls
+  as where the draft condition is, their comments having pointed below
+  at a condition the conversion moved** (issue btclib-org/.github#1177)
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
