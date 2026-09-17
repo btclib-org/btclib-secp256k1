@@ -857,6 +857,12 @@ release-notes length in the first place, and are still in
   in `release.yml` and `test.yml` replaces the file-level block** (closes
   #909): a new site now turns the gate red instead of passing silently.
 
+### `mutation_counts.py` becomes the copy shared with `btclib`
+
+- **This tree's own version -- the different measured numbers,
+  `starmap`, the ported-from note -- is replaced by the copy `btclib`
+  and `btclib-benchmarks` carry** (issue btclib-org/.github#1152).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
