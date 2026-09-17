@@ -16,15 +16,15 @@ attempts times an interval is a product to be multiplied out before it
 can be compared with the job's own `timeout-minutes`, and a wait that
 outlasts that is killed inside itself: the run then carries the runner's
 message about a cancelled job where this was written to name the page to
-go and read. `DEFAULT_TIMEOUT` below states the deadline once and the
-job header states its own timeout, so what decides whether the wait fits
-inside the job is one number against one number. Every request is
-bounded by what is left of the deadline as well as by its own timeout,
-so the whole wait ends within `--timeout` of its first request whatever
-the index does between answers. What is not bounded here is a single
-answer arriving a byte at a time: `urlopen`'s timeout is a socket
-timeout and applies per blocking read, so that case is the job's
-`timeout-minutes` to end.
+go and read (btclib-org/btclib#1165). `DEFAULT_TIMEOUT` below states the
+deadline once and the job header states its own timeout, so what decides
+whether the wait fits inside the job is one number against one number.
+Every request is bounded by what is left of the deadline as well as by
+its own timeout, so the whole wait ends within `--timeout` of its first
+request whatever the index does between answers. What is not bounded
+here is a single answer arriving a byte at a time: `urlopen`'s timeout
+is a socket timeout and applies per blocking read, so that case is the
+job's `timeout-minutes` to end.
 
 No trigger reaches the verdict this exists for. What is waited on is
 somebody else's upload, so neither a release nor a rehearsal can arrange
@@ -32,10 +32,7 @@ for the index to be late, and a trigger added to reach the retry reaches
 its first attempt instead. `tests/wait_for_pypi_release_test.py` is
 therefore the only thing that drives the retry, the deadline and the
 error path: it substitutes the transport and the clock, and advances the
-clock past the deadline itself. That is what section 10 of
-btclib-org/.github's README.md asks of a step that waits for something
-outside the run, and btclib-org/.github#509 is this workflow's instance
-of it.
+clock past the deadline itself.
 
 The tag is empty on every trigger but a release call, and an empty tag is
 nothing to wait for rather than an error -- which is what makes this
@@ -43,7 +40,7 @@ runnable on a schedule and a dispatch, where a step only a release runs
 is a step whose defect ships with a release.
 
     uv run --no-project --python 3.14 \
-        .github/scripts/wait_for_pypi_release.py btclib-secp256k1 "$TAG"
+        .github/scripts/wait_for_pypi_release.py "$PACKAGE" "$TAG"
 """
 
 from __future__ import annotations
@@ -82,8 +79,18 @@ def served(url: str, timeout: float) -> bool:
     # a 404 while the upload is still landing is an HTTPError, a
     # connection refused or timed out is an OSError, and a truncated
     # answer is an HTTPException. None of them is this script's verdict,
-    # which the deadline alone decides
-    except (OSError, HTTPException):
+    # which the deadline alone decides.
+    #
+    # Two clauses and not one parenthesised tuple, this file being
+    # shared: `ruff-format` rewrites `except (OSError, HTTPException):`
+    # into PEP 758's unparenthesised form wherever `requires-python` is
+    # 3.14, and that form is a syntax error to mypy and to the
+    # interpreter wherever it is 3.10 -- so the tuple cannot hold still
+    # in all four trees at once and two clauses can
+    # (btclib-org/.github#1160)
+    except OSError:
+        return False
+    except HTTPException:
         return False
     return status == HTTPStatus.OK
 

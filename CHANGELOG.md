@@ -911,6 +911,12 @@ release-notes length in the first place, and are still in
   `reusable-attest.yml` and `reusable-github-release.yml`**
   (issue btclib-org/.github#35): both pass `dist-artifact: sdist`.
 
+### `wait_for_pypi_release.py` takes the body the four trees converge on
+
+- **The docstring gains the `(btclib-org/btclib#1165)` citation it never
+  carried, the usage example passes `"$PACKAGE"`, and the `except`
+  becomes two clauses** (issue btclib-org/.github#1160)
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
