@@ -887,6 +887,12 @@ release-notes length in the first place, and are still in
   `build-module`, `recursive` and `"3.14"`** (issue btclib-org/.github#35):
   its `setup-uv` pin moves to v10.1.0, this tree's only site past v10.0.1.
 
+### `pypi-install.yml`'s `wait-for-index` job calls the organization's workflow
+
+- **`wait-for-index` becomes a call to `reusable-wait-for-index.yml`,
+  passing `btclib-secp256k1` and the forwarded `version`** (issue
+  btclib-org/.github#35): its `setup-uv` pin moves from v10.0.1 to v10.1.0.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

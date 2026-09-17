@@ -107,8 +107,8 @@ jobs:
   # late -- so it is a script with a test rather than a loop in a run:
   # block, which is what section 10 of btclib-org/.github's README.md
   # asks of a wait (btclib-org/.github#509). The budget is the script's own
-  # deadline, stated there as one number; timeout-minutes here is set well
-  # above it and bounds the job rather than the wait.
+  # deadline, stated there as one number; timeout-minutes bounds the job
+  # rather than the wait, and is the callee's own (btclib-org/.github#35).
   #
   # The job runs on every trigger and waits on almost none of them: the
   # input is empty wherever no release is calling, and an empty tag is
@@ -116,37 +116,18 @@ jobs:
   # that ever runs it, and a job a release is the first to run is a job
   # whose defect ships with that release -- which has already happened to
   # this wait, in more than one of these repositories
+  #
+  # The job itself -- the checkout, the uv setup and the script run -- is
+  # btclib-org/.github's reusable-wait-for-index.yml, called at @main so a
+  # fix there reaches this tree in one landing (btclib-org/.github#35).
+  # package is this workflow's own distribution name, read off the
+  # script's own argument rather than derived from the repository's;
+  # version is forwarded from this workflow's own workflow_call input
   wait-for-index:
-    name: Wait for the index to serve the released version
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      # sparse, and that is the whole reason a checkout is admissible in a
-      # workflow whose point is that nothing of this repository is on the
-      # runner: what lands is .github/scripts plus the repository root,
-      # cone mode being the default and root files always being in the
-      # cone, so there is no src/btclib_secp256k1 for an import to resolve
-      # to, and no secp256k1/ for anything to build. This job imports
-      # nothing of the project in any case, and the jobs that install it
-      # check out nothing at all
-      - name: Check out the wait script
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          sparse-checkout: .github/scripts
-      - name: Setup uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-      # --no-project, so it runs on the interpreter uv fetches and
-      # installs nothing: the script takes the standard library alone,
-      # which is what lets it run before anything of this project exists
-      # on the runner
-      - name: Wait for the index to serve the released version
-        shell: bash
-        env:
-          TAG: ${{ inputs.version }}
-        run: |
-          uv run --no-project --python 3.14 \
-            .github/scripts/wait_for_pypi_release.py btclib-secp256k1 "$TAG"
+    uses: btclib-org/.github/.github/workflows/reusable-wait-for-index.yml@main
+    with:
+      package: btclib-secp256k1
+      version: ${{ inputs.version }}
 
   install-published:
     name: >-
