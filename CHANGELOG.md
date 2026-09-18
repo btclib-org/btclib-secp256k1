@@ -977,6 +977,12 @@ release-notes length in the first place, and are still in
   citation moves with it**: the new commit only rewrites its own test,
   so `zkp.rangeproof.borromean_verify` (#828) needed no matching change.
 
+### `pubkey_tweak_mul` stops claiming `secp256k1_ecdh`'s constant-time guarantee
+
+- **`secp256k1_ec_pubkey_tweak_mul` runs the variable-time
+  `secp256k1_ecmult`, not `secp256k1_ecdh`'s constant-time
+  `secp256k1_ecmult_const`** (closes #864).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

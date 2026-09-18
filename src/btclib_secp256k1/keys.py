@@ -561,9 +561,13 @@ def pubkey_tweak_mul(
     """Multiply a public key by a tweak.
 
     This is the multiplication of an arbitrary point, as opposed to the
-    multiplication of the generator provided by the mult module. It is
-    constant time, and is the shared point of an ECDH exchange: see
-    `ecdh.shared_secret`, which hashes it.
+    multiplication of the generator provided by the mult module, and is
+    the shared point of an ECDH exchange: see `ecdh.shared_secret`,
+    which hashes it. **It is not constant time**:
+    `secp256k1_ec_pubkey_tweak_mul` runs `secp256k1_ecmult`, the wNAF
+    multiplication, which is variable time in the tweak -- unlike
+    `secp256k1_ecmult_const`, which is what `secp256k1_ecdh` calls to
+    reach that same point.
 
     Args:
         pubkey_bytes: the public key, 33 or 65 bytes.
