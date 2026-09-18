@@ -841,10 +841,13 @@ command at all, for the reason below, and nothing requires its result.
   fi
   ```
 
-  That `grep` catches what the build above cannot report on its own: a
-  link myst cannot resolve turns into an anchor on the page it is
-  already on — an id nothing defines — rather than into a warning, so
-  `-n -W` gives no signal for it
+  A link myst cannot resolve renders as an anchor on the page it is
+  already on — an id nothing defines — and `-n -W` already fails the
+  build on it, for as long as myst warns unconditionally and `conf.py`
+  suppresses nothing (verified: appending a dead relative link to this
+  file takes the build above from exit 0 to exit 1 on `myst.xref_missing`).
+  That `grep` asks the same question of the pages sphinx wrote instead,
+  and is what still answers for the artifact if either of those changes
 
 The `pypi-install` workflow has no local equivalent by design: what it
 installs is what PyPI serves.

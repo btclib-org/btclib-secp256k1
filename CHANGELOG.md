@@ -983,6 +983,12 @@ release-notes length in the first place, and are still in
   `secp256k1_ecmult`, not `secp256k1_ecdh`'s constant-time
   `secp256k1_ecmult_const`** (closes #864).
 
+### `CONTRIBUTING.md`'s `grep` paragraph states what it backstops, not replaces
+
+- **The paragraph under the `grep` fence said it catches what `-n -W`
+  cannot report, refuted by planting a dead link** (closes #870): the
+  build fails first, and the `grep` is its backstop, not a replacement.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
