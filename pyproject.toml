@@ -121,7 +121,21 @@ requires = [
     # 1.27 is where hatchling learned PEP 639: an older one rejects the
     # license expression and license-files above outright, so the floor
     # is what the metadata of this project already requires
-    "hatchling>=1.27",
+    #
+    # the ceiling is not the departure an upper bound on a runtime
+    # dependency would be: section 3 of btclib-org/.github's README.md
+    # draws that line, a build requirement's bound narrowing only what
+    # an isolated build resolves for itself. This is the break that
+    # forced one here: 1.32.1 gave BuildHookInterface a second type
+    # parameter and scripts/hatch_build.py subscripts it with one, which
+    # raises TypeError at class definition rather than under mypy. It
+    # was yanked, but 1.32.3 carries the same signature and is not, so
+    # the yank does not reopen the range. uv.lock cannot pin a build
+    # requirement: every PEP 517 isolated build resolves `requires`
+    # fresh, outside the lock. The ceiling lifts once
+    # scripts/hatch_build.py takes the two-parameter signature
+    # (btclib-org/.github#1194)
+    "hatchling>=1.27,<1.32.1",
     # the same floors as the runtime dependency above, and for the same
     # reason: the build runs the cdef through the very cffi it resolves
     'cffi>=1.6; python_version<"3.13"',

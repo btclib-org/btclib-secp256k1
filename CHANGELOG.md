@@ -917,6 +917,12 @@ release-notes length in the first place, and are still in
   carried, the usage example passes `"$PACKAGE"`, and the `except`
   becomes two clauses** (issue btclib-org/.github#1160)
 
+### `[build-system]` requires caps `hatchling` below the signature break
+
+- **The floor gains a ceiling, `hatchling<1.32.1`, the version that
+  first subscripts `BuildHookInterface` with a second type parameter
+  and breaks every build** (closes btclib-org/.github#1194).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
