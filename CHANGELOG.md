@@ -953,6 +953,12 @@ release-notes length in the first place, and are still in
   `ref` parameter and passed on as the call's `sha`** (closes #922):
   unset, it resolved against a repository's default branch alone.
 
+### `wait_for_readthedocs_build.py` takes the body the four trees converge on
+
+- **The usage example passes `"$SLUG"`, `USER_AGENT` becomes a template
+  `unserved` formats with the project, and the exit becomes
+  `raise SystemExit(main())`** (issue btclib-org/.github#1186)
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
