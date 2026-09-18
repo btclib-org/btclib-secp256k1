@@ -123,7 +123,7 @@ same reason the paragraph above gives for its own link. -->
 secp256k1-zkp (btclib-org/btclib-secp256k1#603) is vendored beside
 secp256k1, not in place of it, and carries no release of its own to
 track: it is pinned at
-[a8f6b86a](https://github.com/fametrano/secp256k1-zkp/commit/a8f6b86a804cdfd455dfb943937d254ec6ccc70a),
+[9912c3e4](https://github.com/fametrano/secp256k1-zkp/commit/9912c3e49b012c91967315395d046be4836c2e34),
 on `fametrano/secp256k1-zkp` rather than on
 `BlockstreamResearch/secp256k1-zkp` directly (#828) -- the commit that
 exposes `secp256k1_borromean_verify` as a public function, internal
