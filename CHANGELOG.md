@@ -923,6 +923,12 @@ release-notes length in the first place, and are still in
   first subscripts `BuildHookInterface` with a second type parameter
   and breaks every build** (closes btclib-org/.github#1194).
 
+### `dependabot.yml`'s `gitsubmodule` block gains the `groups:` its siblings carry
+
+- **Both submodules would now bump in one pull request rather than one
+  each** (issue btclib-org/.github#1156): no week has moved both yet,
+  #913, #849 and #104 each carrying a single submodule.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
