@@ -1,0 +1,27 @@
+# lychee (`lycheeverse/lychee-action`, called from `links.yml`'s
+# `reusable-links.yml`) reads this file from the repository root on its
+# own: `default_config_file()` looks for `lychee.toml` in the current
+# working directory whenever no `--config` flag is given, which is the
+# case for every invocation here, and the action runs with its default
+# `workingDirectory: "."` -- the checkout root. So this merges with the
+# flags `reusable-links.yml` passes rather than replacing them.
+#
+# `remap` below narrows `--include-fragments` around one lychee
+# limitation, rather than excluding the URL it fires on
+# (btclib-org/btclib-secp256k1#884): a GitHub issue-comment or
+# pull-request-comment permalink's `#issuecomment-NNNN` anchor is added
+# to the page by client-side JavaScript, so the server-rendered HTML
+# lychee fetches never carries an element with that id, and
+# `--include-fragments` reports `Cannot find fragment` against a comment
+# that is genuinely there. lycheeverse/lychee#1791 and
+# lycheeverse/lychee#1729 are upstream's own record of the same gap, and
+# the rewrite below is the workaround given in both: strip the fragment
+# before lychee looks for it, so only the fragment lookup is skipped and
+# the issue or pull request the comment lives on still has to resolve --
+# a citation to a comment whose issue or pull request no longer exists
+# still fails the check. The pattern matches nothing else: a renamed
+# heading in a GitHub blob, or any other fragment on any other host, is
+# untouched.
+remap = [
+    '^(https://github\.com/[^/]+/[^/]+/(?:issues|pull)/[0-9]+)#issuecomment-[0-9]+$ $1',
+]
