@@ -201,6 +201,60 @@ def test_the_date_beside_a_commit_is_not_part_of_it() -> None:
     assert "(" not in entries[0].commit
 
 
+def test_a_bare_key_not_last_in_its_block_does_not_swallow_the_next_line() -> None:
+    r"""The separator is confined to one line, so a bare key matches nothing.
+
+    `\s+` also matches the newline ending a bare key's own line, so a
+    `commit` written with no value would let the separator cross into
+    `behind`'s own line and capture it whole -- misreading a block that
+    is missing its commit as one already documented as behind, a reason
+    it never stated (btclib-org/btclib-secp256k1#862). `[ \t]+` cannot
+    cross that newline, so the bare key matches nothing and the block is
+    read for what it is: no commit to check against.
+    """
+    readme = (
+        "### `tests/bare_commit.csv`\n\n"
+        "```text\n"
+        "repo    upstream/one\n"
+        "path    vectors/bare_commit.csv\n"
+        "commit\n"
+        "behind  0\n"
+        "```\n"
+    )
+
+    entries, skipped = check._entries_at_tip(readme)
+
+    assert entries == []
+    assert skipped == ["`tests/bare_commit.csv` (no commit to check against)"]
+
+
+def test_a_ref_line_becomes_the_entries_own_ref() -> None:
+    """A pin standing on a branch names it; one that does not carries none."""
+    readme = (
+        "### `tests/on_a_branch.csv`\n\n"
+        "```text\n"
+        "repo    upstream/one\n"
+        "path    vectors/on_a_branch.csv\n"
+        "ref     pr-branch\n"
+        f"commit  {_PINNED}\n"
+        "behind  0\n"
+        "```\n"
+    )
+
+    entries, _skipped = check._entries_at_tip(readme)
+
+    assert entries == [
+        check.Entry(
+            "`tests/on_a_branch.csv`",
+            "upstream/one",
+            "vectors/on_a_branch.csv",
+            _PINNED,
+            "pr-branch",
+        )
+    ]
+    assert check._entries_at_tip(_README)[0][0].ref is None
+
+
 def test_the_tip_is_the_one_commit_gh_is_asked_for(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -224,6 +278,32 @@ def test_the_tip_is_the_one_commit_gh_is_asked_for(
     assert "repos/upstream/one/commits" in args
     assert "path=vectors/at_the_tip.csv" in args
     assert "per_page=1" in args
+    assert not any(arg.startswith("sha=") for arg in args)
+
+
+def test_a_ref_is_passed_on_as_the_calls_own_sha_parameter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A pin standing on a branch asks the API to walk that branch.
+
+    GitHub's "commits touching a path" endpoint resolves against a
+    repository's default branch alone unless told otherwise, and `sha`
+    is its own name for what to walk instead -- a branch or a tag as
+    much as a commit despite the name (btclib-org/btclib-secp256k1#922).
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+    """
+    run = _Run(
+        json.dumps([
+            {"sha": _TIP, "commit": {"committer": {"date": "2026-02-03T04:05:06Z"}}}
+        ])
+    )
+    monkeypatch.setattr(check.subprocess, "run", run)
+
+    check._latest_commit("upstream/one", "vectors/on_a_branch.csv", "pr-branch")
+
+    assert "sha=pr-branch" in run.calls[-1]
 
 
 def test_a_path_upstream_has_no_commit_for_answers_none(
@@ -242,6 +322,40 @@ def test_a_path_upstream_has_no_commit_for_answers_none(
     assert check._latest_commit("upstream/one", "vectors/gone.csv") is None
 
 
+def test_find_drift_threads_the_entries_ref_into_the_lookup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The pin's own `ref` decides which branch is asked, not the caller.
+
+    Args:
+        monkeypatch: the fixture the tip lookup is replaced through.
+        tmp_path: where the sample README is written.
+    """
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "### `tests/on_a_branch.csv`\n\n"
+        "```text\n"
+        "repo    upstream/one\n"
+        "path    vectors/on_a_branch.csv\n"
+        "ref     pr-branch\n"
+        f"commit  {_PINNED}\n"
+        "behind  0\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    seen: list[tuple[str, str, str | None]] = []
+
+    def _stub(repo: str, path: str, ref: str | None = None) -> tuple[str, str]:
+        seen.append((repo, path, ref))
+        return _PINNED, "2026-01-02"
+
+    monkeypatch.setattr(check, "_latest_commit", _stub)
+
+    check.find_drift(readme)
+
+    assert seen == [("upstream/one", "vectors/on_a_branch.csv", "pr-branch")]
+
+
 def test_a_pin_still_at_the_tip_is_no_drift(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -252,7 +366,7 @@ def test_a_pin_still_at_the_tip_is_no_drift(
         tmp_path: where the sample README is written.
     """
     monkeypatch.setattr(
-        check, "_latest_commit", lambda _repo, _path: (_PINNED, "2026-01-02")
+        check, "_latest_commit", lambda _repo, _path, _ref=None: (_PINNED, "2026-01-02")
     )
 
     drifted, skipped = check.find_drift(_readme(tmp_path))
@@ -271,7 +385,7 @@ def test_a_pin_behind_the_tip_is_drift_naming_the_tip(
         tmp_path: where the sample README is written.
     """
     monkeypatch.setattr(
-        check, "_latest_commit", lambda _repo, _path: (_TIP, "2026-02-03")
+        check, "_latest_commit", lambda _repo, _path, _ref=None: (_TIP, "2026-02-03")
     )
 
     drifted, _skipped = check.find_drift(_readme(tmp_path))
@@ -289,7 +403,7 @@ def test_a_path_that_is_gone_is_drift_with_no_tip_to_name(
         monkeypatch: the fixture the tip lookup is replaced through.
         tmp_path: where the sample README is written.
     """
-    monkeypatch.setattr(check, "_latest_commit", lambda _repo, _path: None)
+    monkeypatch.setattr(check, "_latest_commit", lambda _repo, _path, _ref=None: None)
 
     drifted, _skipped = check.find_drift(_readme(tmp_path))
 
@@ -430,7 +544,7 @@ def test_a_dry_run_prints_the_finding_and_touches_no_issue(
     """
     reported: list[object] = []
     monkeypatch.setattr(
-        check, "_latest_commit", lambda _repo, _path: (_TIP, "2026-02-03")
+        check, "_latest_commit", lambda _repo, _path, _ref=None: (_TIP, "2026-02-03")
     )
     monkeypatch.setattr(check, "report", lambda *args: reported.append(args))
     monkeypatch.setattr(
@@ -463,7 +577,7 @@ def test_a_gone_path_is_printed_as_gone_rather_than_as_behind(
         tmp_path: where the sample README is written.
         capsys: the captured streams.
     """
-    monkeypatch.setattr(check, "_latest_commit", lambda _repo, _path: None)
+    monkeypatch.setattr(check, "_latest_commit", lambda _repo, _path, _ref=None: None)
     monkeypatch.setattr(check, "report", lambda *_args: None)
     monkeypatch.setattr(
         check.sys,
@@ -493,7 +607,7 @@ def test_a_clean_run_says_so_and_still_reports(
     """
     reported: list[tuple[object, ...]] = []
     monkeypatch.setattr(
-        check, "_latest_commit", lambda _repo, _path: (_PINNED, "2026-01-02")
+        check, "_latest_commit", lambda _repo, _path, _ref=None: (_PINNED, "2026-01-02")
     )
     monkeypatch.setattr(check, "report", lambda *args: reported.append(args))
     readme = _readme(tmp_path)

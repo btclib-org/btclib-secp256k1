@@ -941,6 +941,18 @@ release-notes length in the first place, and are still in
   `#issuecomment-NNNN` fragment before `--include-fragments` looks for
   the anchor GitHub adds with client-side JavaScript** (closes #884).
 
+### `check_vendored_vectors.py`'s `_FIELD` separator no longer crosses a newline
+
+- **`[ \t]+` replaces `\s+`, so a bare key can no longer swallow the
+  next line as its own value** (closes #862): the fix `btclib` and
+  `btclib-benchmarks` already carry, comment included.
+
+### `check_vendored_vectors.py`'s `_latest_commit` takes an optional `ref`
+
+- **An entry's own `ref` field is threaded into `_latest_commit`'s new
+  `ref` parameter and passed on as the call's `sha`** (closes #922):
+  unset, it resolved against a repository's default branch alone.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
