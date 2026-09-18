@@ -929,6 +929,12 @@ release-notes length in the first place, and are still in
   each** (issue btclib-org/.github#1156): no week has moved both yet,
   #913, #849 and #104 each carrying a single submodule.
 
+### `codeql.yml` documents its permission grants where the auditor reads them
+
+- **The three grants `zizmor --persona=auditor` flags take a trailing
+  comment, the leading prose kept** (issue btclib-org/.github#1164): the
+  auditor reads a permission's own line, not the one above it.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
