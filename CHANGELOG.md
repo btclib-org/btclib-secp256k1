@@ -965,6 +965,12 @@ release-notes length in the first place, and are still in
   which survivors were judged not a test to write, and why** (issue
   btclib-org/.github#1158): a scheduled run already prints the numbers.
 
+### `[dependency-groups]`'s twenty entries gain lower bounds
+
+- **Every entry declares a floor, so `uv lock --resolution lowest-direct`
+  reaches a lock instead of dying on `pytest==2.0.0`** (closes #875): the
+  ground for each bound is in `pyproject.toml`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
