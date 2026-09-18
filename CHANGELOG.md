@@ -935,6 +935,12 @@ release-notes length in the first place, and are still in
   comment, the leading prose kept** (issue btclib-org/.github#1164): the
   auditor reads a permission's own line, not the one above it.
 
+### `lychee.toml` strips a GitHub issue-comment link's fragment
+
+- **`remap` drops a GitHub issue/pull-request comment link's
+  `#issuecomment-NNNN` fragment before `--include-fragments` looks for
+  the anchor GitHub adds with client-side JavaScript** (closes #884).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

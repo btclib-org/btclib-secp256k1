@@ -62,6 +62,7 @@ on:
     paths:
       - .github/workflows/links.yml
       - .lycheeignore
+      - lychee.toml
 
 # least privilege for the GITHUB_TOKEN: everything running in a job can
 # read it, and nothing here writes. lychee is given it for github.com
