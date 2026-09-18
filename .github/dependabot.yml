@@ -67,5 +67,9 @@ updates:
     schedule:
       interval: weekly
       day: thursday
+    groups:
+      # one PR for both submodule bumps instead of one PR each
+      submodules:
+        patterns: ["*"]
     cooldown:
       default-days: 7
