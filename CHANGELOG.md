@@ -959,6 +959,12 @@ release-notes length in the first place, and are still in
   `unserved` formats with the project, and the exit becomes
   `raise SystemExit(main())`** (issue btclib-org/.github#1186)
 
+### `bindings.toml`'s header stops stating mutation-run totals
+
+- **The header's survivor and mutant totals are gone, and what stays is
+  which survivors were judged not a test to write, and why** (issue
+  btclib-org/.github#1158): a scheduled run already prints the numbers.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

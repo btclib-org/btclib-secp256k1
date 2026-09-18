@@ -10,22 +10,21 @@
 # one that passes 33.
 #
 # The first session answered that, and the answer was that not every bound
-# had both: 383 survivors, `cr-rate --estimate` 49.68, on a tree at 100%
-# statement coverage -- two numbers answering different questions, which is
-# the whole reason this configuration exists. Of those 383, 341 were the
-# inert shape the operator filter below now skips and 42 were real.
+# had both: mutation testing found survivors on a tree already at 100%
+# statement coverage -- two questions with different answers, which is the
+# whole reason this configuration exists. Most of those survivors were the
+# inert shape the operator filter below now skips; the rest were real.
 #
-# The tests those 42 asked for are in tests/ now, and a second session
-# measured 359 survivors: every comparison mutant on a size check dead but
-# one, both loop mutants dead, and the four the second session still found
-# -- three recid bounds and one message-hash check -- killed by hand
-# afterwards, each mutation applied to the source and the suite watched to
-# fail. What that left, 13 on the session that measured the filter below,
-# was two shapes that no test could kill, and neither is there any more --
+# The tests the real ones asked for are in tests/ now, and a second
+# session found the comparison and loop mutants dead except for a handful
+# of recid bounds and a message-hash check, killed by hand afterwards --
+# each mutation applied to the source and the suite watched to fail. What
+# the session that measured the filter below still found, past that, was
+# two shapes that no test could kill, and neither is there any more --
 # because each was a question about the code rather than about the suite:
 #
 #   ffi.new("size_t *", 73) -> 74 or 72, the capacity of an output buffer,
-#   written as a second copy of the buffer's own size. Six of the 13.
+#   written as a second copy of the buffer's own size.
 #   `ffi.sizeof` now derives the capacity from the buffer and the buffer is
 #   what is unpacked, so a wrong size reaches the caller instead of being
 #   absorbed. The DER buffer went with them: 73 was slack over a
@@ -35,17 +34,21 @@
 #
 #   secrets.token_bytes(32) -> 31 or 33, randomness this package generates
 #   rather than accepts: a BIP340 aux, an ellswift encoding, the context
-#   seed. Seven of the 13, and unkillable through any answer -- a shorter
-#   aux is hashed into a different signature that verifies just as well.
+#   seed -- unkillable through any answer, a shorter aux being hashed into
+#   a different signature that verifies just as well.
 #   What holds them now is what is *asked* of `secrets` rather than what
 #   comes back, so the context seed is randomized through a function taking
 #   the context as an argument, the way `_load_lib` takes the module
 #
-# The session that measured that is in the pull request which made it true:
-# 385 mutants executed, none surviving, 352 skipped. So read a survivor
-# list expecting nothing, and read whatever is in it as a test nobody has
-# written -- unless it is the shape below, which is not a test nobody has
-# written but a comparison with only one reachable side.
+# The session that measured that is in the pull request which made it
+# true. What a run finds now is read off `bindings-survivors.txt`, the
+# artifact the workflow uploads, at run 33387466356 -- a scheduled sweep
+# that reached every mutant, where a dispatch cut at its budget says
+# `never run` in its own summary line and has no verdict for what it
+# never reached. That list is not empty, and #941 is where what is in it
+# is being worked through. Read an entry as a test nobody has written --
+# unless it is the shape below, which is not a test nobody has written
+# but a comparison with only one reachable side.
 #
 # A session dated 2026-08-12, on code neither session above had measured,
 # found one: `_scalar.py`'s `value.itemsize != 1`, from #124, mutates to
@@ -57,19 +60,20 @@
 # after, the same way the filter below skips the annotations by operator
 # rather than asking every mutant of a `|` to be read again.
 #
-# One thing to know that is not a survivor at all, and is the reason
-# "expecting nothing" is worth reading as exactly that and no more (#231).
+# One thing to know that is not a survivor at all, and is the reason a
+# falling mutant count is not by itself a tighter suite (#231).
 # #221 collapsed every buffer width in the package to one statement, and in
 # two modules that turned several independently mutable copies of a number
 # into one: `ellswift` had 64 at `_decode_` and at both of `xdh`'s length
-# checks, three of them, and `ssa` had it at `_verify_` and at `verify`.
+# checks, and `ssa` had it at `_verify_` and at `verify`.
 # `core/NumberReplacer` carries `OFFSETS = [+1, -1]` and yields a position
-# per offset, so where `ellswift`'s three literals gave six mutants its one
-# constant gives two -- and either of those two changes every site at once
-# and dies on whichever test reaches it first. Nothing is hidden today: the
-# seven constants #221 introduced were each mutated both ways before it
-# landed, bytecode writing off and a control run either side, and all
-# fourteen die. What is gone is resolution for the
+# per offset, so where each of `ellswift`'s separate literals used to give
+# its own pair of mutants, the one shared constant now gives a single pair
+# for every site together -- and either of those two mutants changes every
+# site at once and dies on whichever test reaches it first. Nothing is
+# hidden today: every constant #221 introduced was mutated both ways before
+# it landed, bytecode writing off and a control run either side, and every
+# one of those mutants dies. What is gone is resolution for the
 # session after next: a check that later loses the test covering it can no
 # longer surface here, because the mutant that would have reported it is
 # killed elsewhere. So this is the mirror of the two shapes above -- not a
@@ -105,8 +109,9 @@
 # would be excluding code from the question rather than dividing the work,
 # and a module added to it is in scope without this line being edited.
 # `cosmic-ray init` enumerates the mutants in under a second, so how many
-# there are is a command rather than a number here -- the sessions quoted
-# below each name their own, being records of what one run measured.
+# there are is a command rather than a number here. The sessions quoted
+# below are records of what was judged, not of what a run counted -- a
+# scheduled run prints the count, and this file does not repeat it.
 # The vendored C is not in it and cannot be -- libsecp256k1 is upstream's,
 # and what this repository is answerable for is how the bindings drive it
 module-path = "src/btclib_secp256k1"
@@ -147,11 +152,10 @@ excluded-modules = []
 # `bytes >> int` and ten more -- none of which any test can reach, because
 # nothing ever evaluates the expression.
 #
-# Measured rather than argued, both sessions over this same scope: without
-# the filter, 365 survivors of 777 mutants in 5 minutes; with it, 352
-# skipped and 13 survivors of the 425 that ran, in 2. The two numbers say
-# the same thing twice -- 365 - 13 = 352 -- so the filter takes out exactly
-# the mutants that survived and not one that any test killed.
+# Measured rather than argued, both sessions over this same scope: the run
+# without the filter finds exactly as many more survivors as the filtered
+# run now skips -- so the filter takes out exactly the mutants that
+# survived and not one that any test killed.
 #
 # The pattern is anchored on what is *replaced*, which is what leaves the
 # one BitOr mutant a test does kill: `2**256` in _scalar.py mutated to
@@ -160,9 +164,10 @@ excluded-modules = []
 #
 # Excluded by operator rather than with `# pragma: no mutate`, and the
 # argument is where the decision lives. One line here, in the file that
-# already says what is mutated and what judges it, against a marker on each
-# of 26 library lines and again on every one a later signature adds. The
-# price is the same either way and is paid here instead of there: a real
+# already says what is mutated and what judges it, against a marker on
+# every library line the pattern below matches, and again on every one a
+# later signature adds. The price is the same either way and is paid here
+# instead of there: a real
 # `a | b` written into one of these modules would be skipped in silence, so
 # the claim behind this line is a grep, and it is the claim to re-check
 # rather than this comment:
