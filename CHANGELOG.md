@@ -1007,6 +1007,12 @@ release-notes length in the first place, and are still in
   skip where `uv.lock` records a resolution other than the highest**
   (closes #935): the hook pins are moved to agree with the highest one.
 
+### The zizmor hook takes `--persona=auditor`, and the tree measures zero
+
+- **Five workflows document their grants, and two decline
+  `template-injection` on the step's own `run:` key** (issue
+  btclib-org/.github#1164, issue btclib-org/.github#1198).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

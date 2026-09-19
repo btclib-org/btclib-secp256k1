@@ -114,7 +114,7 @@ jobs:
     # workflow's own contents: read
     permissions:
       contents: read
-      issues: write
+      issues: write # opening, closing or editing the tracking issue
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -134,8 +134,13 @@ jobs:
       # pull request testing a change to this script or the README
       # should not close or edit whatever tracking issue is open at the
       # time as a side effect of that test
+      #
+      # github.event_name resolves to one of exactly two literals this
+      # file itself writes -- '--dry-run' or the empty string -- so no
+      # fork-controlled string reaches the argument the expression
+      # expands to
       - name: Re-check every pin already at upstream's tip
-        run: >-
+        run: >- # zizmor: ignore[template-injection]
           python .github/scripts/check_vendored_vectors.py
           tests/README.md
           "Vendored vectors behind upstream"

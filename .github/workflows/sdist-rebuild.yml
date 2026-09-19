@@ -65,7 +65,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
     permissions:
       contents: read
-      attestations: read
+      attestations: read # what gh attestation verify reads
     uses: btclib-org/.github/.github/workflows/reusable-sdist-rebuild.yml@main
     with:
       sdist-builder: build-module
