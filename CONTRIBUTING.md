@@ -373,14 +373,16 @@ is opt-in behind `BTCLIB_LIBSECP256K1_ZKP` by decision (#603), and
 without the flag nothing calls into it. The module is imported all the
 same — `tests/all_test.py`'s census and `tests/secret_test.py`'s walk
 both descend into the subpackage, and the documentation build imports
-it for its own `:members:` — so what an unflagged run executes there is
-its module-level lines and no function body. Nothing drives it: a test
-that does carries `pytest.importorskip("_btclib_secp256k1_zkp")` and the
-`zkp` marker, so an unflagged run skips it. Nothing in it can be
+it for its own `:members:` — so what a run against an unflagged build
+executes there is its module-level lines and no function body. Nothing
+drives it: a test that does carries
+`pytest.importorskip("_btclib_secp256k1_zkp")` and the `zkp` marker, so
+a run against an unflagged build skips it. Nothing in it can be
 *called* there either: every entry point reads `ffi`, `lib` or `ctx`
 inside the call rather than at module scope, and that read is what
 raises `btclib_secp256k1.zkp`'s `ImportError` naming the flag. This
-command reports short of 100% on an ordinary checkout —
+command reports short of 100% against an unflagged build, which is what
+`uv sync --locked` installs —
 that shortfall is not the module alone: `[tool.coverage.run]` names
 `tests` in `source` too, so `tests/zkp_musig_test.py` and
 `tests/zkp_musig_vectors_test.py` are measured the same way, and each
@@ -388,7 +390,18 @@ stops at its own `importorskip` before a line below it runs, reported
 missed rather than absent from the table. A flagged module and its test
 files appearing short in that report is what a contributor should expect to
 see, not a broken tree; which files those are grows with every module #603
-still has queued behind it, so nothing here counts them.
+still has queued behind it, so nothing here counts them. What decides is
+the installed extension and not the command, which sets no flag:
+`importorskip` names the compiled module, and a venv holds it exactly
+when the extension in it was built with `BTCLIB_LIBSECP256K1_ZKP`. The
+coverage sequence below ends on such a build, so this command run in that
+venv executes the `zkp` tests and can pass the ratchet with the tree
+unchanged: a reading of 100% there says the environment moved, not that
+the shortfall closed. `uv sync --locked` leaves that build installed, and
+`uv sync --locked --reinstall-package btclib-secp256k1 --no-cache` puts
+an unflagged one back. The command carries neither flag itself, being the
+one a contributor repeats, where each repeat would compile the extension
+again.
 `test.yml`
 runs this same command against three builds: once per linkage, plus
 once more against the flagged build restricted to the tests marked
