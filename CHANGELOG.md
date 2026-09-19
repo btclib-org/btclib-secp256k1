@@ -995,6 +995,18 @@ release-notes length in the first place, and are still in
   by an unflagged run, and the coverage sequence ends on a flagged one**
   (closes #877): the plain command run after it executes them.
 
+### `cffi`'s floor below Python 3.13 is the oldest release that installs
+
+- **`[project.dependencies]` and `[build-system]` ask for `cffi>=1.14.1`
+  there, where `>=1.6` names releases that fail to build** (closes #934):
+  `uv lock --resolution lowest-direct` takes the floor as the version.
+
+### `hook_pins_test.py` skips its lock comparisons under a lowest-direct lock
+
+- **`test_the_rev_is_the_locked_mypy` and `test_every_pin_is_the_locked_version`
+  skip where `uv.lock` records a resolution other than the highest**
+  (closes #935): the hook pins are moved to agree with the highest one.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

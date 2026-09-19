@@ -906,7 +906,7 @@ repos:
   # is not quoted here: build skips a requirement whose marker is
   # unmet, and requires is marker-gated, so the interpreter running
   # the hook decides the list -- 3.14 wants cffi>=2.0 and setuptools
-  # where 3.11 wants cffi>=1.6 and typing_extensions. build words that
+  # where 3.11 wants cffi>=1.14.1 and typing_extensions. build words that
   # message differently between its own releases, so the exit code is
   # what this rests on.
   # --inject-junk plants an egg-info directory beside the sources for
@@ -920,8 +920,8 @@ repos:
       - id: check-sdist
         args: [--inject-junk, --installer=pip]
         additional_dependencies:
-          - "hatchling>=1.27"
-          - 'cffi>=1.6; python_version<"3.13"'
+          - "hatchling>=1.27,<1.32.1"
+          - 'cffi>=1.14.1; python_version<"3.13"'
           - 'cffi>=1.17; python_version=="3.13"'
           - 'cffi>=2.0; python_version>="3.14"'
           - 'setuptools; python_version>="3.12"'
