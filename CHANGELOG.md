@@ -989,6 +989,12 @@ release-notes length in the first place, and are still in
   cannot report, refuted by planting a dead link** (closes #870): the
   build fails first, and the `grep` is its backstop, not a replacement.
 
+### `CONTRIBUTING.md` says the installed build decides the plain command's skips
+
+- **The `zkp` tests are skipped where the venv holds no flagged build, not
+  by an unflagged run, and the coverage sequence ends on a flagged one**
+  (closes #877): the plain command run after it executes them.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
