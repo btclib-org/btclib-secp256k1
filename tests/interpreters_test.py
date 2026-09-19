@@ -35,7 +35,9 @@ pyproject.toml the same way; a workflow is yaml and no group here
 carries a parser for it.
 """
 
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -111,8 +113,30 @@ _COMMENT = re.compile(r"(?:^|\s)#.*$", re.MULTILINE)
 # free-threaded build named that way is a "3.14t" of the same shape. What
 # a job leaves to cibuildwheel is outside this read: those identifiers
 # come from `requires-python`, `enable` and `skip`, spelled `cp314t`
-# rather than as a version in any file here (#867)
+# rather than as a version in any file here --
+# `_cibuildwheel_free_threaded_interpreters` below is what reads those,
+# for whichever job in the closure hands them to cibuildwheel instead of
+# writing them out itself
 _INTERPRETER = re.compile(r"\b3\.\d+t?\b")
+# a cibuildwheel identifier for a free-threaded build, e.g.
+# "cp314t-manylinux_aarch64": the digit after "cp" is the major version,
+# always "3" for every interpreter this package still supports, the run
+# of digits after it the minor, and the "t" the free-threaded ABI tag
+# `--print-build-identifiers` spells and no workflow file does
+_CIBW_FREE_THREADED = re.compile(r"^cp3(?P<minor>\d+)t-", re.MULTILINE)
+# the floor of pyproject.toml's `test` group entry for cibuildwheel, which
+# is the one entry carrying a marker after its version: `build` has an
+# entry of its own with none, and that one is not this test's to read. It
+# is read out of the entry rather than restated, so that the floor is
+# written once, and `_require_cibuildwheel` holds the installed release to it
+_CIBW_FLOOR = re.compile(r'^    "cibuildwheel>=(?P<version>[0-9.]+);', re.MULTILINE)
+# cibuildwheel's own vocabulary for --platform, not the runner images
+# build-cibuildwheel's matrix names: ubuntu-latest and ubuntu-24.04-arm
+# are both "linux", macos-26-intel and macos-latest "macos", windows-latest
+# and windows-11-arm "windows". Asked once per platform rather than once,
+# because [tool.cibuildwheel]'s `skip` can name one platform's identifier
+# and not another's -- today's `pp*-win* cp310-win_arm64` already does
+_CIBW_PLATFORMS = ("linux", "macos", "windows")
 # `jobs:` and everything under it. The keys of `on:` sit at the indent a
 # job key does, so a pattern that did not cut here would offer
 # `pull_request` to the closure below as a job of the workflow
@@ -204,8 +228,108 @@ def _closure(jobs: dict[str, str], key: str) -> set[str]:
     return found
 
 
+def _require_cibuildwheel() -> None:
+    """Skip the test running this unless a cibuildwheel that can answer is here.
+
+    One that can answer is one at `_CIBW_FLOOR` or newer: an older release
+    prints no free-threaded identifier for `[tool.cibuildwheel]`'s
+    configuration, so its answer is "none" whatever the gate builds, which
+    reads as a gate that runs no free-threaded interpreter. Where there is
+    none at all, or only an older one, the test is skipped rather than
+    answered from this file's text, which is the read that cannot see it.
+    """
+    floor = _CIBW_FLOOR.search(_PYPROJECT)
+    assert floor, "pyproject.toml's `test` group names no floor for cibuildwheel"
+    pytest.importorskip(
+        "cibuildwheel",
+        minversion=floor["version"],
+        reason=(
+            "cibuildwheel is not installed here, and it is what lists the"
+            " free-threaded identifiers the gate builds: the `test` group"
+            " carries it from Python 3.11, and the wheel test and the sdist"
+            " test do not carry it"
+        ),
+    )
+
+
+def _child_environment() -> dict[str, str]:
+    """Return this process's environment without cibuildwheel's own settings.
+
+    Every `CIBW_*` variable overrides `[tool.cibuildwheel]`, and
+    `--print-build-identifiers` prints what the override selects: with
+    `CIBW_BUILD` set to `cp310-*` it prints cp310's. What this asks is
+    what the tree configures, so the caller's settings do not reach the
+    child.
+    """
+    return {k: v for k, v in os.environ.items() if not k.startswith("CIBW_")}
+
+
+def _print_build_identifiers(
+    platform: str, environ: dict[str, str] | None = None
+) -> str:
+    """Return the output of `--print-build-identifiers` for `platform`.
+
+    Under `_child_environment()` unless `environ` names another, which is
+    for a test that needs the caller's settings to reach cibuildwheel. A
+    non-zero exit fails the test with cibuildwheel's own stderr, which is
+    where it says what it refused.
+    """
+    _require_cibuildwheel()
+    printed = subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            "-m",
+            "cibuildwheel",
+            "--print-build-identifiers",
+            "--platform",
+            platform,
+        ],
+        cwd=_ROOT,
+        env=_child_environment() if environ is None else environ,
+        capture_output=True,
+        encoding="utf-8",
+        check=False,
+    )
+    if printed.returncode:
+        pytest.fail(
+            f"cibuildwheel --platform {platform} exited {printed.returncode}:\n"
+            f"{printed.stderr}",
+            pytrace=False,
+        )
+    return printed.stdout
+
+
+def _cibuildwheel_free_threaded_interpreters() -> tuple[str, ...]:
+    """Ask cibuildwheel itself which free-threaded identifiers it builds.
+
+    `requires-python`, `enable` and `skip` in `[tool.cibuildwheel]` decide
+    the identifiers cibuildwheel actually builds, and a release of
+    cibuildwheel can move which interpreters are free-threaded by default
+    with nothing in this tree changing -- so this asks it, once per
+    platform in `_CIBW_PLATFORMS`, rather than tracking that migration in
+    this file's own text the way `_INTERPRETER` tracks a job's.
+    """
+    minors: set[str] = set()
+    for platform in _CIBW_PLATFORMS:
+        printed = _print_build_identifiers(platform)
+        minors.update(m["minor"] for m in _CIBW_FREE_THREADED.finditer(printed))
+    return tuple(sorted(f"3.{minor}t" for minor in minors))
+
+
 def _gate_interpreters() -> tuple[str, ...]:
-    """Return every interpreter the jobs the merge gate waits on name."""
+    """Return every interpreter the jobs the merge gate waits on name.
+
+    Text first, for every job in the closure; then, for whichever of
+    those jobs hands its own build to cibuildwheel, the free-threaded
+    identifiers that tool would build, which `_INTERPRETER` cannot see.
+    That second read skips the calling test where no cibuildwheel that can
+    answer is installed (`_require_cibuildwheel`). The membership test is
+    a full comprehension over the closure rather than `any` stopping at
+    the first match, so every job's text is visited regardless of where in
+    `closure`'s (unordered) iteration the one that mentions cibuildwheel
+    falls -- an `any` that stops early would leave the branch it does not
+    reach uncovered on a run where that job happens to be visited first.
+    """
     jobs = _jobs()
     keyed = {
         match["name"]: key
@@ -217,9 +341,11 @@ def _gate_interpreters() -> tuple[str, ...]:
         " required check the closure is read from"
     )
     closure = _closure(jobs, keyed[_AGGREGATE])
-    return tuple(
-        sorted({v for key in closure for v in _INTERPRETER.findall(jobs[key])})
-    )
+    found = {v for key in closure for v in _INTERPRETER.findall(jobs[key])}
+    cibuildwheel_jobs = [key for key in closure if "cibuildwheel" in jobs[key]]
+    if cibuildwheel_jobs:
+        found.update(_cibuildwheel_free_threaded_interpreters())
+    return tuple(sorted(found))
 
 
 def _matrix(text: str) -> tuple[str, ...]:
@@ -343,6 +469,12 @@ def test_free_threading_is_classified_exactly_when_the_gate_runs_it() -> None:
     The aggregate's own job names no interpreter, so the assertion below
     is the `needs:` read's control as much as the pattern's: a read that
     matched nothing leaves the closure at that one job and this empty.
+
+    The interpreter a job leaves to cibuildwheel to pick is spelled nowhere
+    in `test.yml`'s own text, so `_gate_interpreters` asks cibuildwheel
+    itself wherever a job in the closure calls it (#867). This test is
+    skipped where none that can answer is installed, and is not answered
+    from the file's text there.
     """
     gate = _gate_interpreters()
     assert gate, "the jobs test.yml's gate waits on name no interpreter"
@@ -353,6 +485,84 @@ def test_free_threading_is_classified_exactly_when_the_gate_runs_it() -> None:
         f" and the jobs test.yml's gate waits on name"
         f" {', '.join(run) or 'no free-threaded interpreter'}"
     )
+
+
+def test_cibuildwheel_is_asked_only_where_a_job_in_the_closure_calls_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`_cibuildwheel_free_threaded_interpreters` is not a fixed cost.
+
+    A gate with no job that hands its build to cibuildwheel is the
+    control this needs, since the real `test.yml` always has one: the
+    monkeypatch below turns that function into a call that fails the test
+    if it is ever reached, so a `_gate_interpreters` that asked it anyway
+    -- ignoring the guard above it -- would be caught here rather than
+    read as a passing gate that happened to find nothing.
+    """
+    gate = tmp_path / "test.yml"
+    gate.write_text(
+        "jobs:\n"
+        "  changes:\n"
+        "    name: Decide whether the matrix has anything to check\n"
+        "    runs-on: ubuntu-latest\n"
+        "  test-passed:\n"
+        '    name: "test: every job passed"\n'
+        "    needs: changes\n"
+    )
+    monkeypatch.setattr(sys.modules[__name__], "_GATE", gate)
+
+    def _unreached() -> tuple[str, ...]:
+        raise AssertionError("cibuildwheel asked where no job in the closure calls it")
+
+    monkeypatch.setattr(
+        sys.modules[__name__],
+        "_cibuildwheel_free_threaded_interpreters",
+        _unreached,
+    )
+    assert _gate_interpreters() == ()
+
+
+def test_the_floor_is_the_test_groups_entry_and_not_the_build_groups() -> None:
+    """`_CIBW_FLOOR` reads the one entry that carries a marker.
+
+    `build` names cibuildwheel too, with no marker and a lower floor,
+    and that lower floor is not the one an installed release is held to.
+    """
+    assert len(_CIBW_FLOOR.findall(_PYPROJECT)) == 1
+    assert _CIBW_FLOOR.search('    "cibuildwheel>=2.23.4",\n') is None
+
+
+def test_a_cibuildwheel_that_exits_non_zero_fails_with_its_own_stderr() -> None:
+    """The refusal is the failure, and its reason is in the message.
+
+    An unknown platform makes cibuildwheel exit non-zero, and argparse's
+    own line for it names the value it refused.
+    """
+    with pytest.raises(pytest.fail.Exception) as refused:
+        _print_build_identifiers("nonsense")
+    message = str(refused.value)
+    assert "exited 2" in message
+    assert "invalid choice: 'nonsense'" in message
+
+
+def test_the_callers_cibw_settings_do_not_reach_cibuildwheel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The answer is the tree's configuration, whatever the caller exported.
+
+    `CIBW_SKIP=*` selects no identifier at all. The first assertion is the
+    control, that the variable empties what cibuildwheel prints when it
+    reaches it; the second, that the tree's own configuration prints
+    something to be emptied; the last, that the default call prints that
+    much with the variable set.
+    """
+    linux = "linux"
+    inherited = _print_build_identifiers(linux, {**os.environ, "CIBW_SKIP": "*"})
+    assert not inherited.strip()
+    configured = _print_build_identifiers(linux)
+    assert configured.strip()
+    monkeypatch.setenv("CIBW_SKIP", "*")
+    assert _print_build_identifiers(linux) == configured
 
 
 def test_the_closure_reads_needs_in_each_of_its_three_shapes(

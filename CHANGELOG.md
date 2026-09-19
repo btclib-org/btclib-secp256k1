@@ -1013,6 +1013,18 @@ release-notes length in the first place, and are still in
   `template-injection` on the step's own `run:` key** (issue
   btclib-org/.github#1164, issue btclib-org/.github#1198).
 
+### `pyproject.toml` claims the `Free Threading :: 2 - Beta` classifier
+
+- **`classifiers` gains it** (closes #867): `cffi>=2.0` leaves the
+  `cp314t` wheel's GIL disabled, and README.md documents the constraints
+  a violation breaks -- neither reliably a segfault nor an exception.
+
+### `tests/interpreters_test.py` asks cibuildwheel for its own identifiers
+
+- **The free-threading biconditional read `test.yml`'s own text, which
+  spells no cibuildwheel identifier** (issue #867): the gate side asks
+  cibuildwheel, and the test skips where none can answer.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
