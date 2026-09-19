@@ -973,19 +973,18 @@ run locally.
   `cr-html` and the counter all read one.
 
   `cr-filter-operators` marks as skipped what the configuration excludes by
-  operator, which here is every mutant of a `|` in an annotation: none of
-  them is reachable by any test, and an unreachable mutant costs a whole run
-  of the suite to survive. Skipping them is what leaves a survivor list
-  somebody reads to the end — the comment in `bindings.toml` carries the
-  grep that keeps the exclusion honest.
+  operator, and `excluded-modules` drops a module's mutants at `init`,
+  before any is enumerated. What is excluded, and why, is in
+  `bindings.toml`, each exclusion with the command that keeps its claim
+  honest: a mutant excluded is one no session reports, so the claim is what
+  to re-check and not the comment beside it. The `zkp` subpackage is
+  excluded, and the file says what it would take to bring it in.
 
   `--surviving-only` is the whole of what anybody acts on, a killed mutant
-  being the suite doing its job. Read the list expecting nothing: the two
-  shapes that used to be in it — an output buffer sized twice, and
-  generated randomness whose length no answer reveals — were answered in
-  the code rather than excused in a comment, and the session that measured
-  that reported no survivor at all. So whatever is in the list is a test
-  nobody has written yet.
+  being the suite doing its job. A survivor is a test nobody has written,
+  except for the kinds `bindings.toml`'s header records as ones no test can
+  kill: those are told from the rest by the line the report names, not by
+  running anything, and the header says how.
 
   The counter last, and not `cr-rate`: that tool reads anything that is not
   SURVIVED as a kill, so it counts the skipped mutants among them and
