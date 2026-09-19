@@ -971,6 +971,12 @@ release-notes length in the first place, and are still in
   reaches a lock instead of dying on `pytest==2.0.0`** (closes #875): the
   ground for each bound is in `pyproject.toml`.
 
+### The vendored `secp256k1-zkp` submodule advances to its own amended commit
+
+- **The gitlink moves from `a8f6b86a` to `9912c3e4`, and `README.md`'s
+  citation moves with it**: the new commit only rewrites its own test,
+  so `zkp.rangeproof.borromean_verify` (#828) needed no matching change.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
