@@ -106,10 +106,13 @@ def shared_secret(
     takes it as a C callback, so exposing it would mean calling back into
     python from the middle of the computation, with the shared point
     passing through python objects; and it would buy nothing, the point
-    being available as keys.pubkey_tweak_mul(pubkey_bytes, prvkey),
-    itself constant time. A protocol needing another derivation applies
-    it to that: SHA256 of it is what this function returns. Wanting both
-    of them is where the private halves earn their keep -- one
+    being available as keys.pubkey_tweak_mul(pubkey_bytes, prvkey) --
+    the same point, but not this call's constant-time guarantee: that
+    one runs `secp256k1_ecmult`, variable time in the tweak, where this
+    one runs `secp256k1_ecdh`'s own `secp256k1_ecmult_const`. A protocol
+    needing another derivation, and not that guarantee, applies it to
+    that: SHA256 of it is what this function returns. Wanting both of
+    them is where the private halves earn their keep -- one
     `keys.parse`, then `_shared_secret_` and `keys._pubkey_tweak_mul_` of
     it -- the two public halves parsing the same key twice.
 

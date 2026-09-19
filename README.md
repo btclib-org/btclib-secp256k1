@@ -354,8 +354,13 @@ and decides nothing else.
 
 None of these checks branches on the content of a secret — they look at a
 type, a length, or a magnitude, all of which the caller knows already —
-so the constant-time guarantee is the C call's, and it is intact. What
-python cannot give back is what happens on either side of that call:
+so where the C call underneath carries a constant-time guarantee, these
+checks leave it intact rather than provide it. Not every wrapped call
+has one: `keys.pubkey_tweak_mul` runs the variable-time
+`secp256k1_ecmult`, and says so in its own docstring rather than
+borrowing `secp256k1_ecdh`'s guarantee. What python cannot give back,
+where the guarantee does hold, is what happens on either side of that
+call:
 `bytes` is not zeroized either, and
 [SECURITY.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/SECURITY.md)
 records both limits as inherent.
@@ -1068,7 +1073,9 @@ what these are for is checking a derivation, not driving one.
 the libsecp256k1 default. The hash function is not exposed: libsecp256k1
 takes it as a C callback, and a protocol needing another derivation has
 the shared point itself as `keys.pubkey_tweak_mul(pubkey, prvkey)`,
-constant time like the ECDH call and without python in the middle of it.
+without python in the middle of it -- but not with the ECDH call's
+constant-time guarantee: that call runs `secp256k1_ecmult`, variable
+time in the tweak, where `secp256k1_ecdh` runs `secp256k1_ecmult_const`.
 
 `silentpayments` is BIP352, and the elliptic curve half of it, which is
 what libsecp256k1 implements: `create_outputs` is the sender's side and

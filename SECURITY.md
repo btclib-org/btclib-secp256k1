@@ -209,6 +209,17 @@ These are known and inherent, not vulnerabilities:
     type, a length or a magnitude and never on the content of a secret.
     Everywhere an `int` is accepted `bytes` is too, and for a secret that
     is the form to use
+- **`keys.pubkey_tweak_mul` and `keys.pubkey_tweak_mul_sum` pass a
+    scalar into a variable-time multiplication.** Both run
+    `secp256k1_ec_pubkey_tweak_mul`, which calls `secp256k1_ecmult` — the
+    wNAF point multiplication, timed by the scalar's bits — rather than
+    the constant-time `secp256k1_ecmult_const` `secp256k1_ecdh` uses for
+    the same kind of point. README.md's own use of `pubkey_tweak_mul` as
+    `ecdh.shared_secret`'s substitute for a protocol needing the raw
+    point passes a private key in as that scalar, so an attacker able to
+    time the call may recover bits of it. `keys.prvkey_tweak_mul` does
+    not share this: it multiplies two scalars mod n through
+    `secp256k1_ec_seckey_tweak_mul`, a different call
 - **the entry side takes one form that is not a copy**: where a scalar is
     accepted, so is a cffi array of 32 octets —
     `ffi.new("unsigned char[32]", ...)`, or any other item type an octet
