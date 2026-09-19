@@ -1031,6 +1031,12 @@ release-notes length in the first place, and are still in
   are compared with it** (closes #945): a copy left behind fails the suite,
   and `pyroma`'s `hatchling` gains the ceiling it lacked.
 
+### The mutation sweep's survivors that a test can kill are killed
+
+- **The bounds, widths, defaults and keyword-only markers the sweep
+  reported as surviving are asserted** (issue #941): the largest counter
+  of `nonce_gen_counter`, `partial_sign`'s `verify`, `is_low_r`'s 0x80.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

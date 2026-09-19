@@ -25,6 +25,7 @@ from btclib_secp256k1 import (
     hashes,
     keys,
     lib,
+    musig,
     recovery,
     silentpayments,
     ssa,
@@ -334,8 +335,11 @@ def test_a_scalar_may_be_octets_this_package_can_overwrite() -> None:
     for cdecl in ("unsigned char *", "secp256k1_keypair *", "uint32_t[8]"):
         with pytest.raises(TypeError, match="must be a cffi array of octets"):
             keys.prvkey_verify(ffi.new(cdecl))
-    with pytest.raises(ValueError, match="private key must be 32 bytes"):
-        keys.prvkey_verify(ffi.new("unsigned char[31]"))
+    # a length either side of 32 is refused, the longer one too: it would
+    # otherwise be read for its first 32 octets and the rest ignored
+    for size in (31, 33):
+        with pytest.raises(ValueError, match="private key must be 32 bytes"):
+            keys.prvkey_verify(ffi.new(f"unsigned char[{size}]"))
 
     # a str is the one thing the question itself would get wrong, and
     # `"char[32]"` is why it is refused before being asked rather than
@@ -542,13 +546,14 @@ def test_generated_randomness_is_always_32_octets(
 ) -> None:
     """Every octet count this package asks `secrets` for is 32.
 
-    Four calls generate randomness rather than accept it: the context
-    seed, the BIP340 aux of a signature signed without one, and the two
-    ElligatorSwift ones. No answer reveals how long any of them was -- a
-    shorter aux is hashed into a different signature that verifies just
-    as well, and a context seeded with half the entropy behaves exactly
-    like one seeded with all of it -- which is why the mutation session
-    leaves every one of those lengths alive.
+    What generates randomness rather than accepting it is the context
+    seed, the BIP340 aux of a signature signed without one, the two
+    ElligatorSwift ones and the session randomness of `musig.nonce_gen`.
+    No answer reveals how long any of them was -- a shorter aux is hashed
+    into a different signature that verifies just as well, and a context
+    seeded with half the entropy behaves exactly like one seeded with all
+    of it -- so a mutation of any of those lengths survives every test
+    that looks only at what comes back.
 
     So this is the one thing that can hold them to it: what is asked of
     `secrets`, rather than what comes back. 32 is
@@ -570,8 +575,9 @@ def test_generated_randomness_is_always_32_octets(
     ssa.sign(msg, prvkey)
     ellswift.create(prvkey)
     ellswift.encode(pubkey_bytes)
+    musig.nonce_gen(pubkey_bytes).wipe()
 
-    assert requested == [32, 32, 32, 32]
+    assert requested == [32, 32, 32, 32, 32]
 
 
 def test_a_signature_crosses_in_either_serialization() -> None:

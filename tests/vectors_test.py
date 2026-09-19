@@ -1179,6 +1179,59 @@ def test_bitcoin_core_low_r_property() -> None:
     assert min(lengths) < 70
 
 
+# messages of Core's `key_signature_tests` -- Hash("A message to be signed"
+# followed by the index) signed under CORE_PRVKEY1 -- each paired with the
+# number of retries grinding takes for it: every counter below that number
+# is a high r and that one is the first low r
+CORE_GRIND_RETRIES = [(4, 1), (0, 2), (14, 3)]
+
+
+@pytest.mark.parametrize("index, retries", CORE_GRIND_RETRIES)
+def test_grinding_stops_at_the_first_counter_with_a_low_r(
+    index: int, retries: int
+) -> None:
+    """Grind as Core's `CKey::Sign` does: counters 1, 2, 3 in that order.
+
+    Core writes the counter, little endian, into the first 4 of 32 octets
+    of extra entropy, and the signature of that counter is what `dsa.sign`
+    gives for the same 32 octets as `aux_rand32`: the same libsecp256k1
+    call, reached without the loop under test. Each message here needs
+    the retries it is listed with, so grinding is held to the signature
+    of the first counter with a low r and not to a later one.
+    """
+    msg = hash256(b"A message to be signed" + str(index).encode())
+    prvkey = bytes.fromhex(CORE_PRVKEY1)
+
+    def attempt(counter: int) -> bytes:
+        entropy = counter.to_bytes(4, "little") + bytes(28)
+        return dsa.sign(msg, prvkey, entropy if counter else None)
+
+    assert not any(dsa.is_low_r(attempt(counter)) for counter in range(retries))
+    assert dsa.is_low_r(attempt(retries))
+    assert dsa.sign(msg, prvkey, grind=True) == attempt(retries)
+
+
+@pytest.mark.parametrize(
+    "first_octet, low",
+    [(0x01, True), (0x7F, True), (0x80, False), (0xFF, False)],
+)
+def test_is_low_r_is_the_high_bit_of_the_first_octet_of_r(
+    first_octet: int, low: bool
+) -> None:
+    """0x7F is the last low r and 0x80 the first high one.
+
+    Core's `SigHasLowR` asks `compact_sig[0] < 0x80`, and the reason is
+    DER's: an integer whose high bit is set gets a leading zero, so `r`
+    is 33 octets long in the encoding and 32 otherwise, which is read off
+    the DER length octet here independently of `is_low_r`.
+    """
+    compact = bytes([first_octet]) + b"\x01" * 31 + (1).to_bytes(32, "big")
+    der = dsa.to_der(compact)
+
+    assert dsa.is_low_r(der) is low
+    assert der[3] == (32 if low else 33)
+
+
 # encodings accepted by secp256k1_ecdsa_signature_parse_der: they parse
 # fine and merely fail verification; note that the parser is lenient on
 # two fronts (last three entries): integers with the high bit set are
