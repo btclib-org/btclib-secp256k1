@@ -322,6 +322,31 @@ def test_every_signer_defaults_to_checking(function: Callable[..., Any]) -> None
     assert inspect.signature(function).parameters["verify"].default is True
 
 
+@pytest.mark.parametrize("function", list(_DEFAULTING.values()), ids=list(_DEFAULTING))
+def test_verify_and_pubkey_are_taken_by_keyword_only(
+    function: Callable[..., Any],
+) -> None:
+    """A call site names what it turns off and the key it hands in.
+
+    `dsa.sign` says why in a comment above its signature: a positional
+    `verify` is a bare `False` that a reader cannot attribute, so what a
+    call site carries is named. Nothing else in the suite passes either
+    positionally and expects a refusal, so a signature that stopped being
+    keyword-only would go on answering every call this file makes.
+
+    Args:
+        function: the entry point, to read the signature of.
+    """
+    parameters = inspect.signature(function).parameters
+    keyword_only = {
+        name
+        for name, parameter in parameters.items()
+        if parameter.kind is inspect.Parameter.KEYWORD_ONLY
+    }
+    assert "verify" in keyword_only
+    assert {"verify", "pubkey"} & set(parameters) <= keyword_only
+
+
 @pytest.mark.parametrize("signer,refusal", REFUSING_CALLS, ids=SIGNER_IDS)
 def test_a_signature_that_does_not_verify_is_not_answered_with(
     signer: Callable[..., Any], refusal: str

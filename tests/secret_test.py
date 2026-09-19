@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import array
 import ast
+import ctypes
 import importlib
 import inspect
 import mmap
@@ -240,17 +241,21 @@ def test_take_accepts_any_writable_contiguous_buffer() -> None:
 
 
 def test_take_refuses_a_buffer_that_is_not_contiguous_octets() -> None:
-    """Two shapes that pass every other check, one of which used to crash.
+    """Three shapes that are not one-dimensional contiguous octets.
 
     A two-dimensional view is writable, octet-wide and 32 octets long,
     and the copy through it raises `NotImplementedError` -- neither of
     the exceptions the caller was told to expect. A strided one works,
     and is refused all the same: the secret would land scattered through
-    64 octets of an owner whose other 32 nothing says are involved.
+    64 octets of an owner whose other 32 nothing says are involved. A
+    zero-dimensional one holds a single octet, so the length check would
+    refuse it too, as a `ValueError` where the caller was told a buffer
+    of the wrong shape is a `TypeError`.
     """
     for wrong in (
         memoryview(bytearray(32)).cast("B", (4, 8)),
         memoryview(bytearray(64))[::2],
+        memoryview(bytearray(1)).cast("B", ()),
     ):
         buffer = ffi.new("char[32]", SECRET)
         with pytest.raises(TypeError, match="must be contiguous octets"):
@@ -268,6 +273,23 @@ def test_take_refuses_a_view_of_wider_items() -> None:
     wide = memoryview(bytearray(32)).cast("I")
     with pytest.raises(TypeError, match="not of 4-byte items"):
         _secret.take(buffer, into=wide)
+    assert ffi.unpack(buffer, ffi.sizeof(buffer)) == bytes(ffi.sizeof(buffer))
+
+
+def test_take_refuses_a_view_of_zero_width_items() -> None:
+    """A ctypes structure with no fields exports items of zero octets.
+
+    Zero is below one, so a refusal written as `itemsize > 1` lets it
+    through to the size check, which then answers about a buffer that was
+    never octets.
+    """
+    no_fields = type("NoFields", (ctypes.Structure,), {"_fields_": []})
+    empty = memoryview(no_fields())
+    assert empty.itemsize == 0
+
+    buffer = ffi.new("char[32]", SECRET)
+    with pytest.raises(TypeError, match="not of 0-byte items"):
+        _secret.take(buffer, into=empty)
     assert ffi.unpack(buffer, ffi.sizeof(buffer)) == bytes(ffi.sizeof(buffer))
 
 
@@ -355,12 +377,21 @@ def test_every_function_that_takes_a_secret_out_offers_into() -> None:
     for key in sorted(producers | forwarders):
         if key[1] in exempt:
             continue
-        assert "into" in inspect.signature(functions[key]).parameters, (
-            f"{key[0]}.{key[1]} has no into"
+        parameters = inspect.signature(functions[key]).parameters
+        assert "into" in parameters, f"{key[0]}.{key[1]} has no into"
+        # by keyword only: positionally it lands on whatever precedes it,
+        # `aux_rand32` for `dsa.nonce_rfc6979`, where an empty buffer
+        # would be taken as 32 octets of entropy
+        assert parameters["into"].kind is inspect.Parameter.KEYWORD_ONLY, (
+            f"{key[0]}.{key[1]} takes into positionally"
         )
     assert exempt <= {name for _, name in producers | forwarders}, (
         "an exemption names a function that no longer answers a secret"
     )
+    # `take` itself is what the producers call with it, so it is the one
+    # signature the walk above does not read
+    take_parameters = inspect.signature(_secret.take).parameters
+    assert take_parameters["into"].kind is inspect.Parameter.KEYWORD_ONLY
 
 
 def test_the_two_spellings_of_a_producer_agree() -> None:

@@ -734,6 +734,21 @@ def test_pubkey_tweak_mul_sum_is_the_arithmetic_it_names() -> None:
     ) == keys.pubkey_tweak_mul_sum(pubkeys, tweaks)
 
 
+def test_pubkey_tweak_mul_sum_has_no_bound_on_its_terms() -> None:
+    """Sequences of the same length are accepted however long they are.
+
+    The guard compares two lengths, and a sequence of a thousand terms is
+    as many tweaks as public keys as one of two is. The sum of a thousand
+    copies of the generator, each times one, is the generator times a
+    thousand, which `pubkey_from_prvkey` answers independently of the sum.
+    """
+    terms = 1000
+    generator = keys.pubkey_from_prvkey(1)
+    assert keys.pubkey_tweak_mul_sum(
+        [generator] * terms, [1] * terms
+    ) == keys.pubkey_from_prvkey(terms)
+
+
 def test_pubkey_tweak_mul_sum_answers_infinity_and_refuses_the_rest() -> None:
     """The identity is a value; a wrong argument is not.
 
@@ -757,8 +772,11 @@ def test_pubkey_tweak_mul_sum_answers_infinity_and_refuses_the_rest() -> None:
         [pubkey, negated, pubkey], [3, 3, 3]
     ) == keys.pubkey_tweak_mul(pubkey, 3)
 
+    # the count is refused whichever sequence has more of it
     with pytest.raises(ValueError, match="as many tweaks as public keys"):
         keys.pubkey_tweak_mul_sum([pubkey, negated], [3])
+    with pytest.raises(ValueError, match="as many tweaks as public keys"):
+        keys.pubkey_tweak_mul_sum([pubkey], [3, 3])
     with pytest.raises(ValueError, match="at least one public key"):
         keys.pubkey_tweak_mul_sum([], [])
     with pytest.raises(ValueError, match="invalid public key"):
@@ -815,6 +833,28 @@ def test_xonly_pubkey_verify_and_to_pubkey_are_the_two_x_only_twins() -> None:
 
     with pytest.raises(TypeError, match="public key"):
         xonly.pubkey_verify(11)  # type: ignore[arg-type]
+
+
+def test_a_31_octet_x_is_no_key_though_its_zero_extension_is_one() -> None:
+    """31 octets are not an x-only key, whichever octet would follow them.
+
+    BIP340 keys are 32 octets. The value here is the x of 30 times the
+    generator, which ends in a zero octet, so dropping that octet leaves
+    31 whose zero-extension is a valid x: what a parse that read 32
+    octets from a shorter value would accept.
+    """
+    x_only = xonly.from_prvkey(30)[0]
+    assert x_only[-1] == 0
+    assert xonly.pubkey_verify(x_only)
+    shortened = x_only[:-1]
+
+    assert not xonly.pubkey_verify(shortened)
+    with pytest.raises(ValueError, match="invalid public key"):
+        xonly.parse(shortened)
+    with pytest.raises(ValueError, match="invalid public key"):
+        xonly.from_pubkey(shortened)
+    with pytest.raises(ValueError, match="invalid public key"):
+        xonly.to_pubkey(shortened)
 
 
 def test_signature_verify_is_the_parse_with_nothing_kept() -> None:
