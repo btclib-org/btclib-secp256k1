@@ -33,6 +33,16 @@ reading of the two, `test_every_mypy_pin_is_one_the_lock_resolves` below
 requiring each of its pins to be in the lock at all: they are what the
 checked files import, and the project installs those.
 
+The pins follow the highest resolution, which is the one `uv.lock` holds.
+A lock written by another -- `deps-oldest.yml` writes one on purpose,
+resolving to `lowest-direct` -- records it in its own `[options]` table,
+and against such a lock `test_the_rev_is_the_locked_mypy` and
+`test_every_pin_is_the_locked_version` are skipped: the pins were moved
+to agree with the highest resolution, and a lock that takes every direct
+dependency to its floor is not that one. The mode is read from the lock
+and not from `UV_RESOLUTION`, the lock being what those two tests
+compare against.
+
 Parsed rather than loaded. `uv.lock` is toml and the floor here is 3.10,
 where `tomllib` is not yet in the standard library, which is the reason
 `copyright_test.py` beside this one reads pyproject.toml the same way;
@@ -83,6 +93,12 @@ _NAME = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)(?P<specifiers>[^;]*)(?:;.*)?$")
 # `===` ahead of `==` so that arbitrary equality is read as itself rather
 # than as `==` naming a version beginning with `=`
 _CLAUSE = re.compile(r"^(?P<op>===|==|!=|~=|<=|>=|<|>)\s*(?P<version>[^\s,;]+)$")
+# where uv records a resolution other than its default: the `[options]`
+# table, whose `resolution-mode` key a lock resolved to `lowest-direct`
+# carries as `"lowest-direct"` and the ordinary lock of this tree has no
+# such table to carry it in
+_OPTIONS = re.compile(r"^\[options\]\n(?P<keys>(?:[^\n\[].*\n)*)", re.MULTILINE)
+_MODE = re.compile(r'^resolution-mode = "(?P<mode>[^"]+)"$', re.MULTILINE)
 
 
 class _Requirement(NamedTuple):
@@ -312,6 +328,21 @@ def _locked(name: str) -> str | None:
     return match["version"] if match else None
 
 
+def _resolution_mode(lock: str) -> str:
+    """Return the resolution `lock` was written under.
+
+    Args:
+        lock: the text of a `uv.lock`.
+
+    Returns:
+        The mode its `[options]` table records, or "highest" where it
+        records none: uv's default, and the one the hook pins follow.
+    """
+    options = _OPTIONS.search(lock)
+    mode = _MODE.search(options["keys"]) if options else None
+    return mode["mode"] if mode else "highest"
+
+
 def _block() -> str:
     """Return the mypy hook's block of `.pre-commit-config.yaml`."""
     match = _MYPY_BLOCK.search(_CONFIG.read_text(encoding="utf-8"))
@@ -323,6 +354,12 @@ _BLOCK = _block()
 _MYPY_PINS = _pins(_values(_BLOCK))
 _VALUES = _values(_CONFIG.read_text(encoding="utf-8"))
 _PINS = tuple(pin for pin in _pins(_VALUES) if _locked(pin[0]) is not None)
+_RESOLUTION = _resolution_mode(_LOCK.read_text(encoding="utf-8"))
+_MOVED_WITH_THE_HIGHEST = pytest.mark.skipif(
+    _RESOLUTION != "highest",
+    reason=f"uv.lock records a {_RESOLUTION} resolution, and the hook pins"
+    " follow the highest one",
+)
 
 
 def test_the_hook_block_was_read() -> None:
@@ -451,6 +488,25 @@ def test_a_quoted_requirement_keeps_the_quotes_inside_its_marker() -> None:
     ]
 
 
+def test_a_lock_names_its_resolution_only_where_it_is_not_the_default() -> None:
+    """The `[options]` table is the one place the mode is written.
+
+    An `[options]` table that names no `resolution-mode` is the default
+    resolution too: the two skips below rest on this reading, and a
+    misread that answered a mode where the lock names none would skip
+    them on an ordinary lock, silently.
+    """
+    header = 'version = 1\nrequires-python = ">=3.10"\n'
+    package = '\n[[package]]\nname = "cffi"\nversion = "1.14.1"\n'
+    lowest = '\n[options]\nresolution-mode = "lowest-direct"\n'
+    dated = '\n[options]\nexclude-newer = "2026-01-01T00:00:00Z"\n'
+
+    assert _resolution_mode(header + package) == "highest"
+    assert _resolution_mode(header + lowest + package) == "lowest-direct"
+    assert _resolution_mode(header + dated + package) == "highest"
+
+
+@_MOVED_WITH_THE_HIGHEST
 def test_the_rev_is_the_locked_mypy() -> None:
     """The isolated environment's mypy and the project's are one version.
 
@@ -474,6 +530,7 @@ def test_every_mypy_pin_is_one_the_lock_resolves(name: str, version: str) -> Non
     )
 
 
+@_MOVED_WITH_THE_HIGHEST
 @pytest.mark.parametrize("name, version", _PINS, ids=lambda v: v)
 def test_every_pin_is_the_locked_version(name: str, version: str) -> None:
     """Each pinned package the project also installs is the one version."""
