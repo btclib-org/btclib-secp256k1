@@ -43,14 +43,25 @@ dependency to its floor is not that one. The mode is read from the lock
 and not from `UV_RESOLUTION`, the lock being what those two tests
 compare against.
 
+Two hooks carry `[build-system]`'s `requires` rather than a pin:
+`check-sdist`'s `additional_dependencies` is those requirements verbatim,
+and `pyroma`'s is the `hatchling` one of them. pre-commit builds a hook's
+environment once and keeps it, so a copy left behind is not noticed by
+its hook until that environment is rebuilt
+(btclib-org/btclib-secp256k1#945).
+`test_check_sdist_installs_what_build_system_requires` and
+`test_pyroma_installs_the_backend_build_system_declares` compare each
+copy with `pyproject.toml`, the hook found by its `id`.
+
 Parsed rather than loaded. `uv.lock` is toml and the floor here is 3.10,
 where `tomllib` is not yet in the standard library, which is the reason
 `copyright_test.py` beside this one reads pyproject.toml the same way;
 `.pre-commit-config.yaml` is yaml and no group here carries a parser for
-it. Three shapes are narrow enough to match: a `[[package]]` table with a
-name and a version, and the two this file writes an
-`additional_dependencies` value in -- a bracketed list on the key's own
-line, and `- ` items indented under it.
+it. The shapes narrow enough to match are a `[[package]]` table with a
+name and a version, the two this file writes an `additional_dependencies`
+value in -- a bracketed list on the key's own line, and `- ` items
+indented under it -- and `[build-system]`'s `requires`, one string to a
+line.
 
 A value is read whole or not at all. The comma separates a flow
 sequence's items in yaml and a specifier set's clauses in PEP 440, so
@@ -73,6 +84,7 @@ import pytest
 _ROOT = Path(__file__).parents[1]
 _CONFIG = _ROOT / ".pre-commit-config.yaml"
 _LOCK = _ROOT / "uv.lock"
+_PYPROJECT = _ROOT / "pyproject.toml"
 
 # the mypy hook's block, from its repo line to the next hook's: what
 # `test_every_mypy_pin_is_one_the_lock_resolves` reads is that hook's and
@@ -99,6 +111,14 @@ _CLAUSE = re.compile(r"^(?P<op>===|==|!=|~=|<=|>=|<|>)\s*(?P<version>[^\s,;]+)$"
 # such table to carry it in
 _OPTIONS = re.compile(r"^\[options\]\n(?P<keys>(?:[^\n\[].*\n)*)", re.MULTILINE)
 _MODE = re.compile(r'^resolution-mode = "(?P<mode>[^"]+)"$', re.MULTILINE)
+# a hook's first line, whatever the indentation its list is written at
+_HOOK = re.compile(r"^(?P<indent> *)- id: (?P<id>[^\s#]+)\s*$")
+# `requires = [` alone on its line, which is how pyproject.toml opens it
+_REQUIRES = re.compile(r"^requires\s*=\s*\[$")
+# one toml string alone on its line: a basic one with no escape in it, or
+# a literal one, which is how the marker-gated requirements quote their
+# double-quoted versions. The trailing comma is the array's own
+_ENTRY = re.compile(r"""^(?:"(?P<basic>[^"\\]*)"|'(?P<literal>[^']*)'),?$""")
 
 
 class _Requirement(NamedTuple):
@@ -277,6 +297,26 @@ def _requirements(items: list[str]) -> list[_Requirement]:
     return found
 
 
+def _written(text: str) -> list[list[str]]:
+    """Return the items of every `additional_dependencies` key, as written.
+
+    Args:
+        text: the configuration, or a block of it.
+
+    Returns:
+        One list per key, in the order the keys are written, each item
+        unquoted and otherwise as the file has it.
+    """
+    lines = text.splitlines()
+    return [
+        _flow(key["inline"].strip())
+        if key["inline"].strip()
+        else _items(lines[index + 1 :], len(key["indent"]))
+        for index, line in enumerate(lines)
+        if (key := _KEY.match(line)) is not None
+    ]
+
+
 def _values(text: str) -> list[list[_Requirement]]:
     """Return the requirements of every `additional_dependencies` key.
 
@@ -286,16 +326,116 @@ def _values(text: str) -> list[list[_Requirement]]:
     Returns:
         One list per key, in the order the keys are written.
     """
+    return [_requirements(items) for items in _written(text)]
+
+
+def _hook_dependencies(text: str, hook_id: str) -> list[str]:
+    """Return the `additional_dependencies` of the hook `id` names.
+
+    The hook is the lines from its `- id:` line to the first non-blank
+    line indented no deeper than that one, which is the next hook's or
+    the next repo's. `check-sdist` is an `id` and `check-sdist-isolated`
+    is another, so the line is matched whole.
+
+    Args:
+        text: the configuration.
+        hook_id: the hook's `id`.
+
+    Returns:
+        The items as the file writes them, unquoted; empty where no hook
+        has that `id`, where two do, and where the hook does not declare
+        exactly one list -- so that a hook renamed or restructured reads
+        as nothing, which `test_the_lists_compared_below_were_read`
+        fails on.
+    """
     lines = text.splitlines()
-    return [
-        _requirements(
-            _flow(key["inline"].strip())
-            if key["inline"].strip()
-            else _items(lines[index + 1 :], len(key["indent"]))
-        )
+    starts = [
+        index
         for index, line in enumerate(lines)
-        if (key := _KEY.match(line)) is not None
+        if (hook := _HOOK.match(line)) is not None and hook["id"] == hook_id
     ]
+    if len(starts) != 1:
+        return []
+    indent = len(lines[starts[0]]) - len(lines[starts[0]].lstrip(" "))
+    block = []
+    for line in lines[starts[0] + 1 :]:
+        if line.strip() and len(line) - len(line.lstrip(" ")) <= indent:
+            break
+        block.append(line)
+    keys = _written("\n".join(block))
+    return keys[0] if len(keys) == 1 else []
+
+
+def _build_requires(pyproject: str) -> list[str]:
+    """Return `[build-system]`'s `requires`, each entry as it is written.
+
+    A line-based walk, as `check_sdist_exclude.py`'s is of its own
+    array: a comment inside this one is free to hold a `]`, and only a
+    line that is exactly `]` ends it. The array opens on a line
+    that is `requires = [` and nothing else, and every entry is one
+    string alone on its line, with blank lines and whole-line comments
+    free to sit between them. Anything else is refused rather than read
+    in part, since a list read in part is a `requires` the file does not
+    hold and a comparison against it passes on the part.
+
+    Args:
+        pyproject: the file's text.
+
+    Returns:
+        The entries, in the order they are written; empty where the
+        table has no `requires` in that shape.
+    """
+    in_table = False
+    in_array = False
+    found: list[str] = []
+    for line in pyproject.splitlines():
+        stripped = line.strip()
+        if in_array:
+            if stripped == "]":
+                return found
+            if not stripped or stripped.startswith("#"):
+                continue
+            entry = _ENTRY.match(stripped)
+            if entry is None:
+                return []
+            found.append(
+                entry["basic"] if entry["basic"] is not None else entry["literal"]
+            )
+        elif stripped.startswith("["):
+            in_table = stripped == "[build-system]"
+        elif in_table and _REQUIRES.match(stripped):
+            in_array = True
+    return []
+
+
+def _backend(items: list[str]) -> list[str]:
+    """Return the items among `items` that ask for `hatchling`."""
+    return [
+        item
+        for item in items
+        if (requirement := _read(item)) is not None and requirement.name == "hatchling"
+    ]
+
+
+def _drift(declared: list[str], copied: list[str]) -> str:
+    """Return how `copied` parts from `declared`, or "" where it does not.
+
+    The order is not compared: what a hook installs is a set of
+    requirements, and only the requirements themselves are its
+    environment.
+
+    Args:
+        declared: the requirements `pyproject.toml` writes.
+        copied: the requirements a hook lists.
+
+    Returns:
+        What `copied` lacks of `declared` and what it adds, as text.
+    """
+    lacks = [item for item in declared if item not in copied]
+    adds = [item for item in copied if item not in declared]
+    return "; ".join(
+        f"{verb} {items}" for verb, items in (("lacks", lacks), ("adds", adds)) if items
+    )
 
 
 def _pins(values: list[list[_Requirement]]) -> tuple[tuple[str, str], ...]:
@@ -355,6 +495,9 @@ _MYPY_PINS = _pins(_values(_BLOCK))
 _VALUES = _values(_CONFIG.read_text(encoding="utf-8"))
 _PINS = tuple(pin for pin in _pins(_VALUES) if _locked(pin[0]) is not None)
 _RESOLUTION = _resolution_mode(_LOCK.read_text(encoding="utf-8"))
+_BUILD_REQUIRES = _build_requires(_PYPROJECT.read_text(encoding="utf-8"))
+_CHECK_SDIST = _hook_dependencies(_CONFIG.read_text(encoding="utf-8"), "check-sdist")
+_PYROMA = _hook_dependencies(_CONFIG.read_text(encoding="utf-8"), "pyroma")
 _MOVED_WITH_THE_HIGHEST = pytest.mark.skipif(
     _RESOLUTION != "highest",
     reason=f"uv.lock records a {_RESOLUTION} resolution, and the hook pins"
@@ -506,6 +649,152 @@ def test_a_lock_names_its_resolution_only_where_it_is_not_the_default() -> None:
     assert _resolution_mode(header + dated + package) == "highest"
 
 
+_SAMPLE = """\
+repos:
+  # a comment between two repos
+  - repo: https://example.com/a
+    hooks:
+      - id: check-sdist
+        args: [--flag]
+        additional_dependencies:
+          - "hatchling>=1.27,<2"
+          # a note inside the list
+          - 'cffi>=1.14.1; python_version<"3.13"'
+
+      - id: check-sdist-isolated
+        additional_dependencies: [other]
+  # what the next repo is for
+  - repo: https://example.com/b
+    hooks:
+      - id: pyroma
+        additional_dependencies: ["hatchling>=1.27,<2"]
+      - id: nodeps
+        name: no dependencies
+"""
+
+
+def test_a_hook_is_found_by_its_id_and_read_to_where_the_next_begins() -> None:
+    """The list is the named hook's own, however many hooks stand around it.
+
+    `check-sdist-isolated` follows `check-sdist` and lists another
+    package, and a walk that ran on past the first hook would answer
+    with that one's list, or with both.
+    """
+    assert _hook_dependencies(_SAMPLE, "check-sdist") == [
+        "hatchling>=1.27,<2",
+        'cffi>=1.14.1; python_version<"3.13"',
+    ]
+    assert _hook_dependencies(_SAMPLE, "check-sdist-isolated") == ["other"]
+    assert _hook_dependencies(_SAMPLE, "pyroma") == ["hatchling>=1.27,<2"]
+
+
+def test_a_hook_without_exactly_one_list_reads_as_nothing() -> None:
+    """A rename, a removal, a repeated `id` and a hook with no list are nothing.
+
+    `test_the_lists_compared_below_were_read` is what turns that
+    nothing into a failure; a walk that answered the first of two hooks,
+    or a neighbour's list for a hook that is gone, would leave the
+    comparison green on a hook it never read.
+    """
+    assert _hook_dependencies(_SAMPLE, "check-sdist-renamed") == []
+    assert _hook_dependencies(_SAMPLE, "nodeps") == []
+    assert _hook_dependencies(_SAMPLE + _SAMPLE, "pyroma") == []
+
+
+def test_the_build_requires_are_read_through_comments_and_blank_lines() -> None:
+    """Both quotings are read, and a comment may hold a bracket.
+
+    The marker-gated requirements are single-quoted around a
+    double-quoted version, and another table's `requires` is nobody's
+    build requirement.
+    """
+    text = (
+        '[tool.other]\nrequires = [\n    "not-this",\n]\n\n'
+        "[build-system]\n# a comment with a ] of its own\nrequires = [\n"
+        "    # a note between two entries [and a bracket]\n"
+        '    "hatchling>=1.27,<2",\n\n'
+        """    'cffi>=1.14.1; python_version<"3.13"',\n"""
+        '    "cmake>=3.22"\n]\nbuild-backend = "hatchling.build"\n'
+    )
+
+    assert _build_requires(text) == [
+        "hatchling>=1.27,<2",
+        'cffi>=1.14.1; python_version<"3.13"',
+        "cmake>=3.22",
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '[build-system]\nrequires = ["hatchling"]\n',
+        '[build-system]\nrequires = ["a",\n    "b",\n]\n',
+        '[build-system]\nrequires = [\n    "a",\n    "b",  # why\n]\n',
+        '[build-system]\nrequires = [\n    "a",\n    "b\\tc",\n]\n',
+        '[build-system]\nrequires = [\n    "a", "b",\n]\n',
+        '[build-system]\nrequires = [\n    "a",\n',
+        '[tool.other]\nrequires = [\n    "a",\n]\n',
+        '[build-system]\nbuild-backend = "hatchling.build"\n',
+    ],
+    ids=[
+        "inline",
+        "entry on the opening line",
+        "comment on an entry",
+        "escape",
+        "two entries to a line",
+        "unterminated",
+        "another table's",
+        "no requires",
+    ],
+)
+def test_a_shape_the_walk_does_not_read_is_nothing_and_not_a_part(text: str) -> None:
+    """A `requires` read in part is one the file does not hold.
+
+    The comparison below quantifies over what this returns, so a part
+    would be compared as though it were the whole and the entries beyond
+    it would go unchecked.
+    """
+    assert _build_requires(text) == []
+
+
+def test_the_build_requires_walk_reads_of_the_real_file_what_tomllib_reads() -> None:
+    """The canary: this walk and a TOML parser agree on `pyproject.toml`.
+
+    Every test above builds its own text, so none of them would notice
+    the real array being rewritten into a shape the walk reads as a
+    different list. `tomllib` answers what TOML says is there, where
+    the interpreter has it.
+    """
+    tomllib = pytest.importorskip("tomllib")
+    text = _PYPROJECT.read_text(encoding="utf-8")
+
+    assert _build_requires(text) == tomllib.loads(text)["build-system"]["requires"]
+
+
+def test_the_backend_is_the_requirement_whose_name_is_hatchling() -> None:
+    """A name that only begins with `hatchling` is another package."""
+    items = [
+        "hatchling>=1.27",
+        'cffi>=1.6; python_version<"3.13"',
+        "hatchling-plugin>=1",
+        "{hatchling: 1}",
+    ]
+
+    assert _backend(items) == ["hatchling>=1.27"]
+
+
+def test_a_copy_that_lacks_or_adds_a_requirement_is_drift() -> None:
+    """What differs is named, and the order a copy lists it in is not drift."""
+    declared = ["hatchling>=1.27,<1.32.1", "cmake>=3.22"]
+
+    assert _drift(declared, ["cmake>=3.22", "hatchling>=1.27,<1.32.1"]) == ""
+    assert _drift(declared, ["hatchling>=1.27", "cmake>=3.22"]) == (
+        "lacks ['hatchling>=1.27,<1.32.1']; adds ['hatchling>=1.27']"
+    )
+    assert _drift(declared, declared[:1]) == "lacks ['cmake>=3.22']"
+    assert _drift(declared, [*declared, "setuptools"]) == "adds ['setuptools']"
+
+
 @_MOVED_WITH_THE_HIGHEST
 def test_the_rev_is_the_locked_mypy() -> None:
     """The isolated environment's mypy and the project's are one version.
@@ -536,4 +825,47 @@ def test_every_pin_is_the_locked_version(name: str, version: str) -> None:
     """Each pinned package the project also installs is the one version."""
     assert version == _locked(name), (
         f"a hook pins {name}=={version} where uv.lock resolves {_locked(name)}"
+    )
+
+
+def test_the_lists_compared_below_were_read() -> None:
+    """A list that parsed to nothing is one both comparisons pass on.
+
+    Two empty lists do not differ, so a `requires` that was not read, a
+    hook that was renamed or one whose list moved to a shape the walk
+    does not read would each leave the tests below green on nothing.
+    """
+    assert _BUILD_REQUIRES, "no [build-system] requires read from pyproject.toml"
+    assert _backend(_BUILD_REQUIRES), "[build-system] requires names no hatchling"
+    assert _CHECK_SDIST, "no additional_dependencies read for the check-sdist hook"
+    assert _PYROMA, "no additional_dependencies read for the pyroma hook"
+
+
+def test_check_sdist_installs_what_build_system_requires() -> None:
+    """`build --no-isolation` checks the whole of `requires` before it builds.
+
+    The hook's environment is what it checks against, and pre-commit
+    builds that environment once and keeps it: a list left behind is an
+    environment `build` refuses, found by whoever next edits the list.
+    """
+    drift = _drift(_BUILD_REQUIRES, _CHECK_SDIST)
+
+    assert not drift, (
+        "the check-sdist hook's additional_dependencies is not"
+        f" pyproject.toml's [build-system] requires: it {drift}"
+    )
+
+
+def test_pyroma_installs_the_backend_build_system_declares() -> None:
+    """The hook's `hatchling` is `[build-system]`'s, bounds included.
+
+    pyroma builds this project to read its metadata, and section 12 of
+    the organization standard asks that a hook doing so use a backend
+    the declaration admits.
+    """
+    drift = _drift(_backend(_BUILD_REQUIRES), _backend(_PYROMA))
+
+    assert not drift, (
+        "the pyroma hook's hatchling is not pyproject.toml's [build-system]"
+        f" hatchling: it {drift}"
     )

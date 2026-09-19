@@ -908,7 +908,8 @@ repos:
   # the hook decides the list -- 3.14 wants cffi>=2.0 and setuptools
   # where 3.11 wants cffi>=1.14.1 and typing_extensions. build words that
   # message differently between its own releases, so the exit code is
-  # what this rests on.
+  # what this rests on. hook_pins_test.py fails when the list and
+  # requires part.
   # --inject-junk plants an egg-info directory beside the sources for
   # the length of the run: .gitignore's own "*.egg-info/" is what
   # hatchling's sdist target drops it on, a VCS-ignore reading.
@@ -966,5 +967,6 @@ repos:
         # (btclib-org/.github#197). Not pinned, unlike the additional
         # dependencies above: what this has to match is a range rather
         # than a release, and the isolated build it replaces would have
-        # resolved the same range itself
-        additional_dependencies: ["hatchling>=1.27"]
+        # resolved the same range itself. hook_pins_test.py fails when
+        # the two part
+        additional_dependencies: ["hatchling>=1.27,<1.32.1"]

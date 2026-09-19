@@ -1025,6 +1025,12 @@ release-notes length in the first place, and are still in
   spells no cibuildwheel identifier** (issue #867): the gate side asks
   cibuildwheel, and the test skips where none can answer.
 
+### `hook_pins_test.py` compares the hooks' copies of `[build-system]`'s requires
+
+- **`check-sdist`'s and `pyroma`'s copies of `[build-system]`'s `requires`
+  are compared with it** (closes #945): a copy left behind fails the suite,
+  and `pyroma`'s `hatchling` gains the ceiling it lacked.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
