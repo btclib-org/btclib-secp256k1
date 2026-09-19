@@ -716,7 +716,7 @@ repos:
     hooks:
       - id: zizmor
         name: zizmor (workflow security)
-        args: [--offline, --no-progress]
+        args: [--offline, --no-progress, --persona=auditor]
         # v1.30.0 added the self-repository audit, which flags every
         # workspace-relative `uses: ./...` in release.yml and test.yml
         # and recommends GitHub's `$/...` form instead (issue #512).

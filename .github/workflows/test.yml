@@ -150,7 +150,7 @@ jobs:
     # pull-requests: read for the file list of a pull request.
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: read # a pull request's file list, for the changes job
     with:
       # the allowlist is what nothing built reads: the prose files of
       # the root and of .github, and neither README.md nor a file
@@ -1133,7 +1133,12 @@ jobs:
         # An allowlist of the two legitimate results rather than a denylist of
         # the bad ones, so a result this file does not anticipate fails the gate
         # instead of passing it for not being named (btclib-org/.github#537).
-        run: |
+        #
+        # `join(needs.*.result, ',')` interpolates a closed set: each
+        # element is one of `success`, `failure`, `cancelled`, `skipped`
+        # or absent, all written by GitHub, so no fork-controlled string
+        # -- a branch name, a title, a body -- reaches this shell
+        run: | # zizmor: ignore[template-injection]
           results='${{ join(needs.*.result, ',') }}'
           echo "results: $results"
           case ",$results," in
