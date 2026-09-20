@@ -453,8 +453,28 @@ build = [
 # the ones uv.lock pins and dependabot moves: pyroma is run with --min 10,
 # and a release of pyroma adding a test is otherwise enough to fail a
 # release that changed nothing. `uv run --only-group check` omits the
-# project itself, so asking for these compiles no extension
-check = ["twine>=7.0.0", "check-wheel-contents>=0.6.3", "pyroma>=5.0.1"]
+# project itself, so asking for these compiles no extension.
+# The pyroma hook of .pre-commit-config.yaml runs from this group as well,
+# rating the source tree where check-dist rates the sdist
+check = [
+    "twine>=7.0.0",
+    "check-wheel-contents>=0.6.3",
+    # a specifier naming a pre-release is what lets uv resolve one, and
+    # 5.1b2 is one. It requires docutils 0.22, which the sphinx and
+    # myst-parser that the docs group resolves under 3.10 exclude, and
+    # `dev` holds both groups: that interpreter keeps the release before
+    "pyroma>=5.1b2; python_version >= '3.11'",
+    "pyroma>=5.0.1; python_version < '3.11'",
+    # pyroma builds the project it is pointed at to read its metadata, and
+    # asks `build` to do it without isolation first, which imports the
+    # backend out of this environment. Absent from it, the build falls
+    # back to an isolated one that resolves [build-system]'s requires from
+    # an index. This is that requirement's hatchling, and
+    # tests/hook_pins_test.py fails when the two part: section 12 of the
+    # organization standard asks that a hook building the project use a
+    # backend [build-system] admits
+    "hatchling>=1.27,<1.32.1",
+]
 # mutation testing, which asks what coverage cannot: a line the suite
 # executes is not a line the suite checks. Its own group and not part of
 # test, because every cell of the matrix installs that one and none of them

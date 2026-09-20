@@ -36,21 +36,28 @@ ci:
   # run of this service, and what it buys is a status here that means
   # something about the branch it is reported against.
   submodules: true
-  # submodule-pin is the one hook kept from running on pre-commit.ci at
-  # all, for something that service does not give it rather than for
-  # anything the hook does. It resolves the release README.md names in
-  # the vendored clone's refs, and the clone the key above delivers is
-  # shallow: no tags to resolve against, and no `fetch-depth` key to ask
-  # that service for them (btclib-org/btclib-secp256k1#132). A
-  # `fetch-depth` key, or that clone arriving with its tags, is what
-  # takes this entry back out. An entry may join the list for a reason
-  # of that kind -- something the service cannot be given -- and no
-  # other; re-read this before adding to it. lint.yml runs this same
-  # file with `submodules: true` and `fetch-depth: 0`, so what the list
-  # costs is pre-commit.ci's run of submodule-pin rather than the hook
-  # itself: it still gates a commit on this machine and the required
+  # two hooks are kept from running on pre-commit.ci at all, each for
+  # something that service does not give it rather than for anything
+  # the hook does.
+  # submodule-pin resolves the release README.md names in the vendored
+  # clone's refs, and the clone the key above delivers is shallow: no
+  # tags to resolve against, and no `fetch-depth` key to ask that
+  # service for them (btclib-org/btclib-secp256k1#132). A `fetch-depth`
+  # key, or that clone arriving with its tags, is what takes this entry
+  # back out.
+  # pyroma runs out of the `check` group through `uv run`, and section 4
+  # of the organization standard names `skip:` as the price of a local
+  # hook of that form: uv is absent on pre-commit.ci, which also runs a
+  # hook with no network (pre-commit-ci/issues#256). A service with both
+  # is what takes this entry back out.
+  # An entry may join the list for a reason of that kind -- something
+  # the service cannot be given -- and no other; re-read this before
+  # adding to it. lint.yml runs this same file with `submodules: true`
+  # and `fetch-depth: 0` and a network, so what the list costs is
+  # pre-commit.ci's run of these two rather than the hooks themselves:
+  # each still gates a commit on this machine and the required
   # `lint / Lint and type-check` check.
-  skip: [submodule-pin]
+  skip: [submodule-pin, pyroma]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -191,7 +198,7 @@ repos:
   # compared with the version README.md claims -- the window in which the
   # changelog and the release notes about that version are written. This
   # asks it of every commit instead, and offline: the tag is resolved in
-  # the vendored clone's own refs, so no hook here reaches the network.
+  # the vendored clone's own refs, so this hook reaches no network.
   # The half that needs one -- that the tag is upstream's, and signed by a
   # maintainer -- is a job of vendored-vectors.yml, a sentinel because a
   # keyserver that is down is nothing a pull request did.
@@ -493,8 +500,8 @@ repos:
   # below, which reads a comment line and is the one thing here a formatter
   # does not settle -- taplo aligns a comment that trails a value and
   # rewraps none. taplo-lint is not enabled beside this: it validates
-  # against a schema catalogue it fetches, and pyroma below reads the
-  # metadata offline
+  # against a schema catalogue it fetches, and pyroma below rates the
+  # metadata the build produces
   - repo: https://github.com/ComPWA/taplo-pre-commit
     rev: v0.9.3
     hooks:
@@ -932,41 +939,44 @@ repos:
   # what test.yml's own pyroma step rates the sdist for -- a missing
   # classifier or url, metadata that is valid but poor -- this rates the
   # source tree instead, for an answer before pushing rather than after
-  # the build
-  - repo: https://github.com/regebro/pyroma
-    rev: "5.0.1"
+  # the build.
+  # A local hook with no `rev`, run out of pyproject.toml's `check` group,
+  # so the pyroma it runs is the one uv.lock pins and test.yml rates the
+  # sdist with: a hook repository's `rev` would be a second declaration
+  # of that dependency, and the one naming a prerelease is what
+  # `pinned-rev` above refuses.
+  # `language: system` and `uv run --locked` are the form section 4 of the
+  # organization standard gives a local mypy hook, and uv is on the PATH
+  # of every hook because the lint gate is started by it.
+  # `--only-group check` adds that group to the environment the gate runs
+  # from and takes nothing out of it, and installs no project, so
+  # nothing is compiled.
+  # The `-d --min=10 .` and `always_run` are the upstream hook's own
+  # definition, written out because a local hook cannot inherit one.
+  #
+  # The backend is pyproject.toml's `hatchling` of that group, because
+  # pyroma builds this project to read its metadata and its command line
+  # has no way to say how. It asks `build` for the metadata without
+  # isolation and falls back to an isolated build when that raises, and
+  # the isolated build is what needs an index. The non-isolated path
+  # imports the backend out of the environment and checks nothing else,
+  # so the backend alone is what it takes: the cffi and cmake
+  # requirements beside hatchling in [build-system] are the compiled
+  # extension's, and preparing the metadata asks for neither. Measured,
+  # rather than read off the fallback's shape:
+  #
+  #   PIP_NO_INDEX=1 UV_PROJECT_ENVIRONMENT=<a directory that is new> \
+  #     uv run --locked --only-group check pyroma -d --min=10 .
+  #
+  # passes with the group's hatchling and dies in pip with it removed,
+  # the traceback ending in the isolated fallback installing what
+  # [build-system] requires
+  - repo: local
     hooks:
       - id: pyroma
-        # the backend, in pyroma's own environment, because pyroma builds
-        # this project to read its metadata and its command line has no
-        # way to say how. It asks `build` for the metadata without
-        # isolation and falls back to an isolated build when that raises,
-        # and an isolated build is a virtual environment pre-commit.ci
-        # cannot populate, that service running hooks with no network.
-        # The non-isolated path imports the backend out of the hook
-        # environment and checks nothing else, so the backend alone is
-        # what it takes: the cffi and cmake requirements beside hatchling
-        # in [build-system] are the compiled extension's, and preparing
-        # the metadata asks for neither. Measured, rather than read off
-        # the fallback's shape:
-        #
-        #   PIP_NO_INDEX=1 uv run --locked --only-group lint \
-        #     pre-commit run pyroma --all-files
-        #
-        # passes with this line and dies in pip with it removed, the
-        # traceback ending in the isolated fallback installing what
-        # [build-system] requires. That run is why pyroma is not in the
-        # ci block's skip list at the top of this file. Section 12 words
-        # the non-isolated path as taken where the environment satisfies
-        # `requires`, which is not what decides it --
-        # btclib-org/.github#251 has the measurement.
-        #
-        # The specifier is [build-system]'s, and has to stay it: section
-        # 12 of the organization standard asks that a hook building this
-        # project build it with a backend that declaration admits
-        # (btclib-org/.github#197). Not pinned, unlike the additional
-        # dependencies above: what this has to match is a range rather
-        # than a release, and the isolated build it replaces would have
-        # resolved the same range itself. hook_pins_test.py fails when
-        # the two part
-        additional_dependencies: ["hatchling>=1.27,<1.32.1"]
+        name: pyroma (the packaging rating of the source tree)
+        language: system
+        entry: uv run --locked --only-group check pyroma
+        args: [-d, --min=10, .]
+        pass_filenames: false
+        always_run: true

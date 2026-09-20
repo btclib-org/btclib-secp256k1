@@ -43,12 +43,13 @@ dependency to its floor is not that one. The mode is read from the lock
 and not from `UV_RESOLUTION`, the lock being what those two tests
 compare against.
 
-Two hooks carry `[build-system]`'s `requires` rather than a pin:
+Two environments carry `[build-system]`'s `requires` rather than a pin.
 `check-sdist`'s `additional_dependencies` is those requirements verbatim,
-and `pyroma`'s is the `hatchling` one of them. pre-commit builds a hook's
-environment once and keeps it, so a copy left behind is not noticed by
-its hook until that environment is rebuilt
-(btclib-org/btclib-secp256k1#945).
+and pre-commit builds a hook's environment once and keeps it, so a copy
+left behind is not noticed by its hook until that environment is rebuilt
+(btclib-org/btclib-secp256k1#945). The `pyroma` hook has no environment of
+its own: it runs out of a dependency group, which its `entry` names, and
+that group holds the `hatchling` one of the requirements.
 `test_check_sdist_installs_what_build_system_requires` and
 `test_pyroma_installs_the_backend_build_system_declares` compare each
 copy with `pyproject.toml`, the hook found by its `id`.
@@ -60,8 +61,9 @@ where `tomllib` is not yet in the standard library, which is the reason
 it. The shapes narrow enough to match are a `[[package]]` table with a
 name and a version, the two this file writes an `additional_dependencies`
 value in -- a bracketed list on the key's own line, and `- ` items
-indented under it -- and `[build-system]`'s `requires`, one string to a
-line.
+indented under it -- a hook's `entry` and its `args` on one line, and an
+array of `pyproject.toml` -- `[build-system]`'s `requires` and a
+dependency group -- opened alone on its line, one string to a line.
 
 A value is read whole or not at all. The comma separates a flow
 sequence's items in yaml and a specifier set's clauses in PEP 440, so
@@ -113,8 +115,13 @@ _OPTIONS = re.compile(r"^\[options\]\n(?P<keys>(?:[^\n\[].*\n)*)", re.MULTILINE)
 _MODE = re.compile(r'^resolution-mode = "(?P<mode>[^"]+)"$', re.MULTILINE)
 # a hook's first line, whatever the indentation its list is written at
 _HOOK = re.compile(r"^(?P<indent> *)- id: (?P<id>[^\s#]+)\s*$")
-# `requires = [` alone on its line, which is how pyproject.toml opens it
-_REQUIRES = re.compile(r"^requires\s*=\s*\[$")
+# a hook's `entry` written on the key's own line: a block scalar has an
+# indicator after its key, which the pattern does not accept
+_ENTRY_LINE = re.compile(r"^ +entry: (?P<value>[^|>\s].*)$", re.MULTILINE)
+# a hook's `args` written as one flow sequence on the key's own line
+_ARGS_LINE = re.compile(r"^ +args: (?P<value>\[.*\])$", re.MULTILINE)
+# the dependency group `uv run` is asked for, with the flag alone naming it
+_ONLY_GROUP = re.compile(r"(?:^|\s)--only-group[= ](?P<group>[A-Za-z0-9_.-]+)(?=\s|$)")
 # one toml string alone on its line: a basic one with no escape in it, or
 # a literal one, which is how the marker-gated requirements quote their
 # double-quoted versions. The trailing comma is the array's own
@@ -329,13 +336,41 @@ def _values(text: str) -> list[list[_Requirement]]:
     return [_requirements(items) for items in _written(text)]
 
 
-def _hook_dependencies(text: str, hook_id: str) -> list[str]:
-    """Return the `additional_dependencies` of the hook `id` names.
+def _hook_block(text: str, hook_id: str) -> str:
+    """Return the lines of the hook `id` names, after its `- id:` line.
 
     The hook is the lines from its `- id:` line to the first non-blank
     line indented no deeper than that one, which is the next hook's or
     the next repo's. `check-sdist` is an `id` and `check-sdist-isolated`
     is another, so the line is matched whole.
+
+    Args:
+        text: the configuration.
+        hook_id: the hook's `id`.
+
+    Returns:
+        The lines, joined; empty where no hook has that `id` and where
+        two do.
+    """
+    lines = text.splitlines()
+    starts = [
+        index
+        for index, line in enumerate(lines)
+        if (hook := _HOOK.match(line)) is not None and hook["id"] == hook_id
+    ]
+    if len(starts) != 1:
+        return ""
+    indent = len(lines[starts[0]]) - len(lines[starts[0]].lstrip(" "))
+    block = []
+    for line in lines[starts[0] + 1 :]:
+        if line.strip() and len(line) - len(line.lstrip(" ")) <= indent:
+            break
+        block.append(line)
+    return "\n".join(block)
+
+
+def _hook_dependencies(text: str, hook_id: str) -> list[str]:
+    """Return the `additional_dependencies` of the hook `id` names.
 
     Args:
         text: the configuration.
@@ -348,43 +383,83 @@ def _hook_dependencies(text: str, hook_id: str) -> list[str]:
         as nothing, which `test_the_lists_compared_below_were_read`
         fails on.
     """
-    lines = text.splitlines()
-    starts = [
-        index
-        for index, line in enumerate(lines)
-        if (hook := _HOOK.match(line)) is not None and hook["id"] == hook_id
-    ]
-    if len(starts) != 1:
-        return []
-    indent = len(lines[starts[0]]) - len(lines[starts[0]].lstrip(" "))
-    block = []
-    for line in lines[starts[0] + 1 :]:
-        if line.strip() and len(line) - len(line.lstrip(" ")) <= indent:
-            break
-        block.append(line)
-    keys = _written("\n".join(block))
+    keys = _written(_hook_block(text, hook_id))
     return keys[0] if len(keys) == 1 else []
 
 
-def _build_requires(pyproject: str) -> list[str]:
-    """Return `[build-system]`'s `requires`, each entry as it is written.
+def _hook_entry(text: str, hook_id: str) -> str:
+    """Return the `entry` of the hook `id` names, on one line.
+
+    Args:
+        text: the configuration.
+        hook_id: the hook's `id`.
+
+    Returns:
+        The command, unquoted; empty where no hook has that `id`, where
+        two do, and where the hook does not write exactly one `entry` on
+        one line -- a block scalar has nothing after its key, which the
+        pattern does not match.
+    """
+    entries = _ENTRY_LINE.findall(_hook_block(text, hook_id))
+    return _unquoted(entries[0].strip()) if len(entries) == 1 else ""
+
+
+def _hook_args(text: str, hook_id: str) -> list[str]:
+    """Return the `args` of the hook `hook_id` names, one item each.
+
+    Args:
+        text: the configuration.
+        hook_id: the hook's `id`.
+
+    Returns:
+        The items, unquoted; empty where no hook has that `id`, where
+        two do, and where the hook does not write exactly one `args` as
+        a flow sequence on one line.
+    """
+    found = _ARGS_LINE.findall(_hook_block(text, hook_id))
+    if len(found) != 1:
+        return []
+    return _flow(found[0])
+
+
+def _only_group(entry: str) -> str:
+    """Return the dependency group `entry` asks `uv run` for alone.
+
+    Args:
+        entry: a hook's command.
+
+    Returns:
+        The group `--only-group` names; empty where the command names no
+        group that way or names two, a command running out of two groups
+        having no one of them to compare.
+    """
+    groups = _ONLY_GROUP.findall(entry)
+    return groups[0] if len(groups) == 1 else ""
+
+
+def _array(pyproject: str, table: str, key: str) -> list[str]:
+    """Return the entries of `key`'s array in `table`, each as written.
 
     A line-based walk, as `check_sdist_exclude.py`'s is of its own
     array: a comment inside this one is free to hold a `]`, and only a
     line that is exactly `]` ends it. The array opens on a line
-    that is `requires = [` and nothing else, and every entry is one
+    that is `<key> = [` and nothing else, and every entry is one
     string alone on its line, with blank lines and whole-line comments
     free to sit between them. Anything else is refused rather than read
-    in part, since a list read in part is a `requires` the file does not
-    hold and a comparison against it passes on the part.
+    in part, since a list read in part is an array the file does not
+    hold and a comparison against it passes on the part -- an entry
+    that is a table, as a group's `include-group` is, included.
 
     Args:
         pyproject: the file's text.
+        table: the table's header, brackets included.
+        key: the array's key.
 
     Returns:
         The entries, in the order they are written; empty where the
-        table has no `requires` in that shape.
+        table has no such key in that shape.
     """
+    opening = re.compile(rf"^{re.escape(key)}\s*=\s*\[$")
     in_table = False
     in_array = False
     found: list[str] = []
@@ -402,10 +477,20 @@ def _build_requires(pyproject: str) -> list[str]:
                 entry["basic"] if entry["basic"] is not None else entry["literal"]
             )
         elif stripped.startswith("["):
-            in_table = stripped == "[build-system]"
-        elif in_table and _REQUIRES.match(stripped):
+            in_table = stripped == table
+        elif in_table and opening.match(stripped):
             in_array = True
     return []
+
+
+def _build_requires(pyproject: str) -> list[str]:
+    """Return `[build-system]`'s `requires`, each entry as it is written."""
+    return _array(pyproject, "[build-system]", "requires")
+
+
+def _group(pyproject: str, name: str) -> list[str]:
+    """Return the requirements of the dependency group `name`, as written."""
+    return _array(pyproject, "[dependency-groups]", name)
 
 
 def _backend(items: list[str]) -> list[str]:
@@ -497,7 +582,13 @@ _PINS = tuple(pin for pin in _pins(_VALUES) if _locked(pin[0]) is not None)
 _RESOLUTION = _resolution_mode(_LOCK.read_text(encoding="utf-8"))
 _BUILD_REQUIRES = _build_requires(_PYPROJECT.read_text(encoding="utf-8"))
 _CHECK_SDIST = _hook_dependencies(_CONFIG.read_text(encoding="utf-8"), "check-sdist")
-_PYROMA = _hook_dependencies(_CONFIG.read_text(encoding="utf-8"), "pyroma")
+_PYROMA_ENTRY = _hook_entry(_CONFIG.read_text(encoding="utf-8"), "pyroma")
+_PYROMA_GROUP = _only_group(_PYROMA_ENTRY)
+_PYROMA_ENVIRONMENT = (
+    _group(_PYPROJECT.read_text(encoding="utf-8"), _PYROMA_GROUP)
+    if _PYROMA_GROUP
+    else []
+)
 _MOVED_WITH_THE_HIGHEST = pytest.mark.skipif(
     _RESOLUTION != "highest",
     reason=f"uv.lock records a {_RESOLUTION} resolution, and the hook pins"
@@ -666,10 +757,17 @@ repos:
   # what the next repo is for
   - repo: https://example.com/b
     hooks:
-      - id: pyroma
+      - id: another-hook
         additional_dependencies: ["hatchling>=1.27,<2"]
       - id: nodeps
         name: no dependencies
+        entry: uv run --locked --only-group check pyroma -d
+      - id: blockentry
+        entry: |-
+          a pattern
+      - id: twoentries
+        entry: one
+        entry: two
 """
 
 
@@ -685,7 +783,7 @@ def test_a_hook_is_found_by_its_id_and_read_to_where_the_next_begins() -> None:
         'cffi>=1.14.1; python_version<"3.13"',
     ]
     assert _hook_dependencies(_SAMPLE, "check-sdist-isolated") == ["other"]
-    assert _hook_dependencies(_SAMPLE, "pyroma") == ["hatchling>=1.27,<2"]
+    assert _hook_dependencies(_SAMPLE, "another-hook") == ["hatchling>=1.27,<2"]
 
 
 def test_a_hook_without_exactly_one_list_reads_as_nothing() -> None:
@@ -698,7 +796,74 @@ def test_a_hook_without_exactly_one_list_reads_as_nothing() -> None:
     """
     assert _hook_dependencies(_SAMPLE, "check-sdist-renamed") == []
     assert _hook_dependencies(_SAMPLE, "nodeps") == []
-    assert _hook_dependencies(_SAMPLE + _SAMPLE, "pyroma") == []
+    assert _hook_dependencies(_SAMPLE + _SAMPLE, "another-hook") == []
+
+
+def test_an_entry_is_the_one_command_on_the_hooks_own_line() -> None:
+    """A block scalar, two entries and an absent hook read as no command.
+
+    `test_the_lists_compared_below_were_read` is what fails on the
+    nothing: an `entry` read from a neighbour, or the first of two, would
+    name a group the hook may not run from.
+    """
+    assert (
+        _hook_entry(_SAMPLE, "nodeps") == "uv run --locked --only-group check pyroma -d"
+    )
+    assert _hook_entry(_SAMPLE, "blockentry") == ""
+    assert _hook_entry(_SAMPLE, "twoentries") == ""
+    assert _hook_entry(_SAMPLE, "another-hook") == ""
+    assert _hook_entry(_SAMPLE, "absent") == ""
+    assert _hook_entry('  - id: q\n    entry: "uv run"\n', "q") == "uv run"
+
+
+@pytest.mark.parametrize(
+    "entry, group",
+    [
+        ("uv run --locked --only-group check pyroma -d", "check"),
+        ("uv run --only-group=check pyroma", "check"),
+        ("uv run --only-group check", "check"),
+        ("uv run --only-group check --only-group lint pyroma", ""),
+        ("uv run --group check pyroma", ""),
+        ("uv run --no-only-group check pyroma", ""),
+        ("pyroma -d .", ""),
+    ],
+    ids=[
+        "the flag and its group",
+        "written with an equals sign",
+        "at the end of the command",
+        "two groups",
+        "a group that is not alone",
+        "another flag ending the same way",
+        "no uv at all",
+    ],
+)
+def test_the_group_is_the_one_only_group_names(entry: str, group: str) -> None:
+    """`--only-group` alone names the environment; anything else names none."""
+    assert _only_group(entry) == group
+
+
+def test_a_dependency_group_is_read_where_a_table_holds_no_string() -> None:
+    """A group of strings is read, and one holding a table is not read in part.
+
+    `dev` includes the other groups by `{ include-group = ... }`, which
+    is no requirement and no string alone on its line: read in part, the
+    group would compare as though it were the whole.
+    """
+    text = (
+        '[build-system]\ncheck = [\n    "not-this",\n]\n\n'
+        "[dependency-groups]\n# a note about the group [and a bracket]\n"
+        'check = [\n    "twine>=7.0.0",\n'
+        "    # why the next one\n"
+        "    \"pyroma>=5.1b2; python_version >= '3.11'\",\n]\n"
+        'dev = [\n    { include-group = "check" },\n]\n'
+    )
+
+    assert _group(text, "check") == [
+        "twine>=7.0.0",
+        "pyroma>=5.1b2; python_version >= '3.11'",
+    ]
+    assert _group(text, "dev") == []
+    assert _group(text, "absent") == []
 
 
 def test_the_build_requires_are_read_through_comments_and_blank_lines() -> None:
@@ -757,18 +922,20 @@ def test_a_shape_the_walk_does_not_read_is_nothing_and_not_a_part(text: str) -> 
     assert _build_requires(text) == []
 
 
-def test_the_build_requires_walk_reads_of_the_real_file_what_tomllib_reads() -> None:
+def test_the_array_walk_reads_of_the_real_file_what_tomllib_reads() -> None:
     """The canary: this walk and a TOML parser agree on `pyproject.toml`.
 
     Every test above builds its own text, so none of them would notice
-    the real array being rewritten into a shape the walk reads as a
+    the real arrays being rewritten into a shape the walk reads as a
     different list. `tomllib` answers what TOML says is there, where
     the interpreter has it.
     """
     tomllib = pytest.importorskip("tomllib")
     text = _PYPROJECT.read_text(encoding="utf-8")
+    loaded = tomllib.loads(text)
 
-    assert _build_requires(text) == tomllib.loads(text)["build-system"]["requires"]
+    assert _build_requires(text) == loaded["build-system"]["requires"]
+    assert loaded["dependency-groups"][_PYROMA_GROUP] == _PYROMA_ENVIRONMENT
 
 
 def test_the_backend_is_the_requirement_whose_name_is_hatchling() -> None:
@@ -838,7 +1005,8 @@ def test_the_lists_compared_below_were_read() -> None:
     assert _BUILD_REQUIRES, "no [build-system] requires read from pyproject.toml"
     assert _backend(_BUILD_REQUIRES), "[build-system] requires names no hatchling"
     assert _CHECK_SDIST, "no additional_dependencies read for the check-sdist hook"
-    assert _PYROMA, "no additional_dependencies read for the pyroma hook"
+    assert _PYROMA_GROUP, "the pyroma hook's entry names no --only-group"
+    assert _PYROMA_ENVIRONMENT, f"no requirements read for the {_PYROMA_GROUP} group"
 
 
 def test_check_sdist_installs_what_build_system_requires() -> None:
@@ -861,11 +1029,47 @@ def test_pyroma_installs_the_backend_build_system_declares() -> None:
 
     pyroma builds this project to read its metadata, and section 12 of
     the organization standard asks that a hook doing so use a backend
-    the declaration admits.
+    the declaration admits. A hook run out of a dependency group has no
+    `additional_dependencies`: the group its `entry` names is the
+    environment the backend is imported from.
     """
-    drift = _drift(_backend(_BUILD_REQUIRES), _backend(_PYROMA))
+    drift = _drift(_backend(_BUILD_REQUIRES), _backend(_PYROMA_ENVIRONMENT))
 
     assert not drift, (
-        "the pyroma hook's hatchling is not pyproject.toml's [build-system]"
-        f" hatchling: it {drift}"
+        f"the {_PYROMA_GROUP} group's hatchling is not pyproject.toml's"
+        f" [build-system] hatchling: it {drift}"
     )
+
+
+def test_the_pyroma_hook_runs_the_locked_tool_and_writes_no_lock() -> None:
+    """`uv run --locked` is what makes the pin the lock's and no other.
+
+    Without `--locked` a `uv run` re-resolves a lock that no longer
+    matches `pyproject.toml` and writes the answer into the tree, which
+    a gate that only reads must not leave behind. The command runs
+    `pyroma`, and the group it runs out of holds a requirement for it.
+    """
+    words = _PYROMA_ENTRY.split()
+
+    assert words[:2] == ["uv", "run"], _PYROMA_ENTRY
+    assert "--locked" in words, _PYROMA_ENTRY
+    assert "pyroma" in words, _PYROMA_ENTRY
+    assert any(
+        requirement.name == "pyroma"
+        for requirement in map(_read, _PYROMA_ENVIRONMENT)
+        if requirement is not None
+    ), f"the {_PYROMA_GROUP} group holds no pyroma"
+
+
+def test_the_pyroma_hook_asks_for_the_rating_the_workflows_ask_for() -> None:
+    """The hook takes `--min=10`, the rating its workflows hold pyroma to.
+
+    A hook that drops the flag runs pyroma with its own default minimum,
+    which a tree short of one field can pass. `test.yml` and
+    `deps-latest.yml` ask the same tool for 10, and the hook is that gate
+    run before a commit. The flag is read as `--min=10`, the spelling the
+    hook writes.
+    """
+    args = _hook_args(_CONFIG.read_text(encoding="utf-8"), "pyroma")
+
+    assert "--min=10" in args, args

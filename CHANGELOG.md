@@ -1049,6 +1049,12 @@ release-notes length in the first place, and are still in
   the major above the newest release measured** (issue
   btclib-org/.github#1195): `setuptools` and `typing_extensions` a floor too.
 
+### The `pyroma` hook runs the version `uv.lock` pins
+
+- **The hook is local, runs out of the `check` group and so at 5.1b2, and
+  has no `rev`** (closes #952): Python 3.10 keeps 5.0.1, the docs group
+  there excluding 5.1b2's `docutils`; `pre-commit.ci` skips it.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

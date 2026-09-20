@@ -382,7 +382,9 @@ build = [
 ]
 check = [
     { name = "check-wheel-contents" },
-    { name = "pyroma" },
+    { name = "hatchling" },
+    { name = "pyroma", version = "5.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pyroma", version = "5.1b2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "twine" },
 ]
 dev = [
@@ -400,7 +402,8 @@ dev = [
     { name = "myst-parser", version = "5.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pathspec" },
     { name = "pre-commit" },
-    { name = "pyroma" },
+    { name = "pyroma", version = "5.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pyroma", version = "5.1b2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-randomly" },
@@ -453,7 +456,9 @@ build = [
 ]
 check = [
     { name = "check-wheel-contents", specifier = ">=0.6.3" },
-    { name = "pyroma", specifier = ">=5.0.1" },
+    { name = "hatchling", specifier = ">=1.27,<1.32.1" },
+    { name = "pyroma", marker = "python_full_version < '3.11'", specifier = ">=5.0.1" },
+    { name = "pyroma", marker = "python_full_version >= '3.11'", specifier = ">=5.1b2" },
     { name = "twine", specifier = ">=7.0.0" },
 ]
 dev = [
@@ -465,12 +470,14 @@ dev = [
     { name = "cosmic-ray", specifier = ">=8.7.0" },
     { name = "delocate", specifier = ">=0.13.0" },
     { name = "furo", specifier = ">=2025.12.19" },
+    { name = "hatchling", specifier = ">=1.27,<1.32.1" },
     { name = "hatchling", specifier = ">=1.32.0" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "myst-parser", specifier = ">=4.0.1" },
     { name = "pathspec", specifier = ">=1.1.1" },
     { name = "pre-commit", specifier = ">=4.6.2" },
-    { name = "pyroma", specifier = ">=5.0.1" },
+    { name = "pyroma", marker = "python_full_version < '3.11'", specifier = ">=5.0.1" },
+    { name = "pyroma", marker = "python_full_version >= '3.11'", specifier = ">=5.1b2" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-randomly", specifier = ">=5.0.0" },
@@ -2587,10 +2594,12 @@ wheels = [
 name = "pyroma"
 version = "5.0.1"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11'",
+]
 dependencies = [
     { name = "build" },
-    { name = "docutils", version = "0.21.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "docutils", version = "0.22.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "docutils", version = "0.21.2", source = { registry = "https://pypi.org/simple" } },
     { name = "packaging" },
     { name = "pygments" },
     { name = "requests" },
@@ -2600,6 +2609,31 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0b/68/a91ab78e5d7ff88eaaa10cefc948a07723d263e9a443e3650b32fbf0ac01/pyroma-5.0.1.tar.gz", hash = "sha256:703ae972e53e16be836966d03cd387906ecf32d64992345a61f2ed15805aee56", size = 67392, upload-time = "2025-12-09T10:10:22.357Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/86/cd/300d42aa7675d2ce66fea380177c19ad9f8ffad01295160a06e257360d73/pyroma-5.0.1-py3-none-any.whl", hash = "sha256:e71fd3e0f213b36870a607eccf491241dbadf5462ec1cdda94d08bfa1c26951e", size = 23012, upload-time = "2025-12-09T10:10:20.578Z" },
+]
+
+[[package]]
+name = "pyroma"
+version = "5.1b2"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.15'",
+    "python_full_version == '3.14.*'",
+    "python_full_version == '3.13.*'",
+    "python_full_version == '3.12.*'",
+    "python_full_version == '3.11.*'",
+]
+dependencies = [
+    { name = "build" },
+    { name = "docutils", version = "0.22.4", source = { registry = "https://pypi.org/simple" } },
+    { name = "packaging" },
+    { name = "pygments" },
+    { name = "requests" },
+    { name = "setuptools" },
+    { name = "trove-classifiers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/19/36/63887935ae1c35c2874314d1fce19d227819a8f80aeaf489d238bffc164b/pyroma-5.1b2.tar.gz", hash = "sha256:5e741a471bee07b38d100a56cffaa96825e0a774d877ca8be81aae821e259c02", size = 72507, upload-time = "2026-06-14T17:32:06.644Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/00/86/6a81b9bcd17bbde2171796809e556eccc960b13bafd347fba4884686a099/pyroma-5.1b2-py3-none-any.whl", hash = "sha256:8fac74fbad3265785bb7ee0ccec82f2ed9e3ec6fd0de4e0f0590d17d5710dc85", size = 24829, upload-time = "2026-06-14T17:32:05.171Z" },
 ]
 
 [[package]]

@@ -123,7 +123,7 @@ one. It runs the hooks of `.pre-commit-config.yaml` from a checkout of
 its own, where the required `lint / Lint and type-check` runs the same
 file from one this repository controls, `lint.yml` checking out what the
 hooks that read the vendored clone need. What that file's `ci:` block
-asks of the service, which hooks it can therefore run and which entry
+asks of the service, which hooks it can therefore run and which entries
 the `skip` list holds are written in that block's own comment, beside
 the keys they are about, where somebody editing the list reads them.
 
