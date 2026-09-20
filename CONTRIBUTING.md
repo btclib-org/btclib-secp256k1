@@ -1243,10 +1243,9 @@ tree's prose:
   3.10.12) is fatal on the macOS and Windows wheel jobs and fine on the
   Linux ones. No static check reaches it: mypy's `python_version` is a
   minor version and it refuses a patch, so nothing it can be aimed at
-  tells 3.10.11 from 3.10.12. Nor does any check a branch has to pass:
-  the wheel jobs that run the suite under `cp310` are narrowed on a pull
-  request to one interpreter per image, which leaves the red for the
-  push to `main`
+  tells 3.10.11 from 3.10.12. What does is the suite the wheel jobs run
+  under `cp310`, which a pull request builds on every image but
+  `windows-11-arm`, where there is no `cp310` to build
 - **the version is declared once,** in `pyproject.toml`, and
   `__version__` reads the installed metadata. Never bump it in an
   ordinary change: releases are cut by a maintainer following
@@ -1339,14 +1338,20 @@ whoever asked what ran would have to re-derive the hole from the gate.
 
 **Every image still builds wheels on every pull request**: `cibuildwheel`
 runs the suite against each wheel as it builds it, and the release publishes
-the artifacts of a run that built every one. What narrows on a branch is how
-many per image — one interpreter's rather than every interpreter's, ubuntu
-included — because what a pull request asks of an image is whether this tree
-still builds there, and the toolchain, the CMake build of the vendored
-library and the cffi extension are what differ per image rather than per
-interpreter. Nothing on a branch reads past that first build: `check-dist`
-installs one wheel by path and takes it from `build-dynamic`, which builds
-whole. `test.yml` carries the measurement beside the step.
+the artifacts of a run that built every one. What narrows on a branch is
+which interpreters per image — the oldest one and the free-threaded one
+rather than every interpreter, ubuntu included — because what a pull request
+asks of an image is whether this tree still builds there, and the toolchain,
+the CMake build of the vendored library and the cffi extension are what
+differ per image rather than per interpreter.
+
+The free-threaded one is kept for a reason of its own: `pyproject.toml`
+declares the `Free Threading` classifier on the ground that the gate refuses
+a landing that breaks the `cp314t` wheel, so the required check builds that
+wheel and runs the suite against it. Nothing on a branch reads past those
+wheels: `check-dist` installs one wheel by path and takes it from
+`build-dynamic`, which builds whole. `test.yml` carries the reasoning beside
+the step.
 
 What a pull request no longer asks is pip's *selection* among a directory of
 wheels tagged for several interpreters, which now runs nowhere; the wheel
