@@ -243,12 +243,13 @@ jobs:
       - name: Upgrade every dependency to its latest release
         run: uv lock --upgrade
 
-      # setuptools, hatchling and cmake are resolved by the build itself
-      # rather than from uv.lock, so this step is at latest whether or not
-      # the one above moved anything: the build requirements in
-      # pyproject.toml are lower bounds and uv builds in an isolated
-      # environment. Which makes this the one job here that would catch a
-      # build backend release breaking the wheel
+      # The build requirements are resolved by the build itself rather
+      # than from uv.lock, so this step is at the newest release each of
+      # their bounds admits whether or not the one above moved anything:
+      # pyproject.toml gives each a floor and a ceiling, and uv builds in
+      # an isolated environment. Which makes this the one job here that
+      # would catch a build backend release breaking the wheel, so long as
+      # the release is one a bound admits: past a ceiling it is not built
       - name: Build the distributions
         run: |
           uv build --sdist
