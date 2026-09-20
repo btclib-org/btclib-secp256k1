@@ -816,6 +816,23 @@ def test_an_entry_is_the_one_command_on_the_hooks_own_line() -> None:
     assert _hook_entry('  - id: q\n    entry: "uv run"\n', "q") == "uv run"
 
 
+def test_args_are_the_one_flow_sequence_on_the_hooks_own_line() -> None:
+    """A repeated key, a block list and an absent hook read as no arguments.
+
+    `test_the_pyroma_hook_asks_for_the_rating_the_workflows_ask_for` is
+    what fails on the nothing: an `args` read from a neighbour, or the
+    first of two, would hold `--min=10` for a hook that does not ask for
+    it. A comma inside a quoted item is that item's own.
+    """
+    assert _hook_args(_SAMPLE, "check-sdist") == ["--flag"]
+    assert _hook_args(_SAMPLE, "nodeps") == []
+    assert _hook_args(_SAMPLE, "absent") == []
+    assert _hook_args("  - id: q\n    args: ['a,b', c]\n", "q") == ["a,b", "c"]
+    assert _hook_args("  - id: q\n    args: [a]\n    args: [b]\n", "q") == []
+    assert _hook_args("  - id: q\n    args:\n      - a\n", "q") == []
+    assert _hook_args("  - id: q\n    args: []\n", "q") == []
+
+
 @pytest.mark.parametrize(
     "entry, group",
     [
