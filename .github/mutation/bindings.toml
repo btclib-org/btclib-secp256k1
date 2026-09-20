@@ -9,56 +9,82 @@
 # reads 100% -- what kills that mutant is a test that passes 31 octets *and*
 # one that passes 33.
 #
-# The first session answered that, and the answer was that not every bound
-# had both: mutation testing found survivors on a tree already at 100%
-# statement coverage -- two questions with different answers, which is the
-# whole reason this configuration exists. Most of those survivors were the
-# inert shape the operator filter below now skips; the rest were real.
+# Statement coverage and this are two questions with different answers, and
+# a bound that has only one side is what only this one finds.
 #
-# The tests the real ones asked for are in tests/ now, and a second
-# session found the comparison and loop mutants dead except for a handful
-# of recid bounds and a message-hash check, killed by hand afterwards --
-# each mutation applied to the source and the suite watched to fail. What
-# the session that measured the filter below still found, past that, was
-# two shapes that no test could kill, and neither is there any more --
-# because each was a question about the code rather than about the suite:
+# Two shapes ask a question of the code rather than of the suite, and the
+# code is written so that a test can answer it:
 #
 #   ffi.new("size_t *", 73) -> 74 or 72, the capacity of an output buffer,
 #   written as a second copy of the buffer's own size.
-#   `ffi.sizeof` now derives the capacity from the buffer and the buffer is
+#   `ffi.sizeof` derives the capacity from the buffer and the buffer is
 #   what is unpacked, so a wrong size reaches the caller instead of being
-#   absorbed. The DER buffer went with them: 73 was slack over a
-#   serialization that cannot exceed 72, so shrinking it was a mutant no
-#   test could distinguish, and at the 72 it is now
-#   `test_der_reaches_all_72_octets` reaches the last octet and 71 dies
+#   absorbed. The DER buffer is 72 octets, the most a serialization can
+#   take, so shrinking it is a mutant `test_der_reaches_all_72_octets`
+#   kills by reaching the last octet
 #
 #   secrets.token_bytes(32) -> 31 or 33, randomness this package generates
 #   rather than accepts: a BIP340 aux, an ellswift encoding, the context
-#   seed -- unkillable through any answer, a shorter aux being hashed into
-#   a different signature that verifies just as well.
-#   What holds them now is what is *asked* of `secrets` rather than what
-#   comes back, so the context seed is randomized through a function taking
-#   the context as an argument, the way `_load_lib` takes the module
+#   seed. What comes back cannot show the length -- a shorter aux is hashed
+#   into a different signature that verifies just as well -- so a test
+#   records what is *asked* of `secrets`, and the context seed is
+#   randomized through a function taking the context as an argument, the
+#   way `_load_lib` takes the module
 #
-# The session that measured that is in the pull request which made it
-# true. What a run finds now is read off `bindings-survivors.txt`, the
-# artifact the workflow uploads, at run 33387466356 -- a scheduled sweep
-# that reached every mutant, where a dispatch cut at its budget says
-# `never run` in its own summary line and has no verdict for what it
-# never reached. That list is not empty, and #941 is where what is in it
-# is being worked through. Read an entry as a test nobody has written --
-# unless it is the shape below, which is not a test nobody has written
-# but a comparison with only one reachable side.
+# What a scheduled run finds is read off `bindings-survivors.txt`, the
+# artifact the workflow uploads, and only a sweep that reached every
+# mutant is read: one cut at its budget says `never run` in its own
+# summary line and has no verdict for what it never reached. A survivor of
+# a complete sweep is a test nobody has written, or one of the kinds below,
+# which no test worth writing can kill; the diff `cr-report --show-diff`
+# prints says which, without another session. Each kind is a shape, so the
+# sites in the tree are what a search for the shape finds and not a list
+# kept here:
 #
-# A session dated 2026-08-12, on code neither session above had measured,
-# found one: `_scalar.py`'s `value.itemsize != 1`, from #124, mutates to
-# `> 1` and no input tells the two apart -- a memoryview's itemsize is
-# never zero, so every value satisfying one comparison satisfies the
-# other. The two shapes above were rewritten until the equivalence went
-# away; this one cannot be, because the check already is the boundary
-# rather than a stand-in for one. Read it once and skip it every session
-# after, the same way the filter below skips the annotations by operator
-# rather than asking every mutant of a `|` to be read again.
+#   A mutant inside an `@overload` stub, which is never run: the
+#   implementation's `def` replaces the stub when the module is imported,
+#   and the operators excluded below take out only the decorator. A
+#   signature closing in `: ...` is one -- a default such as `attempt: int
+#   = 0` mutated to 1, or the keyword-only marker `*` mutated to `/`. That
+#   same `/` in a signature with a docstring after it is not this kind:
+#   there an argument becomes passable by position, and a test that passes
+#   it so kills it.
+#
+#   `type(value) is bytes` -> `==`. A class equals itself and nothing else
+#   unless a metaclass defines `__eq__`, so every argument a caller can
+#   hand in takes the same branch either way; killing it takes a metaclass
+#   written for the mutant, which asks about the mutant and not about the
+#   package.
+#
+#   `ctype.kind != "array"` -> `>`, in `_scalar._owned_octets`. The kind is
+#   one of `primitive`, `pointer`, `array`, `struct`, `union`, `enum`,
+#   `function` and `void`, the strings cffi's backend holds, and none sorts
+#   below `"array"`.
+#
+#   `!=` or `==` between two integers -> `is not` or `is`, where one side
+#   is a size the package fixes below 257: `len(x) != _XONLY_SIZE`, or the
+#   `view.nbytes != size` of `_secret.into_buffer`, where `size` is the
+#   32 octets of the secret `take` read. A literal there is a SyntaxWarning,
+#   which `filterwarnings = ["error"]` makes a syntax error and so a kill; a
+#   name is not one. CPython caches the integers up to 256, so identity and
+#   equality agree wherever the two are that small. Two lengths compared
+#   with each other are not this kind -- past 256 they are different
+#   objects -- and a test with that many terms kills it.
+#
+#   `zip(..., strict=False)` -> `True` in `keys.pubkey_tweak_mul_sum`, whose
+#   length check above it has already raised for every input the two
+#   differ on.
+#
+#   `len(pubkey_bytes) == _XONLY_SIZE` -> `<=` in `xonly.from_pubkey` and
+#   `xonly.to_pubkey`. A value shorter than 32 takes the other branch under
+#   the mutant, and `keys.parse` refuses it there as it refuses it in the
+#   branch it takes without: the same exception, the same message.
+#
+# The number the workflow prints is the survivors over what ran, and no
+# test drives it to zero: the kinds above stay in it, and a kill is not
+# always a test noticing, a mutant that stops the package importing being
+# killed by whichever test is collected first. It is read against the list
+# of survivors and against the run before it.
 #
 # One thing to know that is not a survivor at all, and is the reason a
 # falling mutant count is not by itself a tighter suite (#231).
@@ -100,24 +126,27 @@
 #
 # A sibling repository in the organization needs two files rather than
 # one, and the asymmetry that makes it want two is absent here: there the
-# two halves of its scope cost 1.1 s and 7.2 s of cpu per mutant, so one
-# shared test command would make every cheap mutant pay the expensive
-# one's price. Here the whole suite is the cheap command.
+# two halves of its scope differ in what a mutant costs, so one shared test
+# command would make every cheap mutant pay the expensive one's price.
+# Here one command is the right one for the whole scope.
 
 [cosmic-ray]
-# the package, not one module: it is small enough that scoping it further
-# would be excluding code from the question rather than dividing the work,
-# and a module added to it is in scope without this line being edited.
-# `cosmic-ray init` enumerates the mutants in under a second, so how many
-# there are is a command rather than a number here. The sessions quoted
-# below are records of what was judged, not of what a run counted -- a
-# scheduled run prints the count, and this file does not repeat it.
+# the package, not one module: scoping it further would be excluding code
+# from the question rather than dividing the work. A module added at the
+# top of it is in scope without this line being edited, and a subpackage is
+# too unless `excluded-modules` below names it. `cosmic-ray init`
+# enumerates the mutants without running any, so how many there are is a
+# command rather than a number here. The sessions quoted below are records
+# of what was judged, not of what a run counted -- a scheduled run prints
+# the count, and this file does not repeat it.
 # The vendored C is not in it and cannot be -- libsecp256k1 is upstream's,
 # and what this repository is answerable for is how the bindings drive it
 module-path = "src/btclib_secp256k1"
 
-# the whole suite, which runs in well under a second, so the session cost
-# is the process startup rather than the tests.
+# the whole suite. One mutant costs one run of it, so a session is as long
+# as the mutants it runs times what `cosmic-ray baseline`, which runs it
+# once unmutated, takes; a survivor costs the whole run and a kill only as
+# far as its first failure.
 #
 # -x stops at the first failure: a mutant needs one test to kill it, and the
 # rest of the run is spent proving what is already known.
@@ -135,58 +164,126 @@ test-command = "python -m pytest -x -q -p no:randomly --no-cov"
 # into a loop with no exit, and nothing else. Wide rather than tight,
 # because a timeout is a verdict of its own -- neither killed nor survived
 # -- so every second of slack a loaded machine needs is a survivor not
-# reported as noise. The suite takes under a second, so 120 is two orders of
-# magnitude of slack and costs nothing except on the mutants that do hang
+# reported as noise. One run of the suite is what `cosmic-ray baseline`
+# times, and 120 is wide against it; the limit costs nothing except on the
+# mutants that do hang
 timeout = 120
 
-# nothing: `_scalar` and `context` are as much the boundary as the wrappers
-# are, and `__init__` more than either -- `_load_lib` is the one branch
-# whose other half no build has, which is why it takes the module as an
-# argument. A mutant surviving in there is worth knowing about. What is
-# excluded here is an operator rather than a module, below
-excluded-modules = []
-
-# what a mutant of `bytes | int` is: nothing. Every module here opens with
-# `from __future__ import annotations`, so an annotation is an unevaluated
-# string, and cosmic-ray mutates the `|` inside it eleven ways --
-# `bytes >> int` and ten more -- none of which any test can reach, because
-# nothing ever evaluates the expression.
+# the `zkp` subpackage, and no module of the rest: `_scalar` and `context`
+# are as much the boundary as the wrappers are, and `__init__` more than
+# either -- `_load_lib` is the one branch whose other half no build has,
+# which is why it takes the module as an argument. A mutant surviving in
+# there is worth knowing about.
 #
-# Measured rather than argued, both sessions over this same scope: the run
-# without the filter finds exactly as many more survivors as the filtered
-# run now skips -- so the filter takes out exactly the mutants that
-# survived and not one that any test killed.
+# `zkp` is out because this session cannot judge it. The extension behind
+# it is built only with `BTCLIB_LIBSECP256K1_ZKP`, which nothing in the
+# session sets, so the tests marked `zkp` skip and a mutant of `zkp` lives
+# or dies by the tests that run without the library. A survivor there is
+# not a test nobody has written, as this mutant, which the flagged tests
+# kill, shows:
+#
+#   cosmic-ray apply src/btclib_secp256k1/zkp/musig.py core/AddNot 0
+#
+# passes the test command below against an unflagged build and fails it
+# against a flagged one; it rewrites the file, so it wants a scratch
+# worktree. A kill there says little either: a mutant that stops a module
+# importing is killed by the collection of the suite.
+#
+# What brings it in is a session whose environment builds the extension
+# with that variable set, which the workflow this tree calls has no input
+# for (btclib-org/.github#1202). Until then this line is an honest gap, and
+# what tests `zkp` is the flagged suite CONTRIBUTING.md documents. A module
+# is excluded by a glob relative to the repository root
+excluded-modules = ["src/btclib_secp256k1/zkp/**/*.py"]
+
+# Each operator excluded has its own reason and its own claim about the tree,
+# and the claim is the thing to re-check rather than the comment beside it:
+# a mutant excluded is one no session reports. Excluded by
+# operator and not with `# pragma: no mutate`, because the workflow this
+# tree calls runs `cr-filter-operators` and no `cr-filter-pragma`, so a
+# marker would filter nothing; the decision is one line here, in the file
+# that already says what is mutated and what judges it.
+#
+# `core/ReplaceBinaryOperator_BitOr_.*`, which is a mutant of `bytes | int`
+# being nothing. Every module of the top level but `__init__` opens with
+# `from __future__ import annotations`, so an annotation is an unevaluated
+# string, and cosmic-ray mutates the `|` inside it eleven ways -- `bytes >>
+# int` and ten more -- none of which any test can reach, because nothing
+# ever evaluates the expression. The claim is a grep:
+#
+#   grep -n ' | ' src/btclib_secp256k1/*.py
+#
+# Every hit is an annotation, bar the two evaluated `|` there are:
+# `BytesLike` and `MutableBytesLike` in `__init__.py`, unions built when the
+# package is imported. Those the filter hides too, and hides no survivor:
+# none of the eleven replacements is defined between two classes, so each
+# of their mutants raises TypeError as the suite is collected and is
+# killed there. Run with `module-path` on `__init__.py` alone and no
+# filter, they all die that way. There is no bitwise operator of any kind in
+# the package -- no `^`, no `&`, no shift outside a doctest prompt -- which
+# is why the pattern excludes the BitOr family and nothing else. A sibling
+# repository in the organization keeps the same exclusion that narrow for
+# the opposite reason: `^` is what one of its own checks is written with.
 #
 # The pattern is anchored on what is *replaced*, which is what leaves the
 # one BitOr mutant a test does kill: `2**256` in _scalar.py mutated to
 # `2 | 256` is `core/ReplaceBinaryOperator_Pow_BitOr`, so it does not match
 # and it still runs, dying on the int scalar test written for it.
 #
-# Excluded by operator rather than with `# pragma: no mutate`, and the
-# argument is where the decision lives. One line here, in the file that
-# already says what is mutated and what judges it, against a marker on
-# every library line the pattern below matches, and again on every one a
-# later signature adds. The price is the same either way and is paid here
-# instead of there: a real
-# `a | b` written into one of these modules would be skipped in silence, so
-# the claim behind this line is a grep, and it is the claim to re-check
-# rather than this comment:
+# `core/RemoveDecorator`, which here removes an `@overload`: a stub is
+# replaced by the implementation's `def` when the module is imported, so
+# the stub with or without its decorator is a function nobody can call. The
+# claim is that `@overload` is the only decorator in the package, and it is
+# a grep whose second command prints nothing:
 #
-#   grep -n ' | ' src/btclib_secp256k1/*.py
+#   grep -rn '^ *@' src/btclib_secp256k1 | grep -c '@overload$'
+#   grep -rn '^ *@' src/btclib_secp256k1 | grep -v '@overload$'
 #
-# Every hit today is an annotation, and there is no bitwise operator of any
-# kind in the package -- no `^`, no `&`, no shift outside a doctest prompt --
-# which is why the pattern excludes the BitOr family and nothing else. A
-# sibling repository in the organization keeps the same exclusion that
-# narrow for the opposite reason: `^` is what one of its own checks is
-# written with.
+# A `@property`, `@staticmethod` or `@dataclass` written into it would be
+# skipped in silence, so the second command is what a change adding one
+# must run first.
 #
-# What this does to the one number the workflow prints is why
+# `core/ReplaceBinaryOperator_Mul_` with every replacement but `Div`, which
+# is a mutant of a `*` that is not a multiplication. A bare `*` is the
+# keyword-only marker of a signature, and parso, so cosmic-ray, reads it as
+# a binary operator. Of its eleven replacements only `/` leaves a signature
+# Python accepts -- `a, /, b` makes `a` positional-only and `b`
+# positional-or-keyword -- so the other ten are a syntax error in the module
+# as it is imported, killed as the suite is collected: kills that say
+# nothing about any test, each costing a start of pytest. `Div` is kept
+# because it is not noise:
+# in an `@overload` stub it survives by construction, which is the first
+# kind recorded above, while in an implementation it accepts a keyword-only
+# argument positionally, which a test that passes it so kills.
+#
+# The claim behind the ten is that no `*` in the swept scope is a
+# multiplication, which is a question for the syntax tree -- a grep cannot
+# tell a marker from an operator -- and prints nothing today:
+#
+#   python3 - src/btclib_secp256k1/*.py <<'EOF'
+#   import ast, sys
+#   for path in sys.argv[1:]:
+#       for node in ast.walk(ast.parse(open(path).read())):
+#           if isinstance(node, (ast.BinOp, ast.AugAssign)):
+#               if isinstance(node.op, ast.Mult):
+#                   print(path, node.lineno)
+#   EOF
+#
+# The same command over `src/btclib_secp256k1/zkp/*.py` prints the one
+# there is, `32 * len(pubkeys)` in `rangeproof.py`, where the ten would be
+# skipped in silence: bringing `zkp` back into scope means narrowing this
+# pattern first.
+#
+# What the exclusions do to the one number the workflow prints is why
 # .github/scripts/mutation_counts.py exists: `cr-rate` counts anything that
 # is not SURVIVED as a kill, a skip included, so on a filtered session it
 # divides by mutants nothing ran
 [cosmic-ray.filters.operators-filter]
-exclude-operators = ["core/ReplaceBinaryOperator_BitOr_.*"]
+exclude-operators = [
+    "core/ReplaceBinaryOperator_BitOr_.*",
+    "core/RemoveDecorator$",
+    "core/ReplaceBinaryOperator_Mul_(?!Div$)",
+]
 
 # one mutant at a time, in this working tree. The local distributor writes
 # the mutation into the file itself and restores it afterwards, so a second

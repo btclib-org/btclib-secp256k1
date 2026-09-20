@@ -1031,6 +1031,12 @@ release-notes length in the first place, and are still in
   are compared with it** (closes #945): a copy left behind fails the suite,
   and `pyroma`'s `hatchling` gains the ceiling it lacked.
 
+### The mutation sweep excludes `zkp` and mutants no test can reach
+
+- **`bindings.toml` leaves out `zkp`, `@overload` removals and `*`'s syntax
+  errors, and records the survivors no test can kill** (closes #951, issue
+  #941): the sweep builds none of the extension `zkp` needs.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
