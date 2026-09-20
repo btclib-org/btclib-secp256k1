@@ -1037,6 +1037,12 @@ release-notes length in the first place, and are still in
   errors, and records the survivors no test can kill** (closes #951, issue
   #941): the sweep builds none of the extension `zkp` needs.
 
+### The mutation sweep's survivors that a test can kill are killed
+
+- **The bounds, widths, defaults and keyword-only markers the sweep
+  reported as surviving are asserted** (closes #941): the largest counter
+  of `nonce_gen_counter`, `partial_sign`'s `verify`, `is_low_r`'s 0x80.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

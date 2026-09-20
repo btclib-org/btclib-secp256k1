@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import gc
 import hashlib
+import inspect
+from collections.abc import Callable
 
 import pytest
 
@@ -31,6 +33,7 @@ from btclib_secp256k1.context import check, ctx
 PRVKEYS = [(1).to_bytes(32, "big"), (2).to_bytes(32, "big")]
 PUBKEYS = [keys.pubkey_from_prvkey(prvkey) for prvkey in PRVKEYS]
 MSG = hashlib.sha256(b"btclib_secp256k1 musig").digest()
+TWEAK = hashlib.sha256(b"btclib_secp256k1 musig tweak").digest()
 
 
 def secnonce_memory(secnonce: musig.SecretNonce) -> bytes:
@@ -113,6 +116,60 @@ def test_partial_sign_without_verify_answers_the_same_signature() -> None:
     )
 
 
+def imposter_secnonce(
+    secnonces: list[musig.SecretNonce],
+) -> musig.SecretNonce:
+    """Pair the first signer's secret nonce with the second signer's public one.
+
+    Every piece is real and none is forged: `partial_sign` signs with the
+    secret nonce, and what it is then checked against is the public nonce
+    the object holds, which here belongs to somebody else's secret nonce.
+
+    Args:
+        secnonces: the two signers' nonces, in `PRVKEYS` order.
+
+    Returns:
+        A `SecretNonce` sharing the first signer's secret memory.
+    """
+    held = secnonces[0]._secnonce
+    assert held is not None
+    return musig.SecretNonce(
+        held, musig.pubnonce_parse(secnonces[1].pubnonce), keys.parse(PUBKEYS[0])
+    )
+
+
+def test_partial_sign_verifies_its_signature_unless_told_not_to() -> None:
+    """A partial signature that does not verify is refused by default.
+
+    The check is against the public nonce the `SecretNonce` holds, and
+    that is what the mismatch here changes: the signature `partial_sign`
+    makes is the first signer's own, valid under the first signer's public
+    nonce and not under the second's -- both asserted below with the
+    session's own `partial_sig_verify`, the library's verdict and not this
+    package's. So the refusal is the check working, and `verify=False`
+    is what skips it.
+    """
+    # named at the call site, as `dsa.sign`'s and `ssa.sign`'s is
+    verify = inspect.signature(musig.SecretNonce.partial_sign).parameters["verify"]
+    assert verify.kind is inspect.Parameter.KEYWORD_ONLY
+
+    cache, secnonces, session = two_of_two_session()
+    pubnonces = [secnonce.pubnonce for secnonce in secnonces]
+
+    with pytest.raises(RuntimeError, match="does not verify"):
+        imposter_secnonce(secnonces).partial_sign(PRVKEYS[0], cache, session)
+
+    cache, secnonces, session = two_of_two_session()
+    unverified = imposter_secnonce(secnonces).partial_sign(
+        PRVKEYS[0], cache, session, verify=False
+    )
+    assert len(unverified) == 32
+    assert not session.partial_sig_verify(unverified, pubnonces[1], PUBKEYS[0], cache)
+    assert session.partial_sig_verify(
+        unverified, secnonces[0].pubnonce, PUBKEYS[0], cache
+    )
+
+
 def test_key_agg_cache_requires_at_least_one_key() -> None:
     """An empty sequence has no aggregate to compute."""
     with pytest.raises(ValueError, match="at least one public key"):
@@ -170,20 +227,54 @@ def test_key_agg_cache_tweaks_leave_agg_pubkey_alone() -> None:
     `pubkey_get` is the current state instead, so the two answer
     differently once a tweak lands.
     """
-    tweak = hashlib.sha256(b"btclib_secp256k1 musig tweak").digest()
     ec_cache = musig.KeyAggCache(PUBKEYS)
     before = ec_cache.agg_pubkey
     untweaked = ec_cache.pubkey_get()
 
-    ec_tweaked = ec_cache.pubkey_ec_tweak_add(tweak)
+    ec_tweaked = ec_cache.pubkey_ec_tweak_add(TWEAK)
     assert ec_cache.agg_pubkey == before
     assert ec_cache.pubkey_get() == ec_tweaked
     assert ec_tweaked != untweaked
 
     xonly_cache = musig.KeyAggCache(PUBKEYS)
-    xonly_tweaked = xonly_cache.pubkey_xonly_tweak_add(tweak)
+    xonly_tweaked = xonly_cache.pubkey_xonly_tweak_add(TWEAK)
     assert xonly_cache.agg_pubkey == before
     assert xonly_tweaked != untweaked
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        pytest.param(lambda cache, **kw: cache.pubkey_get(**kw), id="pubkey_get"),
+        pytest.param(
+            lambda cache, **kw: cache.pubkey_ec_tweak_add(TWEAK, **kw),
+            id="pubkey_ec_tweak_add",
+        ),
+        pytest.param(
+            lambda cache, **kw: cache.pubkey_xonly_tweak_add(TWEAK, **kw),
+            id="pubkey_xonly_tweak_add",
+        ),
+    ],
+)
+def test_key_agg_cache_answers_the_compressed_key_by_default(
+    answer: Callable[..., bytes],
+) -> None:
+    """The 33 bytes are the default, and `compressed=False` is the 65.
+
+    `compressed` says "whether to return 33 bytes rather than 65", so the
+    default is the 33 and the 65 is the same point spelled out: what
+    `keys.reserialize` makes of the one is the other. Each answer comes
+    from a cache of its own, a tweak being applied to the cache it is
+    made on.
+    """
+    default = answer(musig.KeyAggCache(PUBKEYS))
+    explicit = answer(musig.KeyAggCache(PUBKEYS), compressed=True)
+    uncompressed = answer(musig.KeyAggCache(PUBKEYS), compressed=False)
+
+    assert len(default) == 33
+    assert default == explicit
+    assert len(uncompressed) == 65
+    assert keys.reserialize(uncompressed, compressed=True) == default
 
 
 def test_key_agg_cache_tweak_add_refuses_an_invalid_tweak() -> None:
@@ -392,6 +483,61 @@ def test_nonce_gen_counter_needs_a_private_key_and_a_counter() -> None:
         musig.nonce_gen_counter(PRVKEYS[0], 2**64)
     with pytest.raises(TypeError, match="nonrepeating_cnt"):
         musig.nonce_gen_counter(PRVKEYS[0], 1.0)  # type: ignore[arg-type]
+
+
+def test_nonce_gen_counter_takes_the_whole_of_a_uint64() -> None:
+    """The last counter a `uint64_t` holds is accepted.
+
+    `secp256k1_musig_nonce_gen_counter` takes a `uint64_t`, so 2**64 - 1
+    is the last value there is, and
+    `test_nonce_gen_counter_needs_a_private_key_and_a_counter` refuses the
+    one after it. A bound below it refuses a counter the signer this
+    exists for is entitled to reach, and nothing shows that until it does.
+    """
+    for counter in (2**63, 2**64 - 2, 2**64 - 1):
+        with musig.nonce_gen_counter(PRVKEYS[0], counter) as secnonce:
+            assert len(secnonce.pubnonce) == 66
+
+
+# the two ways to start a session, each called with only what it requires
+NONCE_GENERATORS = [
+    pytest.param(
+        lambda **extra: musig.nonce_gen(PUBKEYS[0], PRVKEYS[0], **extra),
+        id="nonce_gen",
+    ),
+    pytest.param(
+        lambda **extra: musig.nonce_gen_counter(PRVKEYS[0], 0, **extra),
+        id="nonce_gen_counter",
+    ),
+]
+# the two optional 32-octet inputs of both, and what a refusal calls each
+NONCE_INPUTS = [("msg32", "message"), ("extra_input32", "extra_input32")]
+
+
+@pytest.mark.parametrize("size", [31, 33])
+@pytest.mark.parametrize("argument, name", NONCE_INPUTS)
+@pytest.mark.parametrize("generate", NONCE_GENERATORS)
+def test_nonce_generation_refuses_an_input_of_the_wrong_width(
+    generate: Callable[..., musig.SecretNonce], argument: str, name: str, size: int
+) -> None:
+    """`msg32` and `extra_input32` are 32 octets, and one either side is not.
+
+    libsecp256k1 reads exactly 32 octets from each through a bare
+    pointer, so a shorter value is read past its end and a longer one is
+    read in part.
+    """
+    with pytest.raises(ValueError, match=f"{name} must be 32 bytes"):
+        generate(**{argument: bytes(size)})
+
+
+@pytest.mark.parametrize("argument", [argument for argument, _ in NONCE_INPUTS])
+@pytest.mark.parametrize("generate", NONCE_GENERATORS)
+def test_nonce_generation_takes_an_input_of_32_octets(
+    generate: Callable[..., musig.SecretNonce], argument: str
+) -> None:
+    """The width the refusals above are measured against is accepted."""
+    with generate(**{argument: bytes(32)}) as secnonce:
+        assert len(secnonce.pubnonce) == 66
 
 
 def test_pubnonce_aggnonce_and_partial_sig_round_trip() -> None:

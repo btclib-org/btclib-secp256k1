@@ -11,6 +11,7 @@ that would take the hosting Python process down with them.
 """
 
 import array
+import ctypes
 import hashlib
 import secrets
 
@@ -25,6 +26,7 @@ from btclib_secp256k1 import (
     hashes,
     keys,
     lib,
+    musig,
     recovery,
     silentpayments,
     ssa,
@@ -334,8 +336,11 @@ def test_a_scalar_may_be_octets_this_package_can_overwrite() -> None:
     for cdecl in ("unsigned char *", "secp256k1_keypair *", "uint32_t[8]"):
         with pytest.raises(TypeError, match="must be a cffi array of octets"):
             keys.prvkey_verify(ffi.new(cdecl))
-    with pytest.raises(ValueError, match="private key must be 32 bytes"):
-        keys.prvkey_verify(ffi.new("unsigned char[31]"))
+    # a length either side of 32 is refused, the longer one too: it would
+    # otherwise be read for its first 32 octets and the rest ignored
+    for size in (31, 33):
+        with pytest.raises(ValueError, match="private key must be 32 bytes"):
+            keys.prvkey_verify(ffi.new(f"unsigned char[{size}]"))
 
     # a str is the one thing the question itself would get wrong, and
     # `"char[32]"` is why it is refused before being asked rather than
@@ -443,6 +448,24 @@ def test_a_memoryview_of_wider_items_is_not_octets() -> None:
     assert keys.prvkey_verify(memoryview(b"\x07\x00" * 32)[::2])
 
 
+def test_a_memoryview_of_zero_width_items_is_not_octets() -> None:
+    """A memoryview can state a width of zero, and zero is not one.
+
+    A ctypes structure declared with no fields exports a buffer whose
+    items are zero octets wide, so `itemsize` is not a positive number a
+    check may compare against one from above: `> 1` lets it through, and
+    what follows is a size error about a value that was never octets.
+    """
+    no_fields = type("NoFields", (ctypes.Structure,), {"_fields_": []})
+    empty = memoryview(no_fields())
+    assert empty.itemsize == 0
+
+    with pytest.raises(TypeError, match="not of 0-byte items"):
+        keys.prvkey_verify(empty)
+    with pytest.raises(TypeError, match="not of 0-byte items"):
+        dsa.sign(empty, 7)
+
+
 def test_size_checks_refuse_both_sides() -> None:
     """Every size check refuses a value too long as well as one too short.
 
@@ -540,15 +563,18 @@ def test_der_reaches_all_72_octets() -> None:
 def test_generated_randomness_is_always_32_octets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Every octet count this package asks `secrets` for is 32.
+    """Every octet count the unflagged modules ask `secrets` for is 32.
 
-    Four calls generate randomness rather than accept it: the context
-    seed, the BIP340 aux of a signature signed without one, and the two
-    ElligatorSwift ones. No answer reveals how long any of them was -- a
-    shorter aux is hashed into a different signature that verifies just
-    as well, and a context seeded with half the entropy behaves exactly
-    like one seeded with all of it -- which is why the mutation session
-    leaves every one of those lengths alive.
+    What generates randomness rather than accepting it is the context
+    seed, the BIP340 aux of a signature signed without one, the two
+    ElligatorSwift ones and the session randomness of `musig.nonce_gen`;
+    `zkp.context` and `zkp.musig` have one each more, which only a
+    flagged build reaches.
+    No answer reveals how long any of them was -- a shorter aux is hashed
+    into a different signature that verifies just as well, and a context
+    seeded with half the entropy behaves exactly like one seeded with all
+    of it -- so a mutation of one of those lengths can survive every test
+    that looks only at what comes back.
 
     So this is the one thing that can hold them to it: what is asked of
     `secrets`, rather than what comes back. 32 is
@@ -570,8 +596,9 @@ def test_generated_randomness_is_always_32_octets(
     ssa.sign(msg, prvkey)
     ellswift.create(prvkey)
     ellswift.encode(pubkey_bytes)
+    musig.nonce_gen(pubkey_bytes).wipe()
 
-    assert requested == [32, 32, 32, 32]
+    assert requested == [32, 32, 32, 32, 32]
 
 
 def test_a_signature_crosses_in_either_serialization() -> None:
