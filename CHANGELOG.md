@@ -1067,6 +1067,12 @@ release-notes length in the first place, and are still in
   marker heading** (issue btclib-org/.github#1215): a misplaced entry
   above the rule heading is refused.
 
+### The `check-changelog` hook's comment names no count
+
+- **The comment above `check-changelog` pointed at "the three checks"
+  the script makes; the count goes rather than being corrected** (issue
+  btclib-org/.github#1225), the docstring it names enumerating them.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
