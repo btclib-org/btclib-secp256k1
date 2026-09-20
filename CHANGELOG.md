@@ -1061,6 +1061,12 @@ release-notes length in the first place, and are still in
   pull request** (closes #944): the gate refuses a landing that breaks that
   wheel, which is what the `Free Threading` classifier rests on.
 
+### `check_changelog.py` carries its fifth check, `misplaced_entries`
+
+- **The copy here matches `.github`'s own byte for byte above the
+  marker heading** (issue btclib-org/.github#1215): a misplaced entry
+  above the rule heading is refused.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
