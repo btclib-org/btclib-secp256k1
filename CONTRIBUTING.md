@@ -890,10 +890,10 @@ run locally.
   interpreter) pair passes, and coverage is measured and gated once, on
   the gate's cell
 
-- `deps-latest`, which resolves every dependency at its newest and runs
-  four jobs against it: the suite over a matrix of its own, narrower
-  than `test.yml`'s; the coverage union in a job of its own;
-  `Lint and type-check, dependencies at latest`; and
+- `deps-latest`, which resolves every dependency at the newest release its
+  bounds admit and runs four jobs against it: the suite over a matrix of
+  its own, narrower than `test.yml`'s; the coverage union in a job of its
+  own; `Lint and type-check, dependencies at latest`; and
   `Build the distributions and inspect them, dependencies at latest`.
   The upgrade rewrites `uv.lock`, so restore it afterwards with
   `git checkout uv.lock`.
@@ -1298,7 +1298,7 @@ can act on from a branch is noise.
 | `os-ubuntu` | weekly, a release | both ubuntu images × every interpreter |
 | `os-macos` | weekly, a release | both macOS images × every interpreter |
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
-| `deps-latest` | weekly | the dependencies, at their newest |
+| `deps-latest` | weekly | the dependencies, at the newest their bounds admit |
 | `deps-oldest` | weekly | the dependencies, at their floors |
 | `links` | weekly, a pull request touching its own configuration | — |
 | `mutation` | weekly | — |

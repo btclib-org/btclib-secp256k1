@@ -1043,6 +1043,12 @@ release-notes length in the first place, and are still in
   reported as surviving are asserted** (closes #941): the largest counter
   of `nonce_gen_counter`, `partial_sign`'s `verify`, `is_low_r`'s 0x80.
 
+### `[build-system]` requires bounds `cffi`, `cmake`, `setuptools` and `typing_extensions`
+
+- **`cffi`, `cmake`, `setuptools` and `typing_extensions` gain a ceiling at
+  the major above the newest release measured** (issue
+  btclib-org/.github#1195): `setuptools` and `typing_extensions` a floor too.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
