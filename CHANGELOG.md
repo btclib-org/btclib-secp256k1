@@ -1055,6 +1055,12 @@ release-notes length in the first place, and are still in
   has no `rev`** (closes #952): Python 3.10 keeps 5.0.1, the docs group
   there excluding 5.1b2's `docutils`; `pre-commit.ci` skips it.
 
+### A pull request's required check builds the `cp314t` wheel
+
+- **`build-cibuildwheel` builds `cp314t` beside the oldest interpreter on a
+  pull request** (closes #944): the gate refuses a landing that breaks that
+  wheel, which is what the `Free Threading` classifier rests on.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

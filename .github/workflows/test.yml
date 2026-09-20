@@ -510,48 +510,48 @@ jobs:
       # path and re-locks in the same step, so the lock agrees with the
       # tree this builds whichever path the run took, and the flag asserts
       # that agreement instead of skipping it (btclib-org/.github#128)
+      #
       # what a pull request has to answer about any of these images is
       # whether this tree still builds there, and that is answered by the
       # first wheel: the toolchain, the CMake build of the vendored
       # library and the cffi extension are what differ per platform, and
       # they do not differ per interpreter. The rest of an image's wheels
-      # are that build again for another ABI tag. What that saves is
-      # measured on the macOS and Windows wheel jobs. Building every
-      # interpreter, in run 31942556787, they were 39.0 of the 59.5
-      # runner-minutes the `Build wheels on` jobs cost -- macos-26-intel
-      # 14.4, macos-latest 5.7, windows-11-arm 10.2, windows-latest 8.7.
-      # Building one, in run 34012526148, they came to 8.8 --
-      # macos-26-intel 2.0, macos-latest 1.6, windows-11-arm 2.7,
-      # windows-latest 2.5.
+      # are that build again for another ABI tag, which is why a pull
+      # request builds the two below and not every interpreter.
       #
       # Every image, ubuntu included: nothing on a pull request reads past
-      # the first build of an image. check-dist installs one wheel by
-      # path and takes it from build-dynamic, which builds whole, and
-      # pip's selection among a directory of wheels tagged for several
-      # interpreters is asked nowhere -- os-ubuntu.yml's header carries that
-      # trade and what answers the rest of the question instead.
+      # the wheels this selects. check-dist installs one wheel by path and
+      # takes it from build-dynamic, which builds whole, and pip's
+      # selection among a directory of wheels tagged for several
+      # interpreters is asked nowhere -- os-ubuntu.yml's header carries
+      # that trade and what answers the rest of the question instead.
       #
       # A push to main, a release and a rehearsal all build everything --
       # in a called workflow github.event_name is the caller's, which is
-      # never pull_request -- so the interpreter this does not reach on a
-      # branch is reached by the run that follows the merge, and the
+      # never pull_request -- so the interpreters this does not reach on a
+      # branch are reached by the run that follows the merge, and the
       # release publishes nothing this shortcut has touched
       #
       # cp310 is the floor requires-python declares, and building it is
       # what lets a pull request reach Python 3.10.11's own standard
-      # library. Building the newest interpreter instead, as this step
-      # once did, shares the gate's own suite cell interpreter, so a
-      # branch built nothing older -- #529 is what that cost: a keyword
-      # absent from 3.10.11 landed green here and failed only once the
-      # push to main built cp310 for the first time.
+      # library. A newer interpreter alone leaves that to the push to
+      # main, so a keyword absent from 3.10.11 (#529) passes a pull
+      # request and fails there.
       #
       # windows-11-arm cannot build cp310 at all: the skip entry in
       # [tool.cibuildwheel] excludes cp310-win_arm64 on every trigger,
       # there being no interpreter on that native arm64 runner to build
       # it with. Its own oldest interpreter is cp311, which the second
       # pattern below selects there and matches nothing on any other
-      # image
-      - name: Build one interpreter where a pull request only asks whether it builds
+      # image.
+      #
+      # cp314t is the free-threaded build, and the third pattern selects
+      # it on every image: pyproject.toml declares the Free Threading
+      # classifier on the ground that the gate refuses a landing that
+      # breaks that wheel, so the required check has to build it and run
+      # the suite against it. It is the interpreter os-ubuntu.yml,
+      # os-macos.yml and os-windows.yml name as 3.14t.
+      - name: Build the oldest and the free-threaded interpreter, on a pull request
         if: github.event_name == 'pull_request'
         # bash, and the two Windows images are the whole of the reason:
         # the default shell there is PowerShell, where "$GITHUB_ENV" is
@@ -560,7 +560,7 @@ jobs:
         # green, the log showing cp310 through cp314t, and only the
         # unchanged job duration to say so
         shell: bash
-        run: echo "CIBW_BUILD=cp310-* cp311-win_arm64" >> "$GITHUB_ENV"
+        run: echo "CIBW_BUILD=cp310-* cp311-win_arm64 cp314t-*" >> "$GITHUB_ENV"
 
       # what every member of the wheels this uploads carries as its
       # timestamp. hatchling stamps the members it writes at a constant

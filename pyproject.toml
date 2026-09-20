@@ -64,7 +64,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     # test.yml's build-cibuildwheel job builds and runs the suite against
-    # a cp314t wheel on every trigger but a pull request, and
+    # a cp314t wheel on every trigger, a pull request included, and
     # tests/interpreters_test.py holds the biconditional between this
     # classifier and the interpreters the jobs the merge gate waits on
     # run. The extension leaves that interpreter's GIL disabled at import
