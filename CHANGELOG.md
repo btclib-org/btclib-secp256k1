@@ -1109,6 +1109,12 @@ release-notes length in the first place, and are still in
   rings is removed** (closes #973): the shape is asserted against the real
   library, by a test marked `zkp`, which an unflagged build skips.
 
+### `.gitignore` ignores the session file a mutation run writes at the root
+
+- **`/*.sqlite` is ignored** (closes #971): the `mutation` block's session
+  file no longer shows in `git status`, and an sdist built from the tree
+  no longer carries it.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

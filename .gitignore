@@ -78,6 +78,11 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+# a mutation session: CONTRIBUTING.md's `mutation` block and mutation.yml
+# both write one to the working directory, named for its
+# .github/mutation/*.toml. Anchored, so that a .sqlite elsewhere is still
+# seen by git
+/*.sqlite
 
 # Translations
 *.mo
