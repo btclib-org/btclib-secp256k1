@@ -18,6 +18,7 @@ library and zkp's own fixed vectors are exercised instead.
 
 from __future__ import annotations
 
+import inspect
 import types
 from collections.abc import Iterator
 from typing import Any
@@ -542,3 +543,108 @@ def test_borromean_verify_rejects_too_many_rings() -> None:
     """`nrings` must be at most 32, the header's own ARG_CHECK."""
     with pytest.raises(ValueError, match="rsizes must hold between 1 and 32"):
         r.borromean_verify(bytes(32), bytes(32) * 33, b"msg", [PUBKEY] * 33, [1] * 33)
+
+
+# the ends of a `uint64_t`, and one step past each: what every amount the
+# module takes is held to. Past either end cffi's own answer is an
+# `OverflowError`, for a negative number and for one too big alike, and
+# the documented refusal is a `ValueError`. `2**64 + 1` is there as well
+# as `2**64` because a check that stops at `!= 2**64` refuses the one and
+# lets the other through
+OUTSIDE_A_UINT64 = [-1, 2**64, 2**64 + 1]
+INSIDE_A_UINT64 = [0, 2**63, 2**64 - 1]
+
+
+@pytest.mark.parametrize("max_value", OUTSIDE_A_UINT64)
+def test_max_size_refuses_a_max_value_outside_a_uint64(max_value: int) -> None:
+    """A `max_value` outside [0, 2**64) is a `ValueError`, whichever side."""
+    with pytest.raises(ValueError, match=r"max_value must be an int in \[0, 2\*\*64\)"):
+        r.max_size(max_value, 0)
+
+
+@pytest.mark.parametrize("value", OUTSIDE_A_UINT64)
+def test_sign_refuses_a_value_outside_a_uint64(value: int) -> None:
+    """A `value` that is not in [0, 2**64) is a `ValueError`, whichever side."""
+    with pytest.raises(ValueError, match=r"value must be an int in \[0, 2\*\*64\)"):
+        r.sign(COMMIT, 1, b"\x01" * 32, value)
+
+
+@pytest.mark.parametrize("value", INSIDE_A_UINT64)
+def test_sign_takes_a_value_up_to_the_last_uint64(value: int) -> None:
+    """The first and the last value a `uint64_t` holds are signed for."""
+    proof = r.sign(COMMIT, 1, b"\x01" * 32, value)
+    assert int.from_bytes(proof[1:9], "big") == value
+
+
+@pytest.mark.parametrize("min_value", OUTSIDE_A_UINT64)
+def test_sign_refuses_a_min_value_outside_a_uint64(min_value: int) -> None:
+    """A `min_value` outside [0, 2**64) is a `ValueError`, whichever side."""
+    with pytest.raises(ValueError, match=r"min_value must be an int in \[0, 2\*\*64\)"):
+        r.sign(COMMIT, 1, b"\x01" * 32, 42, min_value=min_value)
+
+
+@pytest.mark.parametrize("exp", [-2, 19])
+def test_sign_refuses_an_exp_either_side_of_the_range(exp: int) -> None:
+    """`exp` is in [-1, 18], and -2 is as much out of it as 19 is."""
+    with pytest.raises(ValueError, match=r"exp must be in \[-1, 18\]"):
+        r.sign(COMMIT, 1, b"\x01" * 32, 42, exp=exp)
+
+
+@pytest.mark.parametrize("exp", [-1, 18])
+def test_sign_takes_both_ends_of_the_exp_range(exp: int) -> None:
+    """The smallest and the largest `exp` the header documents are signed."""
+    assert r.sign(COMMIT, 1, b"\x01" * 32, 42, exp=exp)
+
+
+def test_sign_takes_a_message_of_3968_bytes_and_no_more() -> None:
+    """`MAX_MESSAGE_LEN` is 3968, `SECP256K1_RANGEPROOF_MAX_MESSAGE_LEN`.
+
+    The literal is the one `secp256k1_rangeproof.h` defines, which
+    `MAX_MESSAGE_LEN` restates. `tests/zkp_rangeproof_vectors_test.py`
+    has the real library take exactly this much.
+    """
+    assert r.MAX_MESSAGE_LEN == 3968
+    assert r.sign(COMMIT, 1, b"\x01" * 32, 42, message=bytes(3968))
+    with pytest.raises(ValueError, match="message must be at most 3968 bytes"):
+        r.sign(COMMIT, 1, b"\x01" * 32, 42, message=bytes(3969))
+
+
+def test_sign_takes_everything_after_the_value_by_keyword() -> None:
+    """`min_value`, `exp`, `min_bits`, `message` and the rest are keyword-only.
+
+    The header's own tuning knobs, as the comment above `sign` calls
+    them: passed by position, `min_value` would be an argument nothing at
+    the call site names.
+    """
+    parameters = inspect.signature(r.sign).parameters
+    names = list(parameters)
+    tuning = names[names.index("value") + 1 :]
+    assert tuning
+    for name in tuning:
+        assert parameters[name].kind is inspect.Parameter.KEYWORD_ONLY, name
+
+
+def test_borromean_verify_refuses_more_in_the_rings_than_there_are_keys() -> None:
+    """`sum(rsizes)` above `len(pubkeys)` is refused as much as below it.
+
+    The other direction of the ring-shape check above. The real library
+    refuses it too, through its illegal callback, and answers a bare 0
+    -- a `False`, which reads as a signature that does not verify; the
+    check here is what makes it a `ValueError`.
+    """
+    with pytest.raises(ValueError, match=r"sum\(rsizes\) must equal len\(pubkeys\)"):
+        r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [2])
+
+
+def test_borromean_verify_rejects_no_rings_over_some_keys() -> None:
+    """An empty `rsizes` is a ring-count refusal, not a sum that is off."""
+    with pytest.raises(ValueError, match="rsizes must hold between 1 and 32"):
+        r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [])
+
+
+def test_borromean_verify_takes_the_largest_shape_the_header_allows() -> None:
+    """128 keys in 32 rings is the most `secp256k1_borromean_verify` takes."""
+    assert (
+        r.borromean_verify(bytes(32), bytes(32) * 128, b"msg", [PUBKEY] * 128, [4] * 32)
+        is True
+    )

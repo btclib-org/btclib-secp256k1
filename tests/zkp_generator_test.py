@@ -416,6 +416,29 @@ def test_pedersen_commit_rejects_a_value_out_of_range() -> None:
         g.pedersen_commit(1, 2**64)
 
 
+# the ends of a `uint64_t`, and one step past each: what every amount the
+# module takes is held to. Past either end cffi's own answer is an
+# `OverflowError`, for a negative number and for one too big alike, and
+# the documented refusal is a `ValueError`. `2**64 + 1` is there as well
+# as `2**64` because a check that stops at `!= 2**64` refuses the one and
+# lets the other through
+OUTSIDE_A_UINT64 = [-1, 2**64, 2**64 + 1]
+INSIDE_A_UINT64 = [0, 2**63, 2**64 - 1]
+
+
+@pytest.mark.parametrize("value", OUTSIDE_A_UINT64)
+def test_pedersen_commit_refuses_a_value_outside_a_uint64(value: int) -> None:
+    """A value that is not in [0, 2**64) is a `ValueError`, whichever side."""
+    with pytest.raises(ValueError, match=r"value must be an int in \[0, 2\*\*64\)"):
+        g.pedersen_commit(1, value)
+
+
+@pytest.mark.parametrize("value", INSIDE_A_UINT64)
+def test_pedersen_commit_takes_a_value_up_to_the_last_uint64(value: int) -> None:
+    """The first and the last value a `uint64_t` holds are committed to."""
+    assert len(g.pedersen_commit(1, value)) == 33
+
+
 def test_pedersen_commit_rejects_a_bool_value() -> None:
     """A bool is not accepted where an int is asked for."""
     with pytest.raises(ValueError, match=r"value must be an int"):
@@ -540,6 +563,71 @@ def test_pedersen_blind_generator_blind_sum_rejects_mismatched_lengths() -> None
     """The three sequences must be the same length."""
     with pytest.raises(ValueError, match="must match in length"):
         g.pedersen_blind_generator_blind_sum([10], [1, 2], [3], 0)
+
+
+@pytest.mark.parametrize("longer", [False, True])
+@pytest.mark.parametrize("which", ["generator_blinds", "blinding_factors"])
+def test_pedersen_blind_generator_blind_sum_refuses_either_list_off_by_one(
+    which: str, longer: bool
+) -> None:
+    """One element too few or too many in either list is refused, alone.
+
+    The library takes the count `len(values)` and no length of its own
+    for the two pointer arrays, so a list one short is read one past its
+    end. Each of the four shapes is the only wrong one in its call: the
+    other list is as long as `values`, so it is this comparison that has
+    to refuse it and not the other's.
+    """
+    lists = {"generator_blinds": [1, 2], "blinding_factors": [3, 4]}
+    lists[which] = [*lists[which], 5] if longer else lists[which][:1]
+
+    with pytest.raises(ValueError, match="must match in length"):
+        g.pedersen_blind_generator_blind_sum(
+            [10, 20], lists["generator_blinds"], lists["blinding_factors"], 1
+        )
+
+
+@pytest.mark.parametrize("n_inputs", [-1, 2])
+def test_pedersen_blind_generator_blind_sum_refuses_n_inputs_either_side(
+    n_inputs: int,
+) -> None:
+    """`n_inputs` is in `[0, len(values))`: -1 and `len(values)` are not.
+
+    Without the range check a negative count reaches the library's
+    `size_t` argument, where cffi's own answer is an `OverflowError`; the
+    documented one is a `ValueError`.
+    """
+    with pytest.raises(ValueError, match=r"n_inputs must be in \[0, len\(values\)\)"):
+        g.pedersen_blind_generator_blind_sum([10, 20], [1, 2], [3, 4], n_inputs)
+
+
+@pytest.mark.parametrize("n_inputs", [0, 1])
+def test_pedersen_blind_generator_blind_sum_takes_n_inputs_from_0_to_the_last(
+    n_inputs: int,
+) -> None:
+    """Both ends of the accepted range answer a corrected factor."""
+    last = g.pedersen_blind_generator_blind_sum([10, 20], [1, 2], [3, 4], n_inputs)
+    assert len(last) == 32
+
+
+@pytest.mark.parametrize("value", OUTSIDE_A_UINT64)
+def test_pedersen_blind_generator_blind_sum_refuses_a_value_outside_a_uint64(
+    value: int,
+) -> None:
+    """A value that is not in [0, 2**64) is a `ValueError`, whichever side."""
+    with pytest.raises(
+        ValueError, match=r"value at index 1 must be an int in \[0, 2\*\*64\)"
+    ):
+        g.pedersen_blind_generator_blind_sum([10, value], [1, 2], [3, 4], 0)
+
+
+@pytest.mark.parametrize("value", INSIDE_A_UINT64)
+def test_pedersen_blind_generator_blind_sum_takes_a_value_up_to_the_last_uint64(
+    value: int,
+) -> None:
+    """The first and the last value a `uint64_t` holds are corrected for."""
+    last = g.pedersen_blind_generator_blind_sum([10, value], [1, 2], [3, 4], 0)
+    assert len(last) == 32
 
 
 def test_pedersen_blind_generator_blind_sum_rejects_an_out_of_range_n_inputs() -> None:
