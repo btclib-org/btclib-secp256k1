@@ -1073,6 +1073,12 @@ release-notes length in the first place, and are still in
   the script makes; the count goes rather than being corrected** (issue
   btclib-org/.github#1225), the docstring it names enumerating them.
 
+### `vendored-vectors.yml`'s `check` job calls `reusable-vendored-vectors.yml`
+
+- **`check` calls `btclib-org/.github`'s `reusable-vendored-vectors.yml`**
+  (issue btclib-org/.github#1196): a dispatch, like a pull request,
+  passes `--dry-run`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
