@@ -1085,6 +1085,12 @@ release-notes length in the first place, and are still in
   (issue btclib-org/.github#1196): a dispatch, like a pull request,
   passes `--dry-run`.
 
+### The mutants of `zkp` that a test can kill are killed
+
+- **The bounds, widths, defaults and keyword-only markers of `zkp` that a
+  mutation session over it leaves alive are asserted** (closes #968): the
+  length checks of `pedersen_blind_generator_blind_sum`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

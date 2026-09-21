@@ -274,3 +274,118 @@ def test_borromean_verify_rejects_a_tampered_signature() -> None:
         )
         is False
     )
+
+
+@pytest.mark.parametrize("value", [0, 1000, 2**63, 2**64 - 1])
+def test_max_size_bounds_the_proof_of_the_value_it_is_asked_for(value: int) -> None:
+    """`max_size(value, 0)` takes every value `sign` does, 0 included.
+
+    "The largest value that might be passed as `value` to `sign`", as its
+    docstring has it, so the proof of that very value is what it bounds:
+    the two ends of `[0, 2**64)` and 2**63 between them are all
+    accepted, and none of them makes a proof larger than the bound.
+    """
+    commit = g.pedersen_commit(BLIND_3, value)
+    proof = r.sign(commit, BLIND_3, NONCE_3, value)
+    assert len(proof) <= r.max_size(value, 0)
+
+
+def test_sign_reproduces_the_third_fixed_vector() -> None:
+    """Signing what `VECTOR_3` proves, under its own blind and nonce, is it.
+
+    `2**64 - 1` is both the value and the range's only member, which
+    `exp=-1` says outright; signing is deterministic in the blind and
+    the nonce, so the octets are the ones secp256k1-zkp's own test
+    carries. The value and the `min_value` are the last a `uint64_t`
+    holds, and both go through unchanged.
+    """
+    proof = r.sign(COMMIT_3, BLIND_3, NONCE_3, 2**64 - 1, min_value=2**64 - 1, exp=-1)
+    assert proof == VECTOR_3
+
+
+def test_sign_proves_a_value_of_the_full_width() -> None:
+    """A proof of `2**64 - 1` over the widest range there is, and its rewind.
+
+    `min_bits` at its default and `min_value` at 0 make the range `[0,
+    2**64)`, whose proof is larger than `max_size` answers for a value
+    below 2**63: the buffer `sign` hands the library is sized for the
+    widest proof, and holds this one only if it is.
+    """
+    commit = g.pedersen_commit(BLIND_3, 2**64 - 1)
+    proof = r.sign(commit, BLIND_3, NONCE_3, 2**64 - 1)
+
+    assert r.verify(commit, proof) == (0, 2**64 - 1)
+    blind, value, _message, _min, _max = r.rewind(commit, proof, NONCE_3)
+    assert (blind, value) == (BLIND_3, 2**64 - 1)
+
+
+def test_sign_states_a_range_from_zero_by_default() -> None:
+    """With no `min_value` the proven range starts at 0, for 0 as for any value.
+
+    A default of 1 would have the library refuse the value 0, whose
+    proof is `[0, 1]`, and state a range from 1 for any other.
+    """
+    zero = g.pedersen_commit(BLIND_3, 0)
+    assert r.verify(zero, r.sign(zero, BLIND_3, NONCE_3, 0)) == (0, 1)
+
+    commit = g.pedersen_commit(BLIND_3, 100)
+    verified = r.verify(commit, r.sign(commit, BLIND_3, NONCE_3, 100))
+    assert verified is not None
+    assert verified[0] == 0
+
+
+def test_extra_commit_is_covered_by_the_proof_and_asked_for_back() -> None:
+    """A proof signed over `extra_commit` verifies and rewinds only over it.
+
+    `extra_commit` is bytes the proof's signature covers: `verify` and
+    `rewind` take the same bytes, and neither answers for a proof
+    whose bytes are not the ones it was given.
+    """
+    commit = g.pedersen_commit(BLIND_3, 100)
+    proof = r.sign(commit, BLIND_3, NONCE_3, 100, extra_commit=b"context")
+
+    assert r.verify(commit, proof, extra_commit=b"context") == (0, 127)
+    assert r.verify(commit, proof, extra_commit=b"another") is None
+    assert r.verify(commit, proof) is None
+    _blind, value, _message, _min, _max = r.rewind(
+        commit, proof, NONCE_3, extra_commit=b"context"
+    )
+    assert value == 100
+    with pytest.raises(ValueError, match="rewind failed"):
+        r.rewind(commit, proof, NONCE_3, extra_commit=b"another")
+
+    assert r.verify(commit, r.sign(commit, BLIND_3, NONCE_3, 100)) == (0, 127)
+
+
+def test_sign_embeds_a_message_of_the_largest_length() -> None:
+    """3968 octets go into a proof of the full mantissa, and come out whole.
+
+    The room for a message depends on the proof's shape, so it is a
+    proof over 64 bits, `min_bits=64`, that carries all of what
+    `MAX_MESSAGE_LEN` allows, and `rewind` has a buffer as large as that.
+    One octet more is refused before the library is asked.
+    """
+    commit = g.pedersen_commit(BLIND_3, 100)
+    message = bytes(range(256)) * 15 + bytes(128)
+    assert len(message) == 3968
+
+    proof = r.sign(commit, BLIND_3, NONCE_3, 100, min_bits=64, message=message)
+    _blind, _value, recovered, _min, _max = r.rewind(commit, proof, NONCE_3)
+    assert recovered == message
+
+    with pytest.raises(ValueError, match="message must be at most 3968 bytes"):
+        r.sign(commit, BLIND_3, NONCE_3, 100, min_bits=64, message=message + b"\x00")
+
+
+def test_borromean_verify_answers_for_the_largest_shape_the_header_allows() -> None:
+    """128 keys in 32 rings reach the library: a verdict, not a refusal."""
+    assert (
+        r.borromean_verify(
+            BORROMEAN_E0,
+            bytes(32) * 128,
+            BORROMEAN_M,
+            [BORROMEAN_PUBKEYS[0]] * 128,
+            [4] * 32,
+        )
+        is False
+    )

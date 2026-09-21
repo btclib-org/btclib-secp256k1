@@ -64,7 +64,10 @@
 #   `!=` or `==` between two integers -> `is not` or `is`, where one side
 #   is a size the package fixes below 257: `len(x) != _XONLY_SIZE`, or the
 #   `view.nbytes != size` of `_secret.into_buffer`, where `size` is the
-#   32 octets of the secret `take` read. A literal there is a SyntaxWarning,
+#   32 octets of the secret `take` read; or one the package bounds below
+#   it by a check above, as the `sum(rsizes) != len(pubkeys)` of
+#   `zkp.rangeproof.borromean_verify` does, `len(pubkeys)` being held to
+#   128 at the top of the function. A literal there is a SyntaxWarning,
 #   which `filterwarnings = ["error"]` makes a syntax error and so a kill; a
 #   name is not one. CPython caches the integers up to 256, so identity and
 #   equality agree wherever the two are that small. Two lengths compared
@@ -74,6 +77,23 @@
 #   `zip(..., strict=False)` -> `True` in `keys.pubkey_tweak_mul_sum`, whose
 #   length check above it has already raised for every input the two
 #   differ on.
+#
+#   `min_bits: int = 0` -> `1`, the default of `zkp.rangeproof.sign`. A
+#   proof of a range has a mantissa of at least one bit, which is all
+#   `min_bits=1` asks for, and one of a single value reads no `min_bits`,
+#   so `sign` answers the same proof octet for octet, or the same
+#   refusal, under either: a comparison of the two calls over values,
+#   exponents and minimum values finds no difference.
+#
+#   `lib.secp256k1_rangeproof_max_size(ctx, 2**64 - 1, 0)` in
+#   `zkp.rangeproof.sign`, which sizes the buffer the proof is written to,
+#   with `2**64 - 2` or `2**64 >> 1` for the first argument, or `1` or `-1`
+#   for the second. The library reads the first as a bit length and the
+#   second only where it is larger than that, so each of them answers the
+#   size the original does and no proof can tell the buffers apart.
+#   `2**63 - 1` is not this kind: its bit length is shorter, the size
+#   answers smaller, and a proof of a value of the full width does not fit
+#   in a buffer of it.
 #
 #   `len(pubkey_bytes) == _XONLY_SIZE` -> `<=` in `xonly.from_pubkey` and
 #   `xonly.to_pubkey`. A value shorter than 32 takes the other branch under

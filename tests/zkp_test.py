@@ -34,6 +34,7 @@ drives is the real calls rather than a mock of their shape.
 
 from __future__ import annotations
 
+import secrets
 import subprocess
 import sys
 import threading
@@ -317,6 +318,33 @@ def test_getattr_builds_a_real_context_with_a_stand_in(
     # cached: a second read is a plain attribute, __getattr__ never
     # asked again
     assert zkp_context.ctx is ctx
+
+
+@pytest.mark.usefixtures("without_the_extension")
+def test_the_context_is_randomized_with_32_octets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Building `ctx` draws one seed, and it is 32 octets.
+
+    `secp256k1_context_randomize` takes a 32-octet seed and no length,
+    and a context seeded with fewer octets behaves like one seeded with
+    all of them, so nothing that comes back shows the difference: what
+    is asked of `secrets` does. `tests/core_test.py`'s
+    `test_generated_randomness_is_always_32_octets` is the same question
+    of the context of the modules an unflagged build has.
+    """
+    monkeypatch.setattr(zkp, "_import_extension", lambda: STAND_IN)
+    requested: list[int] = []
+    real_token_bytes = secrets.token_bytes
+
+    def recording(size: int) -> bytes:
+        requested.append(size)
+        return real_token_bytes(size)
+
+    monkeypatch.setattr(secrets, "token_bytes", recording)
+
+    assert zkp_context.ctx is not None
+    assert requested == [32]
 
 
 @pytest.mark.usefixtures("without_the_extension")

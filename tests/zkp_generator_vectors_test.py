@@ -180,3 +180,32 @@ def test_pedersen_blind_generator_blind_sum_makes_blinded_commitments_tally() ->
     commit_out_2 = g.pedersen_commit(corrected, 18, gen_a)
 
     assert g.pedersen_verify_tally([commit_in], [commit_out_1, commit_out_2]) is True
+
+
+def test_pedersen_blind_generator_blind_sum_takes_many_terms() -> None:
+    """Three lists of 257 are as long as each other, and are corrected.
+
+    One commitment on the input side and 256 on the output side, all
+    under the same generator, so that the correction is what makes the
+    tally hold. The count is 257 because the length checks compare the
+    lengths of three lists with each other, and CPython hands equal
+    integers the same object only up to 256: past it, a comparison by
+    identity refuses lists that are as long as `values`.
+    """
+    n_total = 257
+    values = [n_total - 1, *([1] * (n_total - 1))]
+    generator_blinds = [bytes(32)] * n_total
+    # the last one is the one corrected, whatever it holds going in
+    blinding_factors = [(i + 1).to_bytes(32, "big") for i in range(n_total - 1)]
+    blinding_factors.append(bytes(32))
+
+    corrected = g.pedersen_blind_generator_blind_sum(
+        values, generator_blinds, blinding_factors, 1
+    )
+    blinding_factors[-1] = corrected
+
+    commits = [
+        g.pedersen_commit(blind, value)
+        for blind, value in zip(blinding_factors, values, strict=True)
+    ]
+    assert g.pedersen_verify_tally(commits[:1], commits[1:]) is True
