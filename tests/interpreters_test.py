@@ -193,6 +193,39 @@ _NEEDS = re.compile(
 # one item of the block list above, the key picked off a line the run has
 # already read as an item
 _ITEM = re.compile(r"^      - (?P<key>\S+)", re.MULTILINE)
+# the job that hands the build to cibuildwheel, whose `CIBW_BUILD` is what
+# narrows the interpreters a pull request builds there
+_BUILD_JOB = "build-cibuildwheel"
+# a cibuildwheel setting named anywhere in the job's own text. The read
+# below reproduces one, `CIBW_BUILD`, on top of what `[tool.cibuildwheel]`
+# configures, so a second name -- `CIBW_SKIP`, `CIBW_ENABLE` -- is a job
+# whose selection it cannot reproduce
+_CIBW_VARIABLE = re.compile(r"CIBW_\w+")
+# what a `name:` says is prose about the job or a step, and a name that
+# mentions a setting sets none. It is found by its indent and its key, at
+# the places a name sits: the job's own at four spaces, a step's on its
+# dash line, and a step's beside its other keys at eight spaces, where
+# `_STEP_KEY` reads them. The key survives, and the value goes: the dash line's
+# `- ` is what `_STEP` splits the steps at, so a line dropped whole would
+# join the step to the one above it. A value folded over further lines is
+# not reached, and a setting named on the second of them reads as a second
+_NAME_VALUE = re.compile(r"^(?P<key>(?: {4}| {8}| {6}- )name:).*$", re.MULTILINE)
+# a step that runs cibuildwheel names it, the command or the action alike;
+# what a `name:` says of it is gone by the time this is asked
+_RUNS_CIBUILDWHEEL = re.compile(r"\bcibuildwheel\b")
+# each step: a step's `- ` sits two spaces left of its keys, which
+# `_STEP_KEY` reads at their own indent and no deeper: `shell: bash` under
+# an `env:` or a `with:` is that key's input and not the step's
+_STEP = re.compile(r"^      - ", re.MULTILINE)
+_STEP_KEY = re.compile(r"^ {8}(?P<key>[\w-]+):[ \t]*(?P<value>.*)$", re.MULTILINE)
+# the one condition the read accepts, spelled as `test.yml` spells it
+_ONLY_A_PULL_REQUEST = "github.event_name == 'pull_request'"
+# the one command the read accepts: a double-quoted literal, so that the
+# value is what the file says rather than what a shell makes of it, and at
+# least one pattern in it, so that it is not the empty string
+_SETS_CIBW_BUILD = re.compile(
+    r'echo "CIBW_BUILD=(?P<value>[^"$`\\\s][^"$`\\]*)" >> "\$GITHUB_ENV"'
+)
 
 
 def _versions(pattern: re.Pattern[str], text: str) -> tuple[str, ...]:
@@ -269,10 +302,11 @@ def _print_build_identifiers(
 ) -> str:
     """Return the output of `--print-build-identifiers` for `platform`.
 
-    Under `_child_environment()` unless `environ` names another, which is
-    for a test that needs the caller's settings to reach cibuildwheel. A
-    non-zero exit fails the test with cibuildwheel's own stderr, which is
-    where it says what it refused.
+    Under `_child_environment()` unless `environ` names another: the
+    caller's own settings, for the test that they do not reach the default
+    answer, or `_child_environment()` with a selection's `CIBW_BUILD` added,
+    for `_platforms_without_free_threaded`. A non-zero exit fails the test
+    with cibuildwheel's own stderr, which is where it says what it refused.
     """
     _require_cibuildwheel()
     printed = subprocess.run(  # noqa: S603
@@ -316,6 +350,20 @@ def _cibuildwheel_free_threaded_interpreters() -> tuple[str, ...]:
     return tuple(sorted(f"3.{minor}t" for minor in minors))
 
 
+def _gate_closure(jobs: dict[str, str]) -> set[str]:
+    """Return the required check's aggregate and every job it waits on."""
+    keyed = {
+        match["name"]: key
+        for key, block in jobs.items()
+        for match in _NAME.finditer(block)
+    }
+    assert _AGGREGATE in keyed, (
+        f"{_GATE.name} carries no job named {_AGGREGATE!r}, which is the"
+        " required check the closure is read from"
+    )
+    return _closure(jobs, keyed[_AGGREGATE])
+
+
 def _gate_interpreters() -> tuple[str, ...]:
     """Return every interpreter the jobs the merge gate waits on name.
 
@@ -331,21 +379,93 @@ def _gate_interpreters() -> tuple[str, ...]:
     reach uncovered on a run where that job happens to be visited first.
     """
     jobs = _jobs()
-    keyed = {
-        match["name"]: key
-        for key, block in jobs.items()
-        for match in _NAME.finditer(block)
-    }
-    assert _AGGREGATE in keyed, (
-        f"{_GATE.name} carries no job named {_AGGREGATE!r}, which is the"
-        " required check the closure is read from"
-    )
-    closure = _closure(jobs, keyed[_AGGREGATE])
+    closure = _gate_closure(jobs)
     found = {v for key in closure for v in _INTERPRETER.findall(jobs[key])}
     cibuildwheel_jobs = [key for key in closure if "cibuildwheel" in jobs[key]]
     if cibuildwheel_jobs:
         found.update(_cibuildwheel_free_threaded_interpreters())
     return tuple(sorted(found))
+
+
+def _pull_request_selection(job: str) -> str:
+    """Return the `CIBW_BUILD` a pull request gives `job`, or "" if not read.
+
+    The step is found by what it writes and not by what it is called: the
+    `name:` values are dropped first (`_NAME_VALUE`), so a step named after
+    the setting it sets is read, and a name that mentions another setting
+    is not a second one. The value comes back where what is left of the job
+    names exactly one `CIBW_` setting, `CIBW_BUILD`, and it sits in a step,
+    a `- ` item at the indent `test.yml` writes its steps at, that carries
+    these three keys, in any order, among whatever others:
+
+    - `if` is `github.event_name == 'pull_request'` and nothing more;
+    - `shell` is `bash`, the default on the two Windows images being
+      PowerShell, where `"$GITHUB_ENV"` is not the variable and the step
+      selects nothing;
+    - `run` is one line, `echo "CIBW_BUILD=<patterns>" >> "$GITHUB_ENV"`,
+      with the patterns a literal that expands nothing.
+
+    The step comes before the first one that names cibuildwheel, since
+    `$GITHUB_ENV` reaches the steps after the one that writes it and no
+    other; a job with no step that names it selects nothing either.
+
+    Everything else reads as "": a second `CIBW_` name outside a `name:`,
+    whether a job's `env:`, another step or another variable; a condition
+    that is compound, another event's or absent; a `shell` that is not
+    `bash`; a `run` that is a block scalar, writes to another file, expands
+    a variable, holds a backtick or a backslash, sets an empty value, or
+    has text before or after the one command; a step that comes after the
+    one that builds, or a job that has none. A step restructured out of
+    these shapes is then nothing rather than a guess, and
+    `test_the_pull_request_selection_was_read` is what fails on the
+    nothing. `job` has its comments dropped already, as `_jobs` returns it.
+
+    What is not read is the arguments of the command that runs
+    cibuildwheel, which can narrow a selection as well.
+    """
+    code = _NAME_VALUE.sub(r"\g<key>", job)
+    named = _CIBW_VARIABLE.findall(code)
+    steps = _STEP.split(code)[1:]
+    holding = [i for i, step in enumerate(steps) if _CIBW_VARIABLE.search(step)]
+    building = [i for i, step in enumerate(steps) if _RUNS_CIBUILDWHEEL.search(step)]
+    if len(named) != 1 or not holding or not building or min(building) <= holding[0]:
+        return ""
+    keys = dict(_STEP_KEY.findall(" " * 8 + steps[holding[0]]))
+    written = _SETS_CIBW_BUILD.fullmatch(keys.get("run", ""))
+    if (
+        written is None
+        or keys.get("if") != _ONLY_A_PULL_REQUEST
+        or keys.get("shell") != "bash"
+    ):
+        return ""
+    return written["value"]
+
+
+def _gate_selection() -> str:
+    """Return what `_pull_request_selection` reads of the gate's build job."""
+    return _pull_request_selection(_jobs().get(_BUILD_JOB, ""))
+
+
+def _platforms_without_free_threaded(selection: str) -> list[str]:
+    """Return the platforms where `selection` builds no free-threaded wheel.
+
+    Empty where the free-threading classifier is not declared: nothing
+    is then claimed about that build, and cibuildwheel is not asked.
+    Otherwise it is asked once per platform in `_CIBW_PLATFORMS`, with
+    `selection` as `CIBW_BUILD` on top of what `_child_environment` leaves
+    of the caller's, which is the environment the step gives the job and no
+    more. What cibuildwheel prints is the identifiers `[tool.cibuildwheel]`
+    configures that `selection` keeps: a pattern naming one the
+    configuration skips keeps nothing.
+    """
+    if not _FREE_THREADING_CLASSIFIER.search(_PYPROJECT):
+        return []
+    environ = {**_child_environment(), "CIBW_BUILD": selection}
+    return [
+        platform
+        for platform in _CIBW_PLATFORMS
+        if not _CIBW_FREE_THREADED.search(_print_build_identifiers(platform, environ))
+    ]
 
 
 def _matrix(text: str) -> tuple[str, ...]:
@@ -485,6 +605,377 @@ def test_free_threading_is_classified_exactly_when_the_gate_runs_it() -> None:
         f" and the jobs test.yml's gate waits on name"
         f" {', '.join(run) or 'no free-threaded interpreter'}"
     )
+
+
+def test_the_pull_request_selection_was_read() -> None:
+    """The build job is one the gate waits on, and its selection was found.
+
+    A step restructured out of the shapes `_pull_request_selection` accepts,
+    a condition rewritten, a job renamed: each reads as nothing, and the
+    test below then asks cibuildwheel about an empty `CIBW_BUILD`, which
+    keeps every identifier the configuration lists, a free-threaded one
+    included, and passes. This is what fails on the nothing. It is text
+    alone and runs where the test below is skipped.
+    """
+    assert _BUILD_JOB in _gate_closure(_jobs()), (
+        f"{_GATE.name}'s {_BUILD_JOB} is not among the jobs the required"
+        " check waits on: what it builds on a pull request is not a gate"
+    )
+    assert _gate_selection(), (
+        f"{_GATE.name}'s {_BUILD_JOB} sets no CIBW_BUILD on a pull request in a"
+        " shape `_pull_request_selection` reads, and a job that does not"
+        " narrow builds every interpreter"
+    )
+
+
+def test_a_pull_request_builds_a_free_threaded_interpreter_on_every_platform() -> None:
+    """The classifier is a claim about what a pull request builds, per platform.
+
+    The organization standard declares it where the gate refuses a landing
+    that breaks the free-threaded build, and the required check on a pull
+    request builds the interpreters `CIBW_BUILD` keeps, not the ones
+    `[tool.cibuildwheel]` configures: the biconditional above asks the
+    configuration, which a push to `main` and a release build whole, so a
+    selection that dropped the free-threaded pattern would leave it green
+    with the classifier still declared and nothing on a branch building
+    the wheel it stands for.
+
+    What it asks for is a free-threaded identifier, not `cp314t`: a
+    selection naming the next free-threaded interpreter in its place
+    passes, as the biconditional above accepts any interpreter ending in
+    `t`. It is not a clause of that biconditional because it has a reader
+    of its own, and a failure of that reader wants its own message. It asks
+    once per cibuildwheel platform and not once per runner image: the
+    architecture is the host's, as it is above.
+    """
+    lacking = _platforms_without_free_threaded(_gate_selection())
+    assert not lacking, (
+        f"the free-threading classifier is declared and the CIBW_BUILD a pull"
+        f" request gives {_BUILD_JOB} builds no free-threaded identifier on"
+        f" {', '.join(lacking)}"
+    )
+
+
+_CLASSIFIER_TEXT = (
+    '    "Programming Language :: Python :: Free Threading :: 2 - Beta",\n'
+)
+_WITHOUT_FREE_THREADED = "cp310-* cp311-win_arm64"
+
+
+def test_a_selection_without_the_free_threaded_pattern_lacks_it_everywhere(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The control for the test above: it can fail, and on every platform.
+
+    A selection of `cp310-*` and `cp311-win_arm64` keeps no free-threaded
+    identifier on any platform, and with `cp314t-*` added it keeps one on
+    each. The classifier is appended to what `pyproject.toml` holds, so
+    that this holds of a tree that stopped declaring it while
+    `_require_cibuildwheel` still reads its floor. The caller's `CIBW_SKIP`,
+    which alone would empty every answer, is exported first: the second
+    assertion is then also the check that it does not reach cibuildwheel.
+    The platforms are spelled out, so that one dropped from
+    `_CIBW_PLATFORMS` is a difference here and not a shorter list to match.
+    """
+    monkeypatch.setattr(
+        sys.modules[__name__], "_PYPROJECT", _PYPROJECT + _CLASSIFIER_TEXT
+    )
+    monkeypatch.setenv("CIBW_SKIP", "*")
+    assert _platforms_without_free_threaded(_WITHOUT_FREE_THREADED) == [
+        "linux",
+        "macos",
+        "windows",
+    ]
+    assert _platforms_without_free_threaded(f"{_WITHOUT_FREE_THREADED} cp314t-*") == []
+
+
+def test_no_free_threaded_identifier_is_demanded_without_the_classifier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A tree that does not declare the classifier claims nothing about it.
+
+    `_print_build_identifiers` is replaced by a call that fails the test
+    if it is reached, so an answer of nothing lacking is not one that
+    cibuildwheel gave.
+    """
+
+    def _unreached(platform: str, _environ: dict[str, str] | None = None) -> str:
+        raise AssertionError(f"cibuildwheel asked about {platform} for no claim")
+
+    monkeypatch.setattr(sys.modules[__name__], "_PYPROJECT", "[project]\n")
+    monkeypatch.setattr(sys.modules[__name__], "_print_build_identifiers", _unreached)
+    assert _platforms_without_free_threaded(_WITHOUT_FREE_THREADED) == []
+
+
+_IF = "        if: github.event_name == 'pull_request'\n"
+_SHELL = "        shell: bash\n"
+_RUN = '        run: echo "CIBW_BUILD=cp310-* cp314t-*" >> "$GITHUB_ENV"\n'
+_NARROWING = f"      - name: Narrow\n{_IF}{_SHELL}{_RUN}"
+_ENV = "    env:\n"
+_BUILD_STEP = "      - name: Build wheels\n        run: uv run cibuildwheel\n"
+# a job of the shape the gate's is, cut to what the read looks at
+_SAMPLE_JOB = (
+    "    name: Build wheels on ${{ matrix.os }}\n"
+    "    runs-on: ${{ matrix.os }}\n"
+    f"{_ENV}"
+    "      UV_PYTHON_DOWNLOADS: never\n"
+    "    steps:\n"
+    "      - name: Checkout code\n"
+    "        uses: actions/checkout@v7\n"
+    f"{_NARROWING}"
+    f"{_BUILD_STEP}"
+)
+
+
+def test_the_step_is_read_by_what_it_writes_and_not_by_the_order_of_its_keys() -> None:
+    """The accepted shape is three keys, whatever else the step carries.
+
+    A reordering of the keys, the first of them on the dash line, is the
+    same step; so is another value, which is returned as written.
+    """
+    assert _pull_request_selection(_SAMPLE_JOB) == "cp310-* cp314t-*"
+    reordered = _SAMPLE_JOB.replace(
+        _NARROWING,
+        '      - run: echo "CIBW_BUILD=cp314t-*" >> "$GITHUB_ENV"\n'
+        f"{_SHELL}{_IF}        name: Anything else\n",
+    )
+    assert reordered != _SAMPLE_JOB
+    assert _pull_request_selection(reordered) == "cp314t-*"
+
+
+@pytest.mark.parametrize(
+    "old, new",
+    [
+        pytest.param(
+            "      - name: Narrow\n",
+            "      - name: Set CIBW_BUILD - the oldest, and the free-threaded one\n",
+            id="a step named after the setting it sets, on its dash line",
+        ),
+        pytest.param(
+            _NARROWING,
+            f'      - run: echo "CIBW_BUILD=cp310-* cp314t-*" >> "$GITHUB_ENV"\n'
+            f"{_IF}{_SHELL}        name: Set CIBW_BUILD\n",
+            id="a step named after it, beside its keys",
+        ),
+        pytest.param(
+            "      - name: Checkout code\n",
+            "      - name: Clear CIBW_SKIP\n",
+            id="another step naming a setting it does not set",
+        ),
+        pytest.param(
+            "    name: Build wheels on ${{ matrix.os }}\n",
+            "    name: Build wheels with CIBW_ENABLE on ${{ matrix.os }}\n",
+            id="the job named after a setting it does not set",
+        ),
+    ],
+)
+def test_a_name_that_mentions_a_setting_sets_none(old: str, new: str) -> None:
+    """A `name:` is prose, so the step is still found and no name is a second.
+
+    The value is read from the step and not from anything a name says, and
+    a `CIBW_` word inside a name does not make it a second setting, which
+    would read as nothing. The three places a name sits are here, with a
+    name mentioning the setting the step sets and another naming one that
+    nothing sets.
+    """
+    assert old in _SAMPLE_JOB
+    assert new != old
+    named = _SAMPLE_JOB.replace(old, new)
+    assert _pull_request_selection(named) == "cp310-* cp314t-*"
+
+
+def test_a_name_that_mentions_a_setting_does_not_hide_a_real_second() -> None:
+    """The names are dropped, and a `CIBW_` outside one still counts."""
+    named = _SAMPLE_JOB.replace(
+        "      - name: Checkout code\n", "      - name: Clear CIBW_SKIP\n"
+    )
+    assert _pull_request_selection(named) == "cp310-* cp314t-*"
+    assert (
+        _pull_request_selection(named.replace(_ENV, f"{_ENV}      CIBW_SKIP: '*'\n"))
+        == ""
+    )
+
+
+@pytest.mark.parametrize(
+    "old, new",
+    [
+        pytest.param(
+            _IF,
+            "        if: github.event_name == 'pull_request' && matrix.os != 'x'\n",
+            id="a compound condition",
+        ),
+        pytest.param(
+            _IF, "        if: github.event_name != 'push'\n", id="another condition"
+        ),
+        pytest.param(_IF, "", id="no condition"),
+        pytest.param(
+            "      - name: Narrow\n",
+            "      - name: >-\n          Set CIBW_BUILD\n",
+            id="a name folded over a second line naming a setting",
+        ),
+        pytest.param(_SHELL, "", id="the default shell"),
+        pytest.param(_SHELL, "        shell: pwsh\n", id="another shell"),
+        pytest.param(
+            _SHELL,
+            "        env:\n          shell: bash\n",
+            id="a shell that is an env's and not the step's",
+        ),
+        pytest.param(
+            _IF,
+            "        with:\n          if: github.event_name == 'pull_request'\n",
+            id="a condition that is an input's and not the step's",
+        ),
+        pytest.param(
+            _RUN,
+            '        with:\n          run: echo "CIBW_BUILD=cp314t-*" >> "$GITHUB_ENV"\n',
+            id="a command that is an input's and not the step's",
+        ),
+        pytest.param(
+            _NARROWING + _BUILD_STEP,
+            _BUILD_STEP + _NARROWING,
+            id="the step after the one that runs cibuildwheel",
+        ),
+        pytest.param(
+            _BUILD_STEP,
+            "      - name: Build wheels\n        run: echo built\n",
+            id="no step that runs cibuildwheel",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: |\n          echo "CIBW_BUILD=cp314t-*" >> "$GITHUB_ENV"\n',
+            id="a block scalar",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=cp314t-*" >> "$GITHUB_OUTPUT"\n',
+            id="another file",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=$PATTERNS" >> "$GITHUB_ENV"\n',
+            id="an expansion",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=cp314t-* $PATTERNS" >> "$GITHUB_ENV"\n',
+            id="an expansion after the first pattern",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=`id" >> "$GITHUB_ENV"\n',
+            id="a backtick first",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=cp314t-* `id`" >> "$GITHUB_ENV"\n',
+            id="a backtick after the first pattern",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=\\n" >> "$GITHUB_ENV"\n',
+            id="a backslash first",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=cp314t-*\\n" >> "$GITHUB_ENV"\n',
+            id="a backslash after the first pattern",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=a" ; echo "x" >> "$GITHUB_ENV"\n',
+            id="a second command with a quote of its own",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD="x" >> "$GITHUB_ENV"\n',
+            id="a quote first in the value",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=cp314t-*" >> "$GITHUB_ENV" && echo done\n',
+            id="text after the command",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: FOO=1 echo "CIBW_BUILD=cp314t-*" >> "$GITHUB_ENV"\n',
+            id="text before the command",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD= " >> "$GITHUB_ENV"\n',
+            id="a value of a space",
+        ),
+        pytest.param(
+            _RUN,
+            '        run: echo "CIBW_BUILD=" >> "$GITHUB_ENV"\n',
+            id="no value",
+        ),
+        pytest.param(
+            _RUN,
+            "        env:\n          CIBW_BUILD: cp314t-*\n",
+            id="a step's env and no command",
+        ),
+        pytest.param(
+            _NARROWING,
+            f'{_NARROWING}        env:\n          CIBW_SKIP: "*"\n',
+            id="a second variable in the step",
+        ),
+        pytest.param(
+            _NARROWING,
+            f'{_NARROWING}      - run: echo "CIBW_BUILD=cp314t-*" >> "$GITHUB_ENV"\n',
+            id="a second step setting it",
+        ),
+        pytest.param(_ENV, f"{_ENV}      CIBW_SKIP: '*'\n", id="a job's variable"),
+    ],
+)
+def test_a_step_outside_the_accepted_shapes_reads_as_nothing(
+    old: str, new: str
+) -> None:
+    """Each refusal is the accepted step with one thing changed.
+
+    The change is asserted to change something, since a substitution
+    aimed at text the job does not hold leaves the sample as it was and
+    reads it, which is the control failing and not the refusal.
+    """
+    assert old in _SAMPLE_JOB
+    assert new != old
+    assert _pull_request_selection(_SAMPLE_JOB.replace(old, new)) == ""
+
+
+def test_a_selection_set_outside_the_steps_reads_as_nothing() -> None:
+    """A job-level `CIBW_BUILD` is no step's; a job of no steps reads none."""
+    at_job_level = _SAMPLE_JOB.replace(_NARROWING, "").replace(
+        _ENV, f"{_ENV}      CIBW_BUILD: cp314t-*\n"
+    )
+    assert "CIBW_BUILD: cp314t-*" in at_job_level
+    assert _NARROWING not in at_job_level
+    assert _pull_request_selection(at_job_level) == ""
+    assert _pull_request_selection("") == ""
+
+
+def test_the_gate_reads_its_build_job_without_its_comments(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The workflow's own text is read through `_jobs`, comments dropped.
+
+    A comment above the step naming two settings would be a second name
+    in the job, and the read would be nothing; it is the value it is
+    because the comment is gone. A workflow without the job is nothing.
+    """
+    gate = tmp_path / "test.yml"
+    gate.write_text(
+        "jobs:\n"
+        f"  {_BUILD_JOB}:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      # CIBW_SKIP and CIBW_BUILD are what narrow the build\n"
+        f"{_NARROWING}"
+        f"{_BUILD_STEP}"
+    )
+    monkeypatch.setattr(sys.modules[__name__], "_GATE", gate)
+    assert _gate_selection() == "cp310-* cp314t-*"
+    gate.write_text("jobs:\n  changes:\n    runs-on: ubuntu-latest\n")
+    assert _gate_selection() == ""
 
 
 def test_cibuildwheel_is_asked_only_where_a_job_in_the_closure_calls_it(
