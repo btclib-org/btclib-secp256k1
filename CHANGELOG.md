@@ -1121,6 +1121,12 @@ release-notes length in the first place, and are still in
   `zkp` subpackage** (closes #964): the workflow builds the extension it
   needs, and `bindings.toml` keeps the rest of the package.
 
+### `REPOSITORY.md` marks its plan-name and release-tag readings
+
+- **Both now carry `a fact about a changing world` and a read date, the
+  release tag's own answer corrected along with it** (issue
+  btclib-org/.github#1017).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
