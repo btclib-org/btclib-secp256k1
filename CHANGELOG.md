@@ -1103,6 +1103,12 @@ release-notes length in the first place, and are still in
   pinned** (closes #974): the narrowing step precedes every step naming
   cibuildwheel, `uses: pypa/cibuildwheel` is one, a `name:` never makes it one.
 
+### The largest shape of `borromean_verify` is asserted against the library alone
+
+- **The test that asserted the stand-in's `is True` for 128 keys in 32
+  rings is removed** (closes #973): the shape is asserted against the real
+  library, by a test marked `zkp`, which an unflagged build skips.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

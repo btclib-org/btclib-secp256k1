@@ -640,11 +640,3 @@ def test_borromean_verify_rejects_no_rings_over_some_keys() -> None:
     """An empty `rsizes` is a ring-count refusal, not a sum that is off."""
     with pytest.raises(ValueError, match="rsizes must hold between 1 and 32"):
         r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [])
-
-
-def test_borromean_verify_takes_the_largest_shape_the_header_allows() -> None:
-    """128 keys in 32 rings is the most `secp256k1_borromean_verify` takes."""
-    assert (
-        r.borromean_verify(bytes(32), bytes(32) * 128, b"msg", [PUBKEY] * 128, [4] * 32)
-        is True
-    )
