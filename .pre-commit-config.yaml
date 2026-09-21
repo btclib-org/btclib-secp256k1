@@ -806,7 +806,7 @@ repos:
   # a dependency added to pyproject.toml from reaching a branch without
   # the lock entry that pins it
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.12.13
+    rev: 0.12.17
     hooks:
       - id: uv-lock
 

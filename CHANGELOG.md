@@ -1073,6 +1073,12 @@ release-notes length in the first place, and are still in
   the script makes; the count goes rather than being corrected** (issue
   btclib-org/.github#1225), the docstring it names enumerating them.
 
+### `[tool.uv] required-version`'s floor matches Dependabot's bundled `uv`
+
+- **The floor rises to `>=0.12.17`, and `uv-lock`'s own `rev` with it**
+  (issue btclib-org/.github#1229): both now track the `uv` version
+  `dependabot-core` already bundles and writes `uv.lock` with.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
