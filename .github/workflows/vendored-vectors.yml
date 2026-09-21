@@ -10,12 +10,19 @@ name: vendored vectors
 # make. Matches a sibling repository's own workflow of the same name,
 # script included.
 #
-# issues: write is what the job below takes, and links.yml's own comment
-# is where the opposite choice is argued: an automatic issue is the usual
-# next step, and that workflow deliberately does not take it. This one
-# does, on purpose: a link is noticed the next time somebody follows it,
-# where a vendored vector is trusted without anybody looking at it again,
-# and that is exactly what an opened issue is for
+# The `check` job is btclib-org/.github's reusable-vendored-vectors.yml,
+# called at @main so a fix there reaches this tree in one landing
+# (section 10 of its README.md): the checkout, the interpreter setup and
+# the re-check itself are written there. What stays here is the trigger,
+# the cron minute, the concurrency group, the ledger this tree checks and
+# the interpreter it pins. `pin` and `zkp-pin` are written out below
+# instead: each verifies this tree's own submodule against named
+# maintainer fingerprints.
+#
+# issues: write is what the calling job grants. The called workflow's own
+# comments argue why it takes it and which triggers may write to the
+# tracker, which is not this file's to say; links.yml's own comment is
+# where the opposite choice is argued
 
 on:
   schedule:
@@ -34,9 +41,10 @@ on:
   workflow_dispatch:
   pull_request:
     # ready_for_review, so a pull request marked ready gets the run the
-    # draft condition below withheld while it was a draft: the default
-    # types do not include it, and without it a readied pull request
-    # would wait for its next push to be checked at all.
+    # draft condition of every job here, the called one's included,
+    # withheld while it was a draft: the default types do not include it,
+    # and without it a readied pull request would wait for its next push
+    # to be checked at all.
     # closed joins them for a different reason: merging or closing a pull
     # request is neither a push nor a synchronize, so a run still held in
     # this pull request's own concurrency group survives it unless the
@@ -69,6 +77,9 @@ on:
       # and the same call for test.yml is what it is compared against
       - .github/workflows/vendored-vectors.yml
       - .github/scripts/check_vendored_vectors.py
+      # the check job's ledger, which its `ledgers` input names again: a
+      # paths filter cannot read a job's input, so the path is written
+      # in both places
       - tests/README.md
       # the pin job below, and the two things it is about: the gitlink is
       # a path like any other on a pull request -- #106, which moved the
@@ -98,55 +109,27 @@ concurrency:
   cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
 
 jobs:
+  # the tracking issue is this job's to open, close or edit, and only this
+  # job's: pin and zkp-pin below report by going red, so they keep the
+  # workflow's own contents: read. A called workflow can be granted no
+  # more than the calling job holds, so the grant is written here rather
+  # than left to the callee
   check:
-    name: Check vendored vectors against upstream
-    # a draft pull request is work in progress and spends no runner
-    # here either: the same condition lint.yml and test.yml carry, and
-    # ready_for_review is a trigger type above for the same reason.
-    # A closed pull request spends none either, merged or not -- the
-    # concurrency block above is what stops a merged one's own run from
-    # cancelling the run this condition already let finish (#523)
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # the issue is this job's to open, close or edit, and only this
-    # job's: the pin job below reports by going red, so it keeps the
-    # workflow's own contents: read
+    uses: btclib-org/.github/.github/workflows/reusable-vendored-vectors.yml@main
     permissions:
       contents: read
-      issues: write # opening, closing or editing the tracking issue
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
-
+      issues: write # gh issue create/edit/close, in the called workflow
+    with:
+      # tests/README.md, whose entries are the pins the script re-reads,
+      # under the title of the issue that tracks their drift
+      ledgers: >-
+        [{"ledger": "tests/README.md",
+        "title": "Vendored vectors behind upstream"}]
       # no project dependency: the script imports only the standard
       # library and shells out to gh, which every GitHub-hosted runner
-      # already has.
-      # --dry-run on the pull_request trigger only: a fork's read-only
-      # token could not write the issue anyway, and a same-repository
-      # pull request testing a change to this script or the README
-      # should not close or edit whatever tracking issue is open at the
-      # time as a side effect of that test
-      #
-      # github.event_name resolves to one of exactly two literals this
-      # file itself writes -- '--dry-run' or the empty string -- so no
-      # fork-controlled string reaches the argument the expression
-      # expands to
-      - name: Re-check every pin already at upstream's tip
-        run: >- # zizmor: ignore[template-injection]
-          python .github/scripts/check_vendored_vectors.py
-          tests/README.md
-          "Vendored vectors behind upstream"
-          ${{ github.event_name == 'pull_request' && '--dry-run' || '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # already has, so this is the interpreter this tree chooses to run
+      # it under and not one it needs
+      python-version: "3.14"
 
   # the network half of the submodule pin check, whose offline half is the
   # `submodule-pin` hook. That one asks whether the tag README.md names

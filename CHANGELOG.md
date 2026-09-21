@@ -1079,6 +1079,12 @@ release-notes length in the first place, and are still in
   (issue btclib-org/.github#1229): both now track the `uv` version
   `dependabot-core` already bundles and writes `uv.lock` with.
 
+### `vendored-vectors.yml`'s `check` job calls `reusable-vendored-vectors.yml`
+
+- **`check` calls `btclib-org/.github`'s `reusable-vendored-vectors.yml`**
+  (issue btclib-org/.github#1196): a dispatch, like a pull request,
+  passes `--dry-run`.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
