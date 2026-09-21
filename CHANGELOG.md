@@ -1091,6 +1091,12 @@ release-notes length in the first place, and are still in
   mutation session over it leaves alive are asserted** (closes #968): the
   length checks of `pedersen_blind_generator_blind_sum`.
 
+### `interpreters_test.py` reads the `CIBW_BUILD` a pull request builds with
+
+- **A pull request's `CIBW_BUILD` must keep a free-threaded identifier**
+  (closes #957): the test read what `[tool.cibuildwheel]` configures,
+  which a push builds whole, so the step could drop `cp314t-*` unseen.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
