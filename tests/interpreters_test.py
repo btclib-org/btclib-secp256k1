@@ -394,12 +394,14 @@ def _pull_request_selection(job: str) -> str:
     `name:` values are dropped first (`_NAME_VALUE`), so a step named after
     the setting it sets is read, and a name that mentions another setting
     is not a second one. The value comes back where what is left of the job
-    names exactly one `CIBW_` setting, `CIBW_BUILD`, and it sits in a step,
-    a `- ` item at the indent `test.yml` writes its steps at, that carries
-    these three keys, in any order, among whatever others:
+    holds exactly one occurrence of a `CIBW_` name -- occurrences, not
+    distinct settings, so a second `CIBW_BUILD` is a second one -- and that
+    occurrence sits in a step, a `- ` item at the indent `test.yml` writes
+    its steps at, that carries these three keys, in any order, among
+    whatever others:
 
     - `if` is `github.event_name == 'pull_request'` and nothing more;
-    - `shell` is `bash`, the default on the two Windows images being
+    - `shell` is `bash`, the default on the Windows images being
       PowerShell, where `"$GITHUB_ENV"` is not the variable and the step
       selects nothing;
     - `run` is one line, `echo "CIBW_BUILD=<patterns>" >> "$GITHUB_ENV"`,
@@ -420,8 +422,11 @@ def _pull_request_selection(job: str) -> str:
     `test_the_pull_request_selection_was_read` is what fails on the
     nothing. `job` has its comments dropped already, as `_jobs` returns it.
 
-    What is not read is the arguments of the command that runs
-    cibuildwheel, which can narrow a selection as well.
+    What is not read includes the arguments of the command that runs
+    cibuildwheel, which can narrow a selection as well, and the `env:` of
+    the workflow above `jobs:`, whose variables reach the steps of every
+    job: `_jobs` cuts the text at `jobs:`, so a `CIBW_` name written there
+    is never seen.
     """
     code = _NAME_VALUE.sub(r"\g<key>", job)
     named = _CIBW_VARIABLE.findall(code)
@@ -836,6 +841,16 @@ def test_a_name_that_mentions_a_setting_does_not_hide_a_real_second() -> None:
             id="the step after the one that runs cibuildwheel",
         ),
         pytest.param(
+            _NARROWING + _BUILD_STEP,
+            _BUILD_STEP + _NARROWING + _BUILD_STEP,
+            id="the step between two that run cibuildwheel",
+        ),
+        pytest.param(
+            _NARROWING + _BUILD_STEP,
+            f"{_NARROWING}        id: cibuildwheel\n",
+            id="the step itself naming cibuildwheel, and no other",
+        ),
+        pytest.param(
             _BUILD_STEP,
             "      - name: Build wheels\n        run: echo built\n",
             id="no step that runs cibuildwheel",
@@ -951,6 +966,36 @@ def test_a_selection_set_outside_the_steps_reads_as_nothing() -> None:
     assert _NARROWING not in at_job_level
     assert _pull_request_selection(at_job_level) == ""
     assert _pull_request_selection("") == ""
+
+
+def test_the_action_that_runs_cibuildwheel_counts_as_the_command_does() -> None:
+    """A step that `uses:` the action is the one the narrowing step precedes.
+
+    `_RUNS_CIBUILDWHEEL` matches the action's name as it matches the
+    command's, so a job that builds with the action and no `run:` reads as
+    it does with the command. A pattern restricted to the `run:` form finds
+    no such step in it, and that is a job with none, which reads as nothing.
+    """
+    action = "      - name: Build wheels\n        uses: pypa/cibuildwheel@v3\n"
+    assert _BUILD_STEP in _SAMPLE_JOB
+    acting = _SAMPLE_JOB.replace(_BUILD_STEP, action)
+    assert acting != _SAMPLE_JOB
+    assert "uv run cibuildwheel" not in acting
+    assert _pull_request_selection(acting) == "cp310-* cp314t-*"
+
+
+def test_a_name_that_mentions_cibuildwheel_is_not_a_step_that_runs_it() -> None:
+    """A `name:` is dropped before the steps are asked what they run.
+
+    Left in the text, the name of the narrowing step would make it the first
+    step that names cibuildwheel, and a step that is its own builder is
+    refused.
+    """
+    old = "      - name: Narrow\n"
+    assert old in _SAMPLE_JOB
+    named = _SAMPLE_JOB.replace(old, "      - name: Narrow for cibuildwheel\n")
+    assert named != _SAMPLE_JOB
+    assert _pull_request_selection(named) == "cp310-* cp314t-*"
 
 
 def test_the_gate_reads_its_build_job_without_its_comments(
