@@ -997,9 +997,10 @@ run locally.
 
 - `vendored-vectors`, whose jobs ask unrelated questions and reproduce
   separately. `check` re-reads every pin in `tests/README.md`
-  against upstream, and `--dry-run` is what the `pull_request` trigger
-  passes so that the run edits no tracking issue — which is what a run
-  by hand wants too:
+  against upstream, and `--dry-run` is what every trigger but the
+  schedule passes, through the `reusable-vendored-vectors.yml` it calls,
+  so that the run edits no tracking issue — which is what a run by hand
+  wants too:
 
   ```shell
   uv run --no-project python \
@@ -1009,11 +1010,11 @@ run locally.
 
   `--no-project` because there is no environment to build for it: the
   script imports only the standard library and shells out to `gh`, which
-  has to be authenticated. The workflow's own line is a bare `python`,
-  which is setup-python's on the runner and need not be anything on a
-  machine that has uv and no interpreter of its own on `PATH`. Without
-  the flag it is the scheduled run, and it opens, edits or closes the
-  issue it finds.
+  has to be authenticated. The called workflow's own line is a bare
+  `python`, which is setup-python's on the runner and need not be
+  anything on a machine that has uv and no interpreter of its own on
+  `PATH`. Without the flag it is the scheduled run, and it opens, edits
+  or closes the issue it finds.
 
   `pin` asks the two halves `submodule-pin` cannot ask offline —
   whether the tag `README.md` names is the one upstream publishes, and
@@ -1282,9 +1283,9 @@ The aggregate of `test`, the `lint` job and the documentation build are
 the required checks, and `REPOSITORY.md` reads that rule back from the
 endpoint rather than restating it. `release` reuses all three. Everything
 else reports: a sentinel opens no issue when it fails, `vendored-vectors`
-excepted for the reason its own header gives, because each is expected to
-go red for something no pull request introduced and a red check nobody
-can act on from a branch is noise.
+excepted for the reason the header of the workflow it calls gives,
+because each is expected to go red for something no pull request
+introduced and a red check nobody can act on from a branch is noise.
 
 <!-- markdownlint-disable MD013 -->
 

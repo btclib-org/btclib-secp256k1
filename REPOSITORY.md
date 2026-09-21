@@ -638,8 +638,9 @@ mapping, or a quoted key or value — is outside that answer.
 write` on its publish jobs, which is what Trusted Publishing exchanges.
 `codeql.yml` takes `security-events: write` on the job that files a
 SARIF as code scanning alerts. `vendored-vectors.yml` takes `issues:
-write` on the job that opens the drift issue, and that file's header
-says why it takes a step the other sentinels deliberately do not.
+write` on the job that calls the workflow opening the drift issue, and
+that workflow's header says why it takes a step the other sentinels
+deliberately do not.
 
 One elevation per job is the shape to keep — the job that writes
 releases holds no OIDC token, and the job that signs writes no release.
