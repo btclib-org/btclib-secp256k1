@@ -1097,6 +1097,12 @@ release-notes length in the first place, and are still in
   (closes #957): the test read what `[tool.cibuildwheel]` configures,
   which a push builds whole, so the step could drop `cp314t-*` unseen.
 
+### `interpreters_test.py` pins the choices its pull-request reader documents
+
+- **The pull-request reader's order, action form and dropped names are each
+  pinned** (closes #974): the narrowing step precedes every step naming
+  cibuildwheel, `uses: pypa/cibuildwheel` is one, a `name:` never makes it one.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
