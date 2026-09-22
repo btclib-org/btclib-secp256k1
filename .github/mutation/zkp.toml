@@ -1,0 +1,87 @@
+# The `zkp` subpackage, mutated: the second session of the profile
+# mutation.yml runs, after bindings.toml's. What mutation asks, why the scope
+# is two files and not one, which survivors no test worth writing can kill
+# and how a survivor is read are that file's header, and this one does not
+# repeat it.
+# What is here is what differs: the scope, the test command, and the
+# operators excluded.
+
+[cosmic-ray]
+# the subpackage's directory, which cosmic-ray walks for every `*.py` under
+# it, `__init__.py` included. bindings.toml's `excluded-modules` is what
+# keeps the two scopes apart, and the command beside it is the claim that
+# they neither overlap nor leave a module out, so a module added under `zkp`
+# is in this session without this line being edited
+module-path = "src/btclib_secp256k1/zkp"
+
+# the `zkp` test files, and the two others that kill what they do not:
+#
+# `sh -c` because cosmic-ray splits this string with `shlex` and starts no
+# shell, so a glob reaches pytest as the literal it is and `cosmic-ray
+# baseline` fails on the path it does not find; `sh` is what expands
+# `tests/zkp*_test.py`, which is every test file named for the subpackage
+# -- `zkp_test.py` too, which `zkp_*_test.py` would miss -- and one added
+# under that name is in the session without this line being edited. A test
+# file that is not named for it and reaches `zkp` is named here, as the last
+# two are, and the file to add is the one whose absence lets a mutant
+# survive that the whole suite kills.
+#
+# The two are `tests/secret_test.py`, whose census that every function
+# taking a secret out offers `into` kills the keyword-only marker mutated to
+# `/` in an implementation of `zkp`'s, and `tests/examples_test.py`, whose
+# docstring examples kill a mutant in `zkp.context` that no `zkp` test file
+# does. The `zkp` test files alone let survive what those two kill, and
+# `-m zkp` more, for it leaves out the tests in those files that run against
+# a stand-in.
+#
+# What the selection is held to is the whole suite's verdicts over this
+# scope: a mutant that only a test outside the list kills survives this
+# session, which bindings.toml records as a cost of the split, and the
+# command that checks it is there, under that kind
+#
+# The flags are bindings.toml's, for its reasons. The `zkp` files come first
+# in the argument list, so a mutant of `zkp` dies on an early test and not
+# after the rest of the suite
+test-command = "sh -c 'python -m pytest -x -q -p no:randomly --no-cov tests/zkp*_test.py tests/secret_test.py tests/examples_test.py'"
+
+# seconds of wall clock, for the reason bindings.toml gives; what
+# `cosmic-ray baseline` times here is this command, which is shorter than
+# the whole suite, so 120 is wider against it still
+timeout = 120
+
+# The extension `zkp` needs is built only where `BTCLIB_LIBSECP256K1_ZKP` is
+# `true` -- `scripts/cffi_build.py` compares the value with that string and
+# nothing else, so `1` builds no extension -- and mutation.yml passes the
+# variable through the `extra-env` input of the workflow this tree calls,
+# which exports it ahead of the baseline. Against a build without the
+# extension the tests marked `zkp` skip, and a mutant of `zkp` lives or dies
+# by the tests that run without the library: a survivor of such a session
+# says nothing of a test nobody has written. CONTRIBUTING.md has the
+# commands of a local session, with the build that carries the extension.
+
+# Two of bindings.toml's three exclusions carry over, on the claims that file
+# makes over the package, `zkp` included; the third does not.
+#
+# `core/ReplaceBinaryOperator_BitOr_.*` is excluded because every module
+# here opens with `from __future__ import annotations`, so the `|` of `bytes
+# | int` is an unevaluated string. `core/RemoveDecorator$` because
+# `@overload` is the only decorator in the package. The commands are in
+# bindings.toml, which runs them over the whole package.
+#
+# `core/ReplaceBinaryOperator_Mul_` is not excluded, because a `*` of this
+# scope is a multiplication: `32 * len(pubkeys)` in `rangeproof.py`, which
+# bindings.toml's command over `src/btclib_secp256k1/zkp/*.py` prints. That
+# exclusion skips the ten replacements at each keyword-only marker, which
+# are killed as the suite is collected, and it cannot tell the product from
+# a marker, so here it would skip the product's in silence. The markers'
+# mutants cost a start of pytest each, in the time of this session.
+[cosmic-ray.filters.operators-filter]
+exclude-operators = [
+    "core/ReplaceBinaryOperator_BitOr_.*",
+    "core/RemoveDecorator$",
+]
+
+# one mutant at a time, in this working tree, for the reason bindings.toml
+# gives
+[cosmic-ray.distributor]
+name = "local"

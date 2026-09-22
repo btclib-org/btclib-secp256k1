@@ -943,48 +943,73 @@ run locally.
   cannot judge, each with the reason it cannot be checked rather than the
   reason checking it is inconvenient
 
-- `mutation`, scoped by `.github/mutation/bindings.toml`, which is what the
-  workflow reads too:
+- `mutation`, scoped by `.github/mutation/bindings.toml` and
+  `.github/mutation/zkp.toml`, which are what the workflow reads too, as the
+  two sessions of one profile, in that order:
 
   ```shell
-  uv run --locked --no-default-groups --group test --group mutation \
-      cosmic-ray baseline .github/mutation/bindings.toml
-  uv run --locked --no-default-groups --group test --group mutation \
-      cosmic-ray init .github/mutation/bindings.toml bindings.sqlite
-  uv run --locked --no-default-groups --group test --group mutation \
-      cr-filter-operators bindings.sqlite .github/mutation/bindings.toml
-  uv run --locked --no-default-groups --group test --group mutation \
-      cosmic-ray exec .github/mutation/bindings.toml bindings.sqlite
-  uv run --locked --no-default-groups --group test --group mutation \
-      cr-report --surviving-only --show-diff bindings.sqlite
-  uv run --locked --no-default-groups \
-      python .github/scripts/mutation_counts.py bindings.sqlite
+  (
+      export BTCLIB_LIBSECP256K1_ZKP=true
+      uv run --locked --no-default-groups --group test --group mutation \
+          --reinstall-package btclib-secp256k1 --no-cache \
+          python -c "import _btclib_secp256k1_zkp as m; print(m.lib)"
+      for session in bindings zkp; do
+          uv run --locked --no-default-groups --group test --group mutation \
+              cosmic-ray baseline .github/mutation/$session.toml
+          uv run --locked --no-default-groups --group test --group mutation \
+              cosmic-ray init .github/mutation/$session.toml $session.sqlite
+          uv run --locked --no-default-groups --group test --group mutation \
+              cr-filter-operators $session.sqlite .github/mutation/$session.toml
+          uv run --locked --no-default-groups --group test --group mutation \
+              cosmic-ray exec .github/mutation/$session.toml $session.sqlite
+          uv run --locked --no-default-groups --group test --group mutation \
+              cr-report --surviving-only --show-diff $session.sqlite
+          uv run --locked --no-default-groups \
+              python .github/scripts/mutation_counts.py $session.sqlite $session
+      done
+  )
   ```
+
+  Both sessions need the build that has the `zkp` extension: `zkp.toml`'s
+  mutants are judged by tests that skip without it, and so are the `zkp`
+  tests of the whole suite that `bindings.toml` runs. The workflow exports
+  the variable through the `extra-env` input of the workflow it calls,
+  where a local run exports it in a subshell, which every `uv run` of the
+  block then inherits -- one that rebuilt the package without it would drop
+  the extension -- and which leaves the shell it was pasted into as it was;
+  the first command above is the build line of `Build the flagged
+  secp256k1-zkp extension, and run its tests` with the proof that the build
+  took -- `--reinstall-package` and `--no-cache` for the reason that entry
+  gives. The variable's value is
+  `true` and nothing else. A session against a build without the extension
+  does not fail: the tests marked `zkp` skip, and the `zkp` mutants are
+  judged by the tests that run without the library.
 
   `baseline` first, always: it runs the configured test command against the
   unmutated tree, and without it a stale command fails every mutant
   identically and the session reports a perfect kill rate — the one failure
   mode of a mutation run that looks like good news. The session mutates the
   source in place and restores it, so nothing else may read the tree while
-  it runs: no second session, no `pytest` in another shell, and a
-  `git status` in the middle is a working tree with a mutant in it. `exec`
-  is resumable, so interrupting one costs only the mutant it was on, and the
-  `.sqlite` is what the workflow uploads beside the reports — `cr-report`,
-  `cr-html` and the counter all read one.
+  it runs: no other session, which is why the loop above is one at a time,
+  no `pytest` in another shell, and a `git status` in the middle is a
+  working tree with a mutant in it. `exec` is resumable, so interrupting
+  one costs only the mutant it was on, and the `.sqlite` is what the
+  workflow uploads beside the reports — `cr-report`, `cr-html` and the
+  counter all read one.
 
-  `cr-filter-operators` marks as skipped what the configuration excludes by
+  `cr-filter-operators` marks as skipped what a configuration excludes by
   operator, and `excluded-modules` drops a module's mutants at `init`,
-  before any is enumerated. What is excluded, and why, is in
-  `bindings.toml`, each exclusion with the command that keeps its claim
-  honest: a mutant excluded is one no session reports, so the claim is what
-  to re-check and not the comment beside it. The `zkp` subpackage is
-  excluded, and the file says what it would take to bring it in.
+  before any is enumerated: it is how `bindings.toml` hands the `zkp`
+  subpackage to `zkp.toml`. What is excluded, and why, is in the two files,
+  each exclusion with the command that keeps its claim honest: a mutant
+  excluded is one no session reports, so the claim is what to re-check and
+  not the comment beside it.
 
   `--surviving-only` is the whole of what anybody acts on, a killed mutant
   being the suite doing its job. A survivor is a test nobody has written,
-  except for the kinds `bindings.toml`'s header records as ones no test can
-  kill: the diff the report prints tells them from the rest, without
-  another session, and the header says how.
+  except for the kinds `bindings.toml`'s header records as ones no test worth
+  writing can kill: the diff the report prints tells them from the rest,
+  without another session, and the header says how.
 
   The counter last, and not `cr-rate`: that tool reads anything that is not
   SURVIVED as a kill, so it counts the skipped mutants among them and

@@ -1115,6 +1115,36 @@ release-notes length in the first place, and are still in
   file no longer shows in `git status`, and an sdist built from the tree
   no longer carries it.
 
+### The mutation sweep covers `zkp`
+
+- **`zkp.toml` is a second session of `mutation.yml`'s profile, over the
+  `zkp` subpackage** (closes #964): the workflow builds the extension it
+  needs, and `bindings.toml` keeps the rest of the package.
+
+### `REPOSITORY.md` marks its plan-name and release-tag readings
+
+- **Both now carry `a fact about a changing world` and a read date, the
+  release tag's own answer corrected along with it** (issue
+  btclib-org/.github#1017).
+
+### `REPOSITORY.md`'s `code-quality/setup` reading stops eliding the object
+
+- **`--jq '{state, languages}'` narrows the command instead, so the
+  recorded answer is the whole of what it prints and never a `...`**
+  (issue btclib-org/.github#1264).
+
+### `REPOSITORY.md`'s two shared `, both` comments become one per command
+
+- **The `actions/secrets`/`dependabot/secrets` pair and the two
+  organization-level secret listings each carry their own comment now**
+  (issue btclib-org/.github#1262).
+
+### `REPOSITORY.md`'s `(nothing)` becomes the bare `#` already read as empty
+
+- **The organization variable-name listing's recorded answer is an
+  empty comment now, not the word `(nothing)`** (issue
+  btclib-org/.github#1263).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

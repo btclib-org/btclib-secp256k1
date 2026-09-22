@@ -308,8 +308,9 @@ owns, and `actions/workflows/<id>/disable` answers 422. The endpoint that
 reports the setting is the one that sets it:
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/code-quality/setup
-# {"state":"not-configured","languages":["python"], ...}
+gh api repos/btclib-org/btclib-secp256k1/code-quality/setup \
+  --jq '{state, languages}'
+# {"languages":["python"],"state":"not-configured"}
 
 gh api -X PATCH repos/btclib-org/btclib-secp256k1/code-quality/setup \
   -F state=not-configured
@@ -768,7 +769,7 @@ On. It is what puts the *Report a vulnerability* button on the Security
 tab, and `.github/ISSUE_TEMPLATE/config.yml` links
 `/security/advisories/new` on the strength of it.
 
-## Plan-gated settings
+## Secret scanning and push protection
 
 Some settings cannot be enabled and fail silently:
 
@@ -784,6 +785,8 @@ leaves them off — **do not read that 200 as success.** The
 `detect-secrets` hook is the compensating control, and CONTRIBUTING.md
 carries what maintaining its baseline costs.
 
+## Plan-gated settings
+
 The other plan-gated number is not a setting at all, and it is the one
 that has moved this repository's workflows twice: how many jobs may run
 at once. It is an attribute of the organization, shared by every
@@ -792,7 +795,12 @@ rather than assumed:
 
 ```shell
 gh api orgs/btclib-org --jq .plan.name
+# free
 ```
+
+The plan is a fact about a changing world rather than a setting this
+repository decides, an upgrade being the organization's own choice and
+not a drift this file's readback catches. Read at 2026-09-21T22:34:55Z.
 
 [GitHub's own table](https://docs.github.com/en/actions/reference/limits)
 is the authority, and two of its numbers matter here: on the free plan
@@ -905,22 +913,35 @@ p=https://app.readthedocs.org/api/v3/projects/btclib-secp256k1
 curl -s "$p/" | jq -c '{default_branch, repository: .repository.url}'
 # {"default_branch":"main",
 #  "repository":"https://github.com/btclib-org/btclib-secp256k1.git"}
-curl -s "$p/versions/?active=true" \
-  | jq -c '.results[] | select(.slug == "latest" or .slug == "stable")
-           | [.slug, .type, .ref]'
-# ["stable","tag","v0.8.0.4"]
-# ["latest","branch",null]
-git tag --list 'v*' --sort=version:refname | tail -1
-# v0.8.0.4
 ```
 
 `repository.url` says which repository the slug serves. `latest` is a
-branch, and the branch it follows is the project's `default_branch`;
+branch, and the branch it follows is the project's `default_branch`, a
+setting rather than something the tag history moves on its own.
+
+### `stable` follows the highest release tag, which moves
+
+The next release changes what this answers, with nothing here having
+decided differently, so it is a fact about a changing world rather than
+a setting:
+
+```shell
+curl -s "$p/versions/?active=true" \
+  | jq -c '.results[] | select(.slug == "latest" or .slug == "stable")
+           | [.slug, .type, .ref]'
+# ["stable","tag","v0.8.0.6"]
+# ["latest","branch",null]
+git tag --list 'v*' --sort=version:refname | tail -1
+# v0.8.0.6
+```
+
 `stable` is a tag, and its `ref` is the one `git tag` sorts highest. The
 tags beside those two in the same answer are the automation rule's
 result rather than the rule, which that API does not expose —
 `automation-rules/` answers 404 where an endpoint needing a token, such
-as `redirects/`, answers 401.
+as `redirects/`, answers 401. Read at 2026-09-21T22:39:24Z.
+
+### The GitHub App connection, and this repository's own hooks
 
 **What connects this repository to Read the Docs is the organization-wide
 `read-the-docs-community` GitHub App, not a per-repository webhook.**
@@ -964,14 +985,16 @@ secret stores here answer empty for it:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/actions/secrets --jq .total_count
+# 0
 gh api repos/btclib-org/btclib-secp256k1/dependabot/secrets \
   --jq .total_count
-# 0, both
+# 0
 gh api orgs/btclib-org/actions/secrets \
   --jq '.secrets[] | [.name, .visibility]'
+# ["CLAUDE_CODE_OAUTH_TOKEN","all"]
 gh api orgs/btclib-org/dependabot/secrets \
   --jq '.secrets[] | [.name, .visibility]'
-# ["CLAUDE_CODE_OAUTH_TOKEN","all"], both
+# ["CLAUDE_CODE_OAUTH_TOKEN","all"]
 ```
 
 Those two zeros record a decision, and it is section 11's: the token is
@@ -987,7 +1010,7 @@ with `vars.CLAUDE_REVIEW_ENABLED`, and neither variable store holds it:
 gh api repos/btclib-org/btclib-secp256k1/actions/variables --jq .total_count
 # 0
 gh api orgs/btclib-org/actions/variables --jq '.variables[].name'
-# (nothing)
+#
 gh api orgs/btclib-org/actions/variables --jq .total_count
 # 0
 ```
