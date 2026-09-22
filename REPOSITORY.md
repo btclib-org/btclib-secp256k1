@@ -308,8 +308,9 @@ owns, and `actions/workflows/<id>/disable` answers 422. The endpoint that
 reports the setting is the one that sets it:
 
 ```shell
-gh api repos/btclib-org/btclib-secp256k1/code-quality/setup
-# {"state":"not-configured","languages":["python"], ...}
+gh api repos/btclib-org/btclib-secp256k1/code-quality/setup \
+  --jq '{state, languages}'
+# {"languages":["python"],"state":"not-configured"}
 
 gh api -X PATCH repos/btclib-org/btclib-secp256k1/code-quality/setup \
   -F state=not-configured
@@ -984,14 +985,16 @@ secret stores here answer empty for it:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/actions/secrets --jq .total_count
+# 0
 gh api repos/btclib-org/btclib-secp256k1/dependabot/secrets \
   --jq .total_count
-# 0, both
+# 0
 gh api orgs/btclib-org/actions/secrets \
   --jq '.secrets[] | [.name, .visibility]'
+# ["CLAUDE_CODE_OAUTH_TOKEN","all"]
 gh api orgs/btclib-org/dependabot/secrets \
   --jq '.secrets[] | [.name, .visibility]'
-# ["CLAUDE_CODE_OAUTH_TOKEN","all"], both
+# ["CLAUDE_CODE_OAUTH_TOKEN","all"]
 ```
 
 Those two zeros record a decision, and it is section 11's: the token is
@@ -1007,7 +1010,7 @@ with `vars.CLAUDE_REVIEW_ENABLED`, and neither variable store holds it:
 gh api repos/btclib-org/btclib-secp256k1/actions/variables --jq .total_count
 # 0
 gh api orgs/btclib-org/actions/variables --jq '.variables[].name'
-# (nothing)
+#
 gh api orgs/btclib-org/actions/variables --jq .total_count
 # 0
 ```
