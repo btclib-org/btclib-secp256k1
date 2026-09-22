@@ -19,13 +19,13 @@ name: mutation
 # different expression in an argument list, so *which argument a `lib` call
 # is handed* -- the whole of what a binding decides -- is mutated by
 # nothing here. core/VariableReplacer and core/VariableInserter are the two
-# that come closest and .github/mutation/bindings.toml instantiates
-# neither: both declare cause_variable and effect_variable arguments it
-# does not supply, and configured they would substitute a random number,
-# which cffi refuses where a pointer was declared -- a mutant dying because
+# that come closest and neither file of .github/mutation instantiates
+# them: both declare cause_variable and effect_variable arguments neither
+# supplies, and configured they would substitute a random number, which
+# cffi refuses where a pointer was declared -- a mutant dying because
 # the boundary type-checks, not because a test read what the call wrote.
 # So an out-parameter's semantics rest on a test that exercises both of its
-# answers, and writing that test is not something this session will prompt.
+# answers, and writing that test is not something these sessions will prompt.
 # The first revision of #220 is the instance: `ffi.NULL` in place of the
 # `int *` a caller allocated left the suite passing, an even-y key and a
 # zeroed allocation agreeing on 0 on every side of every comparison.
@@ -34,11 +34,11 @@ name: mutation
 # the upload are btclib-org/.github's reusable-mutation.yml, called at
 # @main so a fix there reaches this tree in one landing (section 10 of
 # that repository's README.md, btclib-org/.github#35). What stays here is
-# this tree's own subject matter -- the scope
-# .github/mutation/bindings.toml states, its budget and the job's
-# ceiling -- and the trigger, the schedule, the concurrency group and the
-# permissions, none of which a reader of the callee could write for this
-# tree.
+# this tree's own subject matter -- the two scopes
+# .github/mutation/bindings.toml and .github/mutation/zkp.toml state, the
+# budget of each and the job's ceiling -- and the trigger, the schedule, the
+# concurrency group and the permissions, none of which a reader of the
+# callee could write for this tree.
 #
 # It gates nothing, and that is the design rather than a caution. A gate
 # needs a number nobody has yet, and a survival rate is not a regression: a
@@ -48,14 +48,14 @@ name: mutation
 # lives outside the repository and names its checks as literal strings. See
 # REPOSITORY.md.
 #
-# What runs here is what .github/mutation/bindings.toml says, which is what
-# CONTRIBUTING.md documents for a local run: one statement of the scope and
-# the test command, not a second copy of them in yaml.
+# What runs here is what those two files say, which is what CONTRIBUTING.md
+# documents for a local run: one statement of each scope and its test
+# command, not a second copy of them in yaml.
 
 on:
   schedule:
-    # Monday, and the grid gives the hour to this alone: a session
-    # measured in minutes gets an hour nothing else asks for. What it
+    # Monday, and the grid gives the hour to this alone: sessions
+    # measured in minutes get an hour nothing else asks for. What it
     # asks is on a different axis from every other sentinel here -- the
     # suite's own quality, not a dependency's or a platform's.
     # The time is the organization grid -- section 10 of
@@ -70,10 +70,10 @@ on:
   # no pull_request trigger, unlike links.yml, which does run itself when
   # its own configuration changes. The difference is what the two cost: a
   # link sweep is a few hundred requests, and a session is one run of the
-  # suite per mutant. check-toml parses this configuration on every commit, and
-  # `cosmic-ray baseline`, which the callee runs first, fails the run before
-  # any mutant if the test command has gone stale, which is what that
-  # trigger would have caught
+  # suite per mutant. check-toml parses these configurations on every
+  # commit, and `cosmic-ray baseline`, which the callee runs first for each,
+  # fails the run before any mutant if a test command has gone stale, which
+  # is what that trigger would have caught
 
 # least privilege for the GITHUB_TOKEN: everything running in a job can read
 # it, and nothing here writes. In particular no issues: write -- an
@@ -87,19 +87,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # one profile: this tree mutates one scope, so the matrix the callee
-  # loops over has a single cell. The ceiling is the job's own former
-  # timeout-minutes, carried over unchanged; the session budget is chosen
-  # here rather than carried over, since today's single step ran under no
-  # `timeout` wrapper at all. A dispatch on this branch measured the
-  # checkout, the environment and the baseline at under a minute
-  # together, so 80m leaves a ten-minute margin under the 90m ceiling for
-  # that and for the report and upload steps -- a first dispatch tried
-  # 60m and was cut by it before the session reached every mutant
+  # one profile of two sessions, the whole suite's over the package less
+  # `zkp` and then `zkp`'s own, in the order the `sessions` string lists
+  # them. They are sessions of one profile and not two profiles because they
+  # share one build and one working tree: a session mutates the tree in
+  # place, so the sessions run one after the other, and a second profile
+  # would run in a job of its own, with a second build. `extra-env` is an
+  # input of the whole workflow and not of a profile, so a second profile
+  # would build with it too.
+  #
+  # Each session's budget is the longest that session took in a run that
+  # reached every mutant, with a margin over it for a slower runner, and a
+  # session cut at its budget says `never run` in its summary line. The
+  # first session runs the whole suite, so its length follows the suite's,
+  # and a change that adds tests is one to dispatch this workflow after.
+  # The job's step timings give the sum of the two --
+  # `gh api repos/btclib-org/btclib-secp256k1/actions/runs/<id>/jobs` --
+  # and the times of the `.sqlite` files in the artifact's zip, `unzip -l`,
+  # give where the first ends. The ceiling is both budgets and the time the
+  # job spends outside the sessions: the checkout, the environment, the
+  # baselines and the steps after them.
+  #
+  # `extra-env` carries the variable, which has to be `true`:
+  # scripts/cffi_build.py compares it with that string, so `1` builds no
+  # extension and the sessions run on, against tests that skip, without
+  # saying so.
   mutation:
     uses: btclib-org/.github/.github/workflows/reusable-mutation.yml@main
     with:
       profiles: >-
-        [{"profile": "the bindings", "slug": "bindings", "ceiling": 90,
-        "sessions": "bindings.toml 80m"}]
+        [{"profile": "the bindings", "slug": "bindings", "ceiling": 150,
+        "sessions": "bindings.toml 120m\nzkp.toml 20m"}]
       submodules: true
+      extra-env: BTCLIB_LIBSECP256K1_ZKP=true

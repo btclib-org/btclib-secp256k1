@@ -1115,6 +1115,12 @@ release-notes length in the first place, and are still in
   file no longer shows in `git status`, and an sdist built from the tree
   no longer carries it.
 
+### The mutation sweep covers `zkp`
+
+- **`zkp.toml` is a second session of `mutation.yml`'s profile, over the
+  `zkp` subpackage** (closes #964): the workflow builds the extension it
+  needs, and `bindings.toml` keeps the rest of the package.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
