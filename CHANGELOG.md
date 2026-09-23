@@ -1157,6 +1157,12 @@ release-notes length in the first place, and are still in
   `rev:`, `args: [--grandfathered, "24"]`, and this tree's own copies of
   the shared scripts are gone** (issue btclib-org/.github#1293).
 
+### `notice-rgx` lets only a `#!` line precede the notice
+
+- **The regex is `^(#![^\n]*\n)?` followed by COPYRIGHT transcribed, so
+  only a `#!` line may open the file ahead of the notice, or none**
+  (issue btclib-org/.github#1294).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

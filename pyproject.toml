@@ -960,14 +960,15 @@ max-complexity = 10
 # notice-rgx is COPYRIGHT's text as one regex, anchored with ^ so a
 # match has to open the file rather than merely occur somewhere in its
 # first 4096 bytes -- unanchored, an import or a docstring placed above
-# the notice would still pass. No source file here opens with a
-# shebang, so nothing legitimate sits between byte zero and the notice
-# for the anchor to exclude.
+# the notice would still pass. `(#![^\n]*\n)?` ahead of the notice means
+# only a `#!` line may precede it, so the notice still either opens the
+# file or immediately follows that line, and nothing else may sit
+# between byte zero and it.
 # Which files carry the notice is ruff's own selection rather than a
 # `files:` pattern beside the hook: ruff lints .pyi by default, so
 # stubs/_btclib_secp256k1.pyi answers to this regex like every .py file,
 # with no second extension named beside it.
-notice-rgx = "^# Copyright \\(c\\) The btclib developers\\n# Distributed under the MIT software license, see the accompanying\\n# LICENSE file or https://opensource\\.org/license/mit for the full text\\."
+notice-rgx = "^(#![^\\n]*\\n)?# Copyright \\(c\\) The btclib developers\\n# Distributed under the MIT software license, see the accompanying\\n# LICENSE file or https://opensource\\.org/license/mit for the full text\\."
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

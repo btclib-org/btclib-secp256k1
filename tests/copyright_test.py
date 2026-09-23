@@ -80,7 +80,9 @@ def _pyproject_notice_rgx() -> str:
 def _copyright_as_regex() -> str:
     text = (_ROOT / "COPYRIGHT").read_text(encoding="utf-8")
     escaped = _REGEX_SPECIAL_RE.sub(r"\\\1", text.rstrip("\n"))
-    return "^" + escaped.replace("\n", "\\n")
+    # `(#![^\n]*\n)?` ahead of the notice means only a `#!` line may
+    # precede it, matching pyproject.toml's own notice-rgx comment
+    return r"^(#![^\n]*\n)?" + escaped.replace("\n", "\\n")
 
 
 def test_license_holder_matches_the_declared_author() -> None:
@@ -95,7 +97,7 @@ def test_license_holder_matches_the_declared_author() -> None:
 
 
 def test_notice_rgx_is_copyright_transcribed() -> None:
-    """`notice-rgx` is COPYRIGHT's own text, escaped for a regex, no more."""
+    """`notice-rgx` is COPYRIGHT, regex-escaped, after an optional `#!` line."""
     notice_rgx = _pyproject_notice_rgx()
     derived = _copyright_as_regex()
     assert notice_rgx == derived, (
