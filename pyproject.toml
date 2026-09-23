@@ -562,18 +562,36 @@ module = ["secp256k1"]
 follow_imports = "skip"
 ignore_missing_imports = true
 
-# the second spell checker of .pre-commit-config.yaml. codespell needs no
-# section of its own: it reads whole words against a curated list and finds
-# nothing here, the vendored tree never reaching it because pre-commit
-# passes only the files tracked in this repository. typos splits
-# identifiers, so it has two things to be told, and both are measured
-# rather than assumed -- with the rule off, `uvx typos` reports exactly
-# these and nothing else in what this repository owns
+[[tool.mypy.overrides]]
+# atheris is pre-installed in ClusterFuzzLite's builder image, the one
+# place fuzz/fuzz_*.py runs, and is declared in no dependency group
+# here: resolved to Any, it leaves everything else a harness calls under
+# the strict check above
+module = ["atheris"]
+ignore_missing_imports = true
+
+# the two spell checkers of .pre-commit-config.yaml. codespell reads whole
+# words against a curated list and finds nothing here, the vendored tree
+# never reaching it because pre-commit passes only the files tracked in
+# this repository; the seeds below are the one thing it has to be told.
+# typos splits identifiers, so it has two things to be told, and both are
+# measured rather than assumed -- with the rule off, `uvx typos` reports
+# exactly these and nothing else in what this repository owns
+[tool.codespell]
+# fuzz/corpus/'s seeds are octets, not prose, and a seed whose octets
+# happen to pass pre-commit's own text filter reaches this hook as text:
+# it runs with --write-changes, so a "misspelling" it read there would be
+# rewritten into a different input
+skip = "fuzz/corpus/*"
+
 [tool.typos.files]
 # the vendored tree, as for ruff and mypy above. Not needed for the hook,
 # which is handed tracked files only, but a bare `uvx typos` otherwise
-# answers with thousands of findings in C that is not ours to correct
-extend-exclude = ["secp256k1/"]
+# answers with thousands of findings in C that is not ours to correct.
+# The seeds, for the reason `[tool.codespell]` gives: the hook's
+# --force-exclude is what makes this entry hold for a path pre-commit
+# names on the command line
+extend-exclude = ["secp256k1/", "fuzz/corpus/**"]
 
 [tool.typos.default.extend-words]
 # the macOS wheel-repair tool, named in __init__.py and in test.yml beside
@@ -949,6 +967,10 @@ max-complexity = 10
 # a configuration directory rather than a package; the same reason
 # excludes the standalone scripts above
 "docs/source/conf.py" = ["implicit-namespace-package"]
+# ClusterFuzzLite's build.sh hands each harness to PyInstaller, never to
+# an import: the same exemption as .github/scripts/*.py above, and no
+# __init__.py, so as not to present fuzz/ as a package
+"fuzz/*.py" = ["implicit-namespace-package"]
 
 [tool.ruff.lint.flake8-copyright]
 # notice-rgx is COPYRIGHT's text as one regex, anchored with ^ so a

@@ -1329,6 +1329,7 @@ introduced and a red check nobody can act on from a branch is noise.
 | `deps-oldest` | weekly | the dependencies, at their floors |
 | `links` | weekly, a pull request touching its own configuration | — |
 | `mutation` | weekly | — |
+| `fuzz` | weekly | — |
 | `wheel-reproducibility` | weekly, a pull request touching what it builds | every wheel platform, on two images, built twice on each, and the repaired, dynamic and cross-compiled wheels, built twice on one image per platform |
 | `sdist-rebuild` | weekly, a pull request touching its own file | — |
 | `pypi-install` | weekly, a release | what PyPI serves |

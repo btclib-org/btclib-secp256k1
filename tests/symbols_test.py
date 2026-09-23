@@ -138,6 +138,9 @@ _EXCLUDED_FILES = frozenset({
     "RELEASE_NOTES.md",
     "tests/" + Path(__file__).name,
 })
+# fuzz/corpus/ holds the fuzzing seeds, octets rather than prose: a
+# public key or a DER signature decodes as no text at all
+_EXCLUDED_DIRECTORIES = ("fuzz/corpus/",)
 
 
 def _collapse(text: str) -> str:
@@ -291,7 +294,7 @@ def _units(path: Path) -> list[str]:
 
 
 def _sources() -> list[Path]:
-    """Every file this repository tracks outside the vendored trees.
+    """Every tracked file outside the vendored trees and the seed corpus.
 
     `git ls-files` rather than a filesystem walk: a build, a coverage
     database and a `.pyc` all sit inside this worktree without being part
@@ -313,7 +316,7 @@ def _sources() -> list[Path]:
             f"{_SUBMODULES[1]}/",
         )):
             continue
-        if rel in _EXCLUDED_FILES:
+        if rel in _EXCLUDED_FILES or rel.startswith(_EXCLUDED_DIRECTORIES):
             continue
         paths.append(_ROOT / rel)
     return sorted(paths)

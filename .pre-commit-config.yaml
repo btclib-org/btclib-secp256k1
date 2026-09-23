@@ -64,7 +64,15 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
+        # the seeds under fuzz/corpus/ are octets a fixer must not touch:
+        # one added or taken off makes a different input, and a seed
+        # whose octets happen to pass the text filter reaches this hook
+        # like any prose file. codespell and typos take the same
+        # exclusion from pyproject.toml
+        exclude: ^fuzz/corpus/
       - id: end-of-file-fixer
+        # the seeds, for the reason given on trailing-whitespace above
+        exclude: ^fuzz/corpus/
       - id: mixed-line-ending
         # not the default --fix=auto, which normalizes a file to its own
         # most frequent ending: a file entirely in CRLF is consistent by
@@ -74,8 +82,9 @@ repos:
         # except for the csv vectors vendored from bitcoin/bips byte for
         # byte, CRLF included: what makes them worth trusting is being
         # the upstream file, which anyone can fetch and diff, and the csv
-        # module reads them either way
-        exclude: ^tests/bip3(40|24)_.*\.csv$
+        # module reads them either way -- and the seeds, for the reason
+        # given on trailing-whitespace above
+        exclude: ^(fuzz/corpus/|tests/bip3(40|24)_.*\.csv$)
       - id: check-case-conflict
       # off, and measured rather than assumed: nothing tracked here carries
       # the execute bit -- `git ls-files -s` reports mode 100644 for every
@@ -103,6 +112,8 @@ repos:
       # finds nothing today, and stops an editor on another platform from
       # adding three bytes tomorrow
       - id: fix-byte-order-marker
+        # the seeds, for the reason given on trailing-whitespace above
+        exclude: ^fuzz/corpus/
       # off: it would add a dead `# -*- coding: utf-8 -*-` to every module,
       # UTF-8 being python 3's default and 3.9 the floor here
       # - id: fix-encoding-pragma
