@@ -154,16 +154,7 @@ repos:
       - id: check-vcs-permalinks
       - id: detect-private-key
       - id: debug-statements
-      # `.github/scripts/check_changelog.py`'s `_BLANK_LINE` constant
-      # carries an attribute docstring this hook reads as a second module
-      # docstring; btclib-org/.github runs no check-docstring-first, so
-      # the file passes there and fails here. Section 14 of the
-      # organization standard owes the script byte for byte, so the
-      # exclusion is where its finding is answered rather than the copy;
-      # it goes the day the script passes the hook
-      # (btclib-org/.github#995)
       - id: check-docstring-first
-        exclude: ^\.github/scripts/check_changelog\.py$
       # a file pytest never collects is not a failing test, it is no test,
       # which is the one failure a suite cannot report about itself.
       # At its default, `*_test.py`, which is section 7 of the
@@ -318,27 +309,13 @@ repos:
         args: [--write-changes, --force-exclude]
         types: [text]
         stages: [pre-commit, pre-merge-commit, pre-push, manual]
-  # `merge=union` stays on `CHANGELOG.md` (btclib-org/.github#21), and
-  # this is the gate its price bought back -- `.github/scripts/
-  # check_changelog.py`'s own docstring carries what its checks catch,
-  # what they still cannot, and the alternatives declined
-  # (btclib-org/.github#305, btclib-org/.github#516). It runs ahead of
-  # markdownlint-cli2 below on purpose: that hook's `--fix` repairs the
-  # very seam the third check exists to name, so a hook reading the
-  # file after it would find nothing left to report.
-  #
-  # `always_run: true`, and no `files:`: the rebase that eats the seam
-  # stages nothing, so a hook keyed on the diff is unreachable after the
-  # event the blank-line check exists to name. Section 4 carries the
-  # rest.
-  - repo: local
+  # check-changelog runs ahead of markdownlint-cli2 below: that hook's
+  # `--fix` repairs the very seam the third check exists to name.
+  - repo: https://github.com/btclib-org/.github
+    rev: 93615580cdf8afb1b0a89bf38b707232d39a502a
     hooks:
       - id: check-changelog
-        name: the open CHANGELOG.md repeats no heading, closes no issue twice
-        entry: python3 .github/scripts/check_changelog.py
-        language: system
-        pass_filenames: false
-        always_run: true
+        args: [--grandfathered, "24"]
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.23.3
     hooks:

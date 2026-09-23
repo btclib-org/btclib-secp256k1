@@ -953,6 +953,7 @@ run locally.
       uv run --locked --no-default-groups --group test --group mutation \
           --reinstall-package btclib-secp256k1 --no-cache \
           python -c "import _btclib_secp256k1_zkp as m; print(m.lib)"
+      git clone --depth 1 https://github.com/btclib-org/.github standard
       for session in bindings zkp; do
           uv run --locked --no-default-groups --group test --group mutation \
               cosmic-ray baseline .github/mutation/$session.toml
@@ -965,10 +966,15 @@ run locally.
           uv run --locked --no-default-groups --group test --group mutation \
               cr-report --surviving-only --show-diff $session.sqlite
           uv run --locked --no-default-groups \
-              python .github/scripts/mutation_counts.py $session.sqlite $session
+              python standard/.github/scripts/mutation_counts.py \
+              $session.sqlite $session
       done
   )
   ```
+
+  The counter is `standard/`'s: cloning `btclib-org/.github` there is a
+  local stand-in for the second checkout `reusable-mutation.yml` runs
+  beside this tree's own.
 
   Both sessions need the build that has the `zkp` extension: `zkp.toml`'s
   mutants are judged by tests that skip without it, and so are the `zkp`

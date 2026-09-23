@@ -905,9 +905,6 @@ max-complexity = 10
 # second way; matching a sibling repository's own T201 exemption for
 # the same script
 ".github/scripts/check_vendored_vectors.py" = ["print"]
-# and the mutation counter, whose one line of output is what the workflow
-# step exists to put in the log: same exemption, same reason
-".github/scripts/mutation_counts.py" = ["print"]
 # and the submodule pin check, which is a hook before it is anything
 # else: what it prints is what pre-commit shows the developer whose
 # commit it just refused, and stderr is where all of that goes
@@ -931,19 +928,6 @@ max-complexity = 10
 # `::error::` annotations are what the workflow step that runs it shows
 # in its own log: same exemption, same reason as the scripts above
 ".github/scripts/check_wheel_reproducibility.py" = ["print"]
-# the release wait, whose per-attempt lines and `::error::` annotation
-# are what the workflow step that runs it shows in its own log: same
-# exemption, same reason as the scripts above
-".github/scripts/wait_for_pypi_release.py" = ["print"]
-# and the documentation wait, the same shape one service over: one line
-# per answer read the docs gave that was not the page, the page when it
-# comes, or the ::error:: annotation naming the last answer and the
-# builds page that says why
-".github/scripts/wait_for_readthedocs_build.py" = ["print"]
-# and the changelog check, run by the check-changelog hook and read on
-# the terminal of whoever's commit it refused: what it prints is each
-# line it refuses and the reason, which is the whole of its report
-".github/scripts/check_changelog.py" = ["print"]
 # and the bill of materials generator, whose usage message and the path
 # it names on success are what the build-sdist step that runs it shows in
 # its own log: same exemption, same reason as the scripts above

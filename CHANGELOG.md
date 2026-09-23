@@ -1151,6 +1151,12 @@ release-notes length in the first place, and are still in
   dispatch, against the address-sanitized vendored library**
   (issue btclib-org/.github#342); `tests/fuzz_corpus_test.py` holds the seeds.
 
+### `.pre-commit-config.yaml`'s `check-changelog` runs from `btclib-org/.github`
+
+- **The hook is `repo: https://github.com/btclib-org/.github`, pinned by
+  `rev:`, `args: [--grandfathered, "24"]`, and this tree's own copies of
+  the shared scripts are gone** (issue btclib-org/.github#1293).
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
