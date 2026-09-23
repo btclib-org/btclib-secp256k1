@@ -359,9 +359,9 @@ excluded-modules = ["src/btclib_secp256k1/zkp/**/*.py"]
 # change adding one must run first.
 #
 # What the exclusions do to the one number the workflow prints is why
-# .github/scripts/mutation_counts.py exists: `cr-rate` counts anything that
-# is not SURVIVED as a kill, a skip included, so on a filtered session it
-# divides by mutants nothing ran
+# btclib-org/.github's mutation_counts.py exists: `cr-rate` counts
+# anything that is not SURVIVED as a kill, a skip included, so on a
+# filtered session it divides by mutants nothing ran
 [cosmic-ray.filters.operators-filter]
 exclude-operators = [
     "core/ReplaceBinaryOperator_BitOr_.*",

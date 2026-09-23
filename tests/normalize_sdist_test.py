@@ -237,8 +237,8 @@ def test_the_main_guard_runs_the_script_as___main__(
 
     This project collects no coverage from a child interpreter, so a real
     subprocess would leave the guard as uncovered as it is in
-    `mutation_counts.py`. `runpy.run_path` executes the file fresh with
-    `__name__` set to `"__main__"` in this one.
+    `check_submodule_pin.py`. `runpy.run_path` executes the file fresh
+    with `__name__` set to `"__main__"` in this one.
     """
     monkeypatch.setenv("SOURCE_DATE_EPOCH", str(_EPOCH))
     archive = tmp_path / "pkg-1.0.tar.gz"

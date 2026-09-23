@@ -473,15 +473,12 @@ jobs:
   # and the fix for a red run here is a build on their side, never a
   # moved tag.
   #
-  # The checkout and the wait are btclib-org/.github's:
-  # reusable-documented.yml, called at @main so a fix there reaches this
-  # tree in one landing (section 10 of its README.md). The wait script
-  # itself, .github/scripts/wait_for_readthedocs_build.py, and its test
-  # stay in this tree -- the callee checks out the caller's own tree, so
-  # a change to the script is a change here, not in btclib-org/.github.
-  # readthedocs-slug is the one input the family has no default for, and
-  # it equals this repository's own name only by coincidence
-  # (btclib-org/.github#35)
+  # The checkout, the wait script and its test are all
+  # btclib-org/.github's: reusable-documented.yml, called at @main so a
+  # fix there reaches this tree in one landing (section 10 of its
+  # README.md). readthedocs-slug is the one input the family has no
+  # default for, and it equals this repository's own name only by
+  # coincidence (btclib-org/.github#35)
   documented:
     needs: version-check
     if: github.event_name == 'push'
