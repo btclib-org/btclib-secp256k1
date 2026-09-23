@@ -1145,6 +1145,12 @@ release-notes length in the first place, and are still in
   empty comment now, not the word `(nothing)`** (issue
   btclib-org/.github#1263).
 
+### `fuzz.yml` puts the unsized entry points under ClusterFuzzLite
+
+- **`fuzz.yml` runs `fuzz/fuzz_*.py` under ClusterFuzzLite, weekly and on
+  dispatch, against the address-sanitized vendored library**
+  (issue btclib-org/.github#342); `tests/fuzz_corpus_test.py` holds the seeds.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about

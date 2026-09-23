@@ -1,0 +1,111 @@
+---
+name: fuzz
+
+# ClusterFuzzLite over the entry points of these bindings that take
+# octets of no fixed size -- `xonly.parse`, `keys.parse`,
+# `dsa.parse_der`, the message of `ssa.verify` and
+# `hashes.tagged_sha256`, one `fuzz/fuzz_*.py` each. What is worth
+# fuzzing here is not the vendored library but this package's own
+# guards in front of it: a length checked in Python ahead of a C call
+# that is handed a pointer and no length fails inside the C, and the
+# address-sanitized build below is what turns that into a crash. An
+# entry point taking a fixed size is left out on purpose, a
+# byte-oriented fuzzer spending nearly every input on the size check
+# and reaching the parser almost never. btclib-org/.github#342 is where
+# the target set and the harness are argued and where this build was
+# proved on a runner; section 10 of the organization standard is where
+# `fuzz` is named as a sentinel every tree parsing a stranger's own
+# octets owes.
+#
+# `.clusterfuzzlite/` is what the two actions below read -- project.yaml,
+# Dockerfile and build.sh -- and build.sh discovers each target by glob,
+# so a new harness with a seed directory beside it needs no edit here.
+# `zkp` is outside this entry: BTCLIB_LIBSECP256K1_ZKP is unset in the
+# container, so the second extension is not built and no target reaches
+# it.
+#
+# No checkout step, and the omission is load-bearing. The build action
+# checks the repository out itself, and that checkout is what the
+# Dockerfile's `COPY .` carries in, vendored `secp256k1/` included. A
+# tree checked out with no `submodules:`, as actions/checkout leaves it
+# by default, holds the directory and none of the C, and the build has
+# nothing to compile. btclib-org/.github#342 measured both.
+#
+# Schedule and dispatch alone, no pull_request trigger: section 10 keeps
+# a calendar workflow off pull_request where one run costs minutes, and
+# one run here is minutes before any fuzzing starts -- the builder image
+# pulled, the vendored library and the extension compiled under the
+# sanitizer. What a pull request owes is the deterministic half, and
+# that is tests/fuzz_corpus_test.py in the ordinary suite: every seed
+# still accepted by its entry point. A crash this workflow finds is an
+# issue against the entry point and its regression is a test there too,
+# never a seed -- a hardened parser refuses the input, and that test
+# would turn red on it. workflow_dispatch is what runs the batch by hand
+# before a release.
+on:
+  schedule:
+    # Tuesday, hour 04, at this repository's minute: section 10's two
+    # tables, not this file's to restate. Cron runs from the default
+    # branch only, so this file fuzzes nothing until it reaches main --
+    # elsewhere the dispatch below is the way in
+    - cron: "8 4 * * 2"
+  workflow_dispatch:
+
+# least privilege for the GITHUB_TOKEN: nothing here writes to the
+# repository or to code scanning. `output-sarif: true` below asks the
+# action for a SARIF file of its findings and grants nothing: no job
+# here holds security-events: write, so nothing uploads it
+permissions:
+  contents: read
+
+# named literally rather than through github.workflow, as everywhere
+# else here. A scheduled run and a dispatch on main share one group, and
+# cancel-in-progress is wanted: a dispatch is how somebody asks for this
+# now, and it should not wait behind the scheduled batch's own hour
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  batch_fuzzing:
+    name: Batch fuzzing
+    # inert while the two triggers above are the only ones, and kept so
+    # that an hour of fuzzing stays off any trigger added later until
+    # this line is widened on purpose
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    # the image pull, the build and fuzz-seconds below, far above their
+    # sum
+    timeout-minutes: 90
+    steps:
+      # pinned to a commit SHA, with the tag above the pin rather than
+      # trailing it: the action's path and its sha fill the width
+      # .yamllint.yaml gives a line. `v1` is the only tag
+      # google/clusterfuzzlite publishes, and a major is a name its
+      # owner can move, so whether the pin is current is read from the
+      # tag rather than from this comment:
+      #
+      #   gh api repos/google/clusterfuzzlite/commits/v1 --jq .sha
+      #
+      # peels the tag to the commit a runner checks out, and a sha other
+      # than the one both steps carry is `v1` having moved
+      - name: Build fuzzers
+        # v1
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1
+        with:
+          language: python
+          sanitizer: address
+      # fuzz-seconds is the action's total time allotted to fuzzing
+      - name: Run fuzzers
+        # v1
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 3600
+          mode: batch
+          sanitizer: address
+          output-sarif: true
+
+  # no aggregate job: this is not a required check, and a branch rule
+  # naming it would block a merge on a finding meant to open an issue
+  # against the entry point it was found on

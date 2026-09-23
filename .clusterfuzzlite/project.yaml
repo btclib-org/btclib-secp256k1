@@ -1,0 +1,14 @@
+---
+# ClusterFuzzLite's project metadata, read by the build_fuzzers action
+# .github/workflows/fuzz.yml runs. `language` is the one field its
+# docs/build-integration/python_lang.md says a Python project must set.
+language: python
+
+# `address` and `undefined` are the two sanitizers that page names for
+# Python. The instrumentation reaches the vendored C alone -- build.sh
+# says why -- and `address` is what turns an overread there into a
+# crash, which is the finding the targets exist for; naming the list is
+# what a second sanitizer would extend, in step with the workflow's own
+# `sanitizer:` inputs.
+sanitizers:
+  - address
