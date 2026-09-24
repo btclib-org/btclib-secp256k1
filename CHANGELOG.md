@@ -57,6 +57,11 @@ release-notes length in the first place, and are still in
   3.11.3**, which `requires-python` admits and which lack PEP 706
   (closes #995).
 
+### `README.md`'s badge row gains the OpenSSF Best Practices badge
+
+- **It follows the Scorecard badge on the OpenSSF line, reading
+  bestpractices.dev project 14814** (issue btclib-org/.github#350).
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"
