@@ -1190,3 +1190,4 @@ environment = { CMAKE_C_COMPILER_LAUNCHER = "ccache" }
 # runner-minutes: the compiler is MSVC, whose support in ccache is
 # recent and partial, and sccache is a second tool to install and pin
 # for a saving nothing has measured on that platform yet
+# throwaway line for ISS 1002's touched-draft test; never lands
