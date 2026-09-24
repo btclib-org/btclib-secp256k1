@@ -762,11 +762,18 @@ ignore = [
     # a vector's own error cases -- where the exception is the loop's
     # own control flow, not a mistake a second pass would remove
     "try-except-in-loop",
-    # TD disciplines the format of a TODO/FIXME/XXX/HACK marker that FIX
-    # above already refuses outright wherever one opens a comment: this
+    # TD disciplines the format of a TODO/FIXME/XXX marker -- HACK draws
+    # no TD diagnostic at all -- that FIX above already refuses outright
+    # wherever one opens a comment, the four of them alike: this
     # repository finishes what it starts, so nothing here can carry a
     # marker for TD to discipline the format of in the first place
-    "TD",
+    "invalid-todo-tag",
+    "missing-todo-author",
+    "missing-todo-link",
+    "missing-todo-colon",
+    "missing-todo-description",
+    "invalid-todo-capitalization",
+    "missing-space-after-todo-colon",
     # zero-finding for a construct this codebase does not contain,
     # measured with `ruff check . --select <code>` rather than assumed:
     # DTZ without a naive datetime, G and LOG without logging, ASYNC

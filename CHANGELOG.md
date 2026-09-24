@@ -22,6 +22,12 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.8 (work in progress, not released yet)
 
+### `ignore` names the flake8-todos rules, not the bare `TD` code
+
+- **`[tool.ruff.lint] ignore` names flake8-todos by its rules,
+  `invalid-todo-tag` through `missing-space-after-todo-colon`**
+  (issue btclib-org/.github#1304).
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"
