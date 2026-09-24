@@ -10,9 +10,9 @@ name: os-ubuntu
 # .python-version pins, which is the `coverage` job of test.yml, beside
 # the lint, docs and packaging jobs. Everything exhaustive is here or in
 # os-macos.yml or os-windows.yml. What that gives up is the point of the
-# arrangement rather than a cost it hides: a regression on 3.10, on arm or
-# on PyPy is no longer refused before a merge, and sits on main until the
-# weekly sentinel for it runs. What it buys is every pull request -- the
+# arrangement rather than a cost it hides: a regression on the oldest
+# interpreter, on arm or on PyPy is no longer refused before a merge, and
+# sits on main until the weekly sentinel for it runs. What it buys is every pull request -- the
 # plan caps how many jobs the organization may run at once, shared across
 # every repository in it, and a matrix on each commit is what a reviewer
 # waits behind. REPOSITORY.md's Plan-gated settings has the figure and the
@@ -51,8 +51,8 @@ name: os-ubuntu
 #     uv run --locked --only-group build cibuildwheel \
 #         --platform windows --print-build-identifiers | grep pp
 #
-# answers nothing at all, and neither does musllinux on any PyPy, so
-# pypy3.10 everywhere and any PyPy on musl take the py3-none wheel too.
+# answers nothing at all, and neither does musllinux on any PyPy, so any
+# PyPy on musl takes the py3-none wheel too.
 #
 # What that artifact's packaging is asserted by, so the gap is the size
 # it is and no larger: check-dist installs the dynamic manylinux wheel
@@ -148,13 +148,11 @@ jobs:
         # Spelled as uv spells them, this being uv rather than
         # setup-python: `pypy3.11`, not the `pypy-3.11` setup-python takes
         python-version:
-          - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
           - "3.14"
           - "3.14t"
-          - "pypy3.10"
           - "pypy3.11"
 
     steps:

@@ -18,9 +18,9 @@ every source file's header against the regex rather than against the
 file it was transcribed from: a COPYRIGHT edited without the regex, or
 the other way round, passes every gate (btclib-org/.github#135).
 
-Regex rather than `tomllib` for the lines wanted out of pyproject.toml:
-the floor here is 3.10, and `tomllib` is 3.11. Once that floor moves,
-this can read the file directly instead.
+Regex rather than `tomllib` for the lines wanted out of pyproject.toml,
+though every interpreter this package supports carries `tomllib`:
+reading the file with it instead is btclib-org/btclib-secp256k1#994.
 """
 
 import re
@@ -42,8 +42,8 @@ _NOTICE_RGX_RE = r'notice-rgx\s*=\s*"((?:[^"\\]|\\.)*)"'
 # the regex metacharacters notice-rgx itself has to escape to stay a
 # literal match for COPYRIGHT's text: this is deliberately narrower than
 # `re.escape`, whose own special-character set is the same across every
-# CPython and PyPy version this package supports (3.10 through 3.14,
-# verified against 3.15.0b4 too) but is unconditionally wider than what
+# CPython and PyPy version this package supports (verified against
+# 3.15.0b4 too) but is unconditionally wider than what
 # notice-rgx actually escapes -- it also escapes "#" and whitespace, for
 # re.VERBOSE safety, which the committed notice-rgx does not. A
 # derivation through re.escape would fail this test's round trip on

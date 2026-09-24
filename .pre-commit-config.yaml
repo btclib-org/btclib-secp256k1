@@ -647,10 +647,9 @@ repos:
         # this package is type-checked at, so two machines disagreeing on
         # it is the gate itself disagreeing. Nothing moves an additional
         # dependency, so these are moved by hand, with the lint and test
-        # groups of uv.lock: they are what it resolves for python 3.10 and
-        # later, which is what runs the hook and, since 3.9 was dropped,
-        # the whole of what the lock resolves for — it used to reach back
-        # to 3.9 for the package and pin older versions of these there
+        # groups of uv.lock: they are what it resolves for the floor
+        # requires-python declares and later, which is what runs the hook
+        # and the whole of what the lock resolves for
         additional_dependencies:
           - cffi==2.1.1
           - types-cffi==2.1.0.20260827

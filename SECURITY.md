@@ -160,8 +160,8 @@ These are known and inherent, not vulnerabilities:
     `memoryview` and `mmap` and `array.array("B")` alike — write the
     secret there and return None, so no `bytes` of it is ever made.
     That breadth is the run time's: the annotation is a `bytearray` or a
-    `memoryview`, `collections.abc.Buffer` being python 3.12 where the
-    floor here is 3.10, so a caller running `mypy --strict` passes
+    `memoryview`, `collections.abc.Buffer` being python 3.12, above the
+    floor here, so a caller running `mypy --strict` passes
     anything else as `memoryview(x)`, which copies nothing. They are
     `keys.prvkey_negate`, `keys.prvkey_tweak_add`,
     `keys.prvkey_tweak_mul`, `xonly.prvkey_tweak_add`,

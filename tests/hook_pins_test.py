@@ -54,9 +54,9 @@ that group holds the `hatchling` one of the requirements.
 `test_pyroma_installs_the_backend_build_system_declares` compare each
 copy with `pyproject.toml`, the hook found by its `id`.
 
-Parsed rather than loaded. `uv.lock` is toml and the floor here is 3.10,
-where `tomllib` is not yet in the standard library, which is the reason
-`copyright_test.py` beside this one reads pyproject.toml the same way;
+Parsed rather than loaded. `uv.lock` is toml, read by hand the way
+`copyright_test.py` beside this one reads pyproject.toml, which
+btclib-org/btclib-secp256k1#994 would move to `tomllib`;
 `.pre-commit-config.yaml` is yaml and no group here carries a parser for
 it. The shapes narrow enough to match are a `[[package]]` table with a
 name and a version, the two this file writes an `additional_dependencies`

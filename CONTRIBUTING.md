@@ -563,7 +563,7 @@ uv keys it on the sources, which do not tell it that the compiled
 extension belongs to one ABI version only.
 
 ```shell
-uv run --python 3.10 --no-cache pytest
+uv run --python 3.11 --no-cache pytest
 ```
 
 On a Windows arm64 machine, mind which interpreter that request gets:
@@ -586,7 +586,7 @@ Naming the environment keeps the default one instead, at the price of a
 second build of the extension:
 
 ```shell
-UV_PROJECT_ENVIRONMENT=.venv-3.10 uv run --python 3.10 --no-cache pytest
+UV_PROJECT_ENVIRONMENT=.venv-3.11 uv run --python 3.11 --no-cache pytest
 ```
 
 `.gitignore` matches that name with `.venv*/`, the comment beside the
@@ -876,10 +876,10 @@ run locally.
   the interpreter the row names:
 
   ```shell
-  uv run --locked --no-default-groups --group test --python 3.10 \
+  uv run --locked --no-default-groups --group test --python 3.11 \
       pytest --no-cov
   BTCLIB_LIBSECP256K1_DYNAMIC=true uv run --locked --no-default-groups \
-      --group test --python 3.10 --reinstall-package btclib-secp256k1 \
+      --group test --python 3.11 --reinstall-package btclib-secp256k1 \
       --no-cache pytest --no-cov
   ```
 
@@ -1265,19 +1265,18 @@ tree's prose:
   The reasoning is in the README, under What the boundary checks
 - **warnings are errors** (`filterwarnings`), because the spread of
   interpreters this package claims turns a deprecation into a breakage
-- **a script under `.github/scripts` runs on Python 3.10.11**, which is
-  older than any 3.10 a machine here is likely to have. cibuildwheel
-  pins the macOS `cp310` to python.org's `python-3.10.11-macos11.pkg`
-  and the Windows one to that same patch — 3.10.11 is the last 3.10
+- **a script under `.github/scripts` runs on Python 3.11.9**, which is
+  older than any 3.11 a machine here is likely to have. cibuildwheel
+  pins the macOS `cp311` to python.org's `python-3.11.9-macos11.pkg`
+  and the Windows one to that same patch — 3.11.9 is the last 3.11
   python.org publishes an installer for — where a manylinux image
   carries a current patch instead, so a standard library keyword
-  backported after it (`TarFile.extractall`'s `filter` arrived in
-  3.10.12) is fatal on the macOS and Windows wheel jobs and fine on the
-  Linux ones. No static check reaches it: mypy's `python_version` is a
-  minor version and it refuses a patch, so nothing it can be aimed at
-  tells 3.10.11 from 3.10.12. What does is the suite the wheel jobs run
-  under `cp310`, which a pull request builds on every image but
-  `windows-11-arm`, where there is no `cp310` to build
+  backported after it is fatal on the macOS and Windows wheel jobs and
+  fine on the Linux ones. No static check reaches it: mypy's
+  `python_version` is a minor version and it refuses a patch, so
+  nothing it can be aimed at tells one patch from the next. What does is
+  the suite the wheel jobs run under `cp311`, which a pull request
+  builds on every image
 - **the version is declared once,** in `pyproject.toml`, and
   `__version__` reads the installed metadata. Never bump it in an
   ordinary change: releases are cut by a maintainer following

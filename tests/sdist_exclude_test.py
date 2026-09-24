@@ -24,9 +24,9 @@ One test does read the real `pyproject.toml`: the canary asserting that
 the same file. That is not the hook's own question -- it asks whether
 the walk is still reading the array TOML says is there, which is the
 one thing a hook matching a substituted pattern set could not report.
-`tomllib` is 3.11 and this package's floor is 3.10, which is why the
-script parses by hand and why the canary is `importorskip`ped rather
-than written into the script.
+The script parses by hand and the canary is `importorskip`ped rather
+than written into the script; moving the script to `tomllib` is
+btclib-org/btclib-secp256k1#994.
 
 The script is loaded by path, `.github/scripts` being no package, and
 once: `monkeypatch` undoes what each test does to it.

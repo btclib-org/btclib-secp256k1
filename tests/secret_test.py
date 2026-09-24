@@ -226,7 +226,7 @@ def test_take_accepts_any_writable_contiguous_buffer() -> None:
     produced it: an `mlock`ed `mmap` is a plausible place for the caller
     this argument exists for to want a secret. `MutableBytesLike` names
     the two a typed caller passes bare, `collections.abc.Buffer` being
-    3.12 where the floor here is 3.10; anything else is wrapped in a
+    3.12, above the floor here; anything else is wrapped in a
     `memoryview`, which costs nothing and is what these two do.
     """
     with mmap.mmap(-1, 32) as anonymous:

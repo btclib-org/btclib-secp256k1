@@ -29,10 +29,10 @@ and a test that hard-coded a date would be one more thing to move. What
 it holds is the weaker and checkable claim: whatever the three say, they
 say the same thing.
 
-Read with a regex rather than parsed. `tomllib` arrives in 3.11 and the
-floor here is 3.10, which is the reason `copyright_test.py` reads
-pyproject.toml the same way; a workflow is yaml and no group here
-carries a parser for it.
+Read with a regex rather than parsed. A workflow is yaml and no group
+here carries a parser for it; pyproject.toml is read the way
+`copyright_test.py` reads it, which btclib-org/btclib-secp256k1#994
+would move to `tomllib`.
 """
 
 import os
@@ -51,7 +51,7 @@ _WORKFLOWS = {
     for name in _SENTINELS
 }
 
-# "3.10" out of `requires-python = ">=3.10"`, the floor and nothing else:
+# "3.11" out of `requires-python = ">=3.11"`, the floor and nothing else:
 # an upper bound is not declared here and would be a different claim
 _FLOOR = re.compile(r'^requires-python = ">=(?P<version>3\.\d+)"', re.MULTILINE)
 # the per-version classifiers, not `:: 3` or `:: 3 :: Only`, which say
@@ -124,18 +124,21 @@ _INTERPRETER = re.compile(r"\b3\.\d+t?\b")
 # of digits after it the minor, and the "t" the free-threaded ABI tag
 # `--print-build-identifiers` spells and no workflow file does
 _CIBW_FREE_THREADED = re.compile(r"^cp3(?P<minor>\d+)t-", re.MULTILINE)
-# the floor of pyproject.toml's `test` group entry for cibuildwheel, which
-# is the one entry carrying a marker after its version: `build` has an
-# entry of its own with none, and that one is not this test's to read. It
-# is read out of the entry rather than restated, so that the floor is
-# written once, and `_require_cibuildwheel` holds the installed release to it
-_CIBW_FLOOR = re.compile(r'^    "cibuildwheel>=(?P<version>[0-9.]+);', re.MULTILINE)
+# the floor of pyproject.toml's `test` group entry for cibuildwheel, read
+# inside that group's array and nowhere else: `build` has an entry of its
+# own, and that one is not this test's to read. It is read out of the entry
+# rather than restated, so that the floor is written once, and
+# `_require_cibuildwheel` holds the installed release to it
+_CIBW_FLOOR = re.compile(
+    r'^test = \[\n(?:    .*\n)*?    "cibuildwheel>=(?P<version>[0-9.]+)",$',
+    re.MULTILINE,
+)
 # cibuildwheel's own vocabulary for --platform, not the runner images
 # build-cibuildwheel's matrix names: ubuntu-latest and ubuntu-24.04-arm
 # are both "linux", macos-26-intel and macos-latest "macos", windows-latest
 # and windows-11-arm "windows". Asked once per platform rather than once,
 # because [tool.cibuildwheel]'s `skip` can name one platform's identifier
-# and not another's -- today's `pp*-win* cp310-win_arm64` already does
+# and not another's -- today's `pp*-win*` already does
 _CIBW_PLATFORMS = ("linux", "macos", "windows")
 # `jobs:` and everything under it. The keys of `on:` sit at the indent a
 # job key does, so a pattern that did not cut here would offer
@@ -279,8 +282,8 @@ def _require_cibuildwheel() -> None:
         reason=(
             "cibuildwheel is not installed here, and it is what lists the"
             " free-threaded identifiers the gate builds: the `test` group"
-            " carries it from Python 3.11, and the wheel test and the sdist"
-            " test do not carry it"
+            " carries it, and the wheel test and the sdist test do not carry"
+            " it"
         ),
     )
 
@@ -290,7 +293,7 @@ def _child_environment() -> dict[str, str]:
 
     Every `CIBW_*` variable overrides `[tool.cibuildwheel]`, and
     `--print-build-identifiers` prints what the override selects: with
-    `CIBW_BUILD` set to `cp310-*` it prints cp310's. What this asks is
+    `CIBW_BUILD` set to `cp311-*` it prints cp311's. What this asks is
     what the tree configures, so the caller's settings do not reach the
     child.
     """
@@ -664,7 +667,7 @@ def test_a_pull_request_builds_a_free_threaded_interpreter_on_every_platform() -
 _CLASSIFIER_TEXT = (
     '    "Programming Language :: Python :: Free Threading :: 2 - Beta",\n'
 )
-_WITHOUT_FREE_THREADED = "cp310-* cp311-win_arm64"
+_WITHOUT_FREE_THREADED = "cp311-*"
 
 
 def test_a_selection_without_the_free_threaded_pattern_lacks_it_everywhere(
@@ -672,8 +675,8 @@ def test_a_selection_without_the_free_threaded_pattern_lacks_it_everywhere(
 ) -> None:
     """The control for the test above: it can fail, and on every platform.
 
-    A selection of `cp310-*` and `cp311-win_arm64` keeps no free-threaded
-    identifier on any platform, and with `cp314t-*` added it keeps one on
+    A selection of `cp311-*` alone keeps no free-threaded identifier on
+    any platform, and with `cp314t-*` added it keeps one on
     each. The classifier is appended to what `pyproject.toml` holds, so
     that this holds of a tree that stopped declaring it while
     `_require_cibuildwheel` still reads its floor. The caller's `CIBW_SKIP`,
@@ -1059,13 +1062,16 @@ def test_cibuildwheel_is_asked_only_where_a_job_in_the_closure_calls_it(
 
 
 def test_the_floor_is_the_test_groups_entry_and_not_the_build_groups() -> None:
-    """`_CIBW_FLOOR` reads the one entry that carries a marker.
+    """`_CIBW_FLOOR` reads the entry inside the `test` group's array.
 
-    `build` names cibuildwheel too, with no marker and a lower floor,
-    and that lower floor is not the one an installed release is held to.
+    `build` names cibuildwheel too, with a floor of its own, and that
+    floor is not the one an installed release is held to.
     """
     assert len(_CIBW_FLOOR.findall(_PYPROJECT)) == 1
-    assert _CIBW_FLOOR.search('    "cibuildwheel>=2.23.4",\n') is None
+    tested = 'test = [\n    "pytest>=9.1.1",\n    "cibuildwheel>=3.1.0",\n'
+    built = 'build = [\n    "build>=1.6.1",\n    "cibuildwheel>=2.23.4",\n'
+    assert _CIBW_FLOOR.findall(tested + "]\n" + built) == ["3.1.0"]
+    assert _CIBW_FLOOR.search(built) is None
 
 
 def test_a_cibuildwheel_that_exits_non_zero_fails_with_its_own_stderr() -> None:

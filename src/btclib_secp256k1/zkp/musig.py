@@ -82,7 +82,7 @@ import secrets
 import threading
 from collections.abc import Sequence
 from types import TracebackType
-from typing import Any, overload
+from typing import Any, Self, overload
 
 from btclib_secp256k1 import BytesLike, CData, MutableBytesLike
 from btclib_secp256k1._scalar import in_range, octets, scalar
@@ -950,10 +950,7 @@ class SecretNonce:
         if secnonce is not None:
             wipe(secnonce)
 
-    # PYI034 asks for `typing.Self` here, and that is 3.11 while this
-    # package supports 3.10, as `btclib_secp256k1.musig.SecretNonce`'s
-    # own comment says
-    def __enter__(self) -> SecretNonce:  # noqa: PYI034
+    def __enter__(self) -> Self:
         """Return this secret nonce, for the `with` block that wipes it.
 
         Returns:

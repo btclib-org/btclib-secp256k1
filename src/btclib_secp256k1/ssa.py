@@ -11,7 +11,7 @@ https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
 from __future__ import annotations
 
 from types import TracebackType
-from typing import overload
+from typing import Self, overload
 
 from . import BytesLike, CData, MutableBytesLike, ffi, keys, lib, xonly
 from ._scalar import entropy, octets, optional_entropy, scalar
@@ -456,13 +456,7 @@ class Signer:
             wipe(self._keypair)
             self._keypair = None
 
-    # PYI034 asks for `typing.Self` here, and that is 3.11 while this
-    # package supports 3.10. The class itself says the same thing of a
-    # class nothing subclasses, and `typing_extensions` is a runtime
-    # dependency this package does not have and would not add for one
-    # annotation ([build-system] requires carries it for scripts/, which
-    # never ships in the wheel)
-    def __enter__(self) -> Signer:  # noqa: PYI034
+    def __enter__(self) -> Self:
         """Return this signer, for the `with` block that wipes it.
 
         Returns:

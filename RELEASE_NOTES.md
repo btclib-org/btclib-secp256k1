@@ -7,6 +7,11 @@ a tag is generated from.
 
 ## v0.8.0.8 (work in progress, not released yet)
 
+- **Breaking: Python 3.10 is no longer supported, and the minimum is
+  3.11.** No `cp310` wheel is published, and pip on 3.10 resolves to
+  0.8.0.7, the newest release whose `requires-python` admits it. 3.10's
+  end of life is 2026-10-31.
+
 ## v0.8.0.7
 
 Non-breaking: no public name was added, removed or renamed, and no

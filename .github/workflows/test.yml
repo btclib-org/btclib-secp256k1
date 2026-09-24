@@ -532,20 +532,14 @@ jobs:
       # branch are reached by the run that follows the merge, and the
       # release publishes nothing this shortcut has touched
       #
-      # cp310 is the floor requires-python declares, and building it is
-      # what lets a pull request reach Python 3.10.11's own standard
-      # library. A newer interpreter alone leaves that to the push to
-      # main, so a keyword absent from 3.10.11 (#529) passes a pull
-      # request and fails there.
+      # cp311 is the floor requires-python declares, and building it is
+      # what lets a pull request reach the standard library of the patch
+      # release cibuildwheel pins that interpreter to on the macOS and
+      # Windows images. A newer interpreter alone leaves that to the push
+      # to main, so a keyword absent from that patch passes a pull request
+      # and fails there -- #529 is that failure, on 3.10.11.
       #
-      # windows-11-arm cannot build cp310 at all: the skip entry in
-      # [tool.cibuildwheel] excludes cp310-win_arm64 on every trigger,
-      # there being no interpreter on that native arm64 runner to build
-      # it with. Its own oldest interpreter is cp311, which the second
-      # pattern below selects there and matches nothing on any other
-      # image.
-      #
-      # cp314t is the free-threaded build, and the third pattern selects
+      # cp314t is the free-threaded build, and the second pattern selects
       # it on every image: pyproject.toml declares the Free Threading
       # classifier on the ground that the gate refuses a landing that
       # breaks that wheel, so the required check has to build it and run
@@ -560,7 +554,7 @@ jobs:
         # green, the log showing cp310 through cp314t, and only the
         # unchanged job duration to say so
         shell: bash
-        run: echo "CIBW_BUILD=cp310-* cp311-win_arm64 cp314t-*" >> "$GITHUB_ENV"
+        run: echo "CIBW_BUILD=cp311-* cp314t-*" >> "$GITHUB_ENV"
 
       # what every member of the wheels this uploads carries as its
       # timestamp. hatchling stamps the members it writes at a constant
