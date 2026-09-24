@@ -17,28 +17,20 @@ transcribed by hand as a regex, and the CPY hook it configures checks
 every source file's header against the regex rather than against the
 file it was transcribed from: a COPYRIGHT edited without the regex, or
 the other way round, passes every gate (btclib-org/.github#135).
-
-Regex rather than `tomllib` for the lines wanted out of pyproject.toml,
-though every interpreter this package supports carries `tomllib`:
-reading the file with it instead is btclib-org/btclib-secp256k1#994.
 """
 
 import re
+import tomllib
 from pathlib import Path
 
 _ROOT = Path(__file__).parents[1]
+_PYPROJECT = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 # the holder line, with no year group to make a range optional: section
 # 14 of the organization standard has LICENSE name the holder and no
 # range, so a year left in the file is read as part of the holder here
 # and disagrees with `authors`, which is the direction that reports it
 # rather than tolerating it
 _HOLDER_RE = r"Copyright \([Cc]\) (.+)"
-_AUTHOR_RE = r'authors\s*=\s*\[\{\s*name\s*=\s*"([^"]+)"'
-# a TOML basic string: any run of characters that are neither a quote nor
-# a backslash, or a backslash followed by whatever it escapes -- general
-# enough to capture notice-rgx's own backslash escapes without assuming
-# which ones it uses
-_NOTICE_RGX_RE = r'notice-rgx\s*=\s*"((?:[^"\\]|\\.)*)"'
 # the regex metacharacters notice-rgx itself has to escape to stay a
 # literal match for COPYRIGHT's text: this is deliberately narrower than
 # `re.escape`, whose own special-character set is the same across every
@@ -60,21 +52,11 @@ def _license_holder() -> str:
 
 
 def _pyproject_author() -> str:
-    text = (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    match = re.search(_AUTHOR_RE, text)
-    assert match, "pyproject.toml has no 'authors = [{ name = ... }]' line"
-    return match.group(1)
+    return str(_PYPROJECT["project"]["authors"][0]["name"])
 
 
 def _pyproject_notice_rgx() -> str:
-    text = (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    match = re.search(_NOTICE_RGX_RE, text)
-    assert match, "pyproject.toml has no [tool.ruff.lint.flake8-copyright] notice-rgx"
-    # undoes exactly the escaping a TOML basic string commits: "\\" is the
-    # only two-character escape notice-rgx's own text needs, "\\(" naming
-    # a single backslash followed by a literal "(" rather than two
-    # backslashes
-    return match.group(1).replace("\\\\", "\\")
+    return str(_PYPROJECT["tool"]["ruff"]["lint"]["flake8-copyright"]["notice-rgx"])
 
 
 def _copyright_as_regex() -> str:

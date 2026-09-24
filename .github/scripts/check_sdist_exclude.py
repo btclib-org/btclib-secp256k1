@@ -44,18 +44,14 @@ the same tracked file under both -- measured against
 call at all. The third, an upstream request that the plugin report what
 it subtracts, remains open against henryiii/check-sdist and would retire
 this hook if it landed; nothing here depends on it landing.
-
-Regex rather than `tomllib` for the exclude list, the way
-`tests/copyright_test.py` reads pyproject.toml: moving both to `tomllib`
-is btclib-org/btclib-secp256k1#994.
 """
 
 from __future__ import annotations
 
-import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pathspec
@@ -65,16 +61,6 @@ import pathspec
 _GIT = shutil.which("git") or "git"
 
 _ROOT = Path(__file__).resolve().parents[2]
-
-# the sdist target's own table, up to the next top-level table header (or
-# the end of the file): scoped so that [tool.ruff]'s and [tool.mypy]'s
-# own "exclude = [" arrays elsewhere in pyproject.toml are never in reach
-_TARGET_SECTION = "[tool.hatch.build.targets.sdist]"
-_EXCLUDE_OPEN_RE = re.compile(r"^exclude\s*=\s*\[(?P<rest>.*)$")
-# one TOML basic string, alone on its line, with the trailing comma this
-# array writes on every entry: no backslash, so an escape this walk
-# would hand on unprocessed is refused rather than read wrongly
-_ENTRY_RE = re.compile(r'^"(?P<pattern>[^"\\]*)",$')
 
 # the tracked files the exclude list drops from the sdist on purpose,
 # spelled as `git ls-files` prints them rather than as the entry that
@@ -86,30 +72,6 @@ _DELIBERATE = ("COPYRIGHT",)
 def sdist_exclude_patterns(pyproject_toml: str) -> list[str] | None:
     """Return `[tool.hatch.build.targets.sdist]`'s `exclude` list.
 
-    A line-based walk rather than one regex spanning the whole array: a
-    comment inside the array is free to hold a `]` of its own (this
-    file's own comments cite `[tool.check-sdist]`, brackets included),
-    which a single "up to the next `]`" pattern would stop at instead of
-    the array's real close. Reading line by line and trusting only a
-    line that is *exactly* `]` -- this table's own closing convention --
-    to end the array is what keeps such a comment from being mistaken
-    for the end.
-
-    The rest of that convention is read just as literally: the array
-    opens on a line ending in `[`, and every entry is one double-quoted
-    string with a trailing comma, alone on its line, with blank lines
-    and whole-line comments free to sit between entries. Anything else
-    is refused rather than answered, a walk this simple seeing not
-    *less* of another shape but something else. Read rather than
-    refused, an inline `exclude = ["a", "b"]` would never leave the
-    array, harvesting every double-quoted string down to the next lone
-    `]` out of tables it never entered; a `]` carrying a trailing
-    comment leaves it inside the array the same way; a single-quoted
-    entry offers no double-quoted run to find and would drop out; and a
-    comment sharing a line with an entry would add whatever *it* quotes.
-    Each of those is a different pattern set, and a caller matching one
-    reports nothing wrong about a list it never read.
-
     Args:
         pyproject_toml: the file's text.
 
@@ -117,34 +79,19 @@ def sdist_exclude_patterns(pyproject_toml: str) -> list[str] | None:
         The list, in the order it is written; an empty one where the
         table or the key is absent -- the same fallback check-sdist's
         own hatchling plugin (`git_only_excludes`) uses, so this reads
-        the identical question it answers; or None where the array is
-        outside the shape above, which is a check that cannot answer
-        rather than a check that passes.
+        the identical question it answers; or None where the file is no
+        TOML or the value is not an array of strings, which is a check
+        that cannot answer rather than a check that passes.
     """
-    in_target_section = False
-    in_array = False
-    patterns: list[str] = []
-    for line in pyproject_toml.splitlines():
-        stripped = line.strip()
-        if in_array:
-            if stripped == "]":
-                return patterns
-            if not stripped or stripped.startswith("#"):
-                continue
-            entry = _ENTRY_RE.match(stripped)
-            if entry is None:
-                return None
-            patterns.append(entry.group("pattern"))
-            continue
-        if stripped.startswith("["):
-            in_target_section = stripped == _TARGET_SECTION
-        elif in_target_section:
-            opened = _EXCLUDE_OPEN_RE.match(stripped)
-            if opened is not None:
-                if opened.group("rest"):
-                    return None
-                in_array = True
-    return None if in_array else patterns
+    try:
+        parsed = tomllib.loads(pyproject_toml)
+    except tomllib.TOMLDecodeError:
+        return None
+    target = parsed.get("tool", {}).get("hatch", {}).get("build", {})
+    exclude = target.get("targets", {}).get("sdist", {}).get("exclude", [])
+    if not isinstance(exclude, list) or not all(isinstance(e, str) for e in exclude):
+        return None
+    return exclude
 
 
 def tracked_files(root: Path) -> list[str] | None:
@@ -196,20 +143,17 @@ def main() -> int:
     Returns:
         0 where the entries match exactly `_DELIBERATE` among the
         tracked files, 1 where one matches anything else, where a
-        member of `_DELIBERATE` is matched by nothing, where the
-        exclude array is outside the shape `sdist_exclude_patterns`
-        reads, or where `git ls-files` itself failed.
+        member of `_DELIBERATE` is matched by nothing, where
+        `sdist_exclude_patterns` cannot read the list, or where
+        `git ls-files` itself failed.
     """
     pyproject_toml = (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     exclude = sdist_exclude_patterns(pyproject_toml)
     if exclude is None:
         print(
-            "[tool.hatch.build.targets.sdist]'s exclude array is outside what"
-            " this check reads: the array opens on a line ending in [, every"
-            " entry is one double-quoted string with a trailing comma alone on"
-            " its line, and the array closes on a line reading only ]. Any"
-            " other shape is read as a different set of patterns, which is why"
-            " this fails rather than answering"
+            "pyproject.toml is no TOML, or [tool.hatch.build.targets.sdist]'s"
+            " exclude is not an array of strings: this check has no pattern"
+            " set to match, which is why it fails rather than answering"
             " (btclib-org/btclib-secp256k1#655)",
             file=sys.stderr,
         )

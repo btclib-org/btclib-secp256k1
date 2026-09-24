@@ -45,6 +45,18 @@ release-notes length in the first place, and are still in
 - **`requires-python` is `>=3.11`, so no `cp310` wheel is built and no
   sentinel runs 3.10**, whose end of life is 2026-10-31.
 
+### The tests and `.github/scripts` read TOML with `tomllib`
+
+- **`pyproject.toml` and `uv.lock` are loaded rather than matched line
+  by line**, so `check_sdist_exclude.py` reads any TOML spelling of the
+  exclude array instead of refusing all but one (closes #994).
+
+### The `data_filter` fallback names the interpreters it serves
+
+- **`check_wheel_reproducibility.py` keeps it for CPython 3.11.0 to
+  3.11.3**, which `requires-python` admits and which lack PEP 706
+  (closes #995).
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"

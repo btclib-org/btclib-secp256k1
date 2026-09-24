@@ -339,9 +339,9 @@ def test_extract_archive_is_fully_trusted_without_the_data_filter(
 ) -> None:
     """Without `tarfile.data_filter` the extraction is `fully_trusted`.
 
-    The interpreter that has no `data_filter` is Python 3.10.11, which is
-    what cibuildwheel pins `cp310` to on the macOS and Windows images,
-    and no interpreter the local gate runs is one -- so the fallback of
+    The interpreters that have no `data_filter` are CPython 3.11.0 to
+    3.11.3, which `requires-python` admits, and no interpreter the local
+    gate runs is one -- so the fallback of
     `_extract_archive`'s `getattr` is asserted here or nowhere. What it
     reverts to is CPython's own behaviour before the filter existed: the
     member below is extracted where its name points, outside the

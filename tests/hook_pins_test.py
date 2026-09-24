@@ -54,16 +54,12 @@ that group holds the `hatchling` one of the requirements.
 `test_pyroma_installs_the_backend_build_system_declares` compare each
 copy with `pyproject.toml`, the hook found by its `id`.
 
-Parsed rather than loaded. `uv.lock` is toml, read by hand the way
-`copyright_test.py` beside this one reads pyproject.toml, which
-btclib-org/btclib-secp256k1#994 would move to `tomllib`;
-`.pre-commit-config.yaml` is yaml and no group here carries a parser for
-it. The shapes narrow enough to match are a `[[package]]` table with a
-name and a version, the two this file writes an `additional_dependencies`
-value in -- a bracketed list on the key's own line, and `- ` items
-indented under it -- a hook's `entry` and its `args` on one line, and an
-array of `pyproject.toml` -- `[build-system]`'s `requires` and a
-dependency group -- opened alone on its line, one string to a line.
+`uv.lock` and `pyproject.toml` are loaded with `tomllib`.
+`.pre-commit-config.yaml` is parsed rather than loaded, being yaml, for
+which no group here carries a parser. The shapes narrow enough to match
+are the two this file writes an `additional_dependencies` value in -- a
+bracketed list on the key's own line, and `- ` items indented under it
+-- and a hook's `entry` and its `args` on one line.
 
 A value is read whole or not at all. The comma separates a flow
 sequence's items in yaml and a specifier set's clauses in PEP 440, so
@@ -78,15 +74,19 @@ asserting the pins beside it while the rest goes unread.
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import pytest
 
 _ROOT = Path(__file__).parents[1]
 _CONFIG = _ROOT / ".pre-commit-config.yaml"
-_LOCK = _ROOT / "uv.lock"
-_PYPROJECT = _ROOT / "pyproject.toml"
+_LOCK = (_ROOT / "uv.lock").read_text(encoding="utf-8")
+_PACKAGES: list[dict[str, Any]] = tomllib.loads(_LOCK)["package"]
+_PYPROJECT: dict[str, Any] = tomllib.loads(
+    (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+)
 
 # the mypy hook's block, from its repo line to the next hook's: what
 # `test_every_mypy_pin_is_one_the_lock_resolves` reads is that hook's and
@@ -107,12 +107,6 @@ _NAME = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)(?P<specifiers>[^;]*)(?:;.*)?$")
 # `===` ahead of `==` so that arbitrary equality is read as itself rather
 # than as `==` naming a version beginning with `=`
 _CLAUSE = re.compile(r"^(?P<op>===|==|!=|~=|<=|>=|<|>)\s*(?P<version>[^\s,;]+)$")
-# where uv records a resolution other than its default: the `[options]`
-# table, whose `resolution-mode` key a lock resolved to `lowest-direct`
-# carries as `"lowest-direct"` and the ordinary lock of this tree has no
-# such table to carry it in
-_OPTIONS = re.compile(r"^\[options\]\n(?P<keys>(?:[^\n\[].*\n)*)", re.MULTILINE)
-_MODE = re.compile(r'^resolution-mode = "(?P<mode>[^"]+)"$', re.MULTILINE)
 # a hook's first line, whatever the indentation its list is written at
 _HOOK = re.compile(r"^(?P<indent> *)- id: (?P<id>[^\s#]+)\s*$")
 # a hook's `entry` written on the key's own line: a block scalar has an
@@ -122,10 +116,6 @@ _ENTRY_LINE = re.compile(r"^ +entry: (?P<value>[^|>\s].*)$", re.MULTILINE)
 _ARGS_LINE = re.compile(r"^ +args: (?P<value>\[.*\])$", re.MULTILINE)
 # the dependency group `uv run` is asked for, with the flag alone naming it
 _ONLY_GROUP = re.compile(r"(?:^|\s)--only-group[= ](?P<group>[A-Za-z0-9_.-]+)(?=\s|$)")
-# one toml string alone on its line: a basic one with no escape in it, or
-# a literal one, which is how the marker-gated requirements quote their
-# double-quoted versions. The trailing comma is the array's own
-_ENTRY = re.compile(r"""^(?:"(?P<basic>[^"\\]*)"|'(?P<literal>[^']*)'),?$""")
 
 
 class _Requirement(NamedTuple):
@@ -437,60 +427,22 @@ def _only_group(entry: str) -> str:
     return groups[0] if len(groups) == 1 else ""
 
 
-def _array(pyproject: str, table: str, key: str) -> list[str]:
-    """Return the entries of `key`'s array in `table`, each as written.
-
-    A line-based walk, as `check_sdist_exclude.py`'s is of its own
-    array: a comment inside this one is free to hold a `]`, and only a
-    line that is exactly `]` ends it. The array opens on a line
-    that is `<key> = [` and nothing else, and every entry is one
-    string alone on its line, with blank lines and whole-line comments
-    free to sit between them. Anything else is refused rather than read
-    in part, since a list read in part is an array the file does not
-    hold and a comparison against it passes on the part -- an entry
-    that is a table, as a group's `include-group` is, included.
-
-    Args:
-        pyproject: the file's text.
-        table: the table's header, brackets included.
-        key: the array's key.
-
-    Returns:
-        The entries, in the order they are written; empty where the
-        table has no such key in that shape.
-    """
-    opening = re.compile(rf"^{re.escape(key)}\s*=\s*\[$")
-    in_table = False
-    in_array = False
-    found: list[str] = []
-    for line in pyproject.splitlines():
-        stripped = line.strip()
-        if in_array:
-            if stripped == "]":
-                return found
-            if not stripped or stripped.startswith("#"):
-                continue
-            entry = _ENTRY.match(stripped)
-            if entry is None:
-                return []
-            found.append(
-                entry["basic"] if entry["basic"] is not None else entry["literal"]
-            )
-        elif stripped.startswith("["):
-            in_table = stripped == table
-        elif in_table and opening.match(stripped):
-            in_array = True
-    return []
-
-
-def _build_requires(pyproject: str) -> list[str]:
+def _build_requires(pyproject: dict[str, Any]) -> list[str]:
     """Return `[build-system]`'s `requires`, each entry as it is written."""
-    return _array(pyproject, "[build-system]", "requires")
+    requires: list[str] = pyproject.get("build-system", {}).get("requires", [])
+    return requires
 
 
-def _group(pyproject: str, name: str) -> list[str]:
-    """Return the requirements of the dependency group `name`, as written."""
-    return _array(pyproject, "[dependency-groups]", name)
+def _group(pyproject: dict[str, Any], name: str) -> list[str]:
+    """Return the requirements of the dependency group `name`, as written.
+
+    A group holding anything but strings is refused rather than read in
+    part, since a list read in part is a group the file does not hold and
+    a comparison against it passes on the part: an entry that is a table,
+    as a group's `include-group` is, names no requirement.
+    """
+    items = pyproject.get("dependency-groups", {}).get(name, [])
+    return items if all(isinstance(item, str) for item in items) else []
 
 
 def _backend(items: list[str]) -> list[str]:
@@ -545,12 +497,10 @@ def _pins(values: list[list[_Requirement]]) -> tuple[tuple[str, str], ...]:
 
 def _locked(name: str) -> str | None:
     """Return the version `uv.lock` resolves for `name`, or None."""
-    pattern = re.compile(
-        rf'^name = "{re.escape(name)}"\nversion = "(?P<version>[^"]+)"$',
-        re.MULTILINE,
-    )
-    match = pattern.search(_LOCK.read_text(encoding="utf-8"))
-    return match["version"] if match else None
+    for package in _PACKAGES:
+        if package["name"] == name:
+            return package.get("version")
+    return None
 
 
 def _resolution_mode(lock: str) -> str:
@@ -563,9 +513,8 @@ def _resolution_mode(lock: str) -> str:
         The mode its `[options]` table records, or "highest" where it
         records none: uv's default, and the one the hook pins follow.
     """
-    options = _OPTIONS.search(lock)
-    mode = _MODE.search(options["keys"]) if options else None
-    return mode["mode"] if mode else "highest"
+    mode: str = tomllib.loads(lock).get("options", {}).get("resolution-mode", "highest")
+    return mode
 
 
 def _block() -> str:
@@ -579,16 +528,12 @@ _BLOCK = _block()
 _MYPY_PINS = _pins(_values(_BLOCK))
 _VALUES = _values(_CONFIG.read_text(encoding="utf-8"))
 _PINS = tuple(pin for pin in _pins(_VALUES) if _locked(pin[0]) is not None)
-_RESOLUTION = _resolution_mode(_LOCK.read_text(encoding="utf-8"))
-_BUILD_REQUIRES = _build_requires(_PYPROJECT.read_text(encoding="utf-8"))
+_RESOLUTION = _resolution_mode(_LOCK)
+_BUILD_REQUIRES = _build_requires(_PYPROJECT)
 _CHECK_SDIST = _hook_dependencies(_CONFIG.read_text(encoding="utf-8"), "check-sdist")
 _PYROMA_ENTRY = _hook_entry(_CONFIG.read_text(encoding="utf-8"), "pyroma")
 _PYROMA_GROUP = _only_group(_PYROMA_ENTRY)
-_PYROMA_ENVIRONMENT = (
-    _group(_PYPROJECT.read_text(encoding="utf-8"), _PYROMA_GROUP)
-    if _PYROMA_GROUP
-    else []
-)
+_PYROMA_ENVIRONMENT = _group(_PYPROJECT, _PYROMA_GROUP) if _PYROMA_GROUP else []
 _MOVED_WITH_THE_HIGHEST = pytest.mark.skipif(
     _RESOLUTION != "highest",
     reason=f"uv.lock records a {_RESOLUTION} resolution, and the hook pins"
@@ -863,96 +808,22 @@ def test_a_dependency_group_is_read_where_a_table_holds_no_string() -> None:
     """A group of strings is read, and one holding a table is not read in part.
 
     `dev` includes the other groups by `{ include-group = ... }`, which
-    is no requirement and no string alone on its line: read in part, the
-    group would compare as though it were the whole.
+    is no requirement: read in part, the group would compare as though
+    it were the whole.
     """
-    text = (
-        '[build-system]\ncheck = [\n    "not-this",\n]\n\n'
-        "[dependency-groups]\n# a note about the group [and a bracket]\n"
-        'check = [\n    "twine>=7.0.0",\n'
-        "    # why the next one\n"
-        "    \"pyroma>=5.1b2; python_version >= '3.11'\",\n]\n"
-        'dev = [\n    { include-group = "check" },\n]\n'
-    )
+    pyproject = {
+        "dependency-groups": {
+            "check": ["twine>=7.0.0", "pyroma>=5.1b2; python_version >= '3.11'"],
+            "dev": [{"include-group": "check"}, "pytest"],
+        }
+    }
 
-    assert _group(text, "check") == [
+    assert _group(pyproject, "check") == [
         "twine>=7.0.0",
         "pyroma>=5.1b2; python_version >= '3.11'",
     ]
-    assert _group(text, "dev") == []
-    assert _group(text, "absent") == []
-
-
-def test_the_build_requires_are_read_through_comments_and_blank_lines() -> None:
-    """Both quotings are read, and a comment may hold a bracket.
-
-    The marker-gated requirements are single-quoted around a
-    double-quoted version, and another table's `requires` is nobody's
-    build requirement.
-    """
-    text = (
-        '[tool.other]\nrequires = [\n    "not-this",\n]\n\n'
-        "[build-system]\n# a comment with a ] of its own\nrequires = [\n"
-        "    # a note between two entries [and a bracket]\n"
-        '    "hatchling>=1.27,<2",\n\n'
-        """    'cffi>=1.14.1; python_version<"3.13"',\n"""
-        '    "cmake>=3.22"\n]\nbuild-backend = "hatchling.build"\n'
-    )
-
-    assert _build_requires(text) == [
-        "hatchling>=1.27,<2",
-        'cffi>=1.14.1; python_version<"3.13"',
-        "cmake>=3.22",
-    ]
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        '[build-system]\nrequires = ["hatchling"]\n',
-        '[build-system]\nrequires = ["a",\n    "b",\n]\n',
-        '[build-system]\nrequires = [\n    "a",\n    "b",  # why\n]\n',
-        '[build-system]\nrequires = [\n    "a",\n    "b\\tc",\n]\n',
-        '[build-system]\nrequires = [\n    "a", "b",\n]\n',
-        '[build-system]\nrequires = [\n    "a",\n',
-        '[tool.other]\nrequires = [\n    "a",\n]\n',
-        '[build-system]\nbuild-backend = "hatchling.build"\n',
-    ],
-    ids=[
-        "inline",
-        "entry on the opening line",
-        "comment on an entry",
-        "escape",
-        "two entries to a line",
-        "unterminated",
-        "another table's",
-        "no requires",
-    ],
-)
-def test_a_shape_the_walk_does_not_read_is_nothing_and_not_a_part(text: str) -> None:
-    """A `requires` read in part is one the file does not hold.
-
-    The comparison below quantifies over what this returns, so a part
-    would be compared as though it were the whole and the entries beyond
-    it would go unchecked.
-    """
-    assert _build_requires(text) == []
-
-
-def test_the_array_walk_reads_of_the_real_file_what_tomllib_reads() -> None:
-    """The canary: this walk and a TOML parser agree on `pyproject.toml`.
-
-    Every test above builds its own text, so none of them would notice
-    the real arrays being rewritten into a shape the walk reads as a
-    different list. `tomllib` answers what TOML says is there, where
-    the interpreter has it.
-    """
-    tomllib = pytest.importorskip("tomllib")
-    text = _PYPROJECT.read_text(encoding="utf-8")
-    loaded = tomllib.loads(text)
-
-    assert _build_requires(text) == loaded["build-system"]["requires"]
-    assert loaded["dependency-groups"][_PYROMA_GROUP] == _PYROMA_ENVIRONMENT
+    assert _group(pyproject, "dev") == []
+    assert _group(pyproject, "absent") == []
 
 
 def test_the_backend_is_the_requirement_whose_name_is_hatchling() -> None:

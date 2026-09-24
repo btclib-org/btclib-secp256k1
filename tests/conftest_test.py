@@ -24,9 +24,9 @@ exists for is taken in a subprocess started from `tests/`.
 
 import argparse
 import os
-import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -467,11 +467,8 @@ def test_cov_is_not_the_last_token_of_addopts() -> None:
     this reads the file; the assertion is that weak on purpose, the
     order of the rest being nobody's business here.
     """
-    text = (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    match = re.search(r'^addopts = "(.*)"$', text, re.MULTILINE)
-    assert match, "pyproject.toml has no single-line 'addopts = \"...\"'"
-
-    addopts = match.group(1).split()
+    options = tomllib.loads(_INIPATH.read_text(encoding="utf-8"))
+    addopts = options["tool"]["pytest"]["ini_options"]["addopts"].split()
     assert "--cov" in addopts, "the local coverage gate is --cov in addopts"
     assert addopts[-1] != "--cov", (
         "--cov is the last token of addopts, so it will swallow the first "
