@@ -60,11 +60,10 @@ jobs:
   # hold before the build reads them. python-version: "3.14" pins the
   # interpreter actions/setup-python installs ahead of the callee's own
   # Setup uv step, matching what this tree's own build-sdist in test.yml
-  # runs against. attest-signer: reusable-attest, since the callee
-  # verifies the release GitHub marks latest, and release.yml's attest
-  # job signs through btclib-org/.github's reusable-attest.yml, v0.8.0.7
-  # being the first release signed that way. The callee's header says
-  # why the called workflow is the signer (issue #996).
+  # runs against. The signer the callee verifies against is
+  # btclib-org/.github's reusable-attest.yml, which release.yml's attest
+  # job calls, and the callee's header says why the called workflow is
+  # the signer (issue #996).
   rebuild:
     if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
     permissions:
@@ -75,4 +74,3 @@ jobs:
       sdist-builder: build-module
       submodules: recursive
       python-version: "3.14"
-      attest-signer: reusable-attest
