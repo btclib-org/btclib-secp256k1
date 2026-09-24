@@ -45,9 +45,9 @@ call at all. The third, an upstream request that the plugin report what
 it subtracts, remains open against henryiii/check-sdist and would retire
 this hook if it landed; nothing here depends on it landing.
 
-Regex rather than `tomllib` for the exclude list: the floor here is
-3.10, and `tomllib` is 3.11 -- `tests/copyright_test.py`'s own module
-docstring gives the same reason for the same choice.
+Regex rather than `tomllib` for the exclude list, the way
+`tests/copyright_test.py` reads pyproject.toml: moving both to `tomllib`
+is btclib-org/btclib-secp256k1#994.
 """
 
 from __future__ import annotations

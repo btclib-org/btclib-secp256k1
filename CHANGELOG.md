@@ -40,6 +40,11 @@ release-notes length in the first place, and are still in
   as the signer**, the path of `release.yml` itself being kept for v0.8.0
   to v0.8.0.6, which it signed (closes #996).
 
+### Python 3.10 leaves the supported interpreters
+
+- **`requires-python` is `>=3.11`, so no `cp310` wheel is built and no
+  sentinel runs 3.10**, whose end of life is 2026-10-31.
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"

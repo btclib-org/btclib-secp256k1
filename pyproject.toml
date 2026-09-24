@@ -12,7 +12,7 @@ license = "MIT"
 # rather than a statement to a consumer (btclib-org/.github#135). The
 # sdist target below keeps it out of that archive for the same reason
 license-files = ["LICENSE", "AUTHORS.md"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 # the organization and not a list of people, which is a sibling
 # repository's convention and the only one that stays true: a name in
 # metadata is baked into every wheel already published, so an author
@@ -58,7 +58,6 @@ keywords = [
 classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -359,28 +358,22 @@ ignore = ["W003", "W009"]
 # is where an unbounded entry sends it instead (btclib-secp256k1#875).
 # deps-oldest.yml is the workflow that runs that resolution, and it
 # installs `--group test` alone, so the run behind `test`'s own floors is
-# deps-oldest.yml itself, cibuildwheel's alone excepted, as below. For a
-# group it does not install, the run behind the number is that group's
-# own consumer, and every one of them
-# runs at the interpreter `.python-version` pins: lint.yml's pre-commit
-# step, docs.yml's sphinx-build, mutation.yml's cosmic-ray session, and
+# deps-oldest.yml itself. For a group it does not install, the run behind
+# the number is that group's own consumer, and every one of them runs at
+# the interpreter `.python-version` pins: lint.yml's pre-commit step,
+# docs.yml's sphinx-build, mutation.yml's cosmic-ray session, and
 # test.yml's wheel-building and dist-checking jobs for `build` and
 # `check`.
 #
-# `sphinx`, `myst-parser` and `cibuildwheel` resolve to more than one
-# version in uv.lock, split by `python_full_version`, because no workflow
-# above runs any of the three at a version other than the one uv.lock
-# resolves for the interpreter `.python-version` pins. Their bound is
-# instead the oldest version uv.lock resolves for `requires-python`'s own
-# floor, 3.10: a bound above that breaks the ordinary, unbounded
-# resolution for that interpreter rather than only `uv lock --resolution
-# lowest-direct`, uv's own lock being universal across the whole
-# `requires-python` range regardless of which group a workflow installs.
-# `test`'s cibuildwheel entry is the exception to both: its marker keeps
-# it out of the cell deps-oldest.yml runs, on the oldest interpreter, so no
-# workflow runs the floor on the entry, which is the release measured to
-# list a free-threaded identifier, and the cells that do install it, from
-# 3.11, run the release uv.lock resolves there.
+# `sphinx` resolves to more than one version in uv.lock, split by
+# `python_full_version`, and no workflow above runs it at a version other
+# than the one uv.lock resolves for the interpreter `.python-version`
+# pins. Its bound sits instead at or under the oldest version uv.lock
+# resolves for `requires-python`'s own floor: a bound above that breaks
+# the ordinary, unbounded resolution for that interpreter rather than
+# only `uv lock --resolution lowest-direct`, uv's own lock being
+# universal across the whole `requires-python` range regardless of which
+# group a workflow installs.
 #
 # A floor here is meant to sit at or under the resolution, and nothing
 # re-widens one: dependabot's `uv-lock` hook does not upgrade it, and
@@ -409,14 +402,13 @@ ignore = ["W003", "W009"]
 # `--print-build-identifiers` for the free-threaded identifiers
 # [tool.cibuildwheel] builds, which no file of this tree spells. The floor
 # is the oldest release whose `cibuildwheel --print-build-identifiers
-# --platform linux` lists one for that configuration, and the marker is
-# where a release at that floor can be installed: cibuildwheel 3 requires
-# Python 3.11. Where cibuildwheel is absent or older the test reads a
-# skip, not an error -- below 3.11, and in the wheel test and the sdist
-# test, whose environments carry only what their own lists name -- and
-# it reads the floor out of this entry rather than restating it
+# --platform linux` lists one for that configuration. Where cibuildwheel
+# is absent or older the test reads a skip, not an error -- in the wheel
+# test and the sdist test, whose environments carry only what their own
+# lists name -- and it reads the floor out of this entry rather than
+# restating it
 test = [
-    "cibuildwheel>=3.1.0; python_version >= '3.11'",
+    "cibuildwheel>=3.1.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-randomly>=5.0.0",
@@ -460,11 +452,8 @@ check = [
     "twine>=7.0.0",
     "check-wheel-contents>=0.6.3",
     # a specifier naming a pre-release is what lets uv resolve one, and
-    # 5.1b2 is one. It requires docutils 0.22, which the sphinx and
-    # myst-parser that the docs group resolves under 3.10 exclude, and
-    # `dev` holds both groups: that interpreter keeps the release before
-    "pyroma>=5.1b2; python_version >= '3.11'",
-    "pyroma>=5.0.1; python_version < '3.11'",
+    # 5.1b2 is one
+    "pyroma>=5.1b2",
     # pyroma builds the project it is pointed at to read its metadata, and
     # asks `build` to do it without isolation first, which imports the
     # backend out of this environment. Absent from it, the build falls
@@ -544,10 +533,8 @@ mypy_path = "stubs"
 # assignment, so `X | None` at module level is a TypeError before 3.10 that
 # no static check sees. Aimed at the floor, mypy reports it itself instead
 # of leaving it to whichever cell of the matrix dies at collection.
-# Keep the two in step: 3.10 is also the oldest mypy accepts, so raising
-# requires-python is what moves this, and lowering it below 3.10 would put
-# the gap back
-python_version = "3.10"
+# Keep the two in step: raising requires-python is what moves this
+python_version = "3.11"
 exclude = [
     "^build/",
     "^secp256k1/",
@@ -1015,7 +1002,7 @@ addopts = "-ra --strict-markers --strict-config --cov --durations=8"
 markers = [
     "zkp: needs BTCLIB_LIBSECP256K1_ZKP=true (btclib-org/btclib-secp256k1#605)",
 ]
-# an unknown warning is a deprecation the 3.10 to 3.14 spread will turn
+# an unknown warning is a deprecation the spread of interpreters will turn
 # into a breakage, so make it fail while it is still cheap
 filterwarnings = ["error"]
 xfail_strict = true
@@ -1091,10 +1078,7 @@ enable = ["pypy"]
 # the ABI-mode dynamic wheel (py3-none-win_amd64), the cffi mode
 # recommended on PyPy, which pip falls back to; a static pp3 wheel
 # would take precedence over it and perform worse
-# cp310 has no Windows arm64 build: cibuildwheel lists that identifier,
-# but on the native arm64 runner there is no interpreter to build it
-# with
-skip = "pp*-win* cp310-win_arm64"
+skip = "pp*-win*"
 
 # One C compilation per job instead of one per wheel, without giving up
 # the clean CMake tree every build gets.

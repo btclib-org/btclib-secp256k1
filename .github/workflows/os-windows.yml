@@ -100,21 +100,14 @@ jobs:
           - windows-11-arm
         # every interpreter this package claims, as os-ubuntu.yml and
         # os-macos.yml carry it: nothing here installs a published wheel, so
-        # no exclusion is a wheel that is missing. The one below is what an
-        # interpreter cannot do -- CPython has no Windows arm64 build
-        # before 3.11, so 3.10 has none to run on that image
+        # no exclusion is a wheel that is missing
         python-version:
-          - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
           - "3.14"
           - "3.14t"
-          - "pypy3.10"
           - "pypy3.11"
-        exclude:
-          - os: windows-11-arm
-            python-version: "3.10"
 
     steps:
       - name: Checkout code
