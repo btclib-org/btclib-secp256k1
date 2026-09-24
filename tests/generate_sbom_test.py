@@ -39,7 +39,7 @@ import pytest
 
 _EPOCH = 1_700_000_000
 _PINNED = "6e2c8bc4ecdc6e71dbe7a368f360d8d453ce435d"
-_ZKP_PINNED = "9912c3e49b012c91967315395d046be4836c2e34"
+_ZKP_PINNED = "8f9ab5f2b2d4e036b299932dda151cb6dd75e60e"
 
 _METADATA = """Metadata-Version: 2.5
 Name: btclib-secp256k1
