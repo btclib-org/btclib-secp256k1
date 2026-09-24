@@ -30,11 +30,14 @@ decides which index is reached. The `version-check` job cross-checks
 them, and runs before anything is built: a `v0.7.1` tag on a tree still
 reading `0.7.1rc1` fails there, rather than burning `0.7.1rc1` on PyPI.
 The same job checks that `uv.lock` carries the version the tree declares,
-that the libsecp256k1 release named in `README.md` is the commit the
-submodule is pinned to, that `RELEASE_NOTES.md` and `CHANGELOG.md` each
-carry a section headed by the tag alone and not empty, and that the
-tagged commit is on `main`. Every invariant a release rests on is
-checked there, before the point of no return.
+that `RELEASE_NOTES.md` and `CHANGELOG.md` each carry a section headed by
+the tag alone and not empty, and that the tagged commit is on `main`.
+Two jobs of this tree's own check the vendored pins beside it:
+`submodule-pin-release`, that the libsecp256k1 release named in
+`README.md` is the commit the submodule is pinned to, and `zkp-pin-tag`,
+that the fork carries the tag of the `secp256k1-zkp` pin the steps below
+push. `publish-pypi` starts only once all three have passed, which is
+before the point of no return.
 
 **Every `gh` call here names the repository**, rather than leaving `gh`
 to resolve its `{owner}/{repo}` placeholder against whatever checkout the
@@ -361,6 +364,48 @@ Then:
    sitting beside them are Dependabot's own updater failing to compute an
    update, not a workflow of this repository, and say nothing about the
    tree
+1. tag the `secp256k1-zkp` pin in `fametrano/secp256k1-zkp`, signed, as
+   `btclib-secp256k1-v<version>`, before the release tag:
+
+   ```shell
+   sha=$(git rev-parse origin/main) &&
+   tag=v$(uv version --short) &&
+   ztag=btclib-secp256k1-$tag &&
+   fork=https://github.com/fametrano/secp256k1-zkp.git &&
+   pin=$(git ls-tree "$sha" secp256k1-zkp | awk '{print $3}') &&
+   git submodule update --init secp256k1-zkp &&
+   git -C secp256k1-zkp fetch "$fork" "$pin" &&
+   git -C secp256k1-zkp tag -s "$ztag" \
+     -m "secp256k1-zkp pin of btclib-org/btclib-secp256k1 $tag" "$pin" &&
+   git -C secp256k1-zkp tag -v "$ztag" &&
+   git -C secp256k1-zkp push "$fork" "refs/tags/$ztag"
+   ```
+
+   `git submodule update --init` comes first because nothing earlier in
+   this list initializes the submodule, and a checkout that never did has
+   an empty `secp256k1-zkp/` holding no repository of its own: there
+   `git -C secp256k1-zkp` resolves to this repository, so the fetch lands
+   the fork's commit in btclib-secp256k1's object store and every command
+   after it addresses btclib-secp256k1. The `&&` chain stops the block
+   where that step fails. The fork's URL is written out rather than read as `origin`:
+   `git submodule update --init` leaves the remote of a submodule already
+   cloned as it found it, which in one initialized before #828 is
+   `BlockstreamResearch/secp256k1-zkp`.
+
+   The fork's `expose-borromean-verify` is rebased onto
+   `BlockstreamResearch/secp256k1-zkp`'s master, which leaves the pin a
+   release shipped on no branch of the fork, and GitHub may prune a
+   commit no ref reaches. "Rebuild a release from its tag" below runs
+   `git submodule update --init --recursive`, which needs the pin
+   fetchable (#988); this tag is the ref that keeps it reachable. Every
+   release carrying the pin gets one, a pin unchanged since the last
+   release included, until #841 points the submodule back at
+   `BlockstreamResearch/secp256k1-zkp`.
+
+   `release.yml`'s `zkp-pin-tag` job refuses to publish to PyPI until
+   the fork carries an annotated tag of that name peeling to the pin,
+   which is why this step comes before the release tag rather than
+   after it
 1. tag the commit `main` now points at, signed, and push that tag
    alone, checking for `Good signature` before anything is pushed:
 
