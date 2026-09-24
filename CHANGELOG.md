@@ -1169,6 +1169,12 @@ release-notes length in the first place, and are still in
   #984): a bare `ruff check .`, `ruff format .`, `mypy .` or `typos .` skips
   it as it skips `secp256k1/`; pre-commit hands the hooks none of its files.
 
+### The `secp256k1-zkp` submodule follows the fork's rebased commit
+
+- **The gitlink and `README.md`'s citation move from `9912c3e4` to
+  `8f9ab5f2`, the borromean commit rebased onto
+  `BlockstreamResearch/secp256k1-zkp`'s `8e1f96c2`**.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
