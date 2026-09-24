@@ -29,43 +29,43 @@ and a test that hard-coded a date would be one more thing to move. What
 it holds is the weaker and checkable claim: whatever the three say, they
 say the same thing.
 
-Read with a regex rather than parsed. A workflow is yaml and no group
-here carries a parser for it; pyproject.toml is read the way
-`copyright_test.py` reads it, which btclib-org/btclib-secp256k1#994
-would move to `tomllib`.
+A workflow is read with a regex rather than parsed, being yaml, for
+which no group here carries a parser; pyproject.toml is loaded with
+`tomllib`.
 """
 
 import os
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 _ROOT = Path(__file__).parents[1]
-_PYPROJECT = (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+_PYPROJECT: dict[str, Any] = tomllib.loads(
+    (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+)
 _SENTINELS = ("os-ubuntu.yml", "os-macos.yml", "os-windows.yml")
 _WORKFLOWS = {
     name: (_ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
     for name in _SENTINELS
 }
 
-# "3.11" out of `requires-python = ">=3.11"`, the floor and nothing else:
+# "3.11" out of `requires-python`'s ">=3.11", the floor and nothing else:
 # an upper bound is not declared here and would be a different claim
-_FLOOR = re.compile(r'^requires-python = ">=(?P<version>3\.\d+)"', re.MULTILINE)
+_FLOOR = re.compile(r"^>=(?P<version>3\.\d+)$")
 # the per-version classifiers, not `:: 3` or `:: 3 :: Only`, which say
 # something about the major version rather than about an interpreter
-_CLASSIFIER = re.compile(
-    r'^    "Programming Language :: Python :: (?P<version>3\.\d+)",$', re.MULTILINE
-)
+_CLASSIFIER = re.compile(r"^Programming Language :: Python :: (?P<version>3\.\d+)$")
 _PYPY_CLASSIFIER = "Programming Language :: Python :: Implementation :: PyPy"
 # PyPI's free-threading classifiers, the bare one and its maturity levels
 # alike: each is a claim about the code under a free-threaded build, and
 # which is claimed is not this module's question
 _FREE_THREADING_CLASSIFIER = re.compile(
-    r'^    "Programming Language :: Python :: Free Threading(?: :: .+)?",$',
-    re.MULTILINE,
+    r"^Programming Language :: Python :: Free Threading(?: :: .+)?$"
 )
 # the `python-version` list of a sentinel's suite matrix. The key has to
 # be alone on its line, which is what leaves out the `exclude:` entries
@@ -124,15 +124,12 @@ _INTERPRETER = re.compile(r"\b3\.\d+t?\b")
 # of digits after it the minor, and the "t" the free-threaded ABI tag
 # `--print-build-identifiers` spells and no workflow file does
 _CIBW_FREE_THREADED = re.compile(r"^cp3(?P<minor>\d+)t-", re.MULTILINE)
-# the floor of pyproject.toml's `test` group entry for cibuildwheel, read
-# inside that group's array and nowhere else: `build` has an entry of its
-# own, and that one is not this test's to read. It is read out of the entry
-# rather than restated, so that the floor is written once, and
-# `_require_cibuildwheel` holds the installed release to it
-_CIBW_FLOOR = re.compile(
-    r'^test = \[\n(?:    .*\n)*?    "cibuildwheel>=(?P<version>[0-9.]+)",$',
-    re.MULTILINE,
-)
+# the floor of pyproject.toml's `test` group entry for cibuildwheel:
+# `build` has an entry of its own, and that one is not this test's to
+# read. It is read out of the entry rather than restated, so that the
+# floor is written once, and `_require_cibuildwheel` holds the installed
+# release to it
+_CIBW_FLOOR = re.compile(r"^cibuildwheel>=(?P<version>[0-9.]+)$")
 # cibuildwheel's own vocabulary for --platform, not the runner images
 # build-cibuildwheel's matrix names: ubuntu-latest and ubuntu-24.04-arm
 # are both "linux", macos-26-intel and macos-latest "macos", windows-latest
@@ -231,9 +228,38 @@ _SETS_CIBW_BUILD = re.compile(
 )
 
 
-def _versions(pattern: re.Pattern[str], text: str) -> tuple[str, ...]:
-    """Return every `version` group `pattern` finds, in order."""
-    return tuple(m["version"] for m in pattern.finditer(text))
+def _classifiers(pyproject: dict[str, Any]) -> list[str]:
+    """Return `[project]`'s classifiers, or none where it declares none."""
+    classifiers: list[str] = pyproject.get("project", {}).get("classifiers", [])
+    return classifiers
+
+
+def _versions(pattern: re.Pattern[str], items: list[str]) -> tuple[str, ...]:
+    """Return the `version` group of every item `pattern` matches, in order."""
+    return tuple(m["version"] for item in items if (m := pattern.match(item)))
+
+
+def _floor(pyproject: dict[str, Any]) -> str | None:
+    """Return the version `requires-python` names as its floor, or None."""
+    match = _FLOOR.match(pyproject.get("project", {}).get("requires-python", ""))
+    return match["version"] if match else None
+
+
+def _free_threading_classified(pyproject: dict[str, Any]) -> bool:
+    """Return whether a free-threading classifier is declared."""
+    return any(_FREE_THREADING_CLASSIFIER.match(c) for c in _classifiers(pyproject))
+
+
+def _cibuildwheel_floor(pyproject: dict[str, Any]) -> str | None:
+    """Return the floor the `test` group sets for cibuildwheel, or None.
+
+    An entry that is a table, as an `include-group` is, names no
+    requirement and is passed over.
+    """
+    for entry in pyproject.get("dependency-groups", {}).get("test", []):
+        if isinstance(entry, str) and (match := _CIBW_FLOOR.match(entry)):
+            return match["version"]
+    return None
 
 
 def _jobs() -> dict[str, str]:
@@ -274,11 +300,11 @@ def _require_cibuildwheel() -> None:
     none at all, or only an older one, the test is skipped rather than
     answered from this file's text, which is the read that cannot see it.
     """
-    floor = _CIBW_FLOOR.search(_PYPROJECT)
+    floor = _cibuildwheel_floor(_PYPROJECT)
     assert floor, "pyproject.toml's `test` group names no floor for cibuildwheel"
     pytest.importorskip(
         "cibuildwheel",
-        minversion=floor["version"],
+        minversion=floor,
         reason=(
             "cibuildwheel is not installed here, and it is what lists the"
             " free-threaded identifiers the gate builds: the `test` group"
@@ -466,7 +492,7 @@ def _platforms_without_free_threaded(selection: str) -> list[str]:
     configures that `selection` keeps: a pattern naming one the
     configuration skips keeps nothing.
     """
-    if not _FREE_THREADING_CLASSIFIER.search(_PYPROJECT):
+    if not _free_threading_classified(_PYPROJECT):
         return []
     environ = {**_child_environment(), "CIBW_BUILD": selection}
     return [
@@ -499,7 +525,7 @@ def _matrix(text: str) -> tuple[str, ...]:
     return block + caller
 
 
-_CLASSIFIED = _versions(_CLASSIFIER, _PYPROJECT)
+_CLASSIFIED = _versions(_CLASSIFIER, _classifiers(_PYPROJECT))
 _DECLARED = {name: _matrix(text) for name, text in _WORKFLOWS.items()}
 # the list the classifier checks below quantify over: one file's, which
 # the equality test makes all three. Any other way of combining them
@@ -516,11 +542,11 @@ _CPYTHON = tuple(sorted({v.rstrip("t") for v in _MATRIX if not v.startswith("pyp
 def test_the_three_declarations_were_read() -> None:
     """Each pattern found something, so the checks below quantify over it.
 
-    A key renamed, a classifier reindented, a sentinel's matrix
+    A key renamed, a classifier respelled, a sentinel's matrix
     reindented: each would leave one of these empty and every comparison
     below trivially true.
     """
-    assert _FLOOR.search(_PYPROJECT), "pyproject.toml declares no requires-python"
+    assert _floor(_PYPROJECT), "pyproject.toml declares no requires-python floor"
     assert _CLASSIFIED, "pyproject.toml declares no per-version Python classifier"
     unread = [name for name, declared in _DECLARED.items() if not declared]
     assert not unread, (
@@ -548,11 +574,11 @@ def test_the_three_sentinels_carry_the_same_interpreters() -> None:
 
 def test_the_floor_is_the_lowest_classifier() -> None:
     """`requires-python` and the classifiers name the same oldest Python."""
-    floor = _FLOOR.search(_PYPROJECT)
-    assert floor, "pyproject.toml declares no requires-python"
+    floor = _floor(_PYPROJECT)
+    assert floor, "pyproject.toml declares no requires-python floor"
     lowest = min(_CLASSIFIED, key=lambda v: tuple(int(p) for p in v.split(".")))
-    assert floor["version"] == lowest, (
-        f"requires-python is >={floor['version']} and the lowest classifier"
+    assert floor == lowest, (
+        f"requires-python is >={floor} and the lowest classifier"
         f" is {lowest}: one of the two was moved and the other was not"
     )
 
@@ -576,7 +602,7 @@ def test_every_matrix_interpreter_is_classified() -> None:
 
 def test_pypy_is_classified_exactly_when_it_is_run() -> None:
     """The PyPy classifier is a claim about the matrix, not a decoration."""
-    classified = _PYPY_CLASSIFIER in _PYPROJECT
+    classified = _PYPY_CLASSIFIER in _classifiers(_PYPROJECT)
     run = any(v.startswith("pypy") for v in _MATRIX)
     assert classified == run, (
         f"the PyPy classifier is {'present' if classified else 'absent'} and"
@@ -606,7 +632,7 @@ def test_free_threading_is_classified_exactly_when_the_gate_runs_it() -> None:
     """
     gate = _gate_interpreters()
     assert gate, "the jobs test.yml's gate waits on name no interpreter"
-    classified = bool(_FREE_THREADING_CLASSIFIER.search(_PYPROJECT))
+    classified = _free_threading_classified(_PYPROJECT)
     run = [v for v in gate if v.endswith("t")]
     assert classified == bool(run), (
         f"the free-threading classifier is {'present' if classified else 'absent'}"
@@ -664,9 +690,7 @@ def test_a_pull_request_builds_a_free_threaded_interpreter_on_every_platform() -
     )
 
 
-_CLASSIFIER_TEXT = (
-    '    "Programming Language :: Python :: Free Threading :: 2 - Beta",\n'
-)
+_FREE_THREADING = "Programming Language :: Python :: Free Threading :: 2 - Beta"
 _WITHOUT_FREE_THREADED = "cp311-*"
 
 
@@ -685,8 +709,12 @@ def test_a_selection_without_the_free_threaded_pattern_lacks_it_everywhere(
     The platforms are spelled out, so that one dropped from
     `_CIBW_PLATFORMS` is a difference here and not a shorter list to match.
     """
+    project = {
+        **_PYPROJECT["project"],
+        "classifiers": [*_classifiers(_PYPROJECT), _FREE_THREADING],
+    }
     monkeypatch.setattr(
-        sys.modules[__name__], "_PYPROJECT", _PYPROJECT + _CLASSIFIER_TEXT
+        sys.modules[__name__], "_PYPROJECT", {**_PYPROJECT, "project": project}
     )
     monkeypatch.setenv("CIBW_SKIP", "*")
     assert _platforms_without_free_threaded(_WITHOUT_FREE_THREADED) == [
@@ -710,7 +738,7 @@ def test_no_free_threaded_identifier_is_demanded_without_the_classifier(
     def _unreached(platform: str, _environ: dict[str, str] | None = None) -> str:
         raise AssertionError(f"cibuildwheel asked about {platform} for no claim")
 
-    monkeypatch.setattr(sys.modules[__name__], "_PYPROJECT", "[project]\n")
+    monkeypatch.setattr(sys.modules[__name__], "_PYPROJECT", {"project": {}})
     monkeypatch.setattr(sys.modules[__name__], "_print_build_identifiers", _unreached)
     assert _platforms_without_free_threaded(_WITHOUT_FREE_THREADED) == []
 
@@ -1062,16 +1090,16 @@ def test_cibuildwheel_is_asked_only_where_a_job_in_the_closure_calls_it(
 
 
 def test_the_floor_is_the_test_groups_entry_and_not_the_build_groups() -> None:
-    """`_CIBW_FLOOR` reads the entry inside the `test` group's array.
+    """`_cibuildwheel_floor` reads the entry inside the `test` group.
 
     `build` names cibuildwheel too, with a floor of its own, and that
     floor is not the one an installed release is held to.
     """
-    assert len(_CIBW_FLOOR.findall(_PYPROJECT)) == 1
-    tested = 'test = [\n    "pytest>=9.1.1",\n    "cibuildwheel>=3.1.0",\n'
-    built = 'build = [\n    "build>=1.6.1",\n    "cibuildwheel>=2.23.4",\n'
-    assert _CIBW_FLOOR.findall(tested + "]\n" + built) == ["3.1.0"]
-    assert _CIBW_FLOOR.search(built) is None
+    tested = [{"include-group": "lint"}, "pytest>=9.1.1", "cibuildwheel>=3.1.0"]
+    built = ["build>=1.6.1", "cibuildwheel>=2.23.4"]
+    groups = {"test": tested, "build": built}
+    assert _cibuildwheel_floor({"dependency-groups": groups}) == "3.1.0"
+    assert _cibuildwheel_floor({"dependency-groups": {"build": built}}) is None
 
 
 def test_a_cibuildwheel_that_exits_non_zero_fails_with_its_own_stderr() -> None:
