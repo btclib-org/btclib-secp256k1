@@ -85,6 +85,12 @@ input decides nothing (issue btclib-org/.github#1315).
   merge waits for** (closes #1002): a pull request that changes the build
   waits for its wheels to reproduce.
 
+### `ecdh.shared_point` multiplies a point by a secret in constant time
+
+- **It answers the point `secp256k1_ecdh` computes, copied out by a hash
+  function compiled into the vendored library** (closes #1005), where
+  `keys.pubkey_tweak_mul` reaches the same point in variable time.
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"

@@ -118,6 +118,17 @@ own, which is how `context.check()` can raise what was reported. Both
 submodules support the same option, so this reaches secp256k1-zkp's own
 build the same way.
 
+The same deferred call attaches a second piece of C this package
+writes, and only to libsecp256k1's build: the ECDH hash function
+`ecdh.shared_point` hands `secp256k1_ecdh`, which copies the shared
+point's coordinates out instead of hashing them. It is compiled into the
+library rather than into the extension because a dynamic build compiles
+no extension C for it to live in, and it is a `const` function pointer
+the library exports, the way upstream's own hash functions are, since
+the ABI-mode module finds it in the shared object. Its declaration is
+appended to the concatenated headers below, so the cdef and the static
+build's C both know it.
+
 **Derive the cdef.** The public headers are concatenated in dependency
 order — `#include` directives are stripped before preprocessing, so the
 order of the list is load-bearing — and run through `gcc -E` with

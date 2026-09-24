@@ -329,6 +329,8 @@ CALLS: list[tuple[str, Callable[..., Any], tuple[Any, ...], dict[str, Any]]] = [
     ("recovery.to_der", recovery.to_der, (RECOVERABLE, RECID), {}),
     ("ecdh.shared_secret", ecdh.shared_secret, (PUBKEY, PRVKEY), {}),
     ("ecdh._shared_secret_", ecdh._shared_secret_, (PARSED, PRVKEY), {}),
+    ("ecdh.shared_point", ecdh.shared_point, (PUBKEY, PRVKEY), {}),
+    ("ecdh._shared_point_", ecdh._shared_point_, (PARSED, PRVKEY), {}),
     ("ellswift.create", ellswift.create, (PRVKEY, bytes(32)), {}),
     ("ellswift.encode", ellswift.encode, (PUBKEY, bytes(32)), {}),
     # the parsed key is not retyped, being no bytes; the randomness

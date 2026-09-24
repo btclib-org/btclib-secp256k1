@@ -51,9 +51,9 @@ affecting how these bindings drive it:
     reaching the raw `lib` bindings directly is on its own, and so is
     code calling a private `_foo_` half with a libsecp256k1 object of
     its own — an object no argument check can vouch for, where a refusal
-    can reach the caller as a `False`, an ordering or 32 bytes of ECDH
-    rather than as an exception. The entry points taking octets are not
-    in that position: they parse what they are given
+    can reach the caller as a `False`, an ordering, 32 bytes of ECDH or
+    an ECDH point rather than as an exception. The entry points taking
+    octets are not in that position: they parse what they are given
 - the build: which optional modules are compiled in, and the commit each
     vendored submodule is pinned to
 - the distributions published to PyPI and their provenance
@@ -132,7 +132,8 @@ These are known and inherent, not vulnerabilities:
     The copy in the middle is not a Python object and is overwritten: a
     private key or a shared secret libsecp256k1 or secp256k1-zkp writes
     into a cffi buffer — the output of a tweak or a negation, an ECDH
-    secret, the `secp256k1_keypair` a BIP340 signature is made with, the
+    secret, the coordinates of the point `ecdh.shared_point` answers, the
+    `secp256k1_keypair` a BIP340 signature is made with, the
     nonce `dsa.nonce_rfc6979` and `ssa.nonce_bip340` answer with, the
     adaptor `zkp.musig.extract_adaptor` recovers, a blinding factor
     `zkp.generator.pedersen_blind_sum` or
@@ -165,8 +166,8 @@ These are known and inherent, not vulnerabilities:
     anything else as `memoryview(x)`, which copies nothing. They are
     `keys.prvkey_negate`, `keys.prvkey_tweak_add`,
     `keys.prvkey_tweak_mul`, `xonly.prvkey_tweak_add`,
-    `ecdh.shared_secret`, `ellswift.xdh`, `dsa.nonce_rfc6979`,
-    `ssa.nonce_bip340`, `zkp.musig.extract_adaptor`,
+    `ecdh.shared_secret`, `ecdh.shared_point`, `ellswift.xdh`,
+    `dsa.nonce_rfc6979`, `ssa.nonce_bip340`, `zkp.musig.extract_adaptor`,
     `zkp.generator.pedersen_blind_sum` and
     `zkp.generator.pedersen_blind_generator_blind_sum`. **Some secrets do
     not**, each being one member of a returned tuple, where an argument
@@ -227,10 +228,10 @@ These are known and inherent, not vulnerabilities:
     `secp256k1_ec_pubkey_tweak_mul`, which calls `secp256k1_ecmult` — the
     wNAF point multiplication, timed by the scalar's bits — rather than
     the constant-time `secp256k1_ecmult_const` `secp256k1_ecdh` uses for
-    the same kind of point. README.md's own use of `pubkey_tweak_mul` as
-    `ecdh.shared_secret`'s substitute for a protocol needing the raw
-    point passes a private key in as that scalar, so an attacker able to
-    time the call may recover bits of it. `keys.prvkey_tweak_mul` does
+    the same kind of point, so a private key passed in as that scalar is
+    one an attacker able to time the call may recover bits of.
+    `ecdh.shared_point` is the same product through `secp256k1_ecdh`, and
+    is where a secret scalar belongs. `keys.prvkey_tweak_mul` does
     not share this: it multiplies two scalars mod n through
     `secp256k1_ec_seckey_tweak_mul`, a different call
 - **the entry side takes one form that is not a copy**: where a scalar is

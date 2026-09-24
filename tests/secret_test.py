@@ -419,6 +419,15 @@ def test_the_two_spellings_of_a_producer_agree() -> None:
         assert call(*args, into=into) is None, call.__name__
         assert bytes(into) == call(*args), call.__name__
 
+    # the one whose secret is a point, and so as long as its serialization
+    pubkey = keys.pubkey_from_prvkey(3)
+    for compressed, size in ((True, 33), (False, 65)):
+        into = bytearray(size)
+        assert ecdh.shared_point(pubkey, 7, compressed, into=into) is None
+        assert bytes(into) == ecdh.shared_point(pubkey, 7, compressed)
+    with pytest.raises(ValueError, match="65"):
+        ecdh.shared_point(pubkey, 7, False, into=bytearray(33))
+
 
 def test_a_key_held_in_a_buffer_never_becomes_a_bytes_of_the_secret() -> None:
     """The copy `into` cannot help with, and the one `scalar` no longer makes.

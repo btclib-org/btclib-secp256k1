@@ -36,6 +36,9 @@ from btclib_secp256k1 import (
 
 msg = hashlib.sha256(b"btclib_secp256k1").digest()
 
+# secp256k1 group order
+N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
 
 def compress(pubkey_bytes: bytes) -> bytes:
     """Compress an uncompressed 65-byte public key."""
@@ -66,22 +69,57 @@ def test_ecdh() -> None:
     # bytes and int private keys are interchangeable
     assert secret == ecdh.shared_secret(pubkey_b, prvkey_a.to_bytes(32, "big"))
 
-    # the same point is what keys returns for an arbitrary private key,
-    # which is why the hash function of the ecdh call is not exposed: a
-    # protocol needing another derivation applies it to this
+    # the same point is what shared_point answers, which is why the hash
+    # function of the ecdh call is not exposed: a protocol needing another
+    # derivation applies it to this
+    assert secret == hashlib.sha256(ecdh.shared_point(pubkey_b, prvkey_a)).digest()
+    assert ecdh.shared_point(pubkey_b, prvkey_a, compressed=False) == shared_point
+    assert ecdh.shared_point(pubkey_b, prvkey_a) == compress(shared_point)
     assert secret == hashlib.sha256(keys.pubkey_tweak_mul(pubkey_b, prvkey_a)).digest()
 
 
+@pytest.mark.parametrize("bits", [256, 128, 64])
+def test_ecdh_shared_point_is_the_point_tweak_mul_answers(bits: int) -> None:
+    """The two multiplications agree, whatever the length of the scalar.
+
+    `keys.pubkey_tweak_mul` is the variable-time one, and a short scalar
+    is where it does less work, so the agreement is asserted on scalars
+    of each length, their top bit set -- and at the two ends of the range,
+    1 and n - 1.
+    """
+    pubkey_bytes = keys.pubkey_from_prvkey(0xC0FFEE)
+    digest = int.from_bytes(hashlib.sha256(b"%d" % bits).digest(), "big")
+    top_bit_set = (1 << (bits - 1)) | (digest >> (257 - bits))
+    for scalar in (top_bit_set, 1, N - 1):
+        for compressed in (True, False):
+            point = ecdh.shared_point(pubkey_bytes, scalar, compressed)
+            assert point == keys.pubkey_tweak_mul(pubkey_bytes, scalar, compressed)
+
+
 def test_ecdh_invalid_inputs() -> None:
-    """A zero key, a short key and an unparsable public key are refused."""
+    """A zero key, a short key and an unparsable public key are refused.
+
+    And the group order and a key too wide for 32 bytes, by
+    `ecdh.shared_point` as by `ecdh.shared_secret`. `secp256k1_ecdh`
+    reports zero and the order alike, as scalars it will not multiply by,
+    and `keys.pubkey_tweak_mul` refuses the same two.
+    """
     pubkey_bytes = keys.pubkey_from_prvkey(1, compressed=False)
 
-    with pytest.raises(ValueError, match="private key"):
-        ecdh.shared_secret(pubkey_bytes, 0)
-    with pytest.raises(ValueError, match="32 bytes"):
-        ecdh.shared_secret(pubkey_bytes, b"\x01" * 31)
-    with pytest.raises(ValueError, match="public key"):
-        ecdh.shared_secret(b"\x02" + b"\x00" * 32, 1)
+    for call in (ecdh.shared_secret, ecdh.shared_point):
+        with pytest.raises(ValueError, match="invalid private key"):
+            call(pubkey_bytes, 0)
+        with pytest.raises(ValueError, match="invalid private key"):
+            call(pubkey_bytes, N)
+        with pytest.raises(ValueError, match="32 bytes"):
+            call(pubkey_bytes, b"\x01" * 31)
+        with pytest.raises(ValueError, match="must fit in 32 bytes"):
+            call(pubkey_bytes, 2**256)
+        with pytest.raises(ValueError, match="public key"):
+            call(b"\x02" + b"\x00" * 32, 1)
+    for scalar in (0, N):
+        with pytest.raises(ValueError, match="invalid tweak"):
+            keys.pubkey_tweak_mul(pubkey_bytes, scalar)
 
 
 def test_recovery() -> None:
