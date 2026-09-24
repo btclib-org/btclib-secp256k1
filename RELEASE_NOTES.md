@@ -5,7 +5,32 @@ release is in [CHANGELOG.md](./CHANGELOG.md); what follows is what a user
 has to act on and what a user gains, and it is what the GitHub release of
 a tag is generated from.
 
-## v0.8.0.7 (work in progress, not released yet)
+## v0.8.0.8 (work in progress, not released yet)
+
+## v0.8.0.7
+
+Non-breaking: no public name was added, removed or renamed, and no
+signature changed. The vendored libsecp256k1 is still the v0.8.0 this
+line has wrapped since 0.8.0.
+
+The vendored `secp256k1-zkp` moves from `a8f6b86a` to
+[8f9ab5f2](https://github.com/fametrano/secp256k1-zkp/commit/8f9ab5f2b2d4e036b299932dda151cb6dd75e60e),
+the commit exposing `secp256k1_borromean_verify` rebased onto
+`BlockstreamResearch/secp256k1-zkp`'s `8e1f96c2`. It reaches only a
+build from the sdist with `BTCLIB_LIBSECP256K1_ZKP=true`: no published
+wheel carries the extension `zkp` calls into.
+
+The GitHub release attaches a CycloneDX bill of materials,
+`btclib_secp256k1-0.8.0.7.cdx.json`, which names each vendored library
+at the commit its submodule pins and is attested with the sdist.
+
+`pyproject.toml` claims the `Free Threading :: 2 - Beta` classifier: the
+`cp314t` wheel runs with the GIL disabled, and README.md states what
+keeps concurrent calls safe there.
+
+A build from the sdist resolves its build requirements within the
+bounds `[build-system]` now declares, and below Python 3.13 asks for a
+`cffi` that installs there: `pyproject.toml` holds both.
 
 ## v0.8.0.6
 
