@@ -1311,7 +1311,10 @@ check discovered by CI after a push is a check in the wrong place.
 
 The aggregate of `test`, the `lint` job and the documentation build are
 the required checks, and `REPOSITORY.md` reads that rule back from the
-endpoint rather than restating it. `release` reuses all three. Everything
+endpoint rather than restating it. `release` reuses all three. The
+aggregate of `wheel-reproducibility` is required beside them, a pull
+request being able to turn it red by changing the build, and
+`REPOSITORY.md` says why and in which order the rule takes it. Everything
 else reports: a sentinel opens no issue when it fails, `vendored-vectors`
 excepted for the reason the header of the workflow it calls gives,
 because each is expected to go red for something no pull request
@@ -1335,20 +1338,20 @@ introduced and a red check nobody can act on from a branch is noise.
 | `links` | weekly, a pull request touching its own configuration | — |
 | `mutation` | weekly | — |
 | `fuzz` | weekly | — |
-| `wheel-reproducibility` | weekly, a pull request touching what it builds | every wheel platform, on two images, built twice on each, and the repaired, dynamic and cross-compiled wheels, built twice on one image per platform |
+| `wheel-reproducibility` | weekly, pull request, building only where it touches what it builds | every wheel platform, on two images, built twice on each, and the repaired, dynamic and cross-compiled wheels, built twice on one image per platform |
 | `sdist-rebuild` | weekly, a pull request touching its own file | — |
 | `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
 
 <!-- markdownlint-enable MD013 -->
 
-The first two rows are what a merge waits for, and the suite cell among them
-is one: `ubuntu-latest` on the interpreter `.python-version` pins, measured
-for coverage. Which day each of the rest runs, and at which minute, is
-section 10 of the organization standard in `btclib-org/.github` and not this
-file's to restate — one calendar covering the organization is one thing to
-remember, and a copy of it per repository is one more thing to keep true in
-each.
+The first two rows are what a merge waits for, `wheel-reproducibility` beside
+them, and the suite cell among them is one: `ubuntu-latest` on the
+interpreter `.python-version` pins, measured for coverage. Which day each of
+the rest runs, and at which minute, is section 10 of the organization
+standard in `btclib-org/.github` and not this file's to restate — one
+calendar covering the organization is one thing to remember, and a copy of it
+per repository is one more thing to keep true in each.
 
 Why so little gates is one number: the ceiling the plan puts on how many
 jobs the organization may run at once, shared across every repository in

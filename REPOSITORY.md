@@ -129,15 +129,9 @@ the keys they are about, where somebody editing the list reads them.
 
 Neither `os-ubuntu.yml`, `os-macos.yml`, `os-windows.yml`, `deps-latest.yml`,
 `deps-oldest.yml`, `links.yml`, `mutation.yml`, `pypi-install.yml`,
-`sdist-rebuild.yml`, `vendored-vectors.yml` nor `wheel-reproducibility.yml`
-appears in the rule, and none of them must: every one but the last is expected
-to go red for a reason no pull request introduced. `wheel-reproducibility.yml`
-is the exception, and by design — issue #508 gave it a `pull_request` trigger
-precisely so that a branch's own change to the build can turn a cell red, which
-is what a required check exists to catch. What keeps it out of the rule instead
-is its `paths` filter: a pull request touching none of those paths gets no run,
-and GitHub documents a required check whose workflow a path filter skipped as
-staying `Pending` and blocking the merge. `os-ubuntu.yml`, `os-macos.yml` and `os-windows.yml`
+`sdist-rebuild.yml` nor `vendored-vectors.yml` appears in the rule, and none
+of them must: each is expected to go red for a reason no pull request
+introduced. `os-ubuntu.yml`, `os-macos.yml` and `os-windows.yml`
 are the ones worth naming twice, because they do run the suite: what a
 merge no longer waits for is every cell of it but one, the reasoning
 being in `os-ubuntu.yml`'s header and the numbers in `test.yml`'s, and
@@ -145,6 +139,24 @@ being in `os-ubuntu.yml`'s header and the numbers in `test.yml`'s, and
 `scorecard.yml` is outside the rule for a reason of its own: it carries
 no `pull_request` trigger, so it produces no context a branch rule could
 name.
+
+**`wheel-reproducibility: every job passed` is to join the rule's
+checks**, bound to the Actions app like them (issue #1002). Issue #508 gave
+`wheel-reproducibility.yml` a `pull_request` trigger so that a branch's own
+change to the build is measured before it merges, which is what a required
+check exists to hold. The trigger carries no `paths` filter, because
+GitHub documents the check of a workflow a path filter skipped as staying
+`Pending`, which blocks the merge. A `changes` job reads the pull request's
+files instead, the build jobs run only where one of them is something the
+builds read, and the aggregate reports on every pull request that is not
+closed: success where the build was untouched or every job passed, failure
+otherwise.
+
+The rule gains the check after that workflow has landed on `main`, by the
+`PATCH` below, and not before: a pull request whose run predates the
+landing produces no such context, and a rule naming it would hold that
+pull request `Pending` until a push to it. The table above is what the
+endpoint answers, so it gains the row when the endpoint does.
 
 A check can be bound to the app that produces it — `checks` with an
 `app_id` rather than the bare `contexts` list — so that nothing else can
@@ -273,7 +285,10 @@ gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=true \
   -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=docs / Build the documentation' \
   -F 'checks[][app_id]=15368' \
-  -F 'checks[][context]=lint / Lint and type-check' -F 'checks[][app_id]=15368'
+  -F 'checks[][context]=lint / Lint and type-check' \
+  -F 'checks[][app_id]=15368' \
+  -F 'checks[][context]=wheel-reproducibility: every job passed' \
+  -F 'checks[][app_id]=15368'
 ```
 
 `checks[][…]` repeated is how one array of objects is written: `-F` pairs

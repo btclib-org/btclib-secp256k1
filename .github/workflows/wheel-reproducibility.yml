@@ -109,12 +109,21 @@ name: wheel-reproducibility
 # alone would leave a branch's own change to the build unmeasured until
 # somebody remembered to dispatch it by hand, so this measures every
 # pull request instead -- whoever changes the build sees whether it
-# still reproduces before merging it. The paths filter is what keeps
+# still reproduces before merging it. The changes job below is what keeps
 # every other pull request from paying for a double build on every image:
-# everything in it is something this job depends on -- the build scripts,
-# the version and the build backend's own configuration, the vendored
-# library this compiles, the script the last step runs, and this
-# workflow's own matrix -- and nothing outside that list is.
+# it reads the pull request's own files, and the build jobs run only where
+# one of them is something the builds depend on -- the build scripts, the
+# version and the build backend's own configuration, the vendored library
+# this compiles, the script the steps run, and this workflow's own matrix.
+#
+# That is a job and not a paths filter on the trigger so that
+# wheel-reproducibility: every job passed, the aggregate at the end, can be
+# a required check (#1002). A filter that skips a workflow skips the
+# aggregate with it, and GitHub documents the check of a workflow a path
+# filter skipped as staying Pending, which blocks the merge of every pull
+# request the filter left out. The trigger takes every pull request
+# instead, the changes job costs one API call on it, and the aggregate
+# reports on every one that is not closed.
 
 on:
   schedule:
@@ -149,23 +158,8 @@ on:
     # the pull request's own number instead, immune to that under any
     # action
     types: [opened, reopened, synchronize, ready_for_review, closed]
-    paths:
-      # the build backend and the compiled extension's own sources
-      - scripts/**
-      # the version this builds and cibuildwheel's own configuration,
-      # both read by the build
-      - pyproject.toml
-      # the vendored library this compiles twice: a gitlink is a path
-      # like any other on a pull request, as vendored-vectors.yml's own
-      # paths filter already relies on for the same submodule
-      - secp256k1
-      # the script the last step runs, on the same reasoning
-      # vendored-vectors.yml's own paths filter gives for including its
-      # own script: a change to it goes unmeasured on its own pull
-      # request otherwise
-      - .github/scripts/check_wheel_reproducibility.py
-      # the matrix and the steps that decide what gets built and how
-      - .github/workflows/wheel-reproducibility.yml
+    # no paths filter: the header says why, and the changes job below is
+    # what does its work
 
 # least privilege for the GITHUB_TOKEN: everything running in a job can
 # read it, and nothing here writes
@@ -194,18 +188,101 @@ concurrency:
   cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
 
 jobs:
+  # whether the build jobs below have anything to measure: on a pull
+  # request, whether one of its files is one the builds read; on the
+  # schedule and on a dispatch, always. It is written here rather than
+  # called from btclib-org/.github's reusable-changes.yml, which test.yml
+  # calls, because that one takes the pattern of the files nothing reads
+  # and answers true for anything else, where this question is the other
+  # way round: a short list of files the builds read, and false for
+  # anything else.
+  #
+  # It runs on a draft too, which costs one API call: the aggregate at
+  # the end needs its answer to tell a draft that touches nothing from
+  # one whose build the draft condition withheld. On a closed pull
+  # request it is skipped, and every job reading its output with it
+  changes:
+    name: Decide whether the pull request touches the build
+    if: ${{ github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    # one paginated API call and a grep; a job past this is hung on the
+    # call
+    timeout-minutes: 5
+    # a job's permissions replace the workflow's rather than adding to
+    # them, so contents: read is named again beside the one scope the
+    # file list needs
+    permissions:
+      contents: read
+      pull-requests: read # the file list of a pull request
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - name: Ask which files the pull request touches
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED: ${{ github.event.pull_request.changed_files }}
+          # what the builds read, one alternative per entry the header
+          # names: scripts/ for the build backend and the extension's
+          # own sources; pyproject.toml for the version and
+          # cibuildwheel's configuration; secp256k1 for the vendored
+          # library, whose gitlink the file list names like any other
+          # path; the script the steps run, so a change to it is
+          # measured on its own pull request; and this file, for the
+          # matrix and the steps. A literal block scalar, for the reason
+          # test.yml's prose-pattern gives: yamllint reads a pattern with
+          # no space in it as one unbreakable word
+          BUILD_PATHS: |-
+            ^(scripts/.*|pyproject\.toml|secp256k1|\.github/scripts/check_wheel_reproducibility\.py|\.github/workflows/wheel-reproducibility\.yml)$
+        run: |
+          # only a pull request has a base to be a diff against, so the
+          # schedule and a dispatch build everything
+          if [ "$EVENT" != pull_request ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "$EVENT has no base to diff against: build is true"
+            exit 0
+          fi
+          # a renamed file is listed under its new path with the old one
+          # beside it, and both are read: a file moved out of scripts/
+          # changes the build as much as one moved into it
+          gh api "repos/$REPO/pulls/$NUMBER/files" --paginate \
+            --jq '.[] | [.filename, .previous_filename // ""] | @tsv' \
+            > files.tsv
+          echo "files changed:"
+          cat files.tsv
+          # the endpoint lists a bounded number of files, and a list
+          # shorter than the count the event carries is a question this
+          # could not answer rather than an answer of false. An empty one
+          # is the same question, so it builds too
+          listed=$(wc -l < files.tsv)
+          if [ "$listed" -eq 0 ] || [ "$listed" -lt "$CHANGED" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "$listed of $CHANGED files listed: build is true"
+          elif tr '\t' '\n' < files.tsv | grep -qE "$BUILD_PATHS"; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "a file the builds read changed: build is true"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "no file the builds read changed: build is false"
+          fi
+
   rebuild:
     name: Build the wheel twice on ${{ matrix.os }} and diff them
-    # a draft pull request is work in progress and spends no runner
-    # here either: the same condition lint.yml, test.yml and
+    needs: changes
+    # only where the changes job above says the build is touched. A
+    # draft pull request is work in progress and spends no runner here
+    # either: the same condition lint.yml, test.yml and
     # vendored-vectors.yml carry, and ready_for_review is a trigger type
     # above for the same reason. A closed pull request spends none
-    # either, merged or not -- the concurrency block above is what stops
-    # a merged one's own run from cancelling the run this condition
-    # already let finish (#523). A double build on every image of every
-    # platform is expensive enough that this is not a convention
-    # followed for its own sake here
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    # either, merged or not, the changes job being skipped on it -- the
+    # concurrency block above is what stops a merged one's own run from
+    # cancelling the run this condition already let finish (#523). A
+    # double build on every image of every platform is expensive enough
+    # that this is not a convention followed for its own sake here
+    if: ${{ !github.event.pull_request.draft && needs.changes.outputs.build == 'true' }}
     runs-on: ${{ matrix.os }}
     # two full builds of the vendored library and the extension, from a
     # cache that is cold whenever the lock moved: well above what either
@@ -331,8 +408,9 @@ jobs:
 
   repaired:
     name: Build the repaired wheel twice on ${{ matrix.os }} and diff them
+    needs: changes
     # rebuild's own conditions, and for its own reasons
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    if: ${{ !github.event.pull_request.draft && needs.changes.outputs.build == 'true' }}
     runs-on: ${{ matrix.os }}
     # two cibuildwheel builds, each of which provisions an interpreter
     # and, on Linux, pulls a container per libc before compiling
@@ -463,8 +541,9 @@ jobs:
 
   dynamic:
     name: Build the dynamic wheel twice on ${{ matrix.os }} and diff them
+    needs: changes
     # rebuild's own conditions, and for its own reasons
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    if: ${{ !github.event.pull_request.draft && needs.changes.outputs.build == 'true' }}
     runs-on: ${{ matrix.os }}
     # two builds of the vendored library, with no container to pull
     # before either: the same bound-a-hung-job ceiling the jobs above
@@ -537,8 +616,9 @@ jobs:
 
   cross-windows:
     name: Cross-compile the Windows wheel twice and diff them
+    needs: changes
     # rebuild's own conditions, and for its own reasons
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    if: ${{ !github.event.pull_request.draft && needs.changes.outputs.build == 'true' }}
     # a Linux host, which is where build-windows in test.yml
     # cross-compiles this wheel: building it on Windows would measure a
     # file the release does not publish
@@ -594,16 +674,18 @@ jobs:
     # repaired for the container question #524 asks on the two Linux
     # ones -- see the steps below for why the two are never merged into
     # one comparison
-    needs: [rebuild, repaired]
+    # changes as well, since its output is part of the condition below and
+    # an expression reads only the outputs of a job named in needs
+    needs: [changes, rebuild, repaired]
     # !cancelled() rather than success(), for the same reason the upload
     # step above carries it: a platform whose images disagree is what
     # this job exists to name, and one image's red must not take the
-    # comparison with it. The draft and closed conditions are rebuild's
-    # own -- a skipped rebuild leaves nothing to download, and this job
-    # would go red for the absence rather than for a difference
+    # comparison with it. The rest is rebuild's own condition -- a
+    # skipped rebuild leaves nothing to download, and this job would go
+    # red for the absence rather than for a difference
     if: >-
       ${{ !cancelled() && !github.event.pull_request.draft
-      && github.event.action != 'closed' }}
+      && needs.changes.outputs.build == 'true' }}
     runs-on: ubuntu-latest
     # a download and a member-by-member diff of archives already built:
     # nothing here compiles
@@ -669,3 +751,75 @@ jobs:
           uv run --no-project python
           .github/scripts/check_wheel_reproducibility.py
           --across-images "$WHEELS_REPAIRED"
+
+  # the one context a branch rule can name (#1002): every job above is a
+  # matrix whose contexts change with every image, or a job skipped by
+  # design on most pull requests. The name carries the workflow because a
+  # context is keyed by name alone, as test.yml's aggregate does.
+  reproducibility-passed:
+    name: "wheel-reproducibility: every job passed"
+    # always(), not !cancelled(): GitHub reports a skipped job as a
+    # success, even where it is a required check, so a job this condition
+    # skipped on a cancelled run would pass it. Running is what lets a
+    # cancelled job above fail the check instead.
+    #
+    # The closed event is the one it skips, the builds having been
+    # skipped on it too: a closed pull request merges nothing, and
+    # reopening one starts the run that reports for it
+    if: ${{ always() && github.event.action != 'closed' }}
+    # every job above, and a job added to this workflow belongs in the
+    # list too, or it gates nothing
+    needs:
+      - changes
+      - rebuild
+      - repaired
+      - dynamic
+      - cross-windows
+      - across-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Fail unless the build was untouched or every job passed
+        # toJSON(needs) through the environment rather than expanded into
+        # the script: a job's outputs are strings the job wrote, and an
+        # expression expanded into run: would be code.
+        #
+        # The build jobs' results are read from the whole needs context
+        # rather than named, so a job added to needs above is covered
+        # without touching this, and success is the only result that
+        # passes. A skipped build job fails the check where changes
+        # answered true -- on a draft, whose condition withholds the
+        # build: marking it ready triggers the run that answers for it
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          changes=$(jq -r '.changes.result' <<< "$NEEDS")
+          build=$(jq -r '.changes.outputs.build // ""' <<< "$NEEDS")
+          echo "changes: $changes, build: $build"
+          if [ "$changes" != success ]; then
+            echo "::error::the changes job reported $changes"
+            exit 1
+          fi
+          case "$build" in
+            false)
+              echo "the pull request touches nothing the builds read"
+              exit 0
+              ;;
+            true) ;;
+            *)
+              echo "::error::the changes job answered '$build', not true or false"
+              exit 1
+              ;;
+          esac
+          results=$(jq -r 'del(.changes) | to_entries[]
+            | "\(.key) \(.value.result)"' <<< "$NEEDS")
+          echo "$results"
+          if [ -z "$results" ]; then
+            echo "::error::no build job reported a result"
+            exit 1
+          fi
+          if grep -qv ' success$' <<< "$results"; then
+            echo "::error::a build job reported something other than success"
+            exit 1
+          fi
