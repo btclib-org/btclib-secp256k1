@@ -551,6 +551,7 @@ python_version = "3.10"
 exclude = [
     "^build/",
     "^secp256k1/",
+    "^secp256k1-zkp/",
 ]
 
 [[tool.mypy.overrides]]
@@ -585,13 +586,13 @@ ignore_missing_imports = true
 skip = "fuzz/corpus/*"
 
 [tool.typos.files]
-# the vendored tree, as for ruff and mypy above. Not needed for the hook,
-# which is handed tracked files only, but a bare `uvx typos` otherwise
+# the vendored trees, as for mypy above and ruff below. Not needed for the
+# hook, which is handed tracked files only, but a bare `uvx typos` otherwise
 # answers with thousands of findings in C that is not ours to correct.
 # The seeds, for the reason `[tool.codespell]` gives: the hook's
 # --force-exclude is what makes this entry hold for a path pre-commit
 # names on the command line
-extend-exclude = ["secp256k1/", "fuzz/corpus/**"]
+extend-exclude = ["secp256k1/", "secp256k1-zkp/", "fuzz/corpus/**"]
 
 [tool.typos.default.extend-words]
 # the macOS wheel-repair tool, named in __init__.py and in test.yml beside
@@ -623,7 +624,7 @@ extend-ignore-re = ['`[^`]*`']
 
 [tool.ruff]
 # the vendored upstream sources are not ours to lint or reformat
-extend-exclude = ["secp256k1"]
+extend-exclude = ["secp256k1", "secp256k1-zkp"]
 
 [tool.ruff.format]
 # markdown is the formatter's alone: `ruff check --show-files .` lists no

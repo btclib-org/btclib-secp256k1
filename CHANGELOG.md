@@ -1163,6 +1163,12 @@ release-notes length in the first place, and are still in
   only a `#!` line may open the file ahead of the notice, or none**
   (issue btclib-org/.github#1294).
 
+### ruff, mypy and typos exclude `secp256k1-zkp/` beside `secp256k1/`
+
+- **Each tool's exclude in `pyproject.toml` names `secp256k1-zkp`** (closes
+  #984): a bare `ruff check .`, `ruff format .`, `mypy .` or `typos .` skips
+  it as it skips `secp256k1/`; pre-commit hands the hooks none of its files.
+
 ## v0.8.0.6
 
 ### `release.yml`'s caller-permissions comment names the scope it is about
