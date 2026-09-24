@@ -34,6 +34,12 @@ release-notes length in the first place, and are still in
   `fametrano/secp256k1-zkp` on the pin, and `release.yml`'s `zkp-pin-tag`
   job refuses `publish-pypi` until it peels to the pin** (closes #988).
 
+### The attestation's signer is `reusable-attest.yml` from v0.8.0.7 on
+
+- **The verify commands and `sdist-rebuild.yml` name the called workflow
+  as the signer**, the path of `release.yml` itself being kept for v0.8.0
+  to v0.8.0.6, which it signed (closes #996).
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"
