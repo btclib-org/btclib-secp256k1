@@ -177,7 +177,10 @@ bytes, no libsecp256k1 call producing them directly.
 `keys.pubkey_from_prvkey` is `secp256k1_ec_pubkey_create` followed by
 `secp256k1_ec_pubkey_serialize`; every other function returning a key or
 a signature has the same shape, the second call being the serialization
-the first cannot do rather than a second decision.
+the first cannot do rather than a second decision. `ecdh.shared_point`
+is the one whose serialization is not a call: `secp256k1_ecdh` hands its
+point to a hash function rather than back, and the octets are assembled
+from the two coordinates that function copies out.
 
 A function that does make a second decision is named after both of them
 and is here for one reason: what the composition saves is the crossing
@@ -1028,11 +1031,12 @@ private keys, and the x-only public key itself, from a full public key
 taproot tags are built on.
 
 Wherever one of these answers a *secret* — a tweaked or negated private
-key, a shared secret, a nonce — it also takes a keyword-only `into`: a
-writable buffer of exactly 32 contiguous octets, which receives the
-secret in place of the `bytes` the call would otherwise return, so that
-the copy the caller is left holding is one they can overwrite. It is an
-addition and not a change; omit it and nothing differs. SECURITY.md is
+key, a shared secret or a shared point, a nonce — it also takes a
+keyword-only `into`: a writable buffer of exactly the secret's length,
+in contiguous octets, which receives the secret in place of the `bytes`
+the call would otherwise return, so that the copy the caller is left
+holding is one they can overwrite. It is an addition and not a change;
+omit it and nothing differs. SECURITY.md is
 where what it does and does not buy is stated, and names the
 `silentpayments` secrets it does not reach.
 
@@ -1074,10 +1078,13 @@ what these are for is checking a derivation, not driving one.
 `ecdh.shared_secret` returns the SHA256 of the compressed shared point,
 the libsecp256k1 default. The hash function is not exposed: libsecp256k1
 takes it as a C callback, and a protocol needing another derivation has
-the shared point itself as `keys.pubkey_tweak_mul(pubkey, prvkey)`,
-without python in the middle of it -- but not with the ECDH call's
-constant-time guarantee: that call runs `secp256k1_ecmult`, variable
-time in the tweak, where `secp256k1_ecdh` runs `secp256k1_ecmult_const`.
+the shared point itself as `ecdh.shared_point(pubkey, prvkey)`. That is
+the same `secp256k1_ecdh` and its constant-time
+`secp256k1_ecmult_const`, handed a hash function this package compiles
+into the vendored library, which copies the two coordinates out rather
+than hashing them, so no python runs in the middle of the call.
+`keys.pubkey_tweak_mul(pubkey, prvkey)` answers the same point through
+`secp256k1_ecmult`, variable time in the tweak.
 
 `silentpayments` is BIP352, and the elliptic curve half of it, which is
 what libsecp256k1 implements: `create_outputs` is the sender's side and

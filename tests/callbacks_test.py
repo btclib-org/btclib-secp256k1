@@ -216,6 +216,21 @@ def test_ecdh_with_an_unreadable_key_answers_a_secret_with_nobody() -> None:
         context.check()
 
 
+def test_ecdh_with_an_unreadable_key_answers_a_point_shared_with_nobody() -> None:
+    """`ecdh._shared_point_` is the same call, and answers the same way.
+
+    A serialization of the right length and nothing about it to say the
+    public key was refused: `secp256k1_ecdh` runs to the end on it, and
+    only the thread says otherwise.
+    """
+    point = ecdh._shared_point_(ffi.new("secp256k1_pubkey *"), 7)
+
+    assert isinstance(point, bytes)
+    assert len(point) == 33
+    with pytest.raises(ValueError, match="illegal argument"):
+        context.check()
+
+
 def test_comparison_of_unreadable_keys_is_an_ordering_like_any_other() -> None:
     """`keys._pubkey_cmp_` answers zero for two objects it could not read.
 

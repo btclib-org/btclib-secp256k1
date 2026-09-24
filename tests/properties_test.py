@@ -256,6 +256,14 @@ def test_ecdh_and_ellswift_agree() -> None:
             secret == hashlib.sha256(keys.pubkey_tweak_mul(pubkey_b, prvkey_a)).digest()
         )
 
+        # the constant-time multiplication answers the point the
+        # variable-time one does, in both serializations, and the two
+        # parties reach it from their own sides
+        for compressed in (True, False):
+            point = ecdh.shared_point(pubkey_b, prvkey_a, compressed)
+            assert point == keys.pubkey_tweak_mul(pubkey_b, prvkey_a, compressed)
+            assert point == ecdh.shared_point(pubkey_a, prvkey_b, compressed)
+
         # an ElligatorSwift encoding decodes to the key it encodes
         ell_a = ellswift.create(prvkey_a)
         assert ellswift.decode(ell_a) == pubkey_a

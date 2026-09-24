@@ -19,7 +19,8 @@
   https://github.com/bitcoin/bips/blob/master/bip-0352/send_and_receive_test_vectors.json;
   both directions of every case are driven, the eligibility of an input
   being read off the keys the file itself publishes rather than off its
-  scripts -- see `bip352_eligible`
+  scripts -- see `bip352_eligible`; and a receiving case's shared secret,
+  which BIP352 defines as a point, is `ecdh.shared_point`'s
 - ECDSA RFC6979: (k, r, s) vectors published in
   https://bitcointalk.org/index.php?topic=285142.msg3300992
   as vendored by trezor-firmware (crypto/tests/test_check.c,
@@ -56,6 +57,7 @@ import pytest
 
 from btclib_secp256k1 import (
     dsa,
+    ecdh,
     ellswift,
     keys,
     musig,
@@ -798,6 +800,30 @@ def test_the_bip352_vectors_were_read_at_all() -> None:
     for case in BIP352:
         assert case["sending"], case["comment"]
         assert case["receiving"], case["comment"]
+
+
+def test_bip352_shared_secret_vector() -> None:
+    """Multiply a receiving case's tweak by its scan key, as BIP352 does.
+
+    BIP352's shared secret is a point and not a hash of one: the scan
+    private key times the tweak data, which the receiving half of every
+    Silent Payments case publishes beside it, compressed. That is
+    `ecdh.shared_point`, with the scan key as the secret it is there
+    for. A case whose shared secret is null has no tweak data either,
+    and `test_bip352_receiving_vector` is what drives it.
+    """
+    compared = False
+    for case in BIP352:
+        for recv in case["receiving"]:
+            expected = recv["expected"]
+            if expected["shared_secret"] is None:
+                continue
+            scan_prvkey = bytes.fromhex(recv["given"]["key_material"]["scan_priv_key"])
+            tweak_data = bytes.fromhex(expected["tweak"])
+            shared = ecdh.shared_point(tweak_data, scan_prvkey)
+            assert shared.hex() == expected["shared_secret"], case["comment"]
+            compared = True
+    assert compared, "no receiving case carries a shared secret"
 
 
 # A signature whose nonce point has an x coordinate above the group

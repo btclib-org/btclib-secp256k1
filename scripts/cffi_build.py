@@ -28,10 +28,11 @@ architecture and deployment-target options, and the header-to-cdef
 derivation, none of which depends on which of the two submodules is
 being built; `Secp256k1CFFIExtension` and `Secp256k1ZkpCFFIExtension`
 are the two of them, differing only in which submodule they read, which
-of its modules they turn on, and which of its headers the cdef comes
-from. scripts/README.md walks the file; the module is also loaded by
-`exec()` from scripts/hatch_build.py, which is why nothing here depends
-on being importable.
+of its modules they turn on, which of its headers the cdef comes from,
+and the C of this package's own the first compiles into its library.
+scripts/README.md walks the file; the module is also loaded by `exec()`
+from scripts/hatch_build.py, which is why nothing here depends on being
+importable.
 """
 
 from __future__ import annotations
@@ -79,23 +80,82 @@ void secp256k1_default_error_callback_fn(const char* str, void* data) {
 }
 """
 
+# the hash function `ecdh.shared_point` hands `secp256k1_ecdh`: it copies
+# the two coordinates of the shared point out, where the default one
+# hashes them. It is C because a python callback would run in the middle
+# of the constant-time call, with the point in python objects.
+#
+# It is compiled into the library rather than into the extension because
+# a dynamic build compiles no C of its own: the shared object is where
+# the ABI-mode module finds it. It is defined the way
+# `secp256k1_ecdh_hash_function_sha256` is, a `const` function pointer the
+# library exports, and the export is spelled out because this file
+# includes no upstream header to take `SECP256K1_API` from: a mingw DLL
+# whose other symbols are `dllexport`ed exports nothing left unmarked
+ECDH_HASH_FUNCTION_XY = """
+#include <string.h>
+
+#if defined(_WIN32) && defined(SECP256K1_DLL_EXPORT)
+#    define BTCLIB_API __declspec(dllexport)
+#elif !defined(_WIN32) && defined(__GNUC__) && (__GNUC__ >= 4)
+#    define BTCLIB_API __attribute__ ((visibility("default")))
+#else
+#    define BTCLIB_API
+#endif
+
+typedef int (*btclib_secp256k1_ecdh_hash_function)(
+    unsigned char *output,
+    const unsigned char *x32,
+    const unsigned char *y32,
+    void *data
+);
+
+static int btclib_secp256k1_ecdh_hash_xy(
+    unsigned char *output,
+    const unsigned char *x32,
+    const unsigned char *y32,
+    void *data
+) {
+    (void)data;
+    memcpy(output, x32, 32);
+    memcpy(output + 32, y32, 32);
+    return 1;
+}
+
+BTCLIB_API const btclib_secp256k1_ecdh_hash_function
+    btclib_secp256k1_ecdh_hash_function_xy = btclib_secp256k1_ecdh_hash_xy;
+"""
+
+# what the extension is told about it, in the cdef and in the C a static
+# build compiles: appended to the concatenated public headers, which is
+# where `secp256k1_ecdh_hash_function`, the type it is declared with,
+# comes from
+ECDH_HASH_FUNCTION_XY_DECLARATION = """
+extern const secp256k1_ecdh_hash_function
+    btclib_secp256k1_ecdh_hash_function_xy;
+"""
+
 # add the callback stubs to the vendored library target, so that the
 # static archive and the shared object alike define the symbols that
-# SECP256K1_USE_EXTERNAL_DEFAULT_CALLBACKS leaves undefined.
+# SECP256K1_USE_EXTERNAL_DEFAULT_CALLBACKS leaves undefined, and with
+# them whatever C of its own an extension declares, which is
+# `ECDH_HASH_FUNCTION_XY` above for the one that declares any.
 #
 # CMake includes this file at the end of every project() call, when the
 # target does not exist yet: hence the deferred call, which runs at the
 # end of the top level directory, once add_subdirectory(src) has created
 # the target, and still before generation. cmake_language(DEFER) needs
-# CMake 3.19; the vendored library already requires 3.22.
+# CMake 3.19; the vendored library already requires 3.22. BTCLIB_SOURCES
+# is a list, and it is unquoted so that each of its paths is an argument
+# of its own.
 #
 # Nothing of this is written inside the vendored tree: the stubs and this
 # file live in the CMake binary directory, which is outside the submodule
 PROJECT_INCLUDE = """
-if(NOT DEFINED BTCLIB_CALLBACKS_ADDED)
-  set(BTCLIB_CALLBACKS_ADDED ON)
+if(NOT DEFINED BTCLIB_SOURCES_ADDED)
+  set(BTCLIB_SOURCES_ADDED ON)
   cmake_language(DEFER DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-                 CALL target_sources secp256k1 PRIVATE "${BTCLIB_CALLBACKS}")
+                 CALL target_sources secp256k1 PRIVATE ${BTCLIB_SOURCES})
 endif()
 """
 
@@ -422,13 +482,21 @@ class VendoredCMakeExtension(FFIExtension):
     What `Secp256k1CFFIExtension` and `Secp256k1ZkpCFFIExtension` do not
     share is which submodule is read, which of its CMake modules are
     turned on, and which of its headers the cdef comes from -- the three
-    arguments `configure` below takes. Everything else is a property of
+    arguments `configure` below takes -- and the C of this package's own
+    that `own_source` names. Everything else is a property of
     building this shape of upstream CMake project, once per submodule,
     and lives here so that it is written once: the architecture and
     deployment-target options, the callback stubs, the choice among the
     three compilation paths `FFIExtension.create_cffi` makes, and the
     header concatenation and preprocessing.
     """
+
+    # C of this package's own, compiled into the vendored library beside
+    # the callback stubs, and what the cdef and a static build's C are
+    # told of it, appended to the public headers: empty for an extension
+    # that declares none
+    own_source = ""
+    own_declarations = ""
 
     def configure(
         self,
@@ -608,6 +676,11 @@ class VendoredCMakeExtension(FFIExtension):
         self.cmake_dir.mkdir(parents=True, exist_ok=True)
         callbacks = self.cmake_dir / "btclib_default_callbacks.c"
         callbacks.write_text(CALLBACK_STUBS, encoding="utf-8")
+        sources = [callbacks]
+        if self.own_source:
+            own = self.cmake_dir / "btclib_own_sources.c"
+            own.write_text(self.own_source, encoding="utf-8")
+            sources.append(own)
         project_include = self.cmake_dir / "btclib_callbacks.cmake"
         project_include.write_text(PROJECT_INCLUDE, encoding="utf-8")
 
@@ -624,7 +697,7 @@ class VendoredCMakeExtension(FFIExtension):
             "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
             "-DSECP256K1_USE_EXTERNAL_DEFAULT_CALLBACKS=ON",
             f"-DCMAKE_PROJECT_INCLUDE={project_include}",
-            f"-DBTCLIB_CALLBACKS={callbacks}",
+            f"-DBTCLIB_SOURCES={';'.join(str(source) for source in sources)}",
             # the one upstream option whose answer is what happens to be
             # *installed* on the machine: AUTO means
             # find_package(Valgrind), which is the only find_package in
@@ -752,6 +825,7 @@ class VendoredCMakeExtension(FFIExtension):
                 ffi_header += f.read() + "\n"
 
         ffi_header = re.sub(r"#\s*include .*", "", ffi_header)
+        ffi_header += self.own_declarations
 
         # expand all __attribute__ ((...)) to nothing: cffi cannot parse them
         command = [
@@ -774,6 +848,9 @@ class VendoredCMakeExtension(FFIExtension):
 
 class Secp256k1CFFIExtension(VendoredCMakeExtension):
     """The vendored libsecp256k1, built with CMake and wrapped by cffi."""
+
+    own_source = ECDH_HASH_FUNCTION_XY
+    own_declarations = ECDH_HASH_FUNCTION_XY_DECLARATION
 
     def __init__(self) -> None:
         """Name the sources, the headers and where the build output goes."""

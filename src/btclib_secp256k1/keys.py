@@ -529,8 +529,8 @@ def _pubkey_tweak_mul_(pubkey: CData, tweak: BytesLike | int) -> CData:
     The private half of `pubkey_tweak_mul`, for a caller who already
     holds the parsed point: see the package docstring for what the two
     underscores mean throughout. This is the shared point of an ECDH
-    exchange, and `ecdh._shared_secret_` is the hash of it from the same
-    parsed key.
+    exchange: `ecdh._shared_point_` is the same point from the same parsed
+    key, in constant time, and `ecdh._shared_secret_` the hash of it.
 
     Args:
         pubkey: the already-parsed public key, as `parse` returns.
@@ -561,13 +561,14 @@ def pubkey_tweak_mul(
     """Multiply a public key by a tweak.
 
     This is the multiplication of an arbitrary point, as opposed to the
-    multiplication of the generator provided by the mult module, and is
-    the shared point of an ECDH exchange: see `ecdh.shared_secret`,
-    which hashes it. **It is not constant time**:
+    multiplication of the generator `pubkey_from_prvkey` is, and is the
+    shared point of an ECDH exchange: see `ecdh.shared_secret`, which
+    hashes it. **It is not constant time**:
     `secp256k1_ec_pubkey_tweak_mul` runs `secp256k1_ecmult`, the wNAF
     multiplication, which is variable time in the tweak -- unlike
     `secp256k1_ecmult_const`, which is what `secp256k1_ecdh` calls to
-    reach that same point.
+    reach that same point. `ecdh.shared_point` is that call answering the
+    point, and the one for a tweak that is a secret.
 
     Args:
         pubkey_bytes: the public key, 33 or 65 bytes.

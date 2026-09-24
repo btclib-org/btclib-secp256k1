@@ -152,6 +152,11 @@ PAIRS: list[tuple[str, Callable[[bytes], Any], Callable[[Any], Any]]] = [
         lambda pubkey: ecdh._shared_secret_(pubkey, PRVKEY),
     ),
     (
+        "ecdh._shared_point_",
+        lambda pubkey_bytes: ecdh.shared_point(pubkey_bytes, PRVKEY),
+        lambda pubkey: ecdh._shared_point_(pubkey, PRVKEY),
+    ),
+    (
         "dsa._verify_",
         lambda pubkey_bytes: dsa.verify(MSG, pubkey_bytes, DER),
         lambda pubkey: dsa._verify_(MSG, pubkey, dsa.parse_der(DER)),
@@ -545,6 +550,8 @@ def test_a_private_half_still_checks_everything_but_the_object() -> None:
         ssa._verify_(MSG, xonly.parse(XONLY), SSA_SIG[1:])
     with pytest.raises(ValueError, match="private key"):
         ecdh._shared_secret_(pubkey, 0)
+    with pytest.raises(ValueError, match="private key must be 32 bytes"):
+        ecdh._shared_point_(pubkey, b"\x01" * 31)
     with pytest.raises(ValueError, match="tweak must be 32 bytes"):
         keys._pubkey_tweak_add_(pubkey, b"\x01" * 31)
     with pytest.raises(ValueError, match="tweak must be 32 bytes"):
