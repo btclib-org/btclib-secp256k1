@@ -5,12 +5,19 @@ release is in [CHANGELOG.md](./CHANGELOG.md); what follows is what a user
 has to act on and what a user gains, and it is what the GitHub release of
 a tag is generated from.
 
-## v0.8.0.8 (work in progress, not released yet)
+## v0.8.0.9 (work in progress, not released yet)
+
+## v0.8.0.8
 
 - **Breaking: Python 3.10 is no longer supported, and the minimum is
   3.11.** No `cp310` wheel is published, and pip on 3.10 resolves to
   0.8.0.7, the newest release whose `requires-python` admits it. 3.10's
   end of life is 2026-10-31.
+- **`ecdh.shared_point` multiplies a point by a secret scalar in constant
+  time** and answers the point, in `keys.serialize`'s encoding.
+  `keys.pubkey_tweak_mul` reaches the same point in variable time, so a
+  secret scalar belongs in `shared_point`: an ECDH that needs the point
+  rather than its hash, or BIP352's shared secret.
 
 ## v0.8.0.7
 
