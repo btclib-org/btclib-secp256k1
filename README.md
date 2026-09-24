@@ -47,6 +47,7 @@ says how the choice is enforced.
 [![codeql workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/codeql.yml?query=branch%3Amain)
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-secp256k1/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-secp256k1)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14814/badge)](https://www.bestpractices.dev/projects/14814)
 
 ---
 
