@@ -122,6 +122,9 @@ bundle is that attestation and is not among its subjects.
 
 ## Limitations of the binding layer
 
+The [assurance case](./ASSURANCE_CASE.md) is the threat model these are
+written against, and the argument for what this file does promise.
+
 These are known and inherent, not vulnerabilities:
 
 - secret material handed to these bindings lives in Python objects,

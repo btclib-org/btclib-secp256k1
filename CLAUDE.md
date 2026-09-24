@@ -38,39 +38,13 @@ The rest of the documentation, and none of it repeated here:
 
 ## Architecture
 
-One thing decides how this package behaves, and it is decided at import
-time by `src/btclib_secp256k1/__init__.py`: `_load_lib` returns
-`module.lib` when the extension has libsecp256k1 linked into it (a static
-build) and otherwise `ffi.dlopen`s the shared object shipped beside it (a
-dynamic, cffi ABI mode build). Only one of those two branches exists in a
-given wheel, which is why `_load_lib` takes the module as an argument
-rather than reading it from the enclosing scope: the branch this build
-does not have is testable only with a stand-in, and that is how coverage
-still reaches every line. Every question of the form "why does this differ
-between platforms" comes back here.
-
-Above it, one module per libsecp256k1 module wrapped: `dsa`, `ssa`,
-`ecdh`, `recovery`, `ellswift`, `silentpayments`, plus `keys`, `xonly`,
-`hashes`, `context`, `_scalar`, `_secret` and `_cdata` for what crosses
-the boundary. No module is one call of another: `mult` had become that
--- `pubkey_from_prvkey` with a flag fixed -- and was folded into `keys`.
-
-MuSig2 is deliberately *not* wrapped as a protocol: its two-round session
-holds a secret nonce that cannot be reused, which belongs where the
-signing state lives, in the library downstream of these bindings.
-`musig.KeyAggCache` and `musig.Session` are the one place this package
-holds a libsecp256k1 object with no serialization to be one, and
-`musig.py`'s module docstring carries the reasoning for taking that
-exception. See the Design section of the README before adding a
-module.
-
-Below it, `scripts/cffi_build.py` builds the vendored library with CMake
-and then compiles the extension by one of three paths — static with
-MSVC, static with the interpreter's own toolchain, or dynamic with no C
-compiled at all — chosen by `BTCLIB_LIBSECP256K1_DYNAMIC`,
-`BTCLIB_LIBSECP256K1_CROSS_COMPILE` and `CFFI_PLATFORM`.
-`stubs/_btclib_secp256k1.pyi` is what lets strict mypy typecheck a
-module that only exists after a build.
+[ARCHITECTURE.md](./ARCHITECTURE.md) is the design: the two builds a
+wheel can be, the module layout and the `_foo_` boundary convention, the
+zkp subpackage, the vendored submodules and how they are compiled, and
+how a release is produced and can be checked. Read it before touching
+`src/btclib_secp256k1/__init__.py`, `scripts/cffi_build.py` or
+`scripts/hatch_build.py`, and see the Design section of the README
+before adding a module.
 
 ## The primary checkout is the maintainer's
 

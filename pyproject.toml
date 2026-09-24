@@ -707,16 +707,16 @@ ignore = [
     # implementation detail on purpose (`_secnonce`, `_keypair`, the
     # callback stand-ins `_record_illegal`/`_record_error`), a sibling
     # module reaching into another module's private state the way
-    # `xonly._parsed` calls `keys._parsed` (CLAUDE.md's Architecture
-    # section), or `scripts/hatch_build.py` reading cffi's own
-    # `FFI._assigned_source`, which cffi exposes no public accessor for
+    # `xonly._parsed` calls `keys._parsed` (ARCHITECTURE.md), or
+    # `scripts/hatch_build.py` reading cffi's own `FFI._assigned_source`,
+    # which cffi exposes no public accessor for
     "private-member-access",
     # flake8-annotations' any-type: measured against every site it finds,
     # not assumed. Three shapes and no others -- the cffi boundary itself
     # (`ffi`/`lib` in stubs/_btclib_secp256k1.pyi and in
     # scripts/cffi_build.py, and `_load_lib`'s `module` in __init__.py,
-    # which CLAUDE.md's Architecture section explains takes a stand-in
-    # module a real annotation cannot name), a signature this tree does
+    # which ARCHITECTURE.md explains takes a stand-in module a real
+    # annotation cannot name), a signature this tree does
     # not own -- `scripts/hatch_build.py` overriding hatchling's own
     # build-hook method, docs/source/conf.py overriding
     # `SphinxPostTransform.run` -- and a test sweeping every entry point
