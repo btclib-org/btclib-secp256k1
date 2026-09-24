@@ -79,6 +79,12 @@ input decides nothing (issue btclib-org/.github#1315).
   require `wheel-reproducibility: every job passed`**, which passes where
   the build is untouched or every job passed (issue #1002).
 
+### `wheel-reproducibility: every job passed` is a required check on `main`
+
+- **`REPOSITORY.md`'s table and `CONTRIBUTING.md` name it among what a
+  merge waits for** (closes #1002): a pull request that changes the build
+  waits for its wheels to reproduce.
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"
