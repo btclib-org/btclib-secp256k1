@@ -505,3 +505,5 @@ because that document, and not this one, is where the rule lives.
   *What a change here has to satisfy* is where that condition lives.
   Bumping one changes what this package wraps, and Dependabot tracks each
   upstream's default branch rather than its tags.
+
+Throwaway line for btclib-secp256k1 ISS 1002's skip-path test; never lands.
