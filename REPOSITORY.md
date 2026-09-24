@@ -67,11 +67,16 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
   --jq '.required_status_checks'
 ```
 
+<!-- markdownlint-disable MD013 -->
+
 | Check | Produced by |
 | --- | --- |
 | `test: every job passed` | `test.yml`, aggregate over its jobs |
 | `docs / Build the documentation` | `docs.yml`, calling `reusable-docs.yml` |
 | `lint / Lint and type-check` | `lint.yml`, calling `reusable-lint.yml` |
+| `wheel-reproducibility: every job passed` | `wheel-reproducibility.yml`, aggregate over its jobs |
+
+<!-- markdownlint-enable MD013 -->
 
 `codeql: every job passed` is not among them, and its absence is a
 decision rather than an impossibility: `codeql.yml` runs on a pull
@@ -140,9 +145,9 @@ being in `os-ubuntu.yml`'s header and the numbers in `test.yml`'s, and
 no `pull_request` trigger, so it produces no context a branch rule could
 name.
 
-**`wheel-reproducibility: every job passed` is to join the rule's
-checks**, bound to the Actions app like them (issue #1002). Issue #508 gave
-`wheel-reproducibility.yml` a `pull_request` trigger so that a branch's own
+**`wheel-reproducibility: every job passed` is required because a pull
+request can turn it red by changing the build** (issue #1002).
+`wheel-reproducibility.yml` runs on `pull_request`, so a branch's own
 change to the build is measured before it merges, which is what a required
 check exists to hold. The trigger carries no `paths` filter, because
 GitHub documents the check of a workflow a path filter skipped as staying
@@ -152,11 +157,10 @@ builds read, and the aggregate reports on every pull request that is
 neither a draft nor closed: success where every other job of its run
 succeeded or was skipped, failure otherwise.
 
-The rule gains the check after that workflow has landed on `main`, by the
-`PATCH` below, and not before: a pull request whose run predates the
+A check joins the rule, by the `PATCH` below, only once the workflow that
+produces it has landed on `main`: a pull request whose run predates the
 landing produces no such context, and a rule naming it would hold that
-pull request `Pending` until a push to it. The table above is what the
-endpoint answers, so it gains the row when the endpoint does.
+pull request `Pending` until a push to it.
 
 A check can be bound to the app that produces it — `checks` with an
 `app_id` rather than the bare `contexts` list — so that nothing else can

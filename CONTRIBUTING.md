@@ -353,9 +353,11 @@ That gate fails outright where a submodule `.gitmodules` names is not
 checked out at all: `submodules-checked-out` asks that on every
 invocation, whatever the commit touches.
 
-Three gates decide a merge, and each command below is close to the one
-its workflow runs — the second is what a contributor types, not what
-`test.yml` runs, and coverage is the one flag between the two:
+Three gates decide every merge, and `wheel-reproducibility` a merge that
+touches what its builds read, its command being among the sentinels
+further down. Each command below is close to the one its workflow runs —
+the second is what a contributor types, not what `test.yml` runs, and
+coverage is the one flag between the two:
 
 ```shell
 uv run --locked --only-group lint pre-commit run --all-files \
@@ -866,8 +868,10 @@ The `pypi-install` workflow has no local equivalent by design: what it
 installs is what PyPI serves.
 
 The sentinels beside it gate nothing, so a red one is read in the Actions
-tab rather than fixed on a branch. Each is dispatchable, and all but `links`
-run locally.
+tab rather than fixed on a branch. `wheel-reproducibility` is the exception:
+its aggregate is a required check on a pull request, and *What gates a
+merge, and what only reports* below says why. Each is dispatchable, and all
+but `links` run locally.
 
 - `os-ubuntu`, `os-macos` and `os-windows`, the suite on both images of
   a platform and on every interpreter, so only the row matching the
@@ -1309,12 +1313,12 @@ by nothing, rather than from a `local` hook naming the tool by hand.
 `check` group through `uv run --locked`, so the version is `uv.lock`'s. A
 check discovered by CI after a push is a check in the wrong place.
 
-The aggregate of `test`, the `lint` job and the documentation build are
-the required checks, and `REPOSITORY.md` reads that rule back from the
-endpoint rather than restating it. `release` reuses all three. The
-aggregate of `wheel-reproducibility` is to join them, a pull request being
-able to turn it red by changing the build, and `REPOSITORY.md` says why and
-in which order the rule takes it. Everything
+The aggregate of `test`, the `lint` job, the documentation build and the
+aggregate of `wheel-reproducibility` are the required checks, and
+`REPOSITORY.md` reads that rule back from the endpoint rather than
+restating it. `release` reuses the first three. `wheel-reproducibility` is
+among them because a pull request can turn it red by changing the build,
+and `REPOSITORY.md` says why its trigger lets it be. Everything
 else reports: a sentinel opens no issue when it fails, `vendored-vectors`
 excepted for the reason the header of the workflow it calls gives,
 because each is expected to go red for something no pull request
@@ -1345,9 +1349,9 @@ introduced and a red check nobody can act on from a branch is noise.
 
 <!-- markdownlint-enable MD013 -->
 
-The first two rows are what a merge waits for, `wheel-reproducibility` is to
-join them by the rule `REPOSITORY.md` reads back from the endpoint, and the
-suite cell among them is one: `ubuntu-latest` on the interpreter
+The first two rows and `wheel-reproducibility` are what a merge waits for,
+by the rule `REPOSITORY.md` reads back from the endpoint, and the suite cell
+among them is one: `ubuntu-latest` on the interpreter
 `.python-version` pins, measured for coverage. Which day each of the rest
 runs, and at which minute, is section 10 of the organization standard in
 `btclib-org/.github` and not this file's to restate — one calendar covering
