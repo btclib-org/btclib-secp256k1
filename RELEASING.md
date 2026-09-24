@@ -1067,9 +1067,11 @@ restate.
 than leaving it asserted. Its `rebuild`, `repaired`, `dynamic` and
 `cross-windows` jobs each build one commit twice in one image and name
 the members that differ, and `across-images` compares two images'
-wheels of one platform: `rebuild`'s wherever it builds one, and
-`repaired`'s on the two Linux platforms, which carry a second image of
-their own. `repaired`, `dynamic` and
+wheels of one platform: `rebuild`'s wherever it builds one, with the
+compiled extension's bytes left out, since an extension compiled on the
+runner is not claimed to reproduce on another image; and `repaired`'s on
+the two Linux platforms, which carry a second image of their own, whole.
+`repaired`, `dynamic` and
 `cross-windows` take the frontend and the repair from the job that
 uploads the wheel each is about, so the file under measurement is the
 one PyPI receives; `build-windows` runs no repair, so `cross-windows`

@@ -135,11 +135,9 @@ to go red for a reason no pull request introduced. `wheel-reproducibility.yml`
 is the exception, and by design — issue #508 gave it a `pull_request` trigger
 precisely so that a branch's own change to the build can turn a cell red, which
 is what a required check exists to catch. What keeps it out of the rule instead
-is the gap `wheel-reproducibility.yml`'s own header names: two images of one
-platform do not build one wheel yet, one half of that gap open and
-pinned by an issue, the other declined outright. Requiring the check
-would fail a pull request for that gap rather than for what the pull
-request itself did. `os-ubuntu.yml`, `os-macos.yml` and `os-windows.yml`
+is its `paths` filter: a pull request touching none of those paths gets no run,
+and GitHub documents a required check whose workflow a path filter skipped as
+staying `Pending` and blocking the merge. `os-ubuntu.yml`, `os-macos.yml` and `os-windows.yml`
 are the ones worth naming twice, because they do run the suite: what a
 merge no longer waits for is every cell of it but one, the reasoning
 being in `os-ubuntu.yml`'s header and the numbers in `test.yml`'s, and

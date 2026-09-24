@@ -87,18 +87,23 @@ name: wheel-reproducibility
 # missing from either job here, which is the direction that matters now
 # that rebuild's list and that job's are no longer equal.
 #
-# It is a sentinel and not a gate. Two images of one platform do not
-# build one wheel: rebuild below compiles on the runner, so the
-# container digest [tool.cibuildwheel.linux] pins does not reach its
-# Linux pair, and pinning the Xcode and the MSVC toolset is declined,
-# for the reason RELEASING.md's rebuild section gives -- so a required
-# check here would be one a pull request could never pass for a reason
-# nothing on that pull request caused. The declined two stay in
-# across-images below with the rest: a platform that is not expected to
-# pass is still what would say so if it started passing. Which platform
-# is red is this workflow's own output, on the Actions tab, and not a
-# list kept in this file: a list here would be a line every future fix
-# has to edit, and nothing would fail when it was not edited.
+# Two images of one platform do not compile one extension: rebuild
+# below compiles on the runner, so the container digest
+# [tool.cibuildwheel.linux] pins does not reach its Linux pair, and
+# pinning the Xcode and the MSVC toolset is declined, for the reason
+# RELEASING.md's rebuild section gives. The two images of a pair are
+# chosen to carry different toolchains, and a compiler of another
+# version writes other code. So across-images compares rebuild's pairs
+# with --across-toolchains, which holds every member but the compiled
+# extension to byte equality and the extension's own bytes to nothing
+# (#992): asking those bytes to agree would fail every run for a
+# compiler version nothing on the pull request chose, and a check that
+# cannot pass says nothing about the pull request. repaired's Linux
+# pairs, compiled in the pinned container, are held to the whole
+# archive. Which platform is red is this workflow's own output, on the
+# Actions tab, and not a list kept in this file: a list here would be a
+# line every future fix has to edit, and nothing would fail when it was
+# not edited.
 #
 # The pull_request trigger below is #508: schedule and workflow_dispatch
 # alone would leave a branch's own change to the build unmeasured until
@@ -219,9 +224,7 @@ jobs:
         # against it by tests/wheel_reproducibility_platforms_test.py --
         # see this file's own header for why it is a copy rather than a
         # read. The platform key is what pairs them for across-images
-        # below, and what a wheel's own tag cannot do: a macOS runner's
-        # deployment target reaches that tag, so two images of one
-        # platform can name their wheels differently.
+        # below.
         # The second of each pair is a different OS release rather than
         # another label for the same one, that being what carries a
         # different compiler: 22.04 against 24.04 on both Ubuntu
@@ -281,6 +284,17 @@ jobs:
       - name: Pin the build timestamp to the commit
         shell: bash
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
+      # without it the macOS version in the wheel's platform tag, and in
+      # the extension's own minimum, is the runner's, so two images of
+      # one platform tag the wheel apart (#992). The values are the ones
+      # cibuildwheel gives the static release wheels, which build-dynamic
+      # in test.yml exports too, and its comment has the reasoning
+      - name: Set the macOS deployment target
+        if: runner.os == 'macOS'
+        env:
+          TARGET: ${{ matrix.platform == 'macos-x86-64' && '10.13' || '11.0' }}
+        run: echo "MACOSX_DEPLOYMENT_TARGET=$TARGET" >> "$GITHUB_ENV"
 
       # no project dependency: the script imports only the standard
       # library and shells out to the very `uv` this step just installed.
@@ -618,13 +632,15 @@ jobs:
           merge-multiple: true
           path: ${{ runner.temp }}/wheels
 
-      - name: Diff the wheels two images of one platform built
+      # --across-toolchains, since each image compiled with its own
+      # compiler: see this file's header for what it leaves out and why
+      - name: Diff the wheels two images of one platform built, the compiled extension aside
         env:
           WHEELS: ${{ runner.temp }}/wheels
         run: >
           uv run --no-project python
           .github/scripts/check_wheel_reproducibility.py
-          --across-images "$WHEELS"
+          --across-toolchains "$WHEELS"
 
       # a directory of its own rather than a second pattern merged into
       # the one above: the two families are never one wheel each of the

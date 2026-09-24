@@ -38,12 +38,27 @@ reproduce because the compiler, its version and the toolchain the
 runner happened to have are unpinned inputs, and `RELEASING.md` says
 the same of a rebuild on a second image -- which is a claim about two
 environments and not about two directories.
-`--across-images` is the entry point that asks it, of what `--keep-wheel`
-saves and, on Linux, of what `--repaired --keep-wheel` saves too. The
-comparison cannot happen where either build does, the two builds being
-on two machines, so each keeping run saves its first build's wheels and
-a later run compares what was saved: `wheel-reproducibility.yml`
-carries them between the two as artifacts.
+`--across-toolchains` is the entry point that asks it of what
+`--keep-wheel` saves, and `--across-images` of what
+`--repaired --keep-wheel` saves on Linux. The comparison cannot happen
+where either build does, the two builds being on two machines, so each
+keeping run saves its first build's wheels and a later run compares
+what was saved: `wheel-reproducibility.yml` carries them between the
+two as artifacts.
+
+`--across-toolchains` is the same comparison with one member's bytes
+left out: the compiled extension's, and its row's hash and size in
+`RECORD`. It is what reads the `uv build` wheels two runner images
+compiled, each with the compiler that image carries, and a compiler of
+another version writes other code, which the binary itself names -- its
+`.comment` section, its `LC_BUILD_VERSION` or its Rich header (`#992`).
+`RELEASING.md` claims nothing of those bytes across two images. Every
+other member, every other byte of `RECORD`, the filename, the member
+order and every member's stored metadata are still held to byte
+equality, which is what catches an image reaching a member that is not
+the compiler's output.
+`--across-images` stays whole for the wheels one pinned container built
+on two hosts, where the extension is claimed to agree as well.
 
 A whole-archive digest says two wheels differ and nothing past that.
 `#497`'s own reading of a difference this coarse -- which byte, in which
@@ -55,13 +70,14 @@ member both sides share, whether its bytes agree and whether its stored
 names a member and a field rather than a wheel.
 
 The wheel's own filename is one of those lines and not a reason to stop
-comparing. Two images of one platform can tag the wheel differently
-without a byte of the build having moved -- a macOS runner's deployment
-target reaches the platform tag, so `macosx_15_0` against `macosx_26_0`
-is a name difference that says nothing yet about the members underneath
-it. Reporting it as its own line and then comparing the members anyway
-is what keeps a name difference from reading as a byte difference, and a
-byte difference from hiding behind a name that agreed.
+comparing. Two images of one platform can tag the wheel differently,
+and the tag alone does not say which members moved with it -- a macOS
+deployment target left to the runner reaches the platform tag and the
+extension's minimum OS alike, so `macosx_15_0` against `macosx_26_0`
+names a difference and leaves open which members carry one. Reporting
+it as its own line and then comparing the members anyway is what keeps
+a name difference from reading as a byte difference, and a byte
+difference from hiding behind a name that agreed.
 
 `uv build` is not what the release uploads, and `#515` is that gap.
 `cibuildwheel` runs the same `scripts/cffi_build.py` and then repairs
@@ -98,6 +114,7 @@ commit under test the current `HEAD`:
 `<dir>`, and `--across-images <dir>` compares wheels already built:
 `<dir>` holds one directory per platform, each holding one directory
 per image, each of those holding that image's wheel, or set of wheels.
+`--across-toolchains <dir>` reads a directory of the same shape.
 `--repaired` needs `cibuildwheel` on `PATH`, which is the `build`
 dependency group, and `SOURCE_DATE_EPOCH` set in the environment first,
 or this entry point refuses to run, with or without `--keep-wheel <dir>`
@@ -177,6 +194,13 @@ _CROSS_WINDOWS_ENV = {
 # a real content difference with offset noise for every member after it,
 # and the second is not one hatchling or cffi's build ever sets
 _METADATA_FIELDS = ("date_time", "external_attr", "compress_type")
+
+# the suffixes CPython gives an extension module, which is what a
+# compiler writes into a wheel of this project: --across-toolchains
+# leaves these members' bytes, and their RECORD rows' hash and size,
+# out of its comparison. A compiled member under any other suffix is
+# still compared, and goes red rather than passing unread
+_COMPILED_SUFFIXES = (".so", ".pyd")
 
 
 def _extract_archive(source: Path, dest: Path) -> None:
@@ -426,8 +450,42 @@ def repair_wheel(wheel: Path, out_dir: Path) -> Path:
     return _one_wheel(out_dir)
 
 
+def _outside_the_compiler(name: str, content: bytes) -> bytes:
+    """Return what `--across-toolchains` compares of one member's bytes.
+
+    Args:
+        name: the member's path inside the wheel.
+        content: its bytes.
+
+    Returns:
+        Nothing of a compiled member, which is the compiler's output.
+        A `RECORD` with each compiled member's row cut to its path, the
+        hash and the size being that same output restated, and every
+        other byte of it, line endings included, as written. Any other
+        member unchanged.
+    """
+    if name.endswith(_COMPILED_SUFFIXES):
+        return b""
+    if not name.endswith(".dist-info/RECORD"):
+        return content
+    lines = []
+    for line in content.splitlines(keepends=True):
+        row = line.rstrip(b"\r\n")
+        # the hash and the size carry no comma, so the last two fields
+        # split off whatever the path is, quoted or not
+        path = row.rsplit(b",", 2)[0]
+        compiled = path.strip(b'"').decode().endswith(_COMPILED_SUFFIXES)
+        lines.append(path + line[len(row) :] if compiled else line)
+    return b"".join(lines)
+
+
 def diff_wheels(
-    first: Path, second: Path, *, first_label: str, second_label: str
+    first: Path,
+    second: Path,
+    *,
+    first_label: str,
+    second_label: str,
+    across_toolchains: bool = False,
 ) -> list[str]:
     """Return one line per way the two wheels disagree, member by member.
 
@@ -439,6 +497,10 @@ def diff_wheels(
         second_label: the same, for `second`. Two wheels of one commit
             usually carry the same filename, which is why the label is
             the caller's to give rather than read off the path.
+        across_toolchains: whether two different compilers built the
+            two, in which case the bytes each wrote are left out of the
+            comparison -- see `_outside_the_compiler`. Their names and
+            stored metadata are still compared.
 
     Returns:
         An empty list where the two archives are indistinguishable, their
@@ -475,7 +537,15 @@ def diff_wheels(
         for name in shared:
             info_a, info_b = by_name_a[name], by_name_b[name]
             content_a, content_b = za.read(name), zb.read(name)
-            if content_a != content_b:
+            compared_a, compared_b = (
+                (
+                    _outside_the_compiler(name, content_a),
+                    _outside_the_compiler(name, content_b),
+                )
+                if across_toolchains
+                else (content_a, content_b)
+            )
+            if compared_a != compared_b:
                 complaints.append(
                     f"{name}: content differs "
                     f"({len(content_a)} vs {len(content_b)} bytes, "
@@ -489,7 +559,12 @@ def diff_wheels(
 
 
 def pair_wheels_by_name(
-    first: list[Path], second: list[Path], *, first_label: str, second_label: str
+    first: list[Path],
+    second: list[Path],
+    *,
+    first_label: str,
+    second_label: str,
+    across_toolchains: bool = False,
 ) -> list[str]:
     """Return one line per way two builds' sets of wheels disagree.
 
@@ -499,6 +574,7 @@ def pair_wheels_by_name(
         first_label: what to call `first` where a line has to say which
             side it is about.
         second_label: the same, for `second`.
+        across_toolchains: passed on to `diff_wheels`.
 
     Returns:
         An empty list where the two builds produced the same wheels,
@@ -534,12 +610,13 @@ def pair_wheels_by_name(
                 by_name_second[name],
                 first_label=first_label,
                 second_label=second_label,
+                across_toolchains=across_toolchains,
             )
         ]
     return complaints
 
 
-def compare_one_platform(platform: Path) -> list[str]:
+def compare_one_platform(platform: Path, *, across_toolchains: bool) -> list[str]:
     """Return one line per way one platform's images disagree.
 
     Args:
@@ -549,6 +626,7 @@ def compare_one_platform(platform: Path) -> list[str]:
             inside it. The first image in sorted order is the one every
             other is compared against, so that a platform built on more
             than two images still yields one line per disagreeing pair.
+        across_toolchains: passed on to `diff_wheels`.
 
     Returns:
         An empty list where every image's wheel, or set of wheels,
@@ -559,13 +637,14 @@ def compare_one_platform(platform: Path) -> list[str]:
         answer as the wheels agreeing and must not print like it.
 
         Where both images hold exactly one wheel each, the two are
-        compared through `diff_wheels` directly, whatever their names --
-        a macOS or Windows runner's deployment target reaches the
-        platform tag, so two images of that platform name the one wheel
-        each of them built differently while the question about its
-        members is still open, and `pair_wheels_by_name`'s pairing by
-        filename would read that difference as two wheels with nothing
-        in common rather than as one wheel two images tagged apart.
+        compared through `diff_wheels` directly, whatever their names:
+        with one wheel a side there is nothing to choose between, and
+        the platform tag is an input of the build like any other -- a
+        deployment target left unexported takes the runner's own macOS
+        version -- so a name that differs is one line of `diff_wheels`
+        with the members still compared, where `pair_wheels_by_name`'s
+        pairing by filename would read it as two wheels with nothing in
+        common and compare no member at all.
         Where either image holds more than one -- Linux's `manylinux`
         and `musllinux` pair from the one interpreter -- the pairing is
         by name instead, since there the several wheels are genuinely
@@ -594,6 +673,7 @@ def compare_one_platform(platform: Path) -> list[str]:
                 second_wheels[0],
                 first_label=reference,
                 second_label=other,
+                across_toolchains=across_toolchains,
             )
         else:
             complaints += pair_wheels_by_name(
@@ -601,16 +681,19 @@ def compare_one_platform(platform: Path) -> list[str]:
                 second_wheels,
                 first_label=reference,
                 second_label=other,
+                across_toolchains=across_toolchains,
             )
     return complaints
 
 
-def compare_across_images(root: Path) -> int:
+def compare_across_images(root: Path, *, across_toolchains: bool = False) -> int:
     """Compare, platform by platform, the wheels its images built.
 
     Args:
         root: a directory holding one subdirectory per platform, in the
             shape `compare_one_platform` reads.
+        across_toolchains: whether each image compiled with its own
+            toolchain, whose output `diff_wheels` then leaves out.
 
     Returns:
         The process exit code: zero where every platform's images agree.
@@ -623,15 +706,20 @@ def compare_across_images(root: Path) -> int:
         print(f"::error::no platform built a wheel under {root}", file=sys.stderr)
         return 1
 
+    agreement = (
+        "its images agree on every member but the compiled extension's bytes"
+        if across_toolchains
+        else "its images agree, member for member"
+    )
     failed = False
     for platform in platforms:
-        complaints = compare_one_platform(platform)
+        complaints = compare_one_platform(platform, across_toolchains=across_toolchains)
         if complaints:
             failed = True
             for complaint in complaints:
                 print(f"::error::{platform.name}: {complaint}", file=sys.stderr)
         else:
-            print(f"{platform.name}: its images agree, member for member")
+            print(f"{platform.name}: {agreement}")
     return 1 if failed else 0
 
 
@@ -832,10 +920,18 @@ _ENTRY_POINTS: dict[str, Callable[[], int]] = {
 }
 
 
+# the two entry points that build nothing and read a directory of wheels
+# already built, each written into the usage message by hand
+_COMPARISONS: dict[str, Callable[[Path], int]] = {
+    "--across-images": compare_across_images,
+    "--across-toolchains": partial(compare_across_images, across_toolchains=True),
+}
+
+
 def main(argv: list[str]) -> int:
     """Run whichever of the comparisons the command line names."""
-    if len(argv) == 3 and argv[1] == "--across-images":
-        return compare_across_images(Path(argv[2]))
+    if len(argv) == 3 and argv[1] in _COMPARISONS:
+        return _COMPARISONS[argv[1]](Path(argv[2]))
     if len(argv) == 3 and argv[1] == "--keep-wheel":
         return build_twice_and_compare(Path(argv[2]))
     if len(argv) == 4 and argv[1:3] == ["--repaired", "--keep-wheel"]:
@@ -846,6 +942,7 @@ def main(argv: list[str]) -> int:
         others = " | ".join(name for name in _ENTRY_POINTS if name != "--repaired")
         print(
             f"usage: {argv[0]} [--keep-wheel DIR | --across-images DIR"
+            " | --across-toolchains DIR"
             f" | --repaired [--keep-wheel DIR] | {others}]",
             file=sys.stderr,
         )

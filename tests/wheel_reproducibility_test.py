@@ -848,6 +848,7 @@ def test_main_says_how_to_be_called_when_it_is_not(
     assert check.main(["prog", "unexpected"]) == 2
     assert capsys.readouterr().err == (
         "usage: prog [--keep-wheel DIR | --across-images DIR"
+        " | --across-toolchains DIR"
         " | --repaired [--keep-wheel DIR] | --dynamic | --cross-windows]\n"
     )
 
@@ -1368,6 +1369,152 @@ def test_across_images_refuses_a_directory_no_platform_reached(
     assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
 
     assert "no platform built a wheel" in capsys.readouterr().err
+
+
+def toolchain_members(
+    extension: bytes, *, tag: str = "linux_x86_64"
+) -> list[tuple[str, bytes]]:
+    """Return a compiled wheel's members, its `RECORD` hashing `extension`.
+
+    The `RECORD` row of the extension carries a hash and a size of those
+    bytes, so two compilers' extensions differ in that row as well: what
+    `--across-toolchains` has to tell apart from any other `RECORD` row
+    moving.
+    """
+    extension_name = "_ext.cpython-314-x86_64-linux-gnu.so"
+    record = (
+        "pkg/a.py,sha256=same,4\n"
+        f"pkg-1.0.dist-info/WHEEL,sha256={tag},9\n"
+        f"{extension_name},sha256={zlib.crc32(extension):08x},{len(extension)}\n"
+        "pkg-1.0.dist-info/RECORD,,\n"
+    )
+    return [
+        ("pkg/a.py", b"same"),
+        (extension_name, extension),
+        ("pkg-1.0.dist-info/WHEEL", f"Tag: {tag}".encode()),
+        ("pkg-1.0.dist-info/RECORD", record.encode()),
+    ]
+
+
+def test_across_toolchains_leaves_the_extension_and_its_record_row_out(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#992's green answer: two compilers, and nothing else, moved.
+
+    The same pair is red under `--across-images`, which is what makes the
+    green here the narrowing's doing rather than the fixture's.
+    """
+    write_wheel(
+        tmp_path / "linux-x86-64" / "ubuntu-22.04" / _WHEEL,
+        toolchain_members(b"gcc-11"),
+    )
+    write_wheel(
+        tmp_path / "linux-x86-64" / "ubuntu-latest" / _WHEEL,
+        toolchain_members(b"gcc-13!"),
+    )
+
+    assert check.main(["prog", "--across-toolchains", str(tmp_path)]) == 0
+    assert capsys.readouterr().out == (
+        "linux-x86-64: its images agree on every member but the compiled"
+        " extension's bytes\n"
+    )
+
+    assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
+    err = capsys.readouterr().err
+    assert "_ext.cpython-314-x86_64-linux-gnu.so: content differs" in err
+    assert "pkg-1.0.dist-info/RECORD: content differs" in err
+
+
+def test_across_toolchains_names_a_member_that_is_not_compiled(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#992's own macOS case: an image reaching the tag is still red.
+
+    A deployment target left to the runner moves the tag in the filename,
+    in `WHEEL`, and in `WHEEL`'s own `RECORD` row, none of which the
+    compiler wrote.
+    """
+    write_wheel(
+        tmp_path
+        / "macos-arm64"
+        / "macos-15"
+        / "pkg-1.0-cp314-cp314-macosx_15_0_arm64.whl",
+        toolchain_members(b"ld-1167", tag="macosx_15_0_arm64"),
+    )
+    write_wheel(
+        tmp_path
+        / "macos-arm64"
+        / "macos-latest"
+        / "pkg-1.0-cp314-cp314-macosx_26_0_arm64.whl",
+        toolchain_members(b"ld-1267", tag="macosx_26_0_arm64"),
+    )
+
+    assert check.main(["prog", "--across-toolchains", str(tmp_path)]) == 1
+
+    err = capsys.readouterr().err
+    assert "::error::macos-arm64: the wheel is named" in err
+    assert "::error::macos-arm64: pkg-1.0.dist-info/WHEEL: content differs" in err
+    assert "::error::macos-arm64: pkg-1.0.dist-info/RECORD: content differs" in err
+    assert "_ext" not in err
+
+
+@pytest.mark.parametrize(
+    "reserialize",
+    [
+        pytest.param(lambda record: record.replace(b"\n", b"\r\n"), id="crlf"),
+        pytest.param(lambda record: record.rstrip(b"\n"), id="no-final-newline"),
+        pytest.param(
+            lambda record: record.replace(b"pkg/a.py,", b'"pkg/a.py",'),
+            id="quoted-row",
+        ),
+    ],
+)
+def test_across_toolchains_keeps_every_other_record_row_byte_for_byte(
+    check: ModuleType,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    reserialize: Any,
+) -> None:
+    """Only the extension's row is cut: the rest of `RECORD` is bytes.
+
+    A `RECORD` that reads as the same CSV rows but is written differently
+    -- another line ending, no final newline, a row quoted -- is a
+    difference no compiler made, and stays red.
+    """
+    first = toolchain_members(b"gcc-11")
+    second = [
+        (name, reserialize(content) if name.endswith("RECORD") else content)
+        for name, content in toolchain_members(b"gcc-13!")
+    ]
+    write_wheel(tmp_path / "linux-x86-64" / "ubuntu-22.04" / _WHEEL, first)
+    write_wheel(tmp_path / "linux-x86-64" / "ubuntu-latest" / _WHEEL, second)
+
+    assert check.main(["prog", "--across-toolchains", str(tmp_path)]) == 1
+
+    err = capsys.readouterr().err
+    assert "::error::linux-x86-64: pkg-1.0.dist-info/RECORD: content differs" in err
+    assert "_ext" not in err
+
+
+def test_across_toolchains_still_compares_the_extensions_metadata(
+    check: ModuleType, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Only the extension's bytes are the compiler's; its mode is not."""
+    extension = "_ext.cp314-win_amd64.pyd"
+    write_wheel(
+        tmp_path / "windows-x86-64" / "windows-2022" / _WHEEL, [(extension, b"a")]
+    )
+    write_wheel(
+        tmp_path / "windows-x86-64" / "windows-latest" / _WHEEL,
+        [(extension, b"bb")],
+        external_attr=0o755 << 16,
+    )
+
+    assert check.main(["prog", "--across-toolchains", str(tmp_path)]) == 1
+
+    err = capsys.readouterr().err
+    assert f"::error::windows-x86-64: {extension}: external_attr" in err
+    assert "content differs" not in err
 
 
 def test_the_main_guard_runs_the_script_as___main__(

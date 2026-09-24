@@ -73,9 +73,9 @@ _BUILDS = re.compile(
     r"(?<![-\w])cibuildwheel\b|python -m build|uv build"
     r"|check_wheel_reproducibility\.py"
 )
-# and the one invocation of that script that builds nothing: it
+# and the two invocations of that script that build nothing: each
 # downloads the archives two images already built and diffs them
-_COMPARES_ONLY = re.compile(r"--across-images")
+_COMPARES_ONLY = re.compile(r"--across-(?:images|toolchains)")
 # the step itself, the value included: what has to hold is not that
 # something is exported but that it is the commit's own date, which is
 # what a rebuild from a tag recovers

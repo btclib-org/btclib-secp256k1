@@ -67,6 +67,12 @@ release-notes length in the first place, and are still in
 The called workflow verifies against `reusable-attest.yml` alone, so the
 input decides nothing (issue btclib-org/.github#1315).
 
+### `across-images` leaves the compiled extension out of runner builds
+
+- **It compares two images' `uv build` wheels on every member but the
+  compiled extension**, which each image's own compiler writes; macOS
+  pins the deployment target, so both images tag the wheel alike (closes #992).
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"

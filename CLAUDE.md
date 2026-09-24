@@ -375,23 +375,16 @@ Do not use Fable unless explicitly instructed.
   sits under them, not a list to be kept here: section 9 says an entry's
   bullets are separate facts and cite separately, so several citations
   under one `###` are no evidence of a theme
-- **`wheel-reproducibility.yml`'s `across-images` job is red by design;
-  only its Linux-repaired half is a claim about this tree.** `rebuild`
-  builds the wheels its *Diff the wheels two images of one platform
-  built* step compares with a plain `uv build` on the runner, entering
-  no container, so what disagrees is the host image's own toolchain —
-  `RELEASING.md`'s rebuild section already gives other bytes from a
-  rebuild outside the image that built the original as the expected
-  outcome. That step is `failure` on runs of branches unrelated to it
-  (`33788435813`, `33784301251`, `33756652274`), the disagreement
-  identical across them — `linux-aarch64`'s extension module at
-  `1819920 vs 1875352 bytes, crc32 5ebec3ee vs 2f8938f0` on every one.
-  In a dispatched run of the same job (`33811045142`) the *Diff the
-  repaired wheels two images of one Linux platform built* step, added
-  by #524, compares the `cibuildwheel`-repaired wheels built inside the
-  pinned container instead, and answers `linux-x86-64: its images
-  agree, member for member` — that is the half a red job still has to
-  keep green
+- **`wheel-reproducibility.yml`'s `across-images` job compares two
+  kinds of pair, and holds only one of them to the whole archive.**
+  `rebuild`'s wheels are a plain `uv build` on the runner, so each
+  image's extension is compiled by that image's own compiler, which the
+  binary names in its `.comment` section, its `LC_BUILD_VERSION` or its
+  Rich header (#992). That step passes `--across-toolchains`, which
+  leaves the extension's bytes and its `RECORD` row's hash and size out
+  and still compares everything else byte for byte. `repaired`'s Linux
+  wheels are compiled in the pinned container and compared whole, with
+  `--across-images`
 - **`markdownlint-cli2` is reachable only through `pre-commit`, not
   through `uv run --only-group lint` on its own.** It is a node hook
   rather than a member of the `lint` dependency group:
