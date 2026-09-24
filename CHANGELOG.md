@@ -28,6 +28,12 @@ release-notes length in the first place, and are still in
   `invalid-todo-tag` through `missing-space-after-todo-colon`**
   (issue btclib-org/.github#1304).
 
+### A release tags its `secp256k1-zkp` pin in the fork before publishing
+
+- **`RELEASING.md` pushes a signed `btclib-secp256k1-v<version>` tag to
+  `fametrano/secp256k1-zkp` on the pin, and `release.yml`'s `zkp-pin-tag`
+  job refuses `publish-pypi` until it peels to the pin** (closes #988).
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"

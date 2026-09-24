@@ -148,6 +148,49 @@ jobs:
             exit 1
           fi
 
+  # the secp256k1-zkp pin is a commit of fametrano/secp256k1-zkp, whose
+  # expose-borromean-verify branch is rebased onto upstream's master, so
+  # a pin stops being on any branch of the fork at the next rebase, and
+  # GitHub may prune a commit no ref reaches -- after which "Rebuild a
+  # release from its tag" in RELEASING.md fails at its `git submodule
+  # update` (#988). The ref that holds it is the tag
+  # btclib-secp256k1-<release tag>, which RELEASING.md pushes to the fork
+  # before the release tag; this job asks that it peels to the commit the
+  # tree pins, before publish-pypi uploads anything. `^{}` peels only an
+  # annotated tag, so a lightweight one fails here too; the signature is
+  # `git tag -v` in that step, as for the release tag. Release-only, as
+  # `documented` is: a rehearsal's version is tagged in neither
+  # repository. `git ls-tree` and `git ls-remote` for the reason
+  # submodule-pin-release gives above. The job goes when #841 re-points
+  # the submodule at BlockstreamResearch/secp256k1-zkp
+  zkp-pin-tag:
+    name: Check that the fork tags the pinned secp256k1-zkp commit
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check that the fork tags the pinned secp256k1-zkp commit
+        env:
+          FORK: https://github.com/fametrano/secp256k1-zkp
+          TAG: btclib-secp256k1-${{ github.ref_name }}
+        run: |
+          pinned=$(git ls-tree HEAD secp256k1-zkp | awk '{print $3}')
+          tagged=$(git ls-remote "$FORK" "refs/tags/$TAG^{}" | cut -f1)
+          echo "$FORK tags $TAG at ${tagged:-nothing}; the submodule is pinned to $pinned"
+          if [ -z "$tagged" ]; then
+            echo "::error::$FORK carries no annotated tag $TAG -- see RELEASING.md"
+            exit 1
+          fi
+          if [ "$tagged" != "$pinned" ]; then
+            echo "::error::$TAG is $tagged, not the pinned $pinned"
+            exit 1
+          fi
+
   # walks the public API of the release before this one against the one
   # being cut and reports what broke: a removed object, a changed
   # parameter kind or default, a narrowed type. It runs here rather than
@@ -295,7 +338,8 @@ jobs:
     # see publish-testpypi for the repository condition, and for the
     # `always()`: public-api is a need for the ordering and not for its
     # result on a tag exactly as on a rehearsal; submodule-pin-release is checked
-    # for its result there for the same reason as on that job
+    # for its result there for the same reason as on that job, and
+    # zkp-pin-tag here alone, being release-only
     if: >-
       always() && github.event_name == 'push'
       && github.repository == 'btclib-org/btclib-secp256k1'
@@ -303,6 +347,7 @@ jobs:
       && needs.docs.result == 'success' && needs.ubuntu.result == 'success'
       && needs.macos.result == 'success' && needs.windows.result == 'success'
       && needs.submodule-pin-release.result == 'success'
+      && needs.zkp-pin-tag.result == 'success'
     needs:
       [
         public-api,
@@ -313,6 +358,7 @@ jobs:
         macos,
         windows,
         submodule-pin-release,
+        zkp-pin-tag,
       ]
     runs-on: ubuntu-latest
     timeout-minutes: 15
