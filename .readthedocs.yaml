@@ -57,10 +57,13 @@ submodules:
   recursive: false
 
 # the interpreter is declared rather than left to whatever read the docs
-# defaults to, matching a sibling repository's own file and
-# `.python-version` here: these docs are built twice, on the website and
-# by docs.yml, and one interpreter is what keeps the two from being
-# different questions
+# defaults to, matching a sibling repository's own file. It is 3.14 and
+# not the 3.15 of `.python-version` because read the docs' configuration
+# schema offers nothing newer, and what it runs is `pip install uv` below:
+# `uv sync` reads `.python-version` rather than this key, and fetches the
+# interpreter named there where the image has none. These docs are built
+# twice, on the website and by docs.yml, and one interpreter is what
+# keeps the two from being different questions
 build:
   os: ubuntu-24.04
   tools:

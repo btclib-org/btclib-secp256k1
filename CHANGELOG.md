@@ -22,6 +22,12 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.9 (work in progress, not released yet)
 
+### CPython 3.15 is the pinned interpreter, on its release candidate
+
+- **`.python-version` pins 3.15, and the classifiers, the sweeps and
+  every workflow step naming the pin follow it**, `.readthedocs.yaml`
+  apart (issue btclib-org/.github#1324).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

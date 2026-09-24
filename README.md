@@ -1195,8 +1195,8 @@ passed to every call: `secp256k1_context_randomize` is what mutates a
 context, it runs once before any thread exists, and each call allocates
 the buffers it writes to.
 
-This matters on a free-threaded interpreter, for which a wheel is built
-(`cp314t`), where those calls are no longer serialized;
+This matters on a free-threaded interpreter, for which wheels are built
+(`cp314t` and `cp315t`), where those calls are no longer serialized;
 `tests/concurrency_test.py` exercises it.
 
 `btclib_secp256k1.zkp.context` holds a second, separate context, one

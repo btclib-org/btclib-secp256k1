@@ -129,7 +129,7 @@ jobs:
       # library and shells out to gh, which every GitHub-hosted runner
       # already has, so this is the interpreter this tree chooses to run
       # it under and not one it needs
-      python-version: "3.14"
+      python-version: "3.15"
 
   # the network half of the submodule pin check, whose offline half is the
   # `submodule-pin` hook. That one asks whether the tag README.md names
