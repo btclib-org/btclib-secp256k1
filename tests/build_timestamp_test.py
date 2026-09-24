@@ -53,9 +53,9 @@ _WORKFLOWS = (
     ".github/workflows/sdist-rebuild.yml",
 )
 
-# where the jobs start: everything above is triggers and permissions,
-# and the paths filter up there names one of the scripts the patterns
-# below look for
+# where the jobs start: everything above is the header, the triggers and
+# the permissions, and wheel-reproducibility.yml's header names one of the
+# scripts the patterns below look for
 _JOBS = re.compile(r"^jobs:\n", re.MULTILINE)
 # a top-level job key -- two spaces of indent, a name, and nothing after
 # the colon -- which is what tells one apart from every line of a job's

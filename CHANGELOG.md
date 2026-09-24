@@ -73,6 +73,12 @@ input decides nothing (issue btclib-org/.github#1315).
   compiled extension**, which each image's own compiler writes; macOS
   pins the deployment target, so both images tag the wheel alike (closes #992).
 
+### `wheel-reproducibility.yml` reports on every pull request
+
+- **A `changes` job replaces the `paths` filter, so the branch rule can
+  require `wheel-reproducibility: every job passed`**, which passes where
+  the build is untouched or every job passed (issue #1002).
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"
