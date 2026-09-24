@@ -62,6 +62,11 @@ release-notes length in the first place, and are still in
 - **It follows the Scorecard badge on the OpenSSF line, reading
   bestpractices.dev project 14814** (issue btclib-org/.github#350).
 
+### `sdist-rebuild.yml` stops passing `attest-signer`
+
+The called workflow verifies against `reusable-attest.yml` alone, so the
+input decides nothing (issue btclib-org/.github#1315).
+
 ## v0.8.0.7
 
 ### `RELEASING.md` stops naming two different actions "open the next version"
