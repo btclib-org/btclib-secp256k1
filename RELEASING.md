@@ -667,20 +667,28 @@ Then:
 
    ```shell
    repo=btclib-org/btclib-secp256k1
+   signer=btclib-org/.github/.github/workflows/reusable-attest.yml
    tag=v$(uv version --short)
    dir=$(mktemp -d)
    gh release download "$tag" --repo "$repo" --dir "$dir"
    gh attestation verify "$dir/btclib_secp256k1-${tag#v}.tar.gz" \
-     --repo "$repo" --signer-workflow "$repo/.github/workflows/release.yml"
+     --repo "$repo" --signer-workflow "$signer"
    ```
 
    PEP 625 escapes the distribution's `-` to `_` in an sdist filename,
    which is the whole of the difference between the tag and the file it
    names, so neither is typed here.
 
-   `--signer-workflow` is the flag that makes it say *which* workflow
-   signed: without it a valid attestation from any workflow in this
-   repository passes. Adding `--bundle "$dir/$tag.attestation.jsonl"`
+   `--signer-workflow` names the workflow that signed, and here it is
+   required rather than a narrowing: the command refuses the release's
+   genuine sdist without it. The signer is the organization's
+   `reusable-attest.yml`, the workflow the `attest` job calls, and not
+   `release.yml`: an attestation made inside a called workflow names the
+   callee, while `--repo` keeps naming this repository as the source.
+   `publish-pypi` is `release.yml`'s own job, which is why the PEP 740
+   provenance the rehearsal below checks names `release.yml` instead.
+
+   Adding `--bundle "$dir/$tag.attestation.jsonl"`
    asks the same question of the statement downloaded beside the file
    rather than of the attestations API, which is the form for whoever
    mirrors the page instead of trusting it live.
@@ -850,17 +858,16 @@ already built.
 
    ```shell
    repo=btclib-org/btclib-secp256k1 &&
+   signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&
    dir=$(mktemp -d) &&
    gh run download "${run:?}" --repo "${repo:?}" \
      --name sdist --dir "${dir:?}" &&
    gh run download "${run:?}" --repo "${repo:?}" \
      --name sbom --dir "${dir:?}" &&
    gh attestation verify "${dir:?}"/*.tar.gz \
-     --repo "${repo:?}" \
-     --signer-workflow "${repo:?}/.github/workflows/release.yml" &&
+     --repo "${repo:?}" --signer-workflow "${signer:?}" &&
    gh attestation verify "${dir:?}"/*.cdx.json \
-     --repo "${repo:?}" \
-     --signer-workflow "${repo:?}/.github/workflows/release.yml"
+     --repo "${repo:?}" --signer-workflow "${signer:?}"
    ```
 
    The document is the second subject of that one statement, and the
@@ -920,12 +927,11 @@ uv run --no-project --python 3.14 \
 uv run --no-project --python 3.14 \
   .github/scripts/generate_sbom.py dist/ sbom/ &&
 repo=btclib-org/btclib-secp256k1 &&
+signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&
 gh attestation verify "dist/btclib_secp256k1-${tag#v}.tar.gz" \
-  --repo "${repo:?}" \
-  --signer-workflow "${repo:?}/.github/workflows/release.yml" &&
+  --repo "${repo:?}" --signer-workflow "${signer:?}" &&
 gh attestation verify "sbom/btclib_secp256k1-${tag#v}.cdx.json" \
-  --repo "${repo:?}" \
-  --signer-workflow "${repo:?}/.github/workflows/release.yml"
+  --repo "${repo:?}" --signer-workflow "${signer:?}"
 ```
 
 is the whole of it, `--locked` included for the same reason as before: a
@@ -948,6 +954,15 @@ sdist's digest moves this document's serial number with it, so that
 command fails wherever the first one does. A tag whose release carries
 no such document has nothing for it to check, and it is the line to
 leave out there.
+
+`signer` is the workflow that signed the tag's attestation, which is
+`reusable-attest.yml` from v0.8.0.7 on, and for those tags
+`--signer-workflow` is required: without it the command refuses the
+release. A tag from v0.8.0 to v0.8.0.6 was signed by `release.yml`
+itself, and for one of those `signer` is
+`"$repo/.github/workflows/release.yml"`, the flag there only narrowing
+what passes. Each path verifies only the releases its own workflow
+signed.
 
 **What the script rewrites here, and what it leaves alone.** This
 repository's `build-system.build-backend` is `hatchling.build`, unlike
