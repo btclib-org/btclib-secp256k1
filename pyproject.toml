@@ -1,6 +1,6 @@
 [project]
 name = "btclib-secp256k1"
-version = "0.8.0.7"
+version = "0.8.0.8"
 description = "Simple python bindings to libsecp256k1"
 readme = "README.md"
 # PEP 639: a SPDX expression and the files it refers to, replacing the
