@@ -112,8 +112,8 @@ _NAMED = re.compile(r"secp256k1/releases/tag/(v[0-9][0-9.]*)")
 
 # the commit README.md names for secp256k1-zkp, as the url of its GitHub
 # commit page -- there is no tag to link instead. 40 hex digits rather
-# than a short prefix, so the comparison in main() is exact and needs no
-# clone to disambiguate a prefix against
+# than a short prefix, so the comparison in _check_zkp_pin() is exact and
+# needs no clone to disambiguate a prefix against
 _NAMED_ZKP = re.compile(r"secp256k1-zkp/commit/([0-9a-f]{40})")
 
 
@@ -326,8 +326,8 @@ def _check_release_pin(readme: str) -> int:
 
     if tagged != pinned:
         print(
-            f"README.md names {named} ({tagged[:7]}), and the submodule is"
-            f" pinned to {pinned[:7]}. The submodule moves in a change of"
+            f"README.md names {named} ({tagged}), and the submodule is"
+            f" pinned to {pinned}. The submodule moves in a change of"
             " its own, with the version named in README.md and"
             " RELEASE_NOTES.md moved with it",
             file=sys.stderr,
@@ -366,8 +366,8 @@ def _check_zkp_pin(readme: str) -> int:
 
     if named != pinned:
         print(
-            f"README.md names {_SUBMODULE_ZKP} commit {named[:7]}, and the"
-            f" submodule is pinned to {pinned[:7]}. The submodule moves in a"
+            f"README.md names {_SUBMODULE_ZKP} commit {named}, and the"
+            f" submodule is pinned to {pinned}. The submodule moves in a"
             " change of its own, with the commit named in README.md moved"
             " with it",
             file=sys.stderr,

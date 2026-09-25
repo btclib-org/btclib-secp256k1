@@ -35,9 +35,13 @@ from typing import Any
 import pytest
 
 _PINNED = "6e2c8bc4ecdc6e71dbe7a368f360d8d453ce435d"
-_OTHER = "1a53f4907d5b8f7b0e5b1d3e33e3e50b0e1f0d5c"
 _ZKP_PINNED = "10366dbbbfeb11457f2aae3b23e154ab7d6a1fe4"
-_ZKP_OTHER = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+# each alike in a prefix to the commit above it and apart past it: a
+# mismatch message cut to a prefix prints these pairs as a tie
+# (btclib-org/btclib-secp256k1#1021). The zkp one is a typo in the last
+# character, the shape a hand-typed README.md url takes
+_OTHER = "6e2c8bc4ecdc9f3a51d07be2c84e6b1f0a7d93c2"
+_ZKP_OTHER = "10366dbbbfeb11457f2aae3b23e154ab7d6a1fe5"
 _README = (
     "wraps ([v0.8.0](https://github.com/bitcoin-core/secp256k1/releases/tag/v0.8.0))."
     " zkp at [10366dbb](https://github.com/BlockstreamResearch/secp256k1-zkp/commit/"
@@ -141,7 +145,7 @@ def test_a_pin_that_is_not_the_named_release_fails(
 ) -> None:
     """A submodule moved without the prose, or prose without the submodule.
 
-    Both abbreviations are in the message, because which of the two
+    Both commits are in the message whole, because which of the two
     happened is not something the check can know, and is the whole of
     what its reader has to decide.
     """
@@ -149,9 +153,8 @@ def test_a_pin_that_is_not_the_named_release_fails(
 
     assert check.main() == 1
     error = capsys.readouterr().err
-    assert "v0.8.0" in error
-    assert _PINNED[:7] in error
-    assert _OTHER[:7] in error
+    assert f"v0.8.0 ({_PINNED})" in error
+    assert f"pinned to {_OTHER}." in error
 
 
 def test_a_readme_naming_no_release_fails(
@@ -277,8 +280,8 @@ def test_a_zkp_pin_that_is_not_the_named_commit_fails(
 
     assert check.main() == 1
     error = capsys.readouterr().err
-    assert _ZKP_PINNED[:7] in error
-    assert _ZKP_OTHER[:7] in error
+    assert f"commit {_ZKP_PINNED}," in error
+    assert f"pinned to {_ZKP_OTHER}." in error
     assert "v0.8.0" not in error, "the release half agreed and stayed quiet on stderr"
 
 
@@ -310,8 +313,8 @@ def test_both_halves_disagreeing_report_both(
 
     assert check.main() == 1
     error = capsys.readouterr().err
-    assert _OTHER[:7] in error
-    assert _ZKP_OTHER[:7] in error
+    assert _OTHER in error
+    assert _ZKP_OTHER in error
 
 
 def test_the_submodule_is_read_with_the_hook_environment_off(
