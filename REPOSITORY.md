@@ -716,8 +716,9 @@ gh api repos/btclib-org/btclib-secp256k1/environments \
         reviewers: [.protection_rules[].reviewers[]?.reviewer.login]}'
 ```
 
-`pypi` and `testpypi` each have `fametrano` as the required reviewer, and
-only `pypi` carries `branch_policy` beside it. That policy admits the tag
+`pypi` and `testpypi` each have the three organization owners --
+`fametrano`, `giacomocaironi` and `pmazzocchi` -- as required reviewers,
+and only `pypi` carries `branch_policy` beside it. That policy admits the tag
 pattern `v*`, that environment being reachable only from a tag, while
 `testpypi` has none, being reached from a branch by dispatch — the
 endpoint 404s for it rather than answering an empty list:
