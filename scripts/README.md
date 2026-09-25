@@ -144,7 +144,10 @@ spells it `#include`.
 - static on Windows: the standard setuptools/MSVC toolchain, with
   `SECP256K1_STATIC` selecting the static-consumer declarations
 - static elsewhere: `emit_c_code()`, then an explicit compile and link
-  with the interpreter's own `CC`, `CCSHARED` and `LDSHARED`
+  with the interpreter's own `CC`, `CFLAGS`, `CCSHARED` and `LDSHARED`,
+  composed with a caller's own `CC`, `LDSHARED`, `CFLAGS`, `LDFLAGS` and
+  `CPPFLAGS` the way setuptools does -- *Environment variables* below
+  has them
 - dynamic: no C is compiled at all. `emit_python_code()` writes the ABI
   mode module, and the shared libsecp256k1 is copied next to it — found
   by searching every candidate directory CMake may have used, skipping
@@ -189,6 +192,31 @@ off the real host, while the shared library suffix and the wheel tag key
 off the target. `BTCLIB_LIBSECP256K1_ZKP` is orthogonal to both --
 whether the second extension is built at all, not which of the three
 paths builds it.
+
+None of the four above chooses a build's compiler, its flags or its
+optimization level -- CMake and the interpreter's own toolchain already
+answer that from `sysconfig`, and `compile_static_unix` composes `CC`,
+`CFLAGS` and `CCSHARED` from it. That question has its own variables
+instead, read where `customize_compiler` reads them rather than chosen
+by this file's own three paths:
+
+- `CC`, `LDSHARED`, `CFLAGS`, `LDFLAGS` and `CPPFLAGS` override or
+  extend the static-elsewhere compile and link above exactly as the
+  setuptools `uv.lock` resolves composes them for any other extension of
+  the same interpreter (`configure_system`, which
+  `setuptools._distutils.sysconfig.customize_compiler` calls): `CC` and
+  `LDSHARED` replace the interpreter's own, `CFLAGS` replaces the
+  compile's flags and extends the link, `LDFLAGS` extends the link, and
+  `CPPFLAGS` extends both. A `CFLAGS` set by a caller is therefore the
+  whole of the compile's flags, `-arch` and optimization included. With
+  none of them set, the compile and the link read exactly what
+  `sysconfig` alone gives them, which is what
+  `wheel-reproducibility.yml` and the sdist-rebuild gate measure
+  (btclib-org/btclib-secp256k1#1019)
+- `CMAKE_BUILD_TYPE` chooses the vendored library's CMake build type, on
+  the configure and on the build's own `--config`, together so the two
+  never disagree; `Release` where it is unset, which is what every
+  published wheel builds
 
 ## The benchmark is not here
 

@@ -9,12 +9,12 @@
 # and $OUT are exported before it runs.
 #
 # `pip3 install .` builds the vendored library and the cffi extension
-# over it inside this container: CMake initialises CMAKE_C_FLAGS from
-# the ambient CFLAGS, and the sanitizer and coverage instrumentation
-# land in the vendored C that way. The cffi glue is compiled from
-# `sysconfig`'s flags instead and carries none of it;
-# btclib-org/.github#342 measured both and accepts it, the memory a
-# target can reach being the library's.
+# over it inside this container, and the sanitizer and coverage
+# instrumentation in the ambient CFLAGS reach both: CMake initialises
+# CMAKE_C_FLAGS from it, and the static glue's compile reads it the way
+# setuptools does for any extension (btclib-org/btclib-secp256k1#1019).
+# So a fault in the glue's own marshalling is caught where it happens,
+# not only once it reaches the library.
 #
 # Nothing here imports the package after installing it. The installed
 # extension resolves the instrumentation's references only under the

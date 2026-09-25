@@ -73,6 +73,12 @@ rather than as a tie (closes #1021).
 Both are the organization's, one copy each in
 btclib-org/.github (issue btclib-org/.github#1359).
 
+### The static glue's compile and link honour the compiler environment variables
+
+`CC`, `LDSHARED`, `CFLAGS`, `LDFLAGS` and `CPPFLAGS` reach them as for any
+setuptools extension, fuzz instrumentation included; `CMAKE_BUILD_TYPE` picks
+the vendored library's build type, `Release` if unset (closes #1019).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
