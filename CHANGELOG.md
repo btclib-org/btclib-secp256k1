@@ -50,6 +50,12 @@ draft (issue btclib-org/.github#1327).
 `RELEASING.md`'s *Rebuild a release from its tag* reads it from the tag's
 `.python-version` rather than naming one (issue btclib-org/.github#1349).
 
+### `REVIEWING.md` links Conventional Comments at its GitLab Pages address
+
+`REVIEWING.md` links `https://conventionalcomments.gitlab.io/`, a name the
+`*.gitlab.io` certificate covers, which `conventionalcomments.org` can present
+and fail the TLS check (issue btclib-org/.github#1341).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
