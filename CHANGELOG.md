@@ -56,6 +56,12 @@ draft (issue btclib-org/.github#1327).
 full shas, in its output and in the tracking issue, so two commits alike in
 their first twelve characters print as two (issue btclib-org/.github#1343).
 
+### RELEASING.md and REPOSITORY.md name the three reviewers
+
+`pypi` and `testpypi` require an approval from any of the three
+organization owners -- `fametrano`, `giacomocaironi` and `pmazzocchi` --
+rather than from `fametrano` alone (issue btclib-org/.github#1355).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

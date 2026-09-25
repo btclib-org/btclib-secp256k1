@@ -1150,11 +1150,11 @@ The rest of this section is here for the next index, or the next fork.
   side having touched it in between
 - on GitHub, repository Settings, Environments: create the `pypi` and
   `testpypi` environments, each with the required reviewers who approve
-  -- `fametrano` on both. Self-review stays allowed on purpose: the
-  maintainer who pushes the tag is the reviewer, and forbidding it would
-  deadlock a one-maintainer release. The approval is a confirmation
-  step, not a second pair of eyes; it becomes one as soon as there is a
-  second reviewer to add. Leaving `testpypi` without reviewers would be
+  -- the three organization owners, `fametrano`, `giacomocaironi` and
+  `pmazzocchi`. One approval from any of the three releases a
+  deployment. Self-review stays allowed: the approval is a confirmation
+  step when the tag-pusher gives it and a second pair of eyes when one
+  of the other two does. Leaving `testpypi` without reviewers would be
   the one part of a release that the rehearsal stops exercising
 - `pypi` carries a deployment branch policy besides, a custom rule
   admitting the tag pattern `v*`, that environment being reachable only
