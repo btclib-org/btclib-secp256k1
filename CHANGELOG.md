@@ -28,6 +28,12 @@ release-notes length in the first place, and are still in
   every workflow step naming the pin follow it**, `.readthedocs.yaml`
   apart (issue btclib-org/.github#1324).
 
+### `ARCHITECTURE.md` and `ASSURANCE_CASE.md` join the root
+
+- **The design moves there from `CLAUDE.md`, which points at it; the
+  assurance case cites the tree for every claim** (issue
+  btclib-org/.github#1321).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

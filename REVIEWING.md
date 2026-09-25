@@ -477,8 +477,8 @@ because that document, and not this one, is where the rule lives.
   keep **both branches of `_load_lib`** right? Only one of the two — the
   extension with libsecp256k1 linked in, or the shared object
   `ffi.dlopen`s beside it — exists in any given wheel, so the other is
-  reachable in a test only through a stand-in. `CLAUDE.md`'s
-  *Architecture* is where that lives, and it is the answer to every
+  reachable in a test only through a stand-in. `ARCHITECTURE.md`'s *The
+  two builds* is where that lives, and it is the answer to every
   question of the form "why does this differ between platforms".
 - A new binding: does it carry its entry in
   `stubs/_btclib_secp256k1.pyi`? That file is what lets strict mypy
