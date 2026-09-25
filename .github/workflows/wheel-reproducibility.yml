@@ -123,7 +123,9 @@ name: wheel-reproducibility
 # filter skipped as staying Pending, which blocks the merge of every pull
 # request the filter left out. The trigger takes every pull request
 # instead, the changes job costs one API call on it, and the aggregate
-# reports on every one that is neither a draft nor closed.
+# reports on every one that is not closed -- failing outright rather
+# than skipping while draft, since a skipped required check reads as
+# passing (btclib-org/.github#1327).
 
 on:
   schedule:
@@ -198,7 +200,10 @@ jobs:
   # anything else.
   #
   # A draft and a closed pull request skip it, and every job reading its
-  # output with it: the condition every other job here carries
+  # output with it: the condition every build job here carries.
+  # reproducibility-passed carries the closed half alone, so a draft
+  # pull request still reaches it -- it is what catches the draft flag
+  # this job declined to (btclib-org/.github#1327)
   changes:
     name: Decide whether the pull request touches the build
     if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
@@ -784,11 +789,16 @@ jobs:
     # to fail. !cancelled() and not always(), for the reason test.yml's
     # and codeql.yml's aggregates give: a cancellation of the run is no
     # evidence either way, and always() would fail this check on a run its
-    # concurrency group superseded. The draft and closed halves are the
-    # condition the build jobs carry, so a draft does not report a
-    # failure for work it declined
+    # concurrency group superseded. The draft flag is not part of this
+    # condition: a skipped required check reads as passing, and this
+    # job's own check run does not exist until every job above has
+    # settled, so declining it here while draft would leave the draft's
+    # skip as the only check of this name on the sha until a later run's
+    # own aggregate exists. The closed condition stays, the condition
+    # the build jobs also carry: a closed pull request has nothing left
+    # to become ready (btclib-org/.github#1327)
     if: >-
-      ${{ !cancelled() && !github.event.pull_request.draft
+      ${{ !cancelled()
       && github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -809,6 +819,16 @@ jobs:
       # "success": the changes job above skips every build job on a pull
       # request touching nothing the builds read, which is the pass this
       # check exists to give such a pull request
+      #
+      # a skipped required check reads as passing, so the draft flag
+      # moves from the job's own `if:` above into this first step: the
+      # job still runs while draft, and reports a failure instead of a
+      # skip (btclib-org/.github#1327)
+      - name: Fail while this pull request is a draft
+        if: github.event.pull_request.draft
+        run: |
+          echo "::error::this pull request is a draft"
+          exit 1
       - name: Fail unless every other job of this run succeeded or was skipped
         env:
           GH_TOKEN: ${{ github.token }}

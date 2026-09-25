@@ -34,6 +34,12 @@ release-notes length in the first place, and are still in
   assurance case cites the tree for every claim** (issue
   btclib-org/.github#1321).
 
+### Every aggregate job fails while draft, rather than skip
+
+A skipped required check reads as passing, so `codeql-passed`, `test-passed`
+and `reproducibility-passed` each fail a first step instead of skipping while
+draft (issue btclib-org/.github#1327).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
