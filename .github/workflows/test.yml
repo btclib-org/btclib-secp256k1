@@ -224,15 +224,17 @@ jobs:
     name: Measure coverage, gated at 100%
     # a draft pull request is work in progress: every push to one spends
     # the whole matrix on a tree its author is not asking anyone to
-    # review yet. The gate below carries the same condition, so a draft
-    # skips uniformly and the gate does not read that skip as a job that
-    # should have run. A run on the merge result still happens the moment
-    # the pull request is marked ready, which is why ready_for_review is a
-    # trigger type above.
+    # review yet. Skipping here does not leave the gate below reading a
+    # false pass: test-passed's own first step fails outright rather
+    # than skip while draft, so a draft pull request still gets a
+    # failing check under that name, just not from this job's own work
+    # (btclib-org/.github#1327). A run on the merge result still happens
+    # the moment the pull request is marked ready, which is why
+    # ready_for_review is a trigger type above.
     # A closed pull request spends none either: the trigger above takes
     # the closed event only to let cancel-in-progress supersede a run
     # still holding in this ref's group, and every job in this workflow
-    # carries the same skip for the reason the draft one already does
+    # carries the same skip on close, test-passed's own `if:` included
     if: >-
       ${{ !github.event.pull_request.draft
       && needs.changes.outputs.code == 'true'
@@ -1090,10 +1092,14 @@ jobs:
   # own cancellation still fails below
   test-passed:
     name: "test: every job passed"
-    # and the draft condition every job above carries, so a draft
-    # skips uniformly rather than tripping the skip check below -- the
-    # closed one for the same reason, added at the trigger above
-    if: ${{ !cancelled() && !github.event.pull_request.draft && github.event.action != 'closed' }}
+    # The draft flag is not part of this condition: a skipped required
+    # check reads as passing, and this job's own check run does not exist
+    # until every job above has settled, so declining it here while draft
+    # would leave the draft's skip as the only check of this name on the
+    # sha until a later run's own aggregate exists. The closed condition
+    # stays, added at the trigger above: a closed pull request has
+    # nothing left to become ready (btclib-org/.github#1327)
+    if: ${{ !cancelled() && github.event.action != 'closed' }}
     needs:
       - changes
       - coverage
@@ -1108,6 +1114,15 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      # a skipped required check reads as passing, so the draft flag
+      # moves from the job's own `if:` above into this first step: the
+      # job still runs while draft, and reports a failure instead of a
+      # skip (btclib-org/.github#1327)
+      - name: Fail while this pull request is a draft
+        if: github.event.pull_request.draft
+        run: |
+          echo "::error::this pull request is a draft"
+          exit 1
       - name: Fail unless every job above succeeded or was legitimately skipped
         # the loop reads the whole needs context rather than naming each job, so
         # a job added to needs above is covered without touching this. "skipped"

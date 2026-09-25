@@ -175,11 +175,15 @@ jobs:
     # cancellation of the run itself is no evidence either way and the
     # run's own cancellation already speaks for it, which is what
     # `!cancelled()` and not `always()` buys -- test.yml's aggregate
-    # carries that reasoning at length. The draft and closed halves are
-    # the condition the analysis job above carries, so a draft does not
-    # report a failure for work it declined
+    # carries that reasoning at length. The draft flag is not part of
+    # this condition: a skipped required check reads as passing, and
+    # this job's own check run does not exist until analyze has settled,
+    # so declining it here while draft would leave the draft's skip as
+    # the only check of this name on the sha until a later run's own
+    # aggregate exists. The closed condition stays: a closed pull
+    # request has nothing left to become ready (btclib-org/.github#1327)
     if: >-
-      ${{ !cancelled() && !github.event.pull_request.draft
+      ${{ !cancelled()
       && github.event.action != 'closed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -206,13 +210,15 @@ jobs:
       # the allowlist below names "success" and "skipped" both, which
       # section 10 of the organization standard asks of a listing step
       # whatever the workflow's own jobs can report today. Narrowing it to
-      # "success" reads well against the jobs here -- analyze carries no
-      # condition narrower than this job's own draft/closed one above, so
-      # a run that skips analyze skips this job with it, and no job is
-      # conditional on the diff, there being no `changes` job -- but that
-      # is a condition of the run rather than a property of the shape: a
-      # job added later, or an `if:` on one narrower than this job's own,
-      # re-opens "skipped", and the constant does not follow the jobs.
+      # "success" reads well against the jobs here -- the step above
+      # already fails this job before this one runs while draft, so a run
+      # reaching here has ruled out the one condition under which
+      # analyze's own if:, which still carries draft, diverges from this
+      # job's, and no job is conditional on the diff, there being no
+      # `changes` job -- but that is a condition of the run rather than a
+      # property of the shape: a job added later, or an `if:` on one
+      # narrower than this job's own, re-opens "skipped", and the
+      # constant does not follow the jobs.
       # What would report a narrowed allowlist having stopped matching
       # the run is this job going red on the first run that legitimately
       # skips, with no defect under it and nothing in the tree pointing
@@ -220,6 +226,15 @@ jobs:
       # merge path, `codeql: every job passed` being no required check
       # here, which REPOSITORY.md's *Required checks on main* states as a
       # decision of its own (btclib-org/.github#990)
+      # a skipped required check reads as passing, so the draft flag
+      # moves from the job's own `if:` above into this first step: the
+      # job still runs while draft, and reports a failure instead of a
+      # skip (btclib-org/.github#1327)
+      - name: Fail while this pull request is a draft
+        if: github.event.pull_request.draft
+        run: |
+          echo "::error::this pull request is a draft"
+          exit 1
       - name: Fail unless every other job of this run succeeded
         env:
           GH_TOKEN: ${{ github.token }}
