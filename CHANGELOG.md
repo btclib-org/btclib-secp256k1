@@ -45,6 +45,11 @@ draft (issue btclib-org/.github#1327).
 - **Its image lacks the pinned 3.15 and has no network to fetch it; the
   lint workflow runs the hook** (issue btclib-org/.github#1348).
 
+### The rebuild of a release names the interpreter its tag pinned
+
+`RELEASING.md`'s *Rebuild a release from its tag* reads it from the tag's
+`.python-version` rather than naming one (issue btclib-org/.github#1349).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
