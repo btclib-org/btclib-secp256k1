@@ -50,6 +50,12 @@ draft (issue btclib-org/.github#1327).
 `RELEASING.md`'s *Rebuild a release from its tag* reads it from the tag's
 `.python-version` rather than naming one (issue btclib-org/.github#1349).
 
+### A drift line names both commits whole
+
+`check_vendored_vectors.py` prints the pinned commit and upstream's tip as
+full shas, in its output and in the tracking issue, so two commits alike in
+their first twelve characters print as two (issue btclib-org/.github#1343).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
