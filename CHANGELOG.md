@@ -62,6 +62,12 @@ their first twelve characters print as two (issue btclib-org/.github#1343).
 organization owners -- `fametrano`, `giacomocaironi` and `pmazzocchi` --
 rather than from `fametrano` alone (issue btclib-org/.github#1355).
 
+### A pin mismatch names both commits whole
+
+`check_submodule_pin.py` prints both sides of a mismatch as full shas, so a
+README.md commit mistyped past its seventh character prints as two commits
+rather than as a tie (closes #1021).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
