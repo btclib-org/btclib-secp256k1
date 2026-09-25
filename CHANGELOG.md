@@ -68,6 +68,11 @@ rather than from `fametrano` alone (issue btclib-org/.github#1355).
 README.md commit mistyped past its seventh character prints as two commits
 rather than as a tie (closes #1021).
 
+### CONTRIBUTING.md and README.md link GOVERNANCE.md and ROADMAP.md
+
+Both are the organization's, one copy each in
+btclib-org/.github (issue btclib-org/.github#1359).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

@@ -1356,6 +1356,10 @@ satisfy are in
 [CONTRIBUTING.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/CONTRIBUTING.md);
 what a pull request is answered against is in
 [REVIEWING.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/REVIEWING.md).
+How the organization decides, and who holds which role, is its
+[GOVERNANCE.md](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md);
+what it intends to do, and what it deliberately does not, is its
+[ROADMAP.md](https://github.com/btclib-org/.github/blob/main/ROADMAP.md).
 
 ## Release process
 
