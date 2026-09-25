@@ -37,7 +37,7 @@ instead of the moment it was compressed.
 
 Run it after the sdist is built and before anything reads dist/:
 
-    uv run --no-project --python 3.14 \
+    uv run --no-project --python 3.15 \
         .github/scripts/normalize_sdist.py dist/
 
 RELEASING.md has the command that verifies a published release against a

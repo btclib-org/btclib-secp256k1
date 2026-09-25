@@ -64,7 +64,7 @@ which is a different question with a different check to answer it.
 
 Run it against one built wheel:
 
-    uv run --no-project --python 3.14 \\
+    uv run --no-project --python 3.15 \\
         .github/scripts/verify_wheel_contents.py dist/*.whl
 
 `test.yml`'s `check-dist` job runs it on every wheel it downloads --

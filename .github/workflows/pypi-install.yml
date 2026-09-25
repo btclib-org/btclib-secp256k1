@@ -147,9 +147,10 @@ jobs:
         # narrower than the build matrices, and for a different reason:
         # nothing is compiled here (except in the one entry that is), and
         # what varies is which published wheel a platform and an
-        # interpreter select. The two ends of the supported range, plus the
-        # free-threaded interpreter, which must select the cp314t static
-        # wheel and not fall through to the py3-none dynamic one
+        # interpreter select. The oldest interpreter and the two newest,
+        # plus the free-threaded build of each of those two, which must
+        # select its own static cp3XXt wheel and not fall through to the
+        # py3-none dynamic one
         os:
           - ubuntu-latest
           - ubuntu-24.04-arm
@@ -157,7 +158,7 @@ jobs:
           - macos-latest
           - windows-latest
           - windows-11-arm
-        python-version: ["3.11", "3.14", "3.14t"]
+        python-version: ["3.11", "3.14", "3.14t", "3.15", "3.15t"]
         include:
           # the path a platform with no wheel takes: compile the published
           # sdist. Only this package is forced from source, not its
@@ -184,6 +185,11 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
+          # section 1 of the organization standard counts a release
+          # candidate as released, and setup-python matches one only under
+          # this flag, which leaves a version with a final release on that
+          # final
+          allow-prereleases: true
 
       # --only-binary on every cell but the sdist one: see the header. In
       # both directions only this package is constrained, never its

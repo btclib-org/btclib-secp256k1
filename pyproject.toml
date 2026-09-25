@@ -62,8 +62,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     # test.yml's build-cibuildwheel job builds and runs the suite against
-    # a cp314t wheel on every trigger, a pull request included, and
+    # a cp315t wheel on every trigger, a pull request included, and
     # tests/interpreters_test.py holds the biconditional between this
     # classifier and the interpreters the jobs the merge gate waits on
     # run. The extension leaves that interpreter's GIL disabled at import
@@ -526,7 +527,7 @@ warn_unreachable = true
 # ffi and lib are Any and every wrapper checks out vacuously
 mypy_path = "stubs"
 # the floor requires-python declares, and not the interpreter that happens
-# to run the check. Without this key mypy targets the 3.14 of
+# to run the check. Without this key mypy targets the 3.15 of
 # .python-version, and a typing construct absent from the oldest supported
 # interpreter is then invisible to it: an annotation is deferred by
 # `from __future__ import annotations`, but a type *alias* is an ordinary

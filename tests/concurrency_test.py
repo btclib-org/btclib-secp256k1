@@ -8,9 +8,9 @@ The bindings hold one context, created and randomized at import time and
 passed to every call. That is safe because a context is only mutated by
 secp256k1_context_randomize, which runs once before any thread exists,
 and because each call allocates the buffers it writes to; but nothing in
-the code says so, and a static wheel is built for the free-threaded
-interpreter (cp314t), where these calls are no longer serialized by an
-interpreter lock.
+the code says so, and static wheels are built for the free-threaded
+interpreters (cp314t and cp315t), where these calls are no longer
+serialized by an interpreter lock.
 
 Every operation exercised here is deterministic, ECDSA by RFC6979 and
 BIP340 by a fixed aux_rand32, so a result that differs between threads

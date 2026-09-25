@@ -57,10 +57,11 @@ jobs:
   # rather than `uv build --sdist`. submodules: recursive, since the
   # sdist a compiled backend writes here carries the vendored
   # secp256k1 and secp256k1-zkp trees, which the checkout below has to
-  # hold before the build reads them. python-version: "3.14" pins the
-  # interpreter actions/setup-python installs ahead of the callee's own
-  # Setup uv step, matching what this tree's own build-sdist in test.yml
-  # runs against. The signer the callee verifies against is
+  # hold before the build reads them. setup-python: true has
+  # actions/setup-python install the interpreter the rebuilt tag's own
+  # .python-version names, ahead of the callee's own Setup uv step, so
+  # the rebuild runs on that tag's pin rather than on this branch's.
+  # The signer the callee verifies against is
   # btclib-org/.github's reusable-attest.yml, which release.yml's attest
   # job calls, and the callee's header says why the called workflow is
   # the signer (issue #996).
@@ -73,4 +74,4 @@ jobs:
     with:
       sdist-builder: build-module
       submodules: recursive
-      python-version: "3.14"
+      setup-python: true

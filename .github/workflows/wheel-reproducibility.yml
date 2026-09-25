@@ -420,7 +420,7 @@ jobs:
     env:
       UV_PYTHON_DOWNLOADS: never
       # the one interpreter, and no test run: see this file's header
-      CIBW_BUILD: cp314-*
+      CIBW_BUILD: cp315-*
       CIBW_TEST_SKIP: "*"
     strategy:
       # every image to the end, as in rebuild: which platform disagrees
@@ -471,7 +471,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.14"
+          python-version: "3.15"
+          # section 1 of the organization standard counts a release
+          # candidate as released, and setup-python matches one only under
+          # this flag, which leaves a version with a final release on that
+          # final. The two setup-python steps below carry it for that reason
+          allow-prereleases: true
 
       - name: Setup uv
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -580,7 +585,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.14"
+          python-version: "3.15"
+          allow-prereleases: true
 
       - name: Setup uv
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
@@ -638,7 +644,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.14"
+          python-version: "3.15"
+          allow-prereleases: true
 
       - name: Setup uv
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0

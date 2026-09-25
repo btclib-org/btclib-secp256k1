@@ -580,9 +580,9 @@ interpreter, and leaves it there. Going back is another `uv sync`, and
 `--reinstall-package btclib-secp256k1 --no-cache` if the extension it
 finds in the cache is the one of the ABI just left behind. Requesting a
 free-threaded interpreter (`--python 3.14t`) has a second effect: it
-installs it as a managed one, and `uv sync` then prefers it to a system
-3.14, so `uv python install 3.14` is what makes the default environment
-reproducible again.
+installs it as a managed one, and uv then prefers it to a system 3.14
+wherever 3.14 is asked for, so `uv python install 3.14` is what makes
+such an environment reproducible again.
 
 Naming the environment keeps the default one instead, at the price of a
 second build of the extension:
@@ -814,9 +814,9 @@ command at all, for the reason below, and nothing requires its result.
   ```shell
   export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
   uv run --locked --only-group build python -m build -s
-  uv run --no-project --python 3.14 \
+  uv run --no-project --python 3.15 \
       .github/scripts/normalize_sdist.py dist/
-  uv run --no-project --python 3.14 \
+  uv run --no-project --python 3.15 \
       .github/scripts/generate_sbom.py dist/ sbom/
   python -m pip install --verbose dist/*.tar.gz
   ```
@@ -1387,7 +1387,7 @@ differ per image rather than per interpreter.
 
 The free-threaded one is kept for a reason of its own: `pyproject.toml`
 declares the `Free Threading` classifier on the ground that the gate refuses
-a landing that breaks the `cp314t` wheel, so the required check builds that
+a landing that breaks the `cp315t` wheel, so the required check builds that
 wheel and runs the suite against it. Nothing on a branch reads past those
 wheels: `check-dist` installs one wheel by path and takes it from
 `build-dynamic`, which builds whole. `test.yml` carries the reasoning beside

@@ -922,9 +922,9 @@ cd /tmp/btclib-secp256k1-rebuild &&
 git submodule update --init --recursive &&
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) &&
 uv run --locked --only-group build python -m build -s &&
-uv run --no-project --python 3.14 \
+uv run --no-project --python 3.15 \
   .github/scripts/normalize_sdist.py dist/ &&
-uv run --no-project --python 3.14 \
+uv run --no-project --python 3.15 \
   .github/scripts/generate_sbom.py dist/ sbom/ &&
 repo=btclib-org/btclib-secp256k1 &&
 signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&

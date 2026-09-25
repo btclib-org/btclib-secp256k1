@@ -60,7 +60,7 @@ makes none of, for a result that may not exist
 Run it on a freshly built dist directory, after the sdist normalizer,
 whose rewrite changes the digest this records:
 
-    uv run --no-project --python 3.14 \
+    uv run --no-project --python 3.15 \
         .github/scripts/generate_sbom.py dist/ sbom/
 
 The output is named `<distribution>-<version>.cdx.json` after the sdist,
