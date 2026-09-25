@@ -5,10 +5,10 @@
 language: python
 
 # `address` and `undefined` are the two sanitizers that page names for
-# Python. The instrumentation reaches the vendored C alone -- build.sh
-# says why -- and `address` is what turns an overread there into a
-# crash, which is the finding the targets exist for; naming the list is
-# what a second sanitizer would extend, in step with the workflow's own
-# `sanitizer:` inputs.
+# Python. The instrumentation reaches the vendored C and the cffi glue
+# over it -- build.sh says how -- and `address` is what turns an
+# overread in either into a crash, which is the finding the targets
+# exist for; naming the list is what a second sanitizer would extend, in
+# step with the workflow's own `sanitizer:` inputs.
 sanitizers:
   - address

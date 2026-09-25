@@ -928,6 +928,14 @@ max-complexity = 10
 # it names on success are what the build-sdist step that runs it shows in
 # its own log: same exemption, same reason as the scripts above
 ".github/scripts/generate_sbom.py" = ["print"]
+# reads one top-level function definition out of scripts/cffi_build.py
+# and execs it on its own, never the whole module: the same reason
+# tests/module_flags_test.py reads the syntax tree instead of importing
+# it, that module's own top level constructing an extension whose
+# __init__ deletes the CMake build directory. exec() here runs real code
+# rather than a hand-copied reimplementation of it, and reaches nothing
+# but shlex, which is supplied
+"tests/cffi_build_test.py" = ["exec-builtin"]
 # one keyword per sdist member field the script and its tests care
 # about; splitting it into a dataclass would move the same seven names
 # one level down rather than removing any of them

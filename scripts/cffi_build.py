@@ -45,6 +45,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+from collections.abc import Mapping
 from subprocess import PIPE, Popen
 from sysconfig import get_config_var, get_path, get_platform
 from typing import Any
@@ -164,6 +165,77 @@ endif()
 # carries -- reused here, for the same reason, on the one file this
 # build compiles that a linker later reads the mtime of
 _FIXED_MTIME = 1580601600
+
+
+def _customized_compile_link(
+    cc: str, cflags: str, ldshared: str, env: Mapping[str, str]
+) -> tuple[list[str], list[str], list[str]]:
+    """Compose CC, CFLAGS and LDSHARED the way setuptools does.
+
+    `setuptools._distutils.sysconfig.customize_compiler` is a call to the
+    Unix compiler's `configure_system`, in the setuptools `uv.lock`
+    resolves, and this repeats the part of it a C extension's compile
+    and link read, in its order, so that an override reaches this glue
+    exactly as it reaches every other extension built for the same
+    interpreter:
+
+    - `CC` replaces `cc`, and where `LDSHARED` is not set and `ldshared`
+      starts with the old `cc`, it replaces that prefix of `ldshared` too;
+    - `LDSHARED` replaces `ldshared`, and `LDFLAGS` extends it;
+    - `CFLAGS` replaces `cflags` and extends `ldshared`, the link
+      consuming the object the compile produced;
+    - `CPPFLAGS` extends both.
+
+    An empty extension variable adds nothing, as setuptools' own
+    `_add_flags` reads it. A `CFLAGS` that replaces `cflags` also
+    replaces whatever `sysconfig` recorded there, `-arch` pairs and
+    optimization included: a caller setting it states the whole of the
+    compile's flags, as for any other extension. Tested directly rather
+    than through a compile: `tests/cffi_build_test.py`.
+
+    Args:
+        cc: the sysconfig `CC` value.
+        cflags: the sysconfig `CFLAGS` value.
+        ldshared: the sysconfig `LDSHARED` value.
+        env: the environment to read an override or an extension from.
+
+    Returns:
+        `(cc, cflags, ldshared)`, each already `shlex.split` for an argv.
+    """
+
+    def extended(value: str, flag_type: str) -> str:
+        flags = env.get(f"{flag_type}FLAGS")
+        return f"{value} {flags}" if flags else value
+
+    if "CC" in env:
+        if "LDSHARED" not in env and ldshared.startswith(cc):
+            ldshared = env["CC"] + ldshared[len(cc) :]
+        cc = env["CC"]
+    ldshared = env.get("LDSHARED", ldshared)
+    ldshared = extended(ldshared, "LD")
+    cflags = env.get("CFLAGS", cflags)
+    ldshared = extended(ldshared, "C")
+    cflags = extended(cflags, "CPP")
+    ldshared = extended(ldshared, "CPP")
+    return shlex.split(cc), shlex.split(cflags), shlex.split(ldshared)
+
+
+def _cmake_build_type(env: Mapping[str, str]) -> str:
+    """Read the vendored library's CMake build type.
+
+    `CMAKE_BUILD_TYPE`, or `Release` where the environment carries none.
+    Read once and passed to both the configure, which a single
+    configuration generator needs it at, and the `--config` of the
+    build, which a multi configuration one (MSVC) reads instead -- so
+    the two never disagree on which configuration was actually built.
+
+    Args:
+        env: the environment to read the variable from.
+
+    Returns:
+        The environment's own value, or `Release` where it is unset.
+    """
+    return env.get("CMAKE_BUILD_TYPE", "Release")
 
 
 # every subprocess call below drives the vendored CMake build with
@@ -288,14 +360,18 @@ class FFIExtension:
             # copied from an input .obj or from the static
             # libsecp256k1.lib CMake produces, so extra_compile_args
             # carries nothing here. The second candidate #510 named, the
-            # CodeView debug directory's GUID, is not in play either:
-            # this link carries no /DEBUG and emits no CodeView entry at
-            # all, on this extension or on the vendored library CMake
-            # builds ahead of it -- CMake's own summary prints
-            # RelWithDebInfo's /Zi purely as one of several supported
-            # configurations, and `build_c` below actually builds
-            # `--config Release`, which carries no such flag
-            # (btclib-org/btclib-secp256k1#510)
+            # CodeView debug directory's GUID, is not in play either
+            # under the default build type: this link carries no /DEBUG
+            # and emits no CodeView entry at all, on this extension or
+            # on the vendored library CMake builds ahead of it -- CMake's
+            # own summary prints RelWithDebInfo's /Zi purely as one of
+            # several supported configurations, and `build_c` below
+            # builds `--config Release`, which carries no such flag,
+            # unless CMAKE_BUILD_TYPE names another type
+            # (btclib-org/btclib-secp256k1#510). A caller naming
+            # RelWithDebInfo or Debug puts /Zi into the vendored
+            # library's objects, and what that does to this link's
+            # output has not been measured
             extra_link_args=["/Brepro"],
         )
         return [pathlib.Path(ffi.compile(tmpdir=str(build_dir)))]
@@ -307,19 +383,25 @@ class FFIExtension:
 
         The interpreter's own configuration decides the compiler, the
         flags and the extension suffix, so that the result matches the ABI
-        of the interpreter that will import it.
+        of the interpreter that will import it; a caller's CC and CFLAGS
+        replace the first two as they would for any setuptools extension.
 
         CC, CFLAGS and CCSHARED in that order is what `customize_compiler`
-        composes for the extensions the interpreter builds for itself, and
-        composing anything else here is how the two come apart. CFLAGS is
-        where the optimization comes from: without it the glue alone is
-        compiled unoptimized, beside a vendored library `build_c` builds
-        Release. It is also where a universal2 interpreter's
-        `-arch x86_64 -arch arm64` reaches the compile -- LDSHARED
-        carries them to the link either way, so a compile without them
-        hands the link a single-arch object to make dual-arch -- the
+        composes for the extensions the interpreter builds for itself.
+        `_customized_compile_link` composes CC and CFLAGS the same way it
+        does, honouring a caller's own CC, LDSHARED, CFLAGS, LDFLAGS and
+        CPPFLAGS exactly where `customize_compiler` would, so this and the
+        interpreter's own extensions answer an override the same way.
+        CFLAGS is where the optimization comes from: without it the glue
+        alone is compiled unoptimized, beside a vendored library `build_c`
+        builds Release by default. It is also where a universal2
+        interpreter's `-arch x86_64 -arch arm64` reaches the compile --
+        LDSHARED carries them to the link either way, so a compile without
+        them hands the link a single-arch object to make dual-arch -- the
         universal2 case among the macOS ones target_architecture_options
-        covers.
+        covers. That is also why a caller's own CFLAGS reaches LDSHARED
+        too, in `_customized_compile_link`: an `-arch` pair supplied that
+        way has the same obligation to reach the link.
 
         Nothing is filtered out of them: on macOS `sysconfig` has already
         run the flags through `_osx_support`, which is what rewrites an
@@ -339,7 +421,8 @@ class FFIExtension:
         ffi.emit_c_code(str(c_path))
         # ld64 attaches a debug map to the binary it links whenever the
         # compile carries -g, as this interpreter's own CFLAGS always
-        # does below: one N_SO/N_OSO stab pair per object, the first
+        # does below where no CFLAGS in the environment replaces them:
+        # one N_SO/N_OSO stab pair per object, the first
         # naming the directory the compile ran in and the second the
         # object's own path -- both absolute, both this build's own
         # worktree, neither touched by cee5f6d's mtime pin, which
@@ -382,17 +465,24 @@ class FFIExtension:
         # "." and a raw scan of the linked extension finds neither
         # directory, where without the flag each extension carries its
         # own. Nothing of this reaches the vendored library CMake builds
-        # beside it, whose objects carry no debug information at all --
-        # build_c's own note beside the configure has the reason
-        # (btclib-org/btclib-secp256k1#522)
+        # beside it, whose objects carry no debug information at all
+        # under the default build type -- build_c's own note beside the
+        # configure has the reason, and what a caller naming another
+        # type trades away (btclib-org/btclib-secp256k1#522)
         build_path_flags = (
             ["-fdebug-compilation-dir=."]
             if platform.system() == "Darwin"
             else [f"-ffile-prefix-map={build_dir.resolve()}=."]
         )
+        cc, cflags, ldshared = _customized_compile_link(
+            get_config_var("CC"),
+            get_config_var("CFLAGS") or "",
+            get_config_var("LDSHARED"),
+            os.environ,
+        )
         compile_command = [
-            *shlex.split(get_config_var("CC")),
-            *shlex.split(get_config_var("CFLAGS") or ""),
+            *cc,
+            *cflags,
             *shlex.split(get_config_var("CCSHARED") or ""),
             f"-I{get_path('include')}",
             f"-I{get_path('platinclude')}",
@@ -402,7 +492,6 @@ class FFIExtension:
             "-o",
             str(o_filename),
         ]
-        ldshared = shlex.split(get_config_var("LDSHARED"))
         link_command = [
             ldshared[0],
             str(o_filename),
@@ -418,7 +507,8 @@ class FFIExtension:
         if platform.system() == "Darwin":
             # ld64 attaches a debug map to the binary it links whenever
             # the compile carries -g, as this interpreter's own CFLAGS
-            # always does above: one N_OSO stab per object, recording
+            # always does above where no CFLAGS in the environment
+            # replaces them: one N_OSO stab per object, recording
             # that object's own mtime. A fresh compile of the same source
             # therefore links a different object every time, seconds
             # apart being enough to change it -- and ld64's own default
@@ -622,8 +712,9 @@ class VendoredCMakeExtension(FFIExtension):
         `build_c` runs for both linkages, but only a static build feeds
         its result into a second, separate toolchain:
         `compile_static_unix` links CMake's own archive into an
-        extension compiled by the interpreter's own `cc`, whose CFLAGS
-        already carry `-mmacosx-version-min`. Where nothing sets
+        extension it compiles itself, with the interpreter's CFLAGS,
+        which carry `-mmacosx-version-min`, where no CFLAGS in the
+        environment replaces them. Where nothing sets
         `CMAKE_OSX_DEPLOYMENT_TARGET`, CMake compiles that archive for
         whatever the build machine runs, and `ld` warns on every member
         of it built newer than the extension's own floor
@@ -684,6 +775,7 @@ class VendoredCMakeExtension(FFIExtension):
         project_include = self.cmake_dir / "btclib_callbacks.cmake"
         project_include.write_text(PROJECT_INCLUDE, encoding="utf-8")
 
+        build_type = _cmake_build_type(os.environ)
         configure = [
             "cmake",
             "-S",
@@ -691,7 +783,7 @@ class VendoredCMakeExtension(FFIExtension):
             "-B",
             str(self.cmake_dir),
             # single configuration generators need it at configure time
-            "-DCMAKE_BUILD_TYPE=Release",
+            f"-DCMAKE_BUILD_TYPE={build_type}",
             f"-DBUILD_SHARED_LIBS={'OFF' if self.static else 'ON'}",
             # the static archive is linked into a shared extension
             "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
@@ -767,13 +859,17 @@ class VendoredCMakeExtension(FFIExtension):
         # for the shared libsecp256k1 this configuration links in the
         # dynamic build, the way compile_static_unix pins the mtime of
         # the object it compiles by hand. This configure's own summary
-        # carries no -g -- CMake's Release type is -O2 alone -- so the
-        # objects it produces carry no debug map for ld64 to build one
-        # from, and repeated builds of this -dynamiclib target, from one
-        # worktree, produced one digest every time, LC_UUID included --
-        # measured rather than assumed, and the reason a fix for the
-        # other link does not follow this one
-        # (btclib-org/btclib-secp256k1#498, #502)
+        # carries no -g under the default Release build type -- CMake's
+        # Release is -O2 alone -- so the objects it produces carry no
+        # debug map for ld64 to build one from, and repeated builds of
+        # this -dynamiclib target, from one worktree, produced one
+        # digest every time, LC_UUID included -- measured rather than
+        # assumed, and the reason a fix for the other link does not
+        # follow this one (btclib-org/btclib-secp256k1#498, #502). A
+        # caller setting CMAKE_BUILD_TYPE to something else, RelWithDebInfo
+        # or Debug among them, asks for debug information along with
+        # whatever else that type carries, and trades this reproducibility
+        # away deliberately in the same step
 
         if cross_compile:
             # the toolchain file is the vendored one, upstream tested
@@ -781,14 +877,14 @@ class VendoredCMakeExtension(FFIExtension):
             configure.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain}")
         subprocess.run(configure, check=True)
         subprocess.run(
-            ["cmake", "--build", str(self.cmake_dir), "--config", "Release"],
+            ["cmake", "--build", str(self.cmake_dir), "--config", build_type],
             check=True,
         )
 
         # multi configuration generators (MSVC) append the configuration
-        # name; the shared library goes to lib on POSIX, being a DLL, to
-        # bin on Windows
-        candidates = ("lib/Release", "lib", "bin/Release", "bin")
+        # name, which is the build type; the shared library goes to lib on
+        # POSIX, being a DLL, to bin on Windows
+        candidates = (f"lib/{build_type}", "lib", f"bin/{build_type}", "bin")
         self.library_dirs = [
             directory
             for directory in (self.cmake_dir / c for c in candidates)
