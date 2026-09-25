@@ -36,7 +36,7 @@ ci:
   # run of this service, and what it buys is a status here that means
   # something about the branch it is reported against.
   submodules: true
-  # two hooks are kept from running on pre-commit.ci at all, each for
+  # these hooks are kept from running on pre-commit.ci at all, each for
   # something that service does not give it rather than for anything
   # the hook does.
   # submodule-pin resolves the release README.md names in the vendored
@@ -50,14 +50,19 @@ ci:
   # hook of that form: uv is absent on pre-commit.ci, which also runs a
   # hook with no network (pre-commit-ci/issues#256). A service with both
   # is what takes this entry back out.
+  # uv-lock asks for the interpreter .python-version names, which the
+  # image that service runs does not carry, and with no network uv
+  # cannot download it there (btclib-org/.github#1348). That image
+  # carrying the pinned interpreter is what takes this entry back out.
   # An entry may join the list for a reason of that kind -- something
   # the service cannot be given -- and no other; re-read this before
   # adding to it. lint.yml runs this same file with `submodules: true`
-  # and `fetch-depth: 0` and a network, so what the list costs is
-  # pre-commit.ci's run of these two rather than the hooks themselves:
-  # each still gates a commit on this machine and the required
-  # `lint / Lint and type-check` check.
-  skip: [submodule-pin, pyroma]
+  # and `fetch-depth: 0` and a network, uv installing the interpreter
+  # .python-version names, so what the list costs is pre-commit.ci's
+  # run of these rather than the hooks themselves: each still gates a
+  # commit on this machine and the required `lint / Lint and
+  # type-check` check.
+  skip: [submodule-pin, pyroma, uv-lock]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

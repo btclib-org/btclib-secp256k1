@@ -40,6 +40,11 @@ A skipped required check reads as passing, so `codeql-passed`, `test-passed`
 and `reproducibility-passed` each fail a first step instead of skipping while
 draft (issue btclib-org/.github#1327).
 
+### pre-commit.ci skips `uv-lock`
+
+- **Its image lacks the pinned 3.15 and has no network to fetch it; the
+  lint workflow runs the hook** (issue btclib-org/.github#1348).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
