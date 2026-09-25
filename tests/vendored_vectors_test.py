@@ -594,6 +594,53 @@ def test_a_gone_path_is_printed_as_gone_rather_than_as_behind(
     assert f"GONE: {_AT_THE_TIP}" in capsys.readouterr().out
 
 
+# a pin and a tip alike in a short prefix and apart past it, the pair
+# btclib-org/.github#1343 was filed on
+_PINNED_ALIKE = "9b37d42b23be07ee3a37eae4bcbd52c8ba36ee40"
+_TIP_ALIKE = "9b37d42b23be096cc4cfb457f1022e443102b650"
+
+
+def test_a_pin_and_a_tip_alike_in_a_prefix_print_as_two_shas(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The drift line and the body name both commits whole, never a tie.
+
+    Args:
+        monkeypatch: the fixture the argv and the tip lookup are set
+            through.
+        tmp_path: where the sample README is written.
+        capsys: the captured streams.
+    """
+    assert _PINNED_ALIKE[:12] == _TIP_ALIKE[:12]
+    readme = tmp_path / "README.md"
+    readme.write_text(_README.replace(_PINNED, _PINNED_ALIKE), encoding="utf-8")
+    monkeypatch.setattr(
+        check,
+        "_latest_commit",
+        lambda _repo, _path, _ref=None: (_TIP_ALIKE, "2026-09-11"),
+    )
+    monkeypatch.setattr(check, "report", lambda *_args: None)
+    monkeypatch.setattr(
+        check.sys,
+        "argv",
+        [
+            "check_vendored_vectors.py",
+            str(readme),
+            "Vendored vectors behind upstream",
+            "--dry-run",
+        ],
+    )
+
+    assert check.main() == 0
+    out = capsys.readouterr().out
+    assert f"pinned to {_PINNED_ALIKE}, tip is {_TIP_ALIKE} (2026-09-11)" in out
+
+    drifted, skipped = check.find_drift(readme)
+    body = check._issue_body(readme, drifted, skipped)
+    assert f"`{_PINNED_ALIKE}`" in body
+    assert f"`{_TIP_ALIKE}` (2026-09-11)" in body
+
+
 def test_a_clean_run_says_so_and_still_reports(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
