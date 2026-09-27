@@ -21,11 +21,13 @@ the ones [ARCHITECTURE](./ARCHITECTURE.md) describes.
   made; README.md's *What the boundary checks* section states what else
   is checked and what is deliberately left to libsecp256k1.
 - **An illegal argument cannot take the caller's process down.** The
-  vendored build replaces libsecp256k1's abort()ing default callbacks
-  with do-nothing stubs, so a violated precondition is recorded on
-  `context.check()` and never crashes the interpreter that reached it —
-  `tests/core_test.py::test_safe_abort` drives that replacement with
-  deliberately illegal arguments.
+  vendored build replaces libsecp256k1's abort()ing illegal-argument
+  default with a do-nothing stub, so a violated precondition is recorded
+  on `context.check()` and never crashes the interpreter that reached it
+  — `tests/core_test.py::test_safe_abort` drives that replacement with
+  deliberately illegal arguments. The error default is not replaced this
+  way: SECURITY.md's *What belongs here, and what belongs upstream*
+  states why.
 - **A secret this package produces is read out and overwritten once.**
   Wherever a wrapper returns a tweaked key, a nonce or a shared secret,
   the buffer libsecp256k1 or secp256k1-zkp wrote it into is wiped before
@@ -228,11 +230,14 @@ exposed to, and what counters each.
   argument against every entry point that takes one, and
   `tests/bytes_like_test.py` holds the same boundary to the three
   buffer types it accepts.
-- **Reachable assertion (CWE-617).** The vendored build's callback stubs
-  replace libsecp256k1's abort()ing defaults, so a violated precondition
-  is reported rather than crashing the process; `tests/core_test.py`'s
-  `test_safe_abort` drives libsecp256k1 with deliberately illegal
-  arguments to prove the replacement holds.
+- **Reachable assertion (CWE-617).** The vendored build's
+  illegal-argument stub replaces libsecp256k1's abort()ing default, so a
+  violated precondition is reported rather than crashing the process;
+  `tests/core_test.py`'s `test_safe_abort` drives libsecp256k1 with
+  deliberately illegal arguments to prove the replacement holds. An
+  internal error is not this weakness's concern: it is not a reachable
+  assertion on a caller's input, and the vendored build keeps upstream's
+  own aborting default for it, on purpose.
 - **Improper input validation (CWE-20).** The tests under *Trust
   boundaries*, and `tests/properties_test.py`'s invariants over inputs
   derived from a chain of SHA256 rather than chosen by hand.

@@ -61,23 +61,37 @@ cross_compile = os.environ.get("BTCLIB_LIBSECP256K1_CROSS_COMPILE", "false") == 
 static = os.environ.get("BTCLIB_LIBSECP256K1_DYNAMIC", "false") != "true"
 zkp = os.environ.get("BTCLIB_LIBSECP256K1_ZKP", "false") == "true"
 
-# do-nothing implementations of the external default callbacks: they replace
-# the abort()ing upstream defaults, so that illegal inputs never crash the
-# hosting Python process; compiled as a separate unit, without mutating the
-# vendored sources.
+# the external default callbacks, compiled as a separate unit without
+# mutating the vendored sources: SECP256K1_USE_EXTERNAL_DEFAULT_CALLBACKS
+# requires both symbols regardless of which behaviour either keeps
+# (secp256k1.h's own comment on the macro).
 #
-# These are the defaults, which apply to every context whose callbacks are
-# not set: the shared context of the bindings sets them to record what was
-# reported, so that context.check() can raise it
+# These are the defaults, which apply to every context whose own callback
+# is not set. The illegal-argument one does nothing, replacing the
+# abort()ing upstream default: an illegal argument is a caller mistake,
+# and the shared context of the bindings sets a callback of its own that
+# records what was reported, so that context.check() can raise it.
+#
+# The error one keeps upstream's own behaviour -- write the message to
+# stderr and abort() -- instead of replacing it: an internal error means
+# hardware failure, miscompilation, memory corruption or a bug in the
+# library, upstream's own header says anything may happen once the
+# callback reporting it returns, and no context here sets one of its own,
+# so this default is always the one that runs. See SECURITY.md for the
+# split.
 CALLBACK_STUBS = """
+#include <stdio.h>
+#include <stdlib.h>
+
 void secp256k1_default_illegal_callback_fn(const char* str, void* data) {
     (void)str;
     (void)data;
 }
 
 void secp256k1_default_error_callback_fn(const char* str, void* data) {
-    (void)str;
     (void)data;
+    fprintf(stderr, "%s\\n", str);
+    abort();
 }
 """
 

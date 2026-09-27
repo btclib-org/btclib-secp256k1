@@ -5,9 +5,10 @@
 """Core tests: signing round-trips, input validation, and safe aborts.
 
 The safe-abort test drives libsecp256k1 with deliberately illegal
-arguments: it passes only because the vendored default callbacks are
-replaced by do-nothing stubs, instead of the abort()ing upstream ones
-that would take the hosting Python process down with them.
+arguments: it passes only because the vendored build replaces the
+illegal-argument default with a do-nothing stub, instead of the
+abort()ing upstream one that would take the hosting Python process down
+with it.
 """
 
 import array
@@ -158,14 +159,15 @@ def test_safe_abort() -> None:
     """An illegal argument does not take the interpreter down with it.
 
     `secp256k1_ecdsa_sign` is called with NULL where a signature and a
-    key go. Upstream's default callbacks `abort()`, which would end the
-    hosting process; this returns because the vendored build replaces
-    them with do-nothing stubs, compiled as a unit of their own rather
-    than by editing the submodule. That the test returns at all is the
-    assertion.
+    key go, which violates a precondition rather than an internal
+    consistency check, so it is the illegal-argument default that
+    answers. Upstream's own `abort()`s, which would end the hosting
+    process; this returns because the vendored build replaces it with a
+    do-nothing stub, compiled as a unit of its own rather than by editing
+    the submodule. That the test returns at all is the assertion.
 
     A context of its own, because the shared one has the recording
-    callbacks of `context` set on it and this is about the defaults --
+    callback of `context` set on it and this is about the default --
     and destroyed after, a context being an allocation that nothing else
     frees. `1` is SECP256K1_CONTEXT_NONE, the flags naming SIGN and
     VERIFY having been deprecated since libsecp256k1 0.2.

@@ -2,9 +2,9 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests of what libsecp256k1 reports through the callbacks of the context.
+"""Tests of what libsecp256k1 reports through the context's illegal callback.
 
-No wrapper reads those callbacks, so what they record is `context.check`'s
+No wrapper reads that callback, so what it records is `context.check`'s
 to raise and nobody else's. Two halves are tested here. That `check`
 itself reports, clears and attributes per thread; and that a wrapper
 handed an object libsecp256k1 cannot read answers *something* -- its own
@@ -26,10 +26,10 @@ inside a call that answers its own `ValueError` about the key. That the
 verdict is right anyway is the reasoning that docstring gives, and the
 last test here is it.
 
-An internal error is reachable through neither: libsecp256k1 reports
-through that callback what it holds to be unreachable, so the recording
-function is called directly, the way extension_test.py drives the branch
-of the loader that the build it runs on does not have.
+An internal error is not among these shapes: libsecp256k1 never returns
+one to a caller, its own aborting default applying to it, and
+`context.py`'s own comment beside its callback registration has the
+reasoning.
 """
 
 from __future__ import annotations
@@ -267,35 +267,6 @@ def test_the_public_entry_points_leave_the_thread_clean() -> None:
 
     with pytest.raises(ValueError, match="invalid public key"):
         dsa.verify(msg, not_a_point, dsa.sign(msg, 7))
-    context.check()
-
-
-def test_internal_error() -> None:
-    """An internal error reaches the caller as RuntimeError.
-
-    The recording function is called directly, that callback being how
-    libsecp256k1 reports what it holds to be unreachable: there is no
-    argument that provokes it.
-    """
-    context._record_error(ffi.new("char[]", b"deliberate"), ffi.NULL)
-    with pytest.raises(RuntimeError, match="internal error: deliberate"):
-        context.check()
-
-
-def test_internal_error_comes_first() -> None:
-    """With both reported, the internal error is the one raised.
-
-    A broken invariant and a caller's mistake are not the same news, and
-    the first is what has to be told. Both are cleared, so neither
-    lingers to be raised by an unrelated call.
-    """
-    # an internal error is a broken invariant, an illegal argument is a
-    # caller mistake: the first is what has to be reported
-    context._record_illegal(ffi.new("char[]", b"argument"), ffi.NULL)
-    context._record_error(ffi.new("char[]", b"invariant"), ffi.NULL)
-    with pytest.raises(RuntimeError, match="invariant"):
-        context.check()
-    # and both are cleared, so neither lingers
     context.check()
 
 

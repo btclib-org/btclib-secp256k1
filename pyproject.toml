@@ -704,9 +704,8 @@ ignore = [
     # flake8-self: a caller outside the library reaching into a private
     # attribute is what this rule is for, and it cannot tell that caller
     # from the three shapes this tree actually has -- a test verifying an
-    # implementation detail on purpose (`_secnonce`, `_keypair`, the
-    # callback stand-ins `_record_illegal`/`_record_error`), a sibling
-    # module reaching into another module's private state the way
+    # implementation detail on purpose (`_secnonce`, `_keypair`), a
+    # sibling module reaching into another module's private state the way
     # `xonly._parsed` calls `keys._parsed` (ARCHITECTURE.md), or
     # `scripts/hatch_build.py` reading cffi's own `FFI._assigned_source`,
     # which cffi exposes no public accessor for
