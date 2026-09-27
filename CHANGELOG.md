@@ -204,6 +204,12 @@ and signatures and SHA pinning are read back (issue btclib-org/.github#1409).
   `exclude_also` comment in `pyproject.toml`, whose pattern decides by a
   raise's text whether coverage counts it.**
 
+### Two aggregates read a lagging row again, and fail on a failed `needs` result
+
+`codeql-passed` and `reproducibility-passed` read the listing again before
+accepting a lagging row (issue btclib-org/.github#1416), and fail on a `needs`
+result neither `success` nor `skipped` (issue btclib-org/.github#1424).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
