@@ -416,6 +416,73 @@ def test_racing_threads_build_the_context_once(
     assert len({id(context) for context in contexts}) == 1
 
 
+class _Handoff:
+    """A lock that says when a second thread has come to wait on it.
+
+    `_load` holds `_lock` for the whole build, so a thread arriving while
+    the build runs finds it taken: that is the moment `waiting` records,
+    before the arrival blocks. The first thread takes it free and records
+    nothing.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.waiting = threading.Event()
+
+    def __enter__(self) -> None:
+        if self._lock.locked():
+            self.waiting.set()
+        self._lock.acquire()
+
+    def __exit__(self, *_: object) -> None:
+        self._lock.release()
+
+
+@pytest.mark.usefixtures("without_the_extension")
+def test_a_thread_that_lost_the_lock_takes_the_context_built_under_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The second reader finds `ctx` written, and builds nothing of its own.
+
+    The racing test above reaches `_load`'s early return only where the
+    scheduler happens to put a thread behind the lock while the build is
+    still running, and a full suite's load has been measured to leave it
+    unreached (btclib-org/btclib-secp256k1#1050). Here the order is
+    forced: the first reader's build does not finish until the second is
+    waiting on `_lock`, so the second can only take the lock once `ctx`
+    is written, and has to return it rather than build again -- one
+    import of the extension, one context, both readers answered with it.
+    """
+    handoff = _Handoff()
+    imports: list[str] = []
+    building = threading.Event()
+
+    def import_once_the_second_reader_waits() -> types.SimpleNamespace:
+        imports.append(threading.current_thread().name)
+        building.set()
+        assert handoff.waiting.wait(timeout=30), "the second reader never waited"
+        return STAND_IN
+
+    monkeypatch.setattr(zkp_context, "_lock", handoff)
+    monkeypatch.setattr(zkp, "_import_extension", import_once_the_second_reader_waits)
+    contexts: dict[str, object] = {}
+
+    def read_ctx() -> None:
+        contexts[threading.current_thread().name] = zkp_context.ctx
+
+    first = threading.Thread(target=read_ctx, name="first")
+    second = threading.Thread(target=read_ctx, name="second")
+    first.start()
+    assert building.wait(timeout=30), "the first reader never started the build"
+    second.start()
+    first.join()
+    second.join()
+
+    assert imports == ["first"]
+    assert set(contexts) == {"first", "second"}
+    assert contexts["first"] is contexts["second"]
+
+
 def test_check_with_nothing_reported() -> None:
     """With nothing reported, check returns: that is the whole behaviour.
 
