@@ -777,7 +777,8 @@ jobs:
     # the run's own job listing rather than `needs.*.result`. `needs`
     # sequences this job after every other one, and each id's own
     # `needs.<id>.result` is what the step reads for that job's rows where
-    # the listing still shows them unfinished
+    # the listing still shows them unfinished, and what fails the step on
+    # its own where it is neither success nor skipped
     needs:
       - changes
       - rebuild
@@ -878,20 +879,6 @@ jobs:
             across-images Compare the wheels two images of one platform built
         run: |
           set -euo pipefail
-          # `.status` beside the conclusion so that an unfinished job says
-          # which kind it is: queued and running are one word to
-          # `.conclusion` and two facts to a reader of the log
-          jobs=$(gh api --paginate \
-            "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
-            --jq '.jobs[] | "\(.conclusion // "unfinished")\t\(.status)\t\(.name)"')
-          # printed before it is judged: the job whose purpose is to be
-          # trusted is the one that has to be able to say what it saw
-          printf '%s\n' "${jobs}"
-          # awk and not grep: a tab in a grep pattern is one
-          # implementation's extension and a literal "t" in another's,
-          # where awk's field separator is POSIX
-          bad=$(printf '%s\n' "${jobs}" |
-            awk -F'\t' '$1 != "success" && $1 != "skipped" && $1 != "unfinished"')
           # a row of a `needs` job that the listing still shows unfinished
           # is accepted where that job's own result is success or skipped:
           # `needs` does not let this job start before every one of them
@@ -915,12 +902,44 @@ jobs:
                 accepted[row] = id
             }
           }'
-          lagging=$(printf '%s\n' "${jobs}" | awk -F'\t' "${own}"'
-            $1 == "unfinished" && ($3 in accepted) {
-              print accepted[$3] " (" result[accepted[$3]] "): " $3
-            }')
+          # such a row is read again, up to three times ten seconds apart,
+          # before it is accepted: a job's result is not the listing's
+          # equal, `needs` having missed matrix cells that died in *Set up
+          # job* (btclib-org/btclib#1001), and a row that concludes between
+          # reads is judged below on its conclusion. Only a row this step
+          # would tolerate is waited for, which is a row whose job's result
+          # is success or skipped; a listing with no such row is read once
+          # (btclib-org/.github#1416)
+          reads=0
+          while :; do
+            # `.status` beside the conclusion so that an unfinished job
+            # says which kind it is: queued and running are one word to
+            # `.conclusion` and two facts to a reader of the log
+            jobs=$(gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
+              --jq '.jobs[] | "\(.conclusion // "unfinished")\t\(.status)\t\(.name)"')
+            lagging=$(printf '%s\n' "${jobs}" | awk -F'\t' "${own}"'
+              $1 == "unfinished" && ($3 in accepted) {
+                print accepted[$3] " (" result[accepted[$3]] "): " $3
+              }')
+            if [ -z "${lagging}" ] || [ "${reads}" -eq 3 ]; then
+              break
+            fi
+            reads=$((reads + 1))
+            echo "listed unfinished, read again in 10 s (${reads} of 3):"
+            printf '%s\n' "${lagging}"
+            sleep 10
+          done
+          # printed before it is judged: the job whose purpose is to be
+          # trusted is the one that has to be able to say what it saw
+          printf '%s\n' "${jobs}"
+          # awk and not grep: a tab in a grep pattern is one
+          # implementation's extension and a literal "t" in another's,
+          # where awk's field separator is POSIX
+          bad=$(printf '%s\n' "${jobs}" |
+            awk -F'\t' '$1 != "success" && $1 != "skipped" && $1 != "unfinished"')
           if [ -n "${lagging}" ]; then
-            echo "listed unfinished, accepted as a needs job's own:"
+            echo "still listed unfinished, accepted as a needs job's own:"
             printf '%s\n' "${lagging}"
           fi
           counted=$(printf '%s\n' "${jobs}" | awk -F'\t' "${own}"'
@@ -936,6 +955,19 @@ jobs:
             printf '\n'
           }
           verdict=0
+          # each job's own result is judged beside the listing and not only
+          # through it: a failure `needs` reports with no row of that job's
+          # listed as failed, or with its rows missing, is still a failure
+          # (btclib-org/.github#1424). An empty result is refused with the
+          # rest. This turns a pass into a fail and never the reverse, so
+          # the judgements of the listing below lose nothing
+          refused=$(printf '%s\n' "${NEEDS_RESULTS}" |
+            awk '$2 != "success" && $2 != "skipped"')
+          if [ -n "${refused}" ]; then
+            annotate "these needs jobs' own results are neither success nor skipped:" \
+              "${refused}"
+            verdict=1
+          fi
           if [ -n "${bad}" ]; then
             annotate "these jobs of the run did not succeed:" "${bad}"
             verdict=1
