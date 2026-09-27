@@ -164,3 +164,18 @@ def test_the_nonce_wrappers_refuse_what_the_signers_refuse() -> None:
         ssa.nonce_bip340(msg, 0)
     with pytest.raises(TypeError, match="message must be bytes"):
         ssa.nonce_bip340(11, EVEN_Y)  # type: ignore[call-overload]
+
+
+@pytest.mark.parametrize("prvkey", [0, N, N + 1], ids=["zero", "n", "n+1"])
+def test_rfc6979_nonce_refuses_a_key_outside_the_scalar_range(prvkey: int) -> None:
+    """`dsa.nonce_rfc6979` refuses exactly what `dsa.sign` refuses.
+
+    `dsa.sign` is the independent side: it rejects a key outside
+    [1, n-1] through `secp256k1_ecdsa_sign`, a call this test never
+    makes the nonce derivation go through, so its refusal is not an
+    artifact of how the nonce function was checked.
+    """
+    with pytest.raises(ValueError, match=r"private key: not in \[1, n-1\]"):
+        dsa.sign(msg, prvkey)
+    with pytest.raises(ValueError, match=r"private key: not in \[1, n-1\]"):
+        dsa.nonce_rfc6979(msg, prvkey)

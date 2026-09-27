@@ -105,6 +105,11 @@ the filing bar stands as it was (issue btclib-org/.github#1378).
 A tweak `scalar` refuses now wipes the private-key copy in a `finally`,
 matching `silentpayments._create_outputs_` (closes #1026).
 
+### `dsa.nonce_rfc6979` refuses a private key outside [1, n-1]
+
+The derivation itself never asked; `secp256k1_ec_seckey_verify` does now,
+raising the same `ValueError` `dsa.sign` already does (closes #1027).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
