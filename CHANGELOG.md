@@ -100,6 +100,11 @@ the filing bar stands as it was (issue btclib-org/.github#1378).
 `test_every_selecting_option_is_a_name_pytest_fills_in` failed under
 `-p no:cacheprovider` on a rename that never happened (closes #1038).
 
+### `keys.prvkey_tweak_add` and `prvkey_tweak_mul` wipe a refused tweak's copy
+
+A tweak `scalar` refuses now wipes the private-key copy in a `finally`,
+matching `silentpayments._create_outputs_` (closes #1026).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

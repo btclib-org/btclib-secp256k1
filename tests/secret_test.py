@@ -29,6 +29,7 @@ import pytest
 
 import btclib_secp256k1
 from btclib_secp256k1 import (
+    CData,
     _secret,
     dsa,
     ecdh,
@@ -291,6 +292,44 @@ def test_take_refuses_a_view_of_zero_width_items() -> None:
     with pytest.raises(TypeError, match="not of 0-byte items"):
         _secret.take(buffer, into=empty)
     assert ffi.unpack(buffer, ffi.sizeof(buffer)) == bytes(ffi.sizeof(buffer))
+
+
+def test_prvkey_tweak_add_and_mul_wipe_the_buffer_the_tweak_refuses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A tweak `scalar` rejects never reaches the C call that would zero it.
+
+    `keys.prvkey_tweak_add` and `keys.prvkey_tweak_mul` each copy the
+    private key into this package's own buffer with `scalar_buffer`
+    before `scalar` validates the tweak, so a short tweak raises out of
+    that validation, before `secp256k1_ec_seckey_tweak_add`/`_mul` -- and
+    the zeroing on refusal it is relied on for elsewhere -- is ever
+    called (issue #1026).
+
+    The buffer under test is not observable through either wrapper's
+    return value, so it is read independently: `scalar_buffer` is
+    wrapped to record the exact `char[32]` cdata it hands back, and the
+    assertion reads that cdata's own memory rather than anything the
+    wrapper being tested reports.
+    """
+    recorded: list[CData] = []
+    real_scalar_buffer = _secret.scalar_buffer
+
+    def recording(prvkey: object, name: str) -> CData:
+        buffer = real_scalar_buffer(prvkey, name)
+        recorded.append(buffer)
+        return buffer
+
+    monkeypatch.setattr(keys, "scalar_buffer", recording)
+
+    for function in (keys.prvkey_tweak_add, keys.prvkey_tweak_mul):
+        recorded.clear()
+        with pytest.raises(ValueError, match="32 bytes"):
+            function(SECRET, b"short")
+        assert len(recorded) == 1, function.__name__
+        assert ffi.unpack(recorded[0], ffi.sizeof(recorded[0])) == bytes(32), (
+            function.__name__
+        )
 
 
 def test_calls_reads_nothing_from_a_call_that_names_no_function() -> None:
