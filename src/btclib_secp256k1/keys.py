@@ -20,7 +20,7 @@ from typing import overload
 from . import BytesLike, CData, MutableBytesLike, ffi, lib
 from ._cdata import array
 from ._scalar import octets, scalar
-from ._secret import scalar_buffer, take
+from ._secret import scalar_buffer, take, wipe
 from .context import ctx
 
 __all__ = [
@@ -197,10 +197,19 @@ def prvkey_tweak_add(
             `into` is not 32 bytes.
     """
     prvkey_buffer = scalar_buffer(prvkey, "private key")
-    tweak_bytes = scalar(tweak, "tweak")
-    if not lib.secp256k1_ec_seckey_tweak_add(ctx, prvkey_buffer, tweak_bytes):
-        raise ValueError("invalid private key or tweak")
-    return take(prvkey_buffer, into=into)
+    try:
+        tweak_bytes = scalar(tweak, "tweak")
+        if not lib.secp256k1_ec_seckey_tweak_add(ctx, prvkey_buffer, tweak_bytes):
+            raise ValueError("invalid private key or tweak")
+        return take(prvkey_buffer, into=into)
+    finally:
+        # `scalar` validates the tweak after the copy above is made, so a
+        # tweak it refuses never reaches libsecp256k1 -- whose own
+        # zeroing on a refusal is what the call above would otherwise
+        # rely on -- and the copy is this package's to wipe instead.
+        # `take` already does so on every path it is reached by; this is
+        # only for the two it is not
+        wipe(prvkey_buffer)
 
 
 @overload
@@ -241,10 +250,15 @@ def prvkey_tweak_mul(
             32 bytes.
     """
     prvkey_buffer = scalar_buffer(prvkey, "private key")
-    tweak_bytes = scalar(tweak, "tweak")
-    if not lib.secp256k1_ec_seckey_tweak_mul(ctx, prvkey_buffer, tweak_bytes):
-        raise ValueError("invalid private key or tweak")
-    return take(prvkey_buffer, into=into)
+    try:
+        tweak_bytes = scalar(tweak, "tweak")
+        if not lib.secp256k1_ec_seckey_tweak_mul(ctx, prvkey_buffer, tweak_bytes):
+            raise ValueError("invalid private key or tweak")
+        return take(prvkey_buffer, into=into)
+    finally:
+        # see prvkey_tweak_add's identical finally for why this is owed
+        # beside a call `take` already covers
+        wipe(prvkey_buffer)
 
 
 def _pubkey_from_prvkey_(prvkey: BytesLike | int) -> CData:
