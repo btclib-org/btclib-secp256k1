@@ -84,6 +84,16 @@ the vendored library's build type, `Release` if unset (closes #1019).
 An issue filed from a review may now say the fix where one is known;
 the filing bar stands as it was (issue btclib-org/.github#1378).
 
+### `docs.yml`, `os-ubuntu.yml` and `release.yml` rewrap a stray comment line
+
+- **Each file carried one comment line past the 80-column width its
+  neighbours hold, and each now wraps within it** (closes #1036).
+
+### `docs.yml`'s comment names every workflow `release.yml` calls beside it
+
+- **The list gains `os-ubuntu.yml`, which `release.yml` also calls under
+  the same concurrency group** (closes #1037).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

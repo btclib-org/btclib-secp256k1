@@ -335,11 +335,11 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    # see publish-testpypi for the repository condition, and for the
-    # `always()`: public-api is a need for the ordering and not for its
-    # result on a tag exactly as on a rehearsal; submodule-pin-release is checked
-    # for its result there for the same reason as on that job, and
-    # zkp-pin-tag here alone, being release-only
+    # see publish-testpypi for the repository condition, and for the `always()`:
+    # public-api is a need for the ordering and not for its result on a tag
+    # exactly as on a rehearsal; submodule-pin-release is checked for its result
+    # there for the same reason as on that job, and zkp-pin-tag here alone,
+    # being release-only
     if: >-
       always() && github.event_name == 'push'
       && github.repository == 'btclib-org/btclib-secp256k1'
