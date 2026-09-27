@@ -187,6 +187,11 @@ and signatures and SHA pinning are read back (issue btclib-org/.github#1409).
   wheel cell red on a day nothing here changed; `hook_pins_test.py`
   fails where one is unpinned or parts from the lock** (closes #1032).
 
+### `zkp.ecdsa_s2c.anti_exfil_signer_commit` refuses a private key outside [1, n-1]
+
+- **It raises the `ValueError` `anti_exfil_sign` raises, where it
+  answered an opening for a key step 4 then refused** (closes #1054).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
