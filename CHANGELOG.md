@@ -192,6 +192,12 @@ and signatures and SHA pinning are read back (issue btclib-org/.github#1409).
 - **It raises the `ValueError` `anti_exfil_sign` raises, where it
   answered an opening for a key step 4 then refused** (closes #1054).
 
+### `zkp.context`'s lost-the-race return is covered on every run
+
+- **A test forces the second reader to wait on `_lock` while the first
+  builds, where the racing test reached that return only when the
+  scheduler allowed** (closes #1050).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
