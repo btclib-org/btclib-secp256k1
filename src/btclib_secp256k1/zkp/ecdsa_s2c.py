@@ -357,7 +357,8 @@ def anti_exfil_signer_commit(
 
     Raises:
         ValueError: if the message hash or the commitment are not 32
-            bytes.
+            bytes, or if the private key is not 32 bytes, does not fit in
+            them, or is not in [1, n-1].
         RuntimeError: if libsecp256k1-zkp fails to compute the
             opening, which valid arguments cannot make it do.
     """
@@ -366,6 +367,12 @@ def anti_exfil_signer_commit(
     rand_commitment32 = octets(rand_commitment32, "rand_commitment32", 32)
     ffi, lib, ctx = context._bindings()
 
+    # the commitment is RFC6979 over the key's octets and never asks
+    # whether they are a scalar in [1, n-1], where `anti_exfil_sign` at
+    # step 4 does: checked here, the key step 4 would refuse is refused
+    # at step 2, before the host stores a commitment for it
+    if not lib.secp256k1_ec_seckey_verify(ctx, prvkey_bytes):
+        raise ValueError("invalid private key: not in [1, n-1]")
     opening = ffi.new("secp256k1_ecdsa_s2c_opening *")
     if not lib.secp256k1_ecdsa_anti_exfil_signer_commit(
         ctx, opening, msg_bytes, prvkey_bytes, rand_commitment32

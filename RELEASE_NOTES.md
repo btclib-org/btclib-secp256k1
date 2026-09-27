@@ -18,6 +18,10 @@ a tag is generated from.
   element that is not an `int`, or is a `bool`.** A whole-number `float`
   such as `1.0`, or `True`, raises `TypeError` or `ValueError` where it
   was accepted as the ring size it equals; pass `int` ring sizes.
+- **Breaking: `zkp.ecdsa_s2c.anti_exfil_signer_commit` refuses a
+  private key outside [1, n-1] with `ValueError`.** It answered an
+  opening for one, which `anti_exfil_sign` then refused at step 4; check
+  the key before step 2, or catch the error there.
 
 ## v0.8.0.8
 

@@ -66,6 +66,9 @@ _INVALID_PUBKEY = b"\x00" * 33
 _INVALID_SIGNATURE = b"\xff" * 64
 _INVALID_OPENING = b"\x00" * 33
 _ZERO_PRVKEY = b"\x00" * 32
+# secp256k1's group order, the smallest 32 octets that are not a valid
+# private key
+_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 # the one data32 this fake's own secp256k1_ecdsa_s2c_verify_commit reads
 # as not committed to: every other value verifies, so sign()'s own
 # commitment check passes for whatever s2c_data32 a test signs over
@@ -212,6 +215,13 @@ class _FakeLib:
     ) -> int:
         output32[0:32] = rand32
         return 1
+
+    def secp256k1_ec_seckey_verify(
+        self,
+        ctx: object,  # noqa: ARG002
+        seckey: bytes,
+    ) -> int:
+        return 0 if seckey == _ZERO_PRVKEY else 1
 
     def secp256k1_ecdsa_anti_exfil_signer_commit(
         self,
@@ -509,6 +519,14 @@ def test_anti_exfil_signer_commit(stand_in: None) -> None:  # noqa: ARG001
     assert len(opening) == 33
 
 
+def test_anti_exfil_signer_commit_reports_an_invalid_private_key(
+    stand_in: None,  # noqa: ARG001
+) -> None:
+    """A private key the stand-in refuses is a ValueError, and no opening."""
+    with pytest.raises(ValueError, match="invalid private key"):
+        ecdsa_s2c.anti_exfil_signer_commit(bytes(32), _ZERO_PRVKEY, bytes(32))
+
+
 def test_anti_exfil_sign_answers_a_signature(stand_in: None) -> None:  # noqa: ARG001
     """A successful call answers a 64-byte signature."""
     signature = ecdsa_s2c.anti_exfil_sign(bytes(32), 1, bytes(32))
@@ -742,3 +760,25 @@ def test_a_refused_object_raises_the_serializers_own_failure() -> None:
         ecdsa_s2c._signature_serialize(zffi, zlib, zctx, zffi.NULL)
     with pytest.raises(ValueError, match="illegal argument"):
         zkp_context.check()
+
+
+@pytest.mark.zkp
+@pytest.mark.parametrize(
+    "prvkey",
+    [0, _ORDER, b"\xff" * 32],
+    ids=["zero", "the order", "above the order"],
+)
+def test_anti_exfil_signer_commit_rejects_invalid_private_keys(
+    prvkey: bytes | int,
+) -> None:
+    """Step 2 refuses the keys step 4 refuses, before any opening exists.
+
+    `secp256k1_ecdsa_anti_exfil_signer_commit` derives the nonce from the
+    key's octets and answers an opening for any 32 of them, so the
+    refusal is the wrapper's; `anti_exfil_sign` refuses the same keys.
+    """
+    pytest.importorskip("_btclib_secp256k1_zkp")
+    with pytest.raises(ValueError, match="invalid private key"):
+        ecdsa_s2c.anti_exfil_signer_commit(_MESSAGE, prvkey, bytes(32))
+    with pytest.raises(ValueError, match="invalid private key"):
+        ecdsa_s2c.anti_exfil_sign(_MESSAGE, prvkey, bytes(32))
