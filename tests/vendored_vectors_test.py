@@ -306,13 +306,15 @@ def test_a_ref_is_passed_on_as_the_calls_own_sha_parameter(
     assert "sha=pr-branch" in run.calls[-1]
 
 
-def test_a_path_upstream_has_no_commit_for_answers_none(
+def test_a_path_the_branch_walked_never_held_answers_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """An empty list is a renamed or deleted path, not an empty answer.
+    """An empty list is a path the branch walked never held, not a raise.
 
     Unpacking one commit out of it would raise, the run would go red and
-    no issue would open -- for the drift that most needs one.
+    no issue would open. A path upstream deleted or renamed away is not
+    this case: the listing answers with the commit that removed it, an
+    ordinary tip (btclib-org/bitcoin-node-tests#150).
 
     Args:
         monkeypatch: the fixture `subprocess.run` is replaced through.
@@ -391,10 +393,10 @@ def test_a_pin_behind_the_tip_is_drift_naming_the_tip(
     drifted, _skipped = check.find_drift(_readme(tmp_path))
 
     assert drifted == [check.Drift(_ENTRY, _TIP, "2026-02-03")]
-    assert not drifted[0].path_is_gone
+    assert not drifted[0].has_no_tip
 
 
-def test_a_path_that_is_gone_is_drift_with_no_tip_to_name(
+def test_a_path_with_no_tip_is_drift_with_no_tip_to_name(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """The empty tip is what says so, and reading it has one name.
@@ -408,7 +410,64 @@ def test_a_path_that_is_gone_is_drift_with_no_tip_to_name(
     drifted, _skipped = check.find_drift(_readme(tmp_path))
 
     assert drifted == [check.Drift(_ENTRY, "", "")]
-    assert drifted[0].path_is_gone
+    assert drifted[0].has_no_tip
+
+
+def test_a_removing_commit_is_drift_that_may_be_a_removal(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A deleted or renamed path's tip is the commit that removed it.
+
+    GitHub's "commits touching a path" listing answers a path deleted
+    or renamed away with the commit that removed it, which is not the
+    pin: ordinary drift, reported as a change that may in fact be a
+    removal rather than as `has_no_tip`
+    (btclib-org/bitcoin-node-tests#150).
+
+    Args:
+        monkeypatch: the fixture the tip lookup is replaced through.
+        tmp_path: where the sample README is written.
+    """
+    monkeypatch.setattr(
+        check, "_latest_commit", lambda _repo, _path, _ref=None: (_TIP, "2026-02-03")
+    )
+
+    drifted, _skipped = check.find_drift(_readme(tmp_path))
+
+    assert drifted == [check.Drift(_ENTRY, _TIP, "2026-02-03")]
+    assert not drifted[0].has_no_tip
+    body = check._issue_body(_readme(tmp_path), drifted, [])
+    assert (
+        f"the latest commit touching `{_ENTRY.path}` is now `{_TIP}`"
+        f" (2026-02-03), `{_ENTRY.repo}` -- which may have deleted or"
+        " renamed the file rather than changed it"
+    ) in body
+
+
+def test_the_branch_named_in_a_no_tip_report_is_the_entries_own_ref(
+    tmp_path: Path,
+) -> None:
+    """No `ref` names the default branch; a `ref` names itself.
+
+    Args:
+        tmp_path: where the sample README is written, for the path the
+            body opens with.
+    """
+    on_a_branch = check.Entry(
+        "`tests/on_a_branch.csv`",
+        "upstream/one",
+        "vectors/on_a_branch.csv",
+        _PINNED,
+        "pr-branch",
+    )
+    body = check._issue_body(
+        _readme(tmp_path),
+        [check.Drift(_ENTRY, "", ""), check.Drift(on_a_branch, "", "")],
+        [],
+    )
+
+    assert "no commit on the default branch of" in body
+    assert "no commit on `pr-branch` of" in body
 
 
 def test_the_issue_body_tells_the_two_kinds_of_drift_apart(tmp_path: Path) -> None:
@@ -426,7 +485,8 @@ def test_the_issue_body_tells_the_two_kinds_of_drift_apart(tmp_path: Path) -> No
 
     assert _TIP[:12] in body
     assert "2026-02-03" in body
-    assert "renamed, moved or deleted upstream" in body
+    assert "may have deleted or renamed the file rather than changed it" in body
+    assert "a path that branch never held" in body
     assert "Not checked by this run" in body
     assert "`tests/no_block.csv` (no fenced block)" in body
 
@@ -566,7 +626,7 @@ def test_a_dry_run_prints_the_finding_and_touches_no_issue(
     assert reported == []
 
 
-def test_a_gone_path_is_printed_as_gone_rather_than_as_behind(
+def test_a_path_with_no_tip_is_printed_as_no_commit_rather_than_as_behind(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """The log says which drift it is, as the issue body does.
@@ -591,7 +651,7 @@ def test_a_gone_path_is_printed_as_gone_rather_than_as_behind(
     )
 
     assert check.main() == 0
-    assert f"GONE: {_AT_THE_TIP}" in capsys.readouterr().out
+    assert f"NO COMMIT: {_AT_THE_TIP}" in capsys.readouterr().out
 
 
 # a pin and a tip alike in a short prefix and apart past it, the pair
@@ -633,7 +693,10 @@ def test_a_pin_and_a_tip_alike_in_a_prefix_print_as_two_shas(
 
     assert check.main() == 0
     out = capsys.readouterr().out
-    assert f"pinned to {_PINNED_ALIKE}, tip is {_TIP_ALIKE} (2026-09-11)" in out
+    assert (
+        f"pinned to {_PINNED_ALIKE}, latest commit touching it is"
+        f" {_TIP_ALIKE} (2026-09-11)" in out
+    )
 
     drifted, skipped = check.find_drift(readme)
     body = check._issue_body(readme, drifted, skipped)

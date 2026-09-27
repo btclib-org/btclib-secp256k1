@@ -116,6 +116,11 @@ raising the same `ValueError` `dsa.sign` already does (closes #1027).
 `abort()`, matching upstream's own default; `context.check()` and
 `zkp.context.check()` now raise only for an illegal argument (closes #1025).
 
+### `check_vendored_vectors` does not read a removed pin as changed content
+
+- **A path upstream deleted or renamed away is now reported as ordinary
+  drift, not as `has_no_tip`** (closes #1041).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
