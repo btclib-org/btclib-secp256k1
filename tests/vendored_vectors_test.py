@@ -119,6 +119,23 @@ commit  {_PINNED}
 behind  3 (as of 2026-01-04)
 ```
 
+### `tests/no_behind_line.csv`
+
+```text
+repo    upstream/one
+path    vectors/no_behind_line.csv
+commit  {_PINNED}
+```
+
+### `tests/empty_behind_line.csv`
+
+```text
+repo    upstream/one
+path    vectors/empty_behind_line.csv
+commit  {_PINNED}
+behind
+```
+
 ### `tests/no_block.csv`
 """
 
@@ -189,6 +206,8 @@ def test_every_heading_is_either_checked_or_named_as_skipped() -> None:
         "`tests/no_commit.csv` (no commit to check against)",
         "`tests/one_pin_serves_several.csv` (one pin serves several files)",
         "`tests/already_behind.csv` (already documented as behind)",
+        "`tests/no_behind_line.csv` (no behind line at all)",
+        "`tests/empty_behind_line.csv` (behind line present but empty)",
         "`tests/no_block.csv` (no fenced block)",
     ]
 
@@ -202,15 +221,15 @@ def test_the_date_beside_a_commit_is_not_part_of_it() -> None:
 
 
 def test_a_bare_key_not_last_in_its_block_does_not_swallow_the_next_line() -> None:
-    r"""The separator is confined to one line, so a bare key matches nothing.
+    r"""The separator is confined to one line, so a bare key's value is empty.
 
     `\s+` also matches the newline ending a bare key's own line, so a
     `commit` written with no value would let the separator cross into
     `behind`'s own line and capture it whole -- misreading a block that
     is missing its commit as one already documented as behind, a reason
     it never stated (btclib-org/btclib-secp256k1#862). `[ \t]+` cannot
-    cross that newline, so the bare key matches nothing and the block is
-    read for what it is: no commit to check against.
+    cross that newline, so the bare key's value is empty and the block
+    is read for what it is: no commit to check against.
     """
     readme = (
         "### `tests/bare_commit.csv`\n\n"
@@ -226,6 +245,53 @@ def test_a_bare_key_not_last_in_its_block_does_not_swallow_the_next_line() -> No
 
     assert entries == []
     assert skipped == ["`tests/bare_commit.csv` (no commit to check against)"]
+
+
+def test_a_block_with_no_behind_line_is_named_apart_from_documented_behind() -> None:
+    """No `behind` line is not a decision anybody made.
+
+    So it is not reported as `(already documented as behind)`, which
+    names one (btclib-org/btclib-secp256k1#1046).
+    """
+    readme = (
+        "### `tests/no_behind_line.csv`\n\n"
+        "```text\n"
+        "repo    upstream/one\n"
+        "path    vectors/no_behind_line.csv\n"
+        f"commit  {_PINNED}\n"
+        "```\n"
+    )
+
+    entries, skipped = check._entries_at_tip(readme)
+
+    assert entries == []
+    assert skipped == ["`tests/no_behind_line.csv` (no behind line at all)"]
+
+
+@pytest.mark.parametrize("line", ["behind", "behind  ", "behind\t"])
+def test_a_behind_line_present_but_empty_is_named_apart_too(line: str) -> None:
+    """A `behind` line with no value is neither missing nor a decision.
+
+    The bare key is the shape tests/README.md can actually hold, its
+    trailing-whitespace hook stripping the other two down to it.
+
+    Args:
+        line: the `behind` line, as written.
+    """
+    readme = (
+        "### `tests/empty_behind_line.csv`\n\n"
+        "```text\n"
+        "repo    upstream/one\n"
+        "path    vectors/empty_behind_line.csv\n"
+        f"commit  {_PINNED}\n"
+        f"{line}\n"
+        "```\n"
+    )
+
+    entries, skipped = check._entries_at_tip(readme)
+
+    assert entries == []
+    assert skipped == ["`tests/empty_behind_line.csv` (behind line present but empty)"]
 
 
 def test_a_ref_line_becomes_the_entries_own_ref() -> None:

@@ -105,11 +105,12 @@ _HEADING = re.compile(r"^### (.+)$", re.MULTILINE)
 # trailing whitespace, and not last in its block, would let the separator
 # cross into the following line and capture that whole line as its own
 # value -- leaving the field the next line actually names unmatched.
-# Confining the separator to the line answers a bare key with no match at
-# all, which is what the checks below already treat as that field being
-# absent.
+# The separator and the value after it are optional, so a bare key still
+# matches, with an empty value: the trailing-whitespace hook strips a key
+# followed by only spaces down to the bare key, and `behind` written that
+# way is a line present but empty, not a line missing.
 _FIELD = re.compile(
-    r"^(repo|path|ref|commit|blob|pulled|behind)[ \t]+(.*)$", re.MULTILINE
+    r"^(repo|path|ref|commit|blob|pulled|behind)(?:[ \t]+(.*))?$", re.MULTILINE
 )
 
 
@@ -156,12 +157,14 @@ class Drift:
 def _entries_at_tip(readme: str) -> tuple[list[Entry], list[str]]:
     """Return the checkable entries, and the headings this skips.
 
-    A heading is skippable for any of four reasons: no fenced block of its
+    A heading is skippable for several reasons: no fenced block of its
     own -- a group heading superseded by finer ones, or a pin whose block
     an edit broke, the two indistinguishable from here -- no
-    repo/path/commit triple, a path carrying a `<name>` placeholder, or a
-    `behind` already other than 0 -- a gap a human already decided not to
-    close.
+    repo/path/commit triple, a path carrying a `<name>` placeholder, no
+    `behind` line, a `behind` line with no value, or a `behind` already
+    other than 0 -- a gap a human already decided not to close. The two
+    before it are named apart from that last one, being blocks nobody
+    has assessed rather than a decision somebody made.
     """
     entries: list[Entry] = []
     skipped: list[str] = []
@@ -187,7 +190,14 @@ def _entries_at_tip(readme: str) -> tuple[list[Entry], list[str]]:
         if "<" in path:
             skipped.append(f"{heading} (one pin serves several files)")
             continue
-        if not fields.get("behind", "").startswith("0"):
+        behind = fields.get("behind")
+        if behind is None:
+            skipped.append(f"{heading} (no behind line at all)")
+            continue
+        if not behind.strip():
+            skipped.append(f"{heading} (behind line present but empty)")
+            continue
+        if not behind.startswith("0"):
             skipped.append(f"{heading} (already documented as behind)")
             continue
         ref = fields.get("ref")
