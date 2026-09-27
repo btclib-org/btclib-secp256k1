@@ -412,6 +412,14 @@ Do not use Fable unless explicitly instructed.
   which command asked — any local measurement that alternates linkages
   in one environment needs `--reinstall-package btclib-secp256k1
   --no-cache` between builds, not only that one
+- **A new `raise RuntimeError` in `src/` is written after reading the
+  comment above `[tool.coverage.report]`'s `exclude_also` in
+  `pyproject.toml`.** The pattern there excludes a raise by its text, so
+  how the raise is written decides whether coverage counts it, and a
+  session writing one in `src/` has no reason to open `pyproject.toml`
+  on its own. That comment says which form a raise an input can reach
+  takes, and `tests/coverage_exclusion_test.py`'s docstring says where
+  that is checked and where it is not
 
 ## Conventions to match
 
