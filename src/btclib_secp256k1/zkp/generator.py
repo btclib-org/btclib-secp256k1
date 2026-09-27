@@ -76,9 +76,9 @@ def _ptr_array(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
     `ffi`, `context._bindings()` already resolved, is what every array here goes
     through instead, whichever of the two element types it holds.
 
-    Unlike `_array_or_null` below, this never answers NULL for an empty
-    sequence: `secp256k1_pedersen_blind_sum`'s own header marks its
-    `blinds` array "(cannot be NULL)" with no exception for a zero
+    Unlike `context._array_or_null`, this never answers NULL for an
+    empty sequence: `secp256k1_pedersen_blind_sum`'s own header marks
+    its `blinds` array "(cannot be NULL)" with no exception for a zero
     count, unlike `secp256k1_pedersen_verify_tally`'s `commits`, which
     explicitly allows NULL where its count is zero. `ffi.new` of a
     zero-length array is a real, non-NULL pointer to nothing, which is
@@ -94,26 +94,6 @@ def _ptr_array(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
         The array, never NULL.
     """
     return ffi.new(cdecl, list(items))
-
-
-def _array_or_null(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
-    """Build the pointer array some calls require NULL for, when empty.
-
-    The counterpart of `_ptr_array` above, and its own docstring has the
-    reason neither of these is `btclib_secp256k1._cdata.array`: the same
-    NULL-for-empty behaviour that helper gives, through this
-    subpackage's own `ffi` rather than mainline's.
-
-    Args:
-        ffi: this subpackage's own `ffi`, `context._bindings()` already
-            resolved.
-        cdecl: the cffi declaration of the array type.
-        items: the objects to point at, which the caller keeps alive.
-
-    Returns:
-        The array, or NULL where there is nothing to point at.
-    """
-    return ffi.new(cdecl, list(items)) if items else ffi.NULL
 
 
 def parse(generator_bytes: BytesLike, name: str = "generator") -> CData:
@@ -417,9 +397,9 @@ def pedersen_verify_tally(
     return bool(
         lib.secp256k1_pedersen_verify_tally(
             ctx,
-            _array_or_null(ffi, "secp256k1_pedersen_commitment *[]", commits),
+            context._array_or_null(ffi, "secp256k1_pedersen_commitment *[]", commits),
             len(commits),
-            _array_or_null(ffi, "secp256k1_pedersen_commitment *[]", ncommits),
+            context._array_or_null(ffi, "secp256k1_pedersen_commitment *[]", ncommits),
             len(ncommits),
         )
     )

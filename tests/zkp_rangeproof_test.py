@@ -635,3 +635,45 @@ def test_borromean_verify_rejects_no_rings_over_some_keys() -> None:
     """An empty `rsizes` is a ring-count refusal, not a sum that is off."""
     with pytest.raises(ValueError, match="rsizes must hold between 1 and 32"):
         r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [])
+
+
+def test_borromean_verify_rejects_a_non_int_rsize() -> None:
+    """A whole-number float is refused, not taken as a ring size -- ISS 1028.
+
+    Without the per-element check `[1, 1.0]` passes the sum and reaches
+    the library as the ring sizes `{1, 1}`: a float is refused whether or
+    not its value is whole.
+    """
+    with pytest.raises(TypeError, match=r"rsizes\[1\] must be an int, not float"):
+        r.borromean_verify(
+            bytes(32),
+            bytes(32) * 2,
+            b"msg",
+            [PUBKEY, PUBKEY],
+            [1, 1.0],  # type: ignore[list-item]
+        )
+
+
+def test_borromean_verify_rejects_a_bool_rsize() -> None:
+    """A bool is refused here, unlike a recovery id through `_scalar.in_range`.
+
+    `rsizes` is a count, not a flag a `True` could stand in for.
+    """
+    with pytest.raises(ValueError, match=r"rsizes\[0\] must be an int in \[0, 128\]"):
+        r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [True])
+
+
+def test_borromean_verify_rejects_a_negative_rsize() -> None:
+    """A negative element is a ValueError, not an OverflowError -- ISS 1028.
+
+    Without the per-element check it reaches cffi's own `size_t`
+    conversion, which raises an undocumented `OverflowError`.
+    """
+    with pytest.raises(ValueError, match=r"rsizes\[0\] must be an int in \[0, 128\]"):
+        r.borromean_verify(bytes(32), bytes(32) * 2, b"msg", [PUBKEY, PUBKEY], [-1, 3])
+
+
+def test_borromean_verify_rejects_an_rsize_above_128() -> None:
+    """No single ring holds more than the 128 keys `pubkeys` allows in all."""
+    with pytest.raises(ValueError, match=r"rsizes\[0\] must be an int in \[0, 128\]"):
+        r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [129])

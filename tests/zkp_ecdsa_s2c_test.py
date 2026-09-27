@@ -11,10 +11,11 @@ declares exist only in secp256k1-zkp, so unlike that file's own
 sharing context creation and the two callbacks with secp256k1-zkp's own
 header -- nothing here can borrow a real implementation of them. What
 stands in for the extension below is therefore hand-written rather than
-borrowed: `_FakeLib` answers those calls (the three ordinary ones this
-module also reaches, `secp256k1_ec_pubkey_parse` and the two
-compact-signature calls, and the four `zkp.context` itself makes to
-build a context through this same stand-in) with just enough behaviour
+borrowed: `_FakeLib` answers those calls (the ordinary ones this module
+also reaches, `secp256k1_ec_pubkey_parse`, `secp256k1_ec_pubkey_create`,
+`secp256k1_ecdsa_verify` and the compact-signature calls, and the ones
+`zkp.context` itself makes to build a context through this same
+stand-in) with just enough behaviour
 to drive every branch `ecdsa_s2c.py` has of its own -- an invalid
 private key or an unparsable object failing exactly where the real
 library would -- without computing anything cryptographic. It is not a
@@ -42,7 +43,7 @@ from typing import Any
 import cffi
 import pytest
 
-from btclib_secp256k1 import keys, zkp
+from btclib_secp256k1 import dsa, keys, zkp
 from btclib_secp256k1.zkp import context as zkp_context
 from btclib_secp256k1.zkp import ecdsa_s2c
 
@@ -65,6 +66,10 @@ _INVALID_PUBKEY = b"\x00" * 33
 _INVALID_SIGNATURE = b"\xff" * 64
 _INVALID_OPENING = b"\x00" * 33
 _ZERO_PRVKEY = b"\x00" * 32
+# the one data32 this fake's own secp256k1_ecdsa_s2c_verify_commit reads
+# as not committed to: every other value verifies, so sign()'s own
+# commitment check passes for whatever s2c_data32 a test signs over
+_MISMATCHED_S2C_DATA = b"\xaa" * 32
 
 
 class _FakeLib:
@@ -171,10 +176,33 @@ class _FakeLib:
         data32: bytes,
         opening: Any,  # noqa: ARG002
     ) -> int:
-        # the one call whose two answers this file's own tests choose
-        # between directly, there being no failing library call behind
-        # either: True is data32 == b"\x01" * 32, chosen by the caller
-        return 1 if data32 == b"\x01" * 32 else 0
+        # False is data32 == _MISMATCHED_S2C_DATA, chosen by the caller,
+        # and True is everything else, sign()'s own check included
+        return 0 if data32 == _MISMATCHED_S2C_DATA else 1
+
+    def secp256k1_ec_pubkey_create(
+        self,
+        ctx: object,  # noqa: ARG002
+        pubkey: Any,
+        seckey: bytes,
+    ) -> int:
+        # the signing call ahead of this one has already refused the
+        # zero key, so this never sees it; `_failing` stands in for it
+        # where a test needs the derivation to fail
+        pubkey.data[0:32] = seckey
+        return 1
+
+    def secp256k1_ecdsa_verify(
+        self,
+        ctx: object,  # noqa: ARG002
+        signature: Any,  # noqa: ARG002
+        msg32: bytes,  # noqa: ARG002
+        pubkey: Any,  # noqa: ARG002
+    ) -> int:
+        # no input makes a signature this fake just produced fail its
+        # own verification: `_failing` stands in for it where a test
+        # needs one to
+        return 1
 
     def secp256k1_ecdsa_anti_exfil_host_commit(
         self,
@@ -224,6 +252,26 @@ class _FakeLib:
 
 
 _FAKE = types.SimpleNamespace(ffi=_fake_ffi, lib=_FakeLib())
+
+
+# the two calls `_abort_unless_verified` makes, either of which failing
+# is what a signature that does not verify looks like from here
+_VERIFY_CALLS = ("secp256k1_ec_pubkey_create", "secp256k1_ecdsa_verify")
+
+
+def _failing(*_args: Any) -> int:
+    """Stand in for one of `_VERIFY_CALLS`, and report failure.
+
+    No input makes a signature `_FakeLib` just produced fail its own
+    verification, so a test that needs one to substitutes this.
+
+    Args:
+        _args: whatever the call would have taken.
+
+    Returns:
+        0, the library's own failure.
+    """
+    return 0
 
 
 def _forget_cached_extension() -> None:
@@ -397,13 +445,49 @@ def test_sign_reports_an_invalid_private_key(stand_in: None) -> None:  # noqa: A
         ecdsa_s2c.sign(bytes(32), _ZERO_PRVKEY, bytes(32))
 
 
+@pytest.mark.parametrize("call", _VERIFY_CALLS)
+def test_sign_verifies_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    stand_in: None,  # noqa: ARG001
+    call: str,
+) -> None:
+    """A signature that does not verify is a RuntimeError, never returned."""
+    monkeypatch.setattr(_FAKE.lib, call, _failing)
+    with pytest.raises(RuntimeError, match="signature that does not verify"):
+        ecdsa_s2c.sign(bytes(32), 1, bytes(32))
+
+
+def test_sign_verify_false_skips_the_check(
+    monkeypatch: pytest.MonkeyPatch,
+    stand_in: None,  # noqa: ARG001
+) -> None:
+    """verify=False reaches none of the calls, all of which would fail."""
+    for call in _VERIFY_CALLS:
+        monkeypatch.setattr(_FAKE.lib, call, _failing)
+    monkeypatch.setattr(_FAKE.lib, "secp256k1_ecdsa_s2c_verify_commit", _failing)
+    signature, opening = ecdsa_s2c.sign(bytes(32), 1, bytes(32), verify=False)
+    assert len(signature) == 64
+    assert len(opening) == 33
+
+
+def test_sign_verify_does_not_change_the_signature(stand_in: None) -> None:  # noqa: ARG001
+    """The check only reads the signature the stand-in already produced."""
+    checked = ecdsa_s2c.sign(bytes(32), 1, bytes(32))
+    unchecked = ecdsa_s2c.sign(bytes(32), 1, bytes(32), verify=False)
+    assert checked == unchecked
+
+
+def test_sign_rejects_a_mismatched_commitment(stand_in: None) -> None:  # noqa: ARG001
+    """A commitment that does not verify is a RuntimeError, never returned."""
+    with pytest.raises(RuntimeError, match="commitment does not verify"):
+        ecdsa_s2c.sign(bytes(32), 1, _MISMATCHED_S2C_DATA)
+
+
 def test_verify_commit_true_and_false(stand_in: None) -> None:  # noqa: ARG001
     """Both of verify_commit's answers, chosen by the stand-in on data32."""
     signature, opening = ecdsa_s2c.sign(bytes(32), 1, bytes(32))
-    # _FakeLib's own verify_commit answers True for exactly the data32
-    # `secp256k1_ecdsa_s2c_sign` above wrote into the signature it faked
     assert ecdsa_s2c.verify_commit(signature, b"\x01" * 32, opening) is True
-    assert ecdsa_s2c.verify_commit(signature, bytes(32), opening) is False
+    assert ecdsa_s2c.verify_commit(signature, _MISMATCHED_S2C_DATA, opening) is False
 
 
 def test_verify_commit_reports_an_invalid_signature(stand_in: None) -> None:  # noqa: ARG001
@@ -435,6 +519,38 @@ def test_anti_exfil_sign_reports_an_invalid_private_key(stand_in: None) -> None:
     """A private key the stand-in refuses reaches the caller as ValueError."""
     with pytest.raises(ValueError, match="invalid private key"):
         ecdsa_s2c.anti_exfil_sign(bytes(32), _ZERO_PRVKEY, bytes(32))
+
+
+@pytest.mark.parametrize("call", _VERIFY_CALLS)
+def test_anti_exfil_sign_verifies_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    stand_in: None,  # noqa: ARG001
+    call: str,
+) -> None:
+    """A signature that does not verify is a RuntimeError, never returned."""
+    monkeypatch.setattr(_FAKE.lib, call, _failing)
+    with pytest.raises(RuntimeError, match="signature that does not verify"):
+        ecdsa_s2c.anti_exfil_sign(bytes(32), 1, bytes(32))
+
+
+def test_anti_exfil_sign_verify_false_skips_the_check(
+    monkeypatch: pytest.MonkeyPatch,
+    stand_in: None,  # noqa: ARG001
+) -> None:
+    """verify=False reaches neither call, both of which would fail."""
+    for call in _VERIFY_CALLS:
+        monkeypatch.setattr(_FAKE.lib, call, _failing)
+    signature = ecdsa_s2c.anti_exfil_sign(bytes(32), 1, bytes(32), verify=False)
+    assert len(signature) == 64
+
+
+def test_anti_exfil_sign_verify_does_not_change_the_signature(
+    stand_in: None,  # noqa: ARG001
+) -> None:
+    """The check only reads the signature the stand-in already produced."""
+    checked = ecdsa_s2c.anti_exfil_sign(bytes(32), 1, bytes(32))
+    unchecked = ecdsa_s2c.anti_exfil_sign(bytes(32), 1, bytes(32), verify=False)
+    assert checked == unchecked
 
 
 def test_anti_exfil_host_verify_true_and_false(stand_in: None) -> None:  # noqa: ARG001
@@ -581,3 +697,33 @@ def test_anti_exfil_protocol_end_to_end() -> None:
         ecdsa_s2c.anti_exfil_host_verify(signature, msg, pubkey, rho, other_opening)
         is False
     )
+
+
+@pytest.mark.zkp
+def test_abort_unless_verified_refuses_what_does_not_verify() -> None:
+    """The check `sign` and `anti_exfil_sign` make, against the real library.
+
+    A real signature, checked under the wrong message or the wrong key,
+    is refused; under its own it passes. The primary package's
+    `dsa.verify` gives the library's own verdict on each of the three,
+    so what is refused is a signature that does not verify rather than
+    whatever answer the check happens to give.
+    """
+    pytest.importorskip("_btclib_secp256k1_zkp")
+    other_msg = bytes([0x99]) * 32
+    other_prvkey = bytes([0x66]) * 32
+    signature_bytes, _opening = ecdsa_s2c.sign(
+        _MESSAGE, _PRVKEY, bytes(32), verify=False
+    )
+    der = dsa.to_der(signature_bytes)
+    pubkey = keys.pubkey_from_prvkey(_PRVKEY)
+    assert dsa.verify(_MESSAGE, pubkey, der)
+    assert not dsa.verify(other_msg, pubkey, der)
+    assert not dsa.verify(_MESSAGE, keys.pubkey_from_prvkey(other_prvkey), der)
+
+    signature = ecdsa_s2c._signature_parse(*zkp_context._bindings(), signature_bytes)
+    ecdsa_s2c._abort_unless_verified(signature, _MESSAGE, _PRVKEY)
+    with pytest.raises(RuntimeError, match="does not verify"):
+        ecdsa_s2c._abort_unless_verified(signature, other_msg, _PRVKEY)
+    with pytest.raises(RuntimeError, match="does not verify"):
+        ecdsa_s2c._abort_unless_verified(signature, _MESSAGE, other_prvkey)
