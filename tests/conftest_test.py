@@ -400,6 +400,40 @@ def test_an_option_the_run_does_not_carry_is_not_a_selection() -> None:
     assert coverage_fail_under(100.0, options, *_ARGS) == 100.0
 
 
+def _selecting_option_names(has_cacheprovider: bool) -> tuple[str, ...]:
+    """Return the `SELECTING_OPTIONS` names a run's own parser can hold.
+
+    `--lf` is `cacheprovider`'s option, not the parser's own, so a run
+    started with `-p no:cacheprovider` never has it: checking for it
+    there would blame a pytest rename that never happened, the same
+    absence `test_an_option_the_run_does_not_carry_is_not_a_selection`
+    exercises against the hook rather than against this check.
+
+    Args:
+        has_cacheprovider: whether the run's plugin manager registers
+            `cacheprovider`.
+
+    Returns:
+        `SELECTING_OPTIONS`, less `lf` where the plugin is absent.
+    """
+    if has_cacheprovider:
+        return SELECTING_OPTIONS
+    return tuple(name for name in SELECTING_OPTIONS if name != "lf")
+
+
+def test_selecting_option_names_drop_lf_without_cacheprovider() -> None:
+    """Verify both branches of `_selecting_option_names` directly.
+
+    `test.yml` never disables `cacheprovider`, so nothing in an ordinary
+    run of this suite takes the `False` branch; this trips it without
+    depending on how the run under way was started.
+    """
+    assert _selecting_option_names(has_cacheprovider=True) == SELECTING_OPTIONS
+    assert _selecting_option_names(has_cacheprovider=False) == tuple(
+        name for name in SELECTING_OPTIONS if name != "lf"
+    )
+
+
 def test_every_selecting_option_is_a_name_pytest_fills_in(
     pytestconfig: pytest.Config,
 ) -> None:
@@ -410,11 +444,14 @@ def test_every_selecting_option_is_a_name_pytest_fills_in(
     that asked for less -- silently, which is what a default on the read
     costs. This run's own configuration is what says the names are still
     pytest's, `--lf` being stored as `lf` and every other one under its
-    long spelling.
+    long spelling -- `lf` itself excepted where `cacheprovider` is
+    disabled, `--lf` then being absent from the parser rather than
+    renamed.
     """
-    absent = [
-        name for name in SELECTING_OPTIONS if not hasattr(pytestconfig.option, name)
-    ]
+    names = _selecting_option_names(
+        pytestconfig.pluginmanager.has_plugin("cacheprovider")
+    )
+    absent = [name for name in names if not hasattr(pytestconfig.option, name)]
     assert not absent, f"pytest no longer fills in {absent}"
 
 

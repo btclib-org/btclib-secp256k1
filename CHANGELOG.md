@@ -94,6 +94,12 @@ the filing bar stands as it was (issue btclib-org/.github#1378).
 - **The list gains `os-ubuntu.yml`, which `release.yml` also calls under
   the same concurrency group** (closes #1037).
 
+### The coverage-selection test excludes `lf` where `cacheprovider` is off
+
+`--lf` is `cacheprovider`'s own option, not the parser's, so
+`test_every_selecting_option_is_a_name_pytest_fills_in` failed under
+`-p no:cacheprovider` on a rename that never happened (closes #1038).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
