@@ -121,6 +121,24 @@ raising the same `ValueError` `dsa.sign` already does (closes #1027).
 - **A path upstream deleted or renamed away is now reported as ordinary
   drift, not as `has_no_tip`** (closes #1041).
 
+### The ClusterFuzzLite Dockerfile's two `FROM` stages are pinned by digest
+
+- **`base-builder-python` and the `uv` binary copied from a second
+  stage both name a `sha256` digest, and `dependabot.yml` gains a
+  `docker` entry to move them** (closes #1033).
+
+### `build.sh` installs the fuzz build's dependencies from `uv.lock`, not the index
+
+- **It installs from a hashed export of `uv.lock`, then the local
+  package `--no-deps -e .`, in place of a bare `pip3 install .` that
+  resolved cffi unpinned from the index** (closes #1040).
+
+### `tests/README.md`'s *Property tests* section names its own fuzz sentinel
+
+- **The paragraph names `fuzz.yml` and `fuzz_corpus_test.py` rather than
+  citing btclib-org/.github#342, closed since it decided this tree gets
+  one** (closes #1034).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

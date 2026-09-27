@@ -761,12 +761,14 @@ gh api repos/btclib-org/btclib-secp256k1/contents/.github/dependabot.yml \
   --jq '.content' | base64 -d | grep -E 'package-ecosystem|target-branch'
 ```
 
-`github-actions` moves the SHA pins, `uv` the locked dependencies, and
-`gitsubmodule` signals that a vendored library has moved upstream. The
-comment beside that last entry in `.github/dependabot.yml` says how it
-reaches the submodules and what its pull request leaves open. That file
-is validated by the `check-dependabot` hook, a typo there otherwise
-updating nothing and saying nothing.
+`github-actions` moves the SHA pins, `uv` the locked dependencies,
+`gitsubmodule` signals that a vendored library has moved upstream, and
+`docker` moves the digest `.clusterfuzzlite/Dockerfile` pins
+(btclib-org/btclib-secp256k1#1033). The comment beside the
+`gitsubmodule` entry in `.github/dependabot.yml` says how it reaches the
+submodules and what its pull request leaves open. That file is validated
+by the `check-dependabot` hook, a typo there otherwise updating nothing
+and saying nothing.
 
 Dependabot security updates are a repository setting rather than a line
 in that file, and they are on:
