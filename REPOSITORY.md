@@ -278,7 +278,7 @@ workflow's path, and no alert is keyed on it.
 pull request.
 
 **PATCH the sub-endpoint, never PUT the whole protection object**: a
-partial PUT drops the reviews, the signatures and the rest. And `-F`,
+partial PUT drops the reviews and the rest. And `-F`,
 not `-f`, for `strict` — `gh api`'s `-f` sends every value as a string,
 and GitHub refuses `"true"` where a boolean is declared:
 
@@ -369,7 +369,7 @@ gh api repos/btclib-org/btclib-secp256k1 --jq '.default_branch'
 
 Its protection is all read from the endpoint above: `strict` with the
 checks the table above names, one approving review with
-`dismiss_stale_reviews`, **required signatures**, linear history, no force
+`dismiss_stale_reviews`, linear history, no force
 pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off** — an administrator can bypass all of it, matching
 another repository in the organization now and for the same reason: a
@@ -393,6 +393,17 @@ bound to, and moving it now would desynchronize a published release from
 what it attests to rather than restore anything. What changed is only
 whether the next incident has the same escape hatch another repository in
 the organization already keeps.
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
+  --jq '.required_signatures.enabled'
+# false
+```
+
+Classic protection's own copy of the signature rule is off, the
+`main-integrity` ruleset below being what requires signatures on `main`:
+[the standard states that value for every
+repository](https://github.com/btclib-org/.github#branch-protection-and-rulesets).
 
 Protection reaches `main` and no other branch. That is a consequence of
 the branching model — `main` is the trunk, and every other branch is a
@@ -703,6 +714,18 @@ gh api -X PUT repos/btclib-org/btclib-secp256k1/actions/permissions/workflow \
   -f default_workflow_permissions=read \
   -F can_approve_pull_request_reviews=false
 ```
+
+## Allowed actions and SHA pinning
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1/actions/permissions \
+  --jq '{allowed_actions, sha_pinning_required}'
+# {"allowed_actions":"all","sha_pinning_required":true}
+```
+
+`sha_pinning_required` is set at the organization level: [section 11 of
+the standard has the reasons for both
+fields](https://github.com/btclib-org/.github#tokens-publishing-scanning).
 
 ## Publishing
 

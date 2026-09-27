@@ -1,8 +1,13 @@
 ---
 # the things this repository tracks with dependabot. The pre-commit hook
-# revisions are not among them, dependabot having no pre-commit
-# ecosystem: pre-commit.ci opens that pull request instead, weekly, as
-# configured in .pre-commit-config.yaml
+# revisions are not among them. Dependabot has a pre-commit ecosystem,
+# and the maintainer decided to keep pre-commit.ci for them instead
+# (btclib-org/.github#1391): its weekly autoupdate, configured in the ci:
+# block of .pre-commit-config.yaml, already rewrites rev: for every
+# repo: but local and meta, so a second bot on the same pin would only
+# compete with it. typos is a repo: local hook, which autoupdate skips
+# on purpose (see the comment beside it), so the version pinned in its
+# additional_dependencies moves by nobody until a hand edit does
 #
 # every pull request here runs the whole build and test matrix, tens of
 # jobs compiling libsecp256k1 from source, so each ecosystem groups its
