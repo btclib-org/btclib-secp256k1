@@ -63,11 +63,6 @@ class _FakeLib:
     ) -> None:
         return None
 
-    def secp256k1_context_set_error_callback(
-        self, _context: Any, _callback: Any, _data: Any
-    ) -> None:
-        return None
-
     def secp256k1_context_randomize(self, _context: Any, _seed32: bytes) -> int:
         return 1
 
@@ -222,7 +217,7 @@ def _forget_cached_extension() -> None:
     `tests/zkp_generator_test.py`'s own function of the same name has
     the reasoning.
     """
-    for name in ("ctx", "_illegal_callback", "_error_callback"):
+    for name in ("ctx", "_illegal_callback"):
         vars(zkp_context).pop(name, None)
     zkp_context.ffi = None
     zkp_context.lib = None

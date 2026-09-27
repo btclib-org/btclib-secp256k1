@@ -71,8 +71,8 @@ class _FakeLib:
     """Just enough of libsecp256k1-zkp to drive `ecdsa_s2c.py`'s own branches.
 
     Every method's signature is the one it is called with: `ecdsa_s2c.py`
-    calls most of them directly, and `secp256k1_context_create`, the two
-    callback setters and `secp256k1_context_randomize` are called by
+    calls most of them directly, and `secp256k1_context_create`, the
+    callback setter and `secp256k1_context_randomize` are called by
     `zkp/context.py` instead, itself driven through this same stand-in.
     None reads `ctx`, which is why `secp256k1_context_create` below can
     hand back an object with nothing behind it. Where the real library
@@ -86,11 +86,6 @@ class _FakeLib:
         return object()
 
     def secp256k1_context_set_illegal_callback(
-        self, ctx: object, fn: Any, data: Any
-    ) -> None:
-        pass
-
-    def secp256k1_context_set_error_callback(
         self, ctx: object, fn: Any, data: Any
     ) -> None:
         pass
@@ -250,7 +245,7 @@ def _forget_cached_extension() -> None:
     docstring names. Checking the module's own `__dict__` answers whether
     `ctx` was ever cached without reading it.
     """
-    for name in ("ctx", "_illegal_callback", "_error_callback"):
+    for name in ("ctx", "_illegal_callback"):
         if name in vars(zkp_context):
             delattr(zkp_context, name)
     zkp_context.ffi = None

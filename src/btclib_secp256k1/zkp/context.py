@@ -8,9 +8,9 @@ Mirrors `btclib_secp256k1.context`, one library over: two statically
 linked cores share nothing at run time, which is what makes this
 necessary rather than a convenience. `context.py`'s own docstring has
 the reasoning `ctx` and `check` repeat here -- a shared context,
-randomized once at creation, and a thread-local pair of callbacks that
-`check` raises what was last reported through. A call made through
-zkp's `lib` is explained by zkp's `check`, never by the primary
+randomized once at creation, and a thread-local record of what its
+illegal-argument callback last reported that `check` raises. A call made
+through zkp's `lib` is explained by zkp's `check`, never by the primary
 package's: two libraries reporting into one thread-local would
 attribute one library's message to a call the other library made.
 
@@ -66,16 +66,14 @@ class _Reported(threading.local):
 
     The same shape as `btclib_secp256k1.context._Reported`, on a thread
     local of its own: a callback runs on the thread of the call that
-    triggered it, and this is a different pair of callbacks reporting
-    from a different context.
+    triggered it, and this is a different callback reporting from a
+    different context.
 
     Attributes:
         illegal: the last violated precondition, or None.
-        error: the last internal error, or None.
     """
 
     illegal: str | None = None
-    error: str | None = None
 
 
 _reported = _Reported()
@@ -91,9 +89,8 @@ _lock = threading.Lock()
 # annotation-only declaration `ctx` gets under TYPE_CHECKING. `None`
 # until the `__getattr__` below overwrites both with the real thing, on
 # the first access that needs either -- always before secp256k1-zkp can
-# call back into `_record_illegal` or `_record_error`, nothing reaching
-# either until the context this module builds has had them registered
-# on it
+# call back into `_record_illegal`, nothing reaching it until the context
+# this module builds has had it registered on it
 ffi: Any = None
 lib: Any = None
 
@@ -106,16 +103,6 @@ def _record_illegal(message: CData, data: CData) -> None:  # noqa: ARG001
         data: the pointer the callback was registered with, NULL here.
     """
     _reported.illegal = ffi.string(message).decode()
-
-
-def _record_error(message: CData, data: CData) -> None:  # noqa: ARG001
-    """Record an internal error. Called by secp256k1-zkp.
-
-    Args:
-        message: the failed condition, as a C string.
-        data: the pointer the callback was registered with, NULL here.
-    """
-    _reported.error = ffi.string(message).decode()
 
 
 def _randomize(context: CData) -> None:
@@ -146,13 +133,9 @@ def check() -> None:
 
     Raises:
         ValueError: if secp256k1-zkp reported a violated precondition.
-        RuntimeError: if it reported an internal error, which takes
-            precedence, being the graver of the two.
     """
-    illegal, error = _reported.illegal, _reported.error
-    _reported.illegal = _reported.error = None
-    if error is not None:
-        raise RuntimeError(f"libsecp256k1-zkp internal error: {error}")
+    illegal = _reported.illegal
+    _reported.illegal = None
     if illegal is not None:
         raise ValueError(f"libsecp256k1-zkp illegal argument: {illegal}")
 
@@ -201,19 +184,19 @@ def _load(name: str) -> Any:
         globals()["ffi"] = ffi
         globals()["lib"] = lib
 
-        # the reference to each cffi callback has to outlive the
-        # context, hence the module-level names: context.py's own such
-        # comment has the reasoning, unchanged here
+        # the reference to the cffi callback has to outlive the context,
+        # hence the module-level name: context.py's own such comment has
+        # the reasoning, unchanged here. No callback is built or set for
+        # an internal error, so the vendored build's own aborting default
+        # applies -- context.py's own comment beside its callback
+        # registration has the reasoning, which holds here unchanged too
         illegal_callback = ffi.callback(
             "void(*)(const char *, void *)", _record_illegal
         )
-        error_callback = ffi.callback("void(*)(const char *, void *)", _record_error)
         globals()["_illegal_callback"] = illegal_callback
-        globals()["_error_callback"] = error_callback
 
         context = lib.secp256k1_context_create(1)
         lib.secp256k1_context_set_illegal_callback(context, illegal_callback, ffi.NULL)
-        lib.secp256k1_context_set_error_callback(context, error_callback, ffi.NULL)
         _randomize(context)
 
         # the last global this builds, written after `ffi`, `lib` and

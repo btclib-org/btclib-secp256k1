@@ -90,21 +90,16 @@ class _FakeLib:
         self.generator_blinds_read: list[bytes] = []
         self.blinding_factors_read: list[bytes] = []
 
-    # the four context-management calls btclib_secp256k1.zkp.context's own
-    # __getattr__ makes to build `ctx`: not shared with mainline's real
-    # lib the way zkp_test.py's own STAND_IN reuses it for, because this
-    # stand-in is not mainline's lib at all -- what it takes as `context`
-    # is never read, only ever passed back to a generator/pedersen call
-    # below, which ignores it just the same
+    # the three context-management calls btclib_secp256k1.zkp.context's
+    # own __getattr__ makes to build `ctx`: not shared with mainline's
+    # real lib the way zkp_test.py's own STAND_IN reuses it for, because
+    # this stand-in is not mainline's lib at all -- what it takes as
+    # `context` is never read, only ever passed back to a
+    # generator/pedersen call below, which ignores it just the same
     def secp256k1_context_create(self, _flags: int) -> object:
         return object()
 
     def secp256k1_context_set_illegal_callback(
-        self, _context: Any, _callback: Any, _data: Any
-    ) -> None:
-        return None
-
-    def secp256k1_context_set_error_callback(
         self, _context: Any, _callback: Any, _data: Any
     ) -> None:
         return None
@@ -304,7 +299,7 @@ def _forget_cached_extension() -> None:
     `lib` are module-scope names whose default is `None`, so they are
     put back to that rather than removed.
     """
-    for name in ("ctx", "_illegal_callback", "_error_callback"):
+    for name in ("ctx", "_illegal_callback"):
         vars(zkp_context).pop(name, None)
     zkp_context.ffi = None
     zkp_context.lib = None

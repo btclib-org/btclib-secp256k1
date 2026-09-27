@@ -43,17 +43,26 @@ affecting how these bindings drive it:
     wrapper checks lengths and ranges before a pointer reaches C, which
     reads a fixed number of bytes from it and cannot know it was handed
     less
-- the libsecp256k1 default callbacks, which this project replaces with
-    do-nothing stubs so that an illegal argument does not `abort()` the
-    hosting Python process. The consequence is that nothing catches an
-    illegal argument on the caller's behalf: `context.check()` reports
-    what was recorded, and calling it is the caller's to do. Code
-    reaching the raw `lib` bindings directly is on its own, and so is
-    code calling a private `_foo_` half with a libsecp256k1 object of
-    its own — an object no argument check can vouch for, where a refusal
-    can reach the caller as a `False`, an ordering, 32 bytes of ECDH or
-    an ECDH point rather than as an exception. The entry points taking
-    octets are not in that position: they parse what they are given
+- the libsecp256k1 default callbacks, which report two different kinds of
+    news and are treated differently here. The illegal-argument one this
+    project replaces with a do-nothing stub, so that a violated
+    precondition does not `abort()` the hosting Python process; the
+    consequence is that nothing catches it on the caller's behalf,
+    `context.check()` reports what was recorded, and calling it is the
+    caller's to do. Code reaching the raw `lib` bindings directly is on
+    its own, and so is code calling a private `_foo_` half with a
+    libsecp256k1 object of its own — an object no argument check can
+    vouch for, where a refusal can reach the caller as a `False`, an
+    ordering, 32 bytes of ECDH or an ECDH point rather than as an
+    exception. The entry points taking octets are not in that position:
+    they parse what they are given. The error one keeps upstream's own
+    behaviour — write the message to stderr and `abort()` — because it
+    reports an internal error, a hardware failure, a miscompilation, a
+    memory corruption or a bug in the library rather than a caller
+    mistake, and upstream's own header says anything may happen once the
+    callback reporting it returns: this package does not turn that into a
+    Python exception and let the process go on running long enough to
+    raise it
 - the build: which optional modules are compiled in, and the commit each
     vendored submodule is pinned to
 - the distributions published to PyPI and their provenance

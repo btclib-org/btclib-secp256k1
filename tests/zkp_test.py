@@ -66,7 +66,6 @@ _DEFERRED: tuple[tuple[Any, str, Any], ...] = (
     (zkp_context, "lib", None),
     (zkp_context, "ctx", _UNSET),
     (zkp_context, "_illegal_callback", _UNSET),
-    (zkp_context, "_error_callback", _UNSET),
 )
 
 
@@ -353,24 +352,22 @@ def test_bindings_builds_the_context_once(monkeypatch: pytest.MonkeyPatch) -> No
 
     Calling `_load("ctx")` unconditionally, rather than reading `ctx`
     from this module's own globals once it is there, would rebuild a
-    fresh context and fresh callback closures on every call --
+    fresh context and a fresh callback closure on every call --
     orphaning whatever context an earlier caller is still holding,
-    registered against closures the rebuild has just overwritten. A
-    rebuild answers a fresh `ctx` as much as fresh closures, so the
+    registered against a closure the rebuild has just overwritten. A
+    rebuild answers a fresh `ctx` as much as a fresh closure, so the
     first assertion below already discriminates; the closure
-    assertions beside it name the lifetime the rebuild breaks rather
+    assertion beside it names the lifetime the rebuild breaks rather
     than a proxy for it.
     """
     monkeypatch.setattr(zkp, "_import_extension", lambda: STAND_IN)
     ffi_1, lib_1, ctx_1 = zkp_context._bindings()
     illegal_callback = vars(zkp_context)["_illegal_callback"]
-    error_callback = vars(zkp_context)["_error_callback"]
     ffi_2, lib_2, ctx_2 = zkp_context._bindings()
     assert ctx_2 is ctx_1
     assert ffi_2 is ffi_1
     assert lib_2 is lib_1
     assert vars(zkp_context)["_illegal_callback"] is illegal_callback
-    assert vars(zkp_context)["_error_callback"] is error_callback
 
 
 @pytest.mark.usefixtures("without_the_extension")
@@ -382,8 +379,8 @@ def test_racing_threads_build_the_context_once(
     `_load`'s own `"ctx" not in globals()` -- inside `_lock` -- is what a
     thread with no lock at all can pass while another is still building,
     each thread that passes going on to build its own context and its
-    own callback closures, the last one to finish overwriting the module
-    globals the earlier ones' closures were the only reference to
+    own callback closure, the last one to finish overwriting the module
+    globals the earlier ones' closure was the only reference to
     (#717). Every thread's own answer is asserted the same object, not
     merely that none raised: `id()` on a distinct-per-race context is a
     real difference `is` would miss two threads at a time but a set of
@@ -432,7 +429,6 @@ def test_check_with_nothing_reported() -> None:
     test makes rather than inherits.
     """
     zkp_context._reported.illegal = None
-    zkp_context._reported.error = None
     zkp_context.check()
 
 
@@ -458,39 +454,4 @@ def test_illegal_argument_is_recorded_and_raised(
     with pytest.raises(ValueError, match="illegal argument: pubkey != NULL"):
         zkp_context.check()
     # cleared: a second call reports nothing
-    zkp_context.check()
-
-
-def test_internal_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An internal error reaches the caller as `RuntimeError`.
-
-    `_record_error` is called directly, that callback being how
-    secp256k1-zkp reports what it holds to be unreachable: there is no
-    argument that provokes it. Only `ffi` is needed to build the
-    message, so this test sets it alone rather than building a context.
-    """
-    monkeypatch.setattr(zkp_context, "ffi", STAND_IN.ffi, raising=False)
-    zkp_context._record_error(
-        STAND_IN.ffi.new("char[]", b"deliberate"), STAND_IN.ffi.NULL
-    )
-    with pytest.raises(RuntimeError, match="internal error: deliberate"):
-        zkp_context.check()
-
-
-def test_internal_error_comes_first(monkeypatch: pytest.MonkeyPatch) -> None:
-    """With both reported, the internal error is the one raised.
-
-    A broken invariant and a caller's mistake are not the same news, and
-    the first is what has to be told. Both are cleared, so neither
-    lingers to be raised by an unrelated call.
-    """
-    monkeypatch.setattr(zkp_context, "ffi", STAND_IN.ffi, raising=False)
-    zkp_context._record_illegal(
-        STAND_IN.ffi.new("char[]", b"argument"), STAND_IN.ffi.NULL
-    )
-    zkp_context._record_error(
-        STAND_IN.ffi.new("char[]", b"invariant"), STAND_IN.ffi.NULL
-    )
-    with pytest.raises(RuntimeError, match="invariant"):
-        zkp_context.check()
     zkp_context.check()

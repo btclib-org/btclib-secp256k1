@@ -7,6 +7,14 @@ a tag is generated from.
 
 ## v0.8.0.9 (work in progress, not released yet)
 
+- **Breaking: `context.check()` and `zkp.context.check()` no longer raise
+  `RuntimeError` for an internal error.** libsecp256k1's own error
+  callback now writes the message to stderr and calls `abort()` instead
+  of returning to Python, matching what the callback's own contract
+  already allows it to do; a caller catching that `RuntimeError` to keep
+  running past a failed self-test, a miscompilation or a memory
+  corruption no longer gets the chance to.
+
 ## v0.8.0.8
 
 - **Breaking: Python 3.10 is no longer supported, and the minimum is

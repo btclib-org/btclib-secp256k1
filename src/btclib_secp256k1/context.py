@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Shared libsecp256k1 context, and what it reports through its callbacks."""
+"""Shared libsecp256k1 context, and what its illegal callback reports."""
 
 from __future__ import annotations
 
@@ -33,11 +33,9 @@ class _Reported(threading.local):
 
     Attributes:
         illegal: the last violated precondition, or None.
-        error: the last internal error, or None.
     """
 
     illegal: str | None = None
-    error: str | None = None
 
 
 _reported = _Reported()
@@ -56,32 +54,25 @@ def _record_illegal(message: CData, data: CData) -> None:  # noqa: ARG001
     _reported.illegal = ffi.string(message).decode()
 
 
-def _record_error(message: CData, data: CData) -> None:  # noqa: ARG001
-    """Record an internal error. Called by libsecp256k1.
-
-    `data` is unused, for the reason `_record_illegal`'s docstring gives.
-
-    Args:
-        message: the failed condition, as a C string.
-        data: the pointer the callback was registered with, NULL here.
-    """
-    _reported.error = ffi.string(message).decode()
-
-
 # libsecp256k1 reports a violated precondition (an illegal argument, an
-# object in an invalid state) through the illegal callback and an
-# internal error through the error one, then returns 0. Its abort()ing
-# defaults are replaced, in the vendored build, by stubs that do nothing:
-# that keeps an illegal argument from taking the hosting process down,
-# but leaves the caller with a bare 0 and no reason for it.
+# object in an invalid state) through the illegal callback, then returns
+# 0. Its abort()ing default is replaced, in the vendored build, by a
+# stub that does nothing: that keeps an illegal argument from taking the
+# hosting process down, but leaves the caller with a bare 0 and no reason
+# for it. On the shared context the callback instead records what was
+# reported, so that check() can raise it. The reference to the cffi
+# callback has to outlive the context, hence the module level name.
 #
-# On the shared context the callbacks instead record what was reported,
-# so that check() can raise it. The reference to the cffi callback has to
-# outlive the context, hence the module level names
+# An internal error is different news: it means the library itself
+# cannot be trusted -- hardware failure, miscompilation, memory
+# corruption -- and upstream's own header says anything may happen once
+# the callback reporting it returns. No callback is set for it here, so
+# the vendored build's own aborting default applies, and this context
+# never gets the chance to return a value -- still less to sign -- after
+# libsecp256k1 has told it not to trust itself. See SECURITY.md for the
+# split.
 _illegal_callback = ffi.callback("void(*)(const char *, void *)", _record_illegal)
-_error_callback = ffi.callback("void(*)(const char *, void *)", _record_error)
 lib.secp256k1_context_set_illegal_callback(ctx, _illegal_callback, ffi.NULL)
-lib.secp256k1_context_set_error_callback(ctx, _error_callback, ffi.NULL)
 
 
 def _randomize(context: CData) -> None:
@@ -147,12 +138,8 @@ def check() -> None:
 
     Raises:
         ValueError: if libsecp256k1 reported a violated precondition.
-        RuntimeError: if it reported an internal error, which takes
-            precedence, being the graver of the two.
     """
-    illegal, error = _reported.illegal, _reported.error
-    _reported.illegal = _reported.error = None
-    if error is not None:
-        raise RuntimeError(f"libsecp256k1 internal error: {error}")
+    illegal = _reported.illegal
+    _reported.illegal = None
     if illegal is not None:
         raise ValueError(f"libsecp256k1 illegal argument: {illegal}")

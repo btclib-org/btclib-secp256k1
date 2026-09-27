@@ -110,6 +110,12 @@ matching `silentpayments._create_outputs_` (closes #1026).
 The derivation itself never asked; `secp256k1_ec_seckey_verify` does now,
 raising the same `ValueError` `dsa.sign` already does (closes #1027).
 
+### The error callback aborts, instead of letting a failed self-test continue
+
+`secp256k1_default_error_callback_fn` writes to stderr and calls
+`abort()`, matching upstream's own default; `context.check()` and
+`zkp.context.check()` now raise only for an illegal argument (closes #1025).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
