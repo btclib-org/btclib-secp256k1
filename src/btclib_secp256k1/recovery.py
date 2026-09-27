@@ -431,7 +431,8 @@ def _to_der_(signature: CData) -> bytes:
         ctx, dsa_signature, signature
     )
     if not converted:
-        raise RuntimeError("signature conversion failed")
+        msg = "signature conversion failed"
+        raise RuntimeError(msg)
     return serialize_der(dsa_signature)
 
 
@@ -516,5 +517,6 @@ def serialize_compact(signature: CData) -> tuple[bytes, int]:
         ctx, sig_bytes, recid, signature
     )
     if not serialized:
-        raise RuntimeError("signature serialization failed")
+        msg = "signature serialization failed"
+        raise RuntimeError(msg)
     return ffi.unpack(sig_bytes, _COMPACT_SIZE), recid[0]

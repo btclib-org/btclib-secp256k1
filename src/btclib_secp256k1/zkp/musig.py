@@ -160,7 +160,8 @@ def _pubkey_serialize(
     output = ffi.new(f"char[{size}]")
     length = ffi.new("size_t *", size)
     if not lib.secp256k1_ec_pubkey_serialize(ctx, output, length, pubkey, flags):
-        raise RuntimeError("point serialization failed")
+        msg = "point serialization failed"
+        raise RuntimeError(msg)
     return bytes(ffi.unpack(output, size))
 
 
@@ -185,7 +186,8 @@ def _xonly_serialize(ffi: Any, lib: Any, ctx: Any, xonly_pubkey: CData) -> bytes
     """
     output = ffi.new(f"char[{_XONLY_SIZE}]")
     if not lib.secp256k1_xonly_pubkey_serialize(ctx, output, xonly_pubkey):
-        raise RuntimeError("x-only public key serialization failed")
+        msg = "x-only public key serialization failed"
+        raise RuntimeError(msg)
     return bytes(ffi.unpack(output, _XONLY_SIZE))
 
 
@@ -257,7 +259,8 @@ def pubnonce_serialize(pubnonce: CData) -> bytes:
     ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_PUBNONCE_SIZE}]")
     if not lib.secp256k1_musig_pubnonce_serialize(ctx, output, pubnonce):
-        raise RuntimeError("public nonce serialization failed")
+        msg = "public nonce serialization failed"
+        raise RuntimeError(msg)
     return bytes(ffi.unpack(output, _PUBNONCE_SIZE))
 
 
@@ -300,7 +303,8 @@ def aggnonce_serialize(aggnonce: CData) -> bytes:
     ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_AGGNONCE_SIZE}]")
     if not lib.secp256k1_musig_aggnonce_serialize(ctx, output, aggnonce):
-        raise RuntimeError("aggregate nonce serialization failed")
+        msg = "aggregate nonce serialization failed"
+        raise RuntimeError(msg)
     return bytes(ffi.unpack(output, _AGGNONCE_SIZE))
 
 
@@ -346,7 +350,8 @@ def partial_sig_serialize(partial_sig: CData) -> bytes:
     ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_PARTIAL_SIG_SIZE}]")
     if not lib.secp256k1_musig_partial_sig_serialize(ctx, output, partial_sig):
-        raise RuntimeError("partial signature serialization failed")
+        msg = "partial signature serialization failed"
+        raise RuntimeError(msg)
     return bytes(ffi.unpack(output, _PARTIAL_SIG_SIZE))
 
 

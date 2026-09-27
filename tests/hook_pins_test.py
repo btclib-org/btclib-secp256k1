@@ -54,6 +54,16 @@ that group holds the `hatchling` one of the requirements.
 `test_pyroma_installs_the_backend_build_system_declares` compare each
 copy with `pyproject.toml`, the hook found by its `id`.
 
+The cell that tests a built wheel carries pins rather than a copy, and
+in `pyproject.toml` rather than in the yaml: `[tool.cibuildwheel]`'s
+`test-requires` declares a second time what the suite needs from the
+`test` group (btclib-org/btclib-secp256k1#1032).
+`test_every_cibuildwheel_test_requires_item_is_pinned` asks that each
+item name a version, and
+`test_every_cibuildwheel_test_requires_pin_is_the_locked_version` that
+the version be the one `uv.lock` resolves, a package absent from the
+lock failing as the mypy block's does.
+
 `uv.lock` and `pyproject.toml` are loaded with `tomllib`.
 `.pre-commit-config.yaml` is parsed rather than loaded, being yaml, for
 which no group here carries a parser. The shapes narrow enough to match
@@ -534,6 +544,10 @@ _CHECK_SDIST = _hook_dependencies(_CONFIG.read_text(encoding="utf-8"), "check-sd
 _PYROMA_ENTRY = _hook_entry(_CONFIG.read_text(encoding="utf-8"), "pyroma")
 _PYROMA_GROUP = _only_group(_PYROMA_ENTRY)
 _PYROMA_ENVIRONMENT = _group(_PYPROJECT, _PYROMA_GROUP) if _PYROMA_GROUP else []
+_CIBUILDWHEEL_TEST_REQUIRES: list[str] = (
+    _PYPROJECT.get("tool", {}).get("cibuildwheel", {}).get("test-requires", [])
+)
+_CIBUILDWHEEL_PINS = _pins([_requirements(_CIBUILDWHEEL_TEST_REQUIRES)])
 _MOVED_WITH_THE_HIGHEST = pytest.mark.skipif(
     _RESOLUTION != "highest",
     reason=f"uv.lock records a {_RESOLUTION} resolution, and the hook pins"
@@ -880,6 +894,33 @@ def test_every_pin_is_the_locked_version(name: str, version: str) -> None:
     """Each pinned package the project also installs is the one version."""
     assert version == _locked(name), (
         f"a hook pins {name}=={version} where uv.lock resolves {_locked(name)}"
+    )
+
+
+def test_every_cibuildwheel_test_requires_item_is_pinned() -> None:
+    """An unpinned item is one the comparison below never asks about.
+
+    `_pins` keeps only what names a version, so an item written without
+    one drops out of the parametrization rather than failing it, and a
+    list the walk could not read at all drops out whole.
+    """
+    requirements = _requirements(_CIBUILDWHEEL_TEST_REQUIRES)
+    assert requirements, "no test-requires read from [tool.cibuildwheel]"
+    unpinned = [r.name for r in requirements if r.pinned is None]
+    assert not unpinned, (
+        f"[tool.cibuildwheel]'s test-requires pins no version of {unpinned}"
+    )
+
+
+@_MOVED_WITH_THE_HIGHEST
+@pytest.mark.parametrize("name, version", _CIBUILDWHEEL_PINS, ids=lambda v: v)
+def test_every_cibuildwheel_test_requires_pin_is_the_locked_version(
+    name: str, version: str
+) -> None:
+    """The wheel-testing cell installs what the suite does, at one version."""
+    assert version == _locked(name), (
+        f"[tool.cibuildwheel]'s test-requires pins {name}=={version} where"
+        f" uv.lock resolves {_locked(name)}"
     )
 
 

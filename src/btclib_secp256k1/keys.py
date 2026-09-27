@@ -342,7 +342,8 @@ def _pubkey_negate_(pubkey: CData) -> CData:
     """
     negated = lib.secp256k1_ec_pubkey_negate(ctx, pubkey)
     if not negated:
-        raise RuntimeError("public key negation failed")
+        msg = "public key negation failed"
+        raise RuntimeError(msg)
     return pubkey
 
 
@@ -926,7 +927,8 @@ def _pubkey_sort_(pubkeys: Sequence[CData]) -> list[CData]:
     pointers = array("secp256k1_pubkey *[]", pubkeys)
     sorted_ = lib.secp256k1_ec_pubkey_sort(ctx, pointers, len(pubkeys))
     if not sorted_:
-        raise RuntimeError("public key sorting failed")
+        msg = "public key sorting failed"
+        raise RuntimeError(msg)
     # what comes back are the caller's own objects, found by the address
     # each reordered pointer holds -- a cffi pointer hashes and compares
     # as that address. Handing back the array's own elements instead
@@ -1150,5 +1152,6 @@ def serialize(pubkey: CData, compressed: bool = True) -> bytes:
     length = ffi.new("size_t *", size)
     serialized = lib.secp256k1_ec_pubkey_serialize(ctx, output, length, pubkey, flags)
     if not serialized:
-        raise RuntimeError("point serialization failed")
+        msg = "point serialization failed"
+        raise RuntimeError(msg)
     return ffi.unpack(output, size)

@@ -849,7 +849,8 @@ def serialize_label(label_obj: CData) -> bytes:
         ctx, output, label_obj
     )
     if not serialized:
-        raise RuntimeError("label serialization failed")
+        msg = "label serialization failed"
+        raise RuntimeError(msg)
     # the length is the constant the buffer's type was built from, so the
     # two still cannot say different numbers
     return ffi.unpack(output, LABEL_SIZE)

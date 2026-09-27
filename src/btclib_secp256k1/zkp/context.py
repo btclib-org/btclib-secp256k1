@@ -123,11 +123,13 @@ def _randomize(context: CData) -> None:
         context: the libsecp256k1-zkp context to re-blind.
 
     Raises:
-        RuntimeError: if secp256k1-zkp fails, which a 32-octet seed
-            cannot make it do.
+        RuntimeError: if secp256k1-zkp refuses the context -- the static
+            one, which it will not randomize -- or fails for any other
+            reason, which a 32-octet seed cannot make it do.
     """
     if not lib.secp256k1_context_randomize(context, secrets.token_bytes(32)):
-        raise RuntimeError("libsecp256k1-zkp context randomization failed")
+        msg = "libsecp256k1-zkp context randomization failed"
+        raise RuntimeError(msg)
 
 
 def check() -> None:

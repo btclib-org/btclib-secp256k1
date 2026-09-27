@@ -353,8 +353,7 @@ def test_a_signature_that_does_not_verify_is_not_answered_with(
 ) -> None:
     """The raise is wired to the check, and not merely written near it.
 
-    No input makes a verification of a fresh signature fail -- that is
-    why the `raise RuntimeError` is excluded from coverage -- so the
+    No input makes a verification of a fresh signature fail, so the
     verification is substituted for one that refuses. What this holds is
     the wiring: that a False there stops the signature from being
     returned, at every entry point rather than at one of them.
@@ -571,15 +570,14 @@ def test_a_key_fixed_in_advance_cannot_pass_a_signature_of_another_key() -> None
 
 
 def test_a_fault_under_a_handed_in_key_is_not_reported_as_a_wrong_key() -> None:
-    """The other half of the discrimination, and the one coverage hides.
+    """The other half of the discrimination.
 
-    `raise RuntimeError` is outside the coverage ratchet by design, so a
-    hundred percent says nothing about this branch. What it guards is the
-    inversion of the misdiagnosis the whole argument is built to avoid:
-    with the second verification stubbed to succeed, every genuine fault
-    met under a handed-in key would be reported as "the public key given
-    is not this private key's" -- a caller told they mistyped an argument
-    because their hardware went wrong.
+    What it guards is the inversion of the misdiagnosis the whole
+    argument is built to avoid: with the second verification stubbed to
+    succeed, every genuine fault met under a handed-in key would be
+    reported as "the public key given is not this private key's" -- a
+    caller told they mistyped an argument because their hardware went
+    wrong.
 
     The key handed in here is the right one, so the only reason either
     verification can fail is the substitution, and what has to arrive is

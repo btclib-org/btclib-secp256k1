@@ -169,6 +169,24 @@ Aggregates accept a lagging `needs` row (issue btclib-org/.github#1395),
 Dependabot's `pre-commit` ecosystem is named (issue btclib-org/.github#1391),
 and signatures and SHA pinning are read back (issue btclib-org/.github#1409).
 
+### Coverage counts the `RuntimeError`s an input reaches
+
+- **`exclude_also` matches only a literal message ending in "failed";
+  a raise an input reaches binds its message to `msg`, and a test
+  drives it** (closes #1030).
+
+### `[build-system]`'s `hatchling` ceiling is the next major
+
+- **`hatchling>=1.27,<2,!=1.32.3` replaces the `<1.32.1` ceiling:
+  1.32.3, excluded by name, breaks the one-argument subscript
+  `scripts/hatch_build.py` uses, and 1.32.4 builds** (closes #1031).
+
+### `cibuildwheel`'s `test-requires` is pinned to `uv.lock`'s versions
+
+- **Each item names `uv.lock`'s version, where a release could turn a
+  wheel cell red on a day nothing here changed; `hook_pins_test.py`
+  fails where one is unpinned or parts from the lock** (closes #1032).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
