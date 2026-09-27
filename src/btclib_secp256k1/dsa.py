@@ -153,8 +153,9 @@ def nonce_rfc6979(
             bytes, or if `into` is not a writable bytearray or
             memoryview of octets.
         ValueError: if the message hash is not 32 bytes, if aux_rand32 is
-            given and is not 32 bytes, if the private key is not 32 bytes
-            or does not fit in them, or if the attempt is out of range.
+            given and is not 32 bytes, if the private key is not 32 bytes,
+            does not fit in them, or is not in [1, n-1], or if the attempt
+            is out of range.
         RuntimeError: if libsecp256k1 fails to derive one, which RFC6979
             answers for every input.
 
@@ -166,6 +167,12 @@ def nonce_rfc6979(
     """
     msg_bytes = octets(msg_bytes, "message hash", 32)
     prvkey_bytes = scalar(prvkey, "private key")
+    # the derivation itself is HMAC over the key's octets and never
+    # asks whether they are a scalar in [1, n-1] -- unlike
+    # secp256k1_ecdsa_sign, which _signed below leans on for the same
+    # check, so it is made here instead
+    if not lib.secp256k1_ec_seckey_verify(ctx, prvkey_bytes):
+        raise ValueError("invalid private key: not in [1, n-1]")
     # unsigned int, and out of range is out of domain like any other
     # argument rather than the OverflowError cffi would answer with
     attempt = in_range(attempt, "attempt", 2**32 - 1)
