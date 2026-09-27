@@ -198,6 +198,12 @@ and signatures and SHA pinning are read back (issue btclib-org/.github#1409).
   builds, where the racing test reached that return only when the
   scheduler allowed** (closes #1050).
 
+### `CLAUDE.md` points a new `RuntimeError` at the coverage exclusion's comment
+
+- **Its non-obvious facts send whoever writes a raise in `src/` to the
+  `exclude_also` comment in `pyproject.toml`, whose pattern decides by a
+  raise's text whether coverage counts it.**
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
