@@ -163,6 +163,12 @@ Both take a keyword-only `verify`, on by default as in `dsa.sign`: the
 signature is checked under the key's own public key, and `sign`'s commitment
 too, before either is returned (closes #1029).
 
+### Two aggregates accept a lagging `needs` row, and two stale readings are corrected
+
+Aggregates accept a lagging `needs` row (issue btclib-org/.github#1395),
+Dependabot's `pre-commit` ecosystem is named (issue btclib-org/.github#1391),
+and signatures and SHA pinning are read back (issue btclib-org/.github#1409).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

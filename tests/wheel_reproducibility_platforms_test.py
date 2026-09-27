@@ -49,6 +49,16 @@ checkable is that the two texts agree, which is what this asks on every
 run of the suite instead of on whoever next edits one of the two files
 and forgets the other.
 
+The aggregate at the end of `wheel-reproducibility.yml` carries one more
+copy of those matrices, inside the same file: `NEEDS_ROWS`, the name of
+every row one of its `needs` jobs lists under when it runs, a matrix
+job's once per entry with `matrix.os` expanded. A row that list misses
+is still refused when the listing lags on it, so a list that has drifted
+turns a green run red whenever the listing lags, which is
+btclib-org/.github#1395's own defect come back. The last tests below
+hold the list against each job's own `name:` and matrix, and
+`NEEDS_RESULTS` against `needs:`.
+
 Read with a regex rather than parsed, for the same reason
 `interpreters_test.py` gives: a workflow is yaml and no group here
 carries a parser for it.
@@ -225,3 +235,59 @@ def test_every_platform_carries_a_second_image() -> None:
         f"{', '.join(alone)} is built on one image, so the across-images"
         " comparison has nothing to compare there"
     )
+
+
+# the aggregate's `needs:` in the one-id-per-line shape it is written in
+_NEEDS = re.compile(r"^    needs:\n(?P<block>(?:^      - \S+\n)+)", re.MULTILINE)
+# a job's own `name:`, at the job's own indent, where a step's sits deeper
+_JOB_NAME = re.compile(r"^    name: (?P<name>.+)$", re.MULTILINE)
+_MATRIX_OS = "${{ matrix.os }}"
+_AGGREGATE = _job_body(_SENTINEL, "reproducibility-passed")
+
+
+def _env_block(key: str) -> list[str]:
+    """Return the lines of one of the aggregate step's `|-` env values."""
+    block = re.search(
+        rf"^          {key}: \|-\n(?P<block>(?:^            \S.*\n)+)",
+        _AGGREGATE,
+        re.MULTILINE,
+    )
+    assert block, f"no {key} block scalar in the aggregate's step"
+    return [line.strip() for line in block["block"].splitlines()]
+
+
+def _needs() -> list[str]:
+    """Return the ids the aggregate's own `needs:` names, in order."""
+    block = _NEEDS.search(_AGGREGATE)
+    assert block, "no needs: list in the aggregate, or not in the expected shape"
+    return [line.strip().lstrip("- ") for line in block["block"].splitlines()]
+
+
+def _rows(job_id: str) -> list[str]:
+    """Return the names the job listing shows for one job's rows."""
+    body = _job_body(_SENTINEL, job_id)
+    name = _JOB_NAME.search(body)
+    assert name, f"{job_id} declares no name:"
+    if _MATRIX_OS not in name["name"]:
+        return [name["name"]]
+    images = [
+        image for images in _images_by_platform(body).values() for image in images
+    ] or list(_os_list(body))
+    return [name["name"].replace(_MATRIX_OS, image) for image in images]
+
+
+def test_the_aggregate_names_every_row_of_its_needs_jobs() -> None:
+    """`NEEDS_ROWS` is each `needs` job's rows, matrix entries expanded."""
+    needs = _needs()
+    assert needs, "the aggregate's needs: names no job"
+    expected = sorted(f"{job_id} {row}" for job_id in needs for row in _rows(job_id))
+    assert sorted(_env_block("NEEDS_ROWS")) == expected, (
+        "the aggregate's NEEDS_ROWS is not the rows its needs jobs list:"
+        " a row it misses is refused whenever the listing lags on it"
+    )
+
+
+def test_the_aggregate_reads_every_needs_job_result() -> None:
+    """`NEEDS_RESULTS` reads `needs.<id>.result` for each id, in order."""
+    expected = [f"{job_id} ${{{{ needs.{job_id}.result }}}}" for job_id in _needs()]
+    assert _env_block("NEEDS_RESULTS") == expected
