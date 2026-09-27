@@ -79,6 +79,11 @@ btclib-org/.github (issue btclib-org/.github#1359).
 setuptools extension, fuzz instrumentation included; `CMAKE_BUILD_TYPE` picks
 the vendored library's build type, `Release` if unset (closes #1019).
 
+### `REVIEWING.md` lets a filed issue carry its fix
+
+An issue filed from a review may now say the fix where one is known;
+the filing bar stands as it was (issue btclib-org/.github#1378).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
