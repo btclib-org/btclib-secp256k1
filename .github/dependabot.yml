@@ -73,3 +73,21 @@ updates:
         patterns: ["*"]
     cooldown:
       default-days: 7
+
+  # the ClusterFuzzLite build container: base-builder-python and uv, both
+  # pinned by digest in .clusterfuzzlite/Dockerfile
+  # (btclib-org/btclib-secp256k1#1033, #1040). directory is where that
+  # Dockerfile lives, not the repository root: docker is scoped per
+  # Dockerfile rather than per repository, and this tree has one, with
+  # two `FROM` stages for this one entry to move
+  - package-ecosystem: docker
+    directory: /.clusterfuzzlite
+    schedule:
+      interval: weekly
+      day: thursday
+    groups:
+      # one PR for both stages' image bumps instead of one PR each
+      clusterfuzzlite:
+        patterns: ["*"]
+    cooldown:
+      default-days: 7

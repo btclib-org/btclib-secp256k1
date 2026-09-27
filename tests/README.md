@@ -396,8 +396,10 @@ neither run measures anything with it, both passing `--no-cov`. What the
 trade costs is the search: a fixed chain of `COUNT` inputs explores no
 further on request and shrinks nothing, where hypothesis's deep profile
 and shrinker do both. Bytes outside the described domain are the
-fuzzer's question and not this layer's; section 10 is where a sentinel
-entry for this tree would be recorded, and btclib-org/.github#342 is
-where whether it gets one is decided.
+fuzzer's question and not this layer's: section 10's `fuzz` entry names
+this tree, `fuzz.yml` runs ClusterFuzzLite over the entry points that
+read a stranger's own octets, and `fuzz_corpus_test.py` is this suite's
+own half of it, holding every target's seed corpus to still being
+accepted by its entry point.
 
 [std]: https://github.com/btclib-org/.github/blob/main/README.md
