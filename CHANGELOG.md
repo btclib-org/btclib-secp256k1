@@ -139,6 +139,12 @@ raising the same `ValueError` `dsa.sign` already does (closes #1027).
   citing btclib-org/.github#342, closed since it decided this tree gets
   one** (closes #1034).
 
+### `check_vendored_vectors` tells a missing `behind` line from an empty one
+
+- **A block with no `behind` line, or with one carrying no value, is no
+  longer reported as already documented as behind: each is named for
+  what it is** (closes #1046).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code
