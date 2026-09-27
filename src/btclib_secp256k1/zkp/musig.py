@@ -26,7 +26,7 @@ holds a `SecretNonce`.
 
 **Nothing here is `btclib_secp256k1.musig`'s code reused.** Two
 statically linked cores share no cffi type identity: a
-`secp256k1_pubkey` this module's own `_pubkey_parse` builds and one
+`secp256k1_pubkey` `context._pubkey_parse` builds and one
 `btclib_secp256k1.keys.parse` builds are both named `secp256k1_pubkey *`
 and are not interchangeable -- passing one to a call compiled against
 the other's `ffi` raises `TypeError: ... the types are different
@@ -111,8 +111,9 @@ __all__ = [
 # and an aggregate nonce (33 octets per point, two points each),
 # libsecp256k1's compact 32-byte partial signature, the 64-byte plain
 # BIP340 signature `Session.partial_sig_agg` and `adapt` both answer, and
-# the two serializations `_pubkey_parse`/`_pubkey_serialize` use, which
-# `btclib_secp256k1.keys` has no cross-ffi-safe equivalent of here
+# the two serializations `context._pubkey_parse`/`_pubkey_serialize`
+# use, which `btclib_secp256k1.keys` has no cross-ffi-safe equivalent of
+# here
 _PUBNONCE_SIZE = 66
 _AGGNONCE_SIZE = 66
 _PARTIAL_SIG_SIZE = 32
@@ -130,35 +131,6 @@ _COMPRESSED_FLAG = 258
 _UNCOMPRESSED_FLAG = 2
 
 
-def _pubkey_parse(
-    ffi: Any, lib: Any, ctx: Any, pubkey_bytes: BytesLike, name: str
-) -> CData:
-    """Parse a public key, through zkp's own `ffi` and `lib`.
-
-    The local equivalent of `btclib_secp256k1.keys.parse`: the module
-    docstring explains why that one cannot be called from here instead.
-
-    Args:
-        ffi: this module's `ffi`, from `context._bindings()`.
-        lib: this module's `lib`, from `context._bindings()`.
-        ctx: this module's `ctx`, from `context._bindings()`.
-        pubkey_bytes: the public key, 33 or 65 bytes.
-        name: what the key is, as the exception should call it.
-
-    Returns:
-        The zkp-native `secp256k1_pubkey *` object.
-
-    Raises:
-        ValueError: if the bytes are not a valid point in either
-            serialization.
-    """
-    pubkey_bytes = octets(pubkey_bytes, name)
-    pubkey = ffi.new("secp256k1_pubkey *")
-    if not lib.secp256k1_ec_pubkey_parse(ctx, pubkey, pubkey_bytes, len(pubkey_bytes)):
-        raise ValueError(f"invalid {name}")
-    return pubkey
-
-
 def _pubkey_serialize(
     ffi: Any, lib: Any, ctx: Any, pubkey: CData, compressed: bool
 ) -> bytes:
@@ -170,8 +142,9 @@ def _pubkey_serialize(
         ffi: this module's `ffi`, from `context._bindings()`.
         lib: this module's `lib`, from `context._bindings()`.
         ctx: this module's `ctx`, from `context._bindings()`.
-        pubkey: the zkp-native public key object, as `_pubkey_parse` or
-            `secp256k1_musig_pubkey_get` returns.
+        pubkey: the zkp-native public key object, as
+            `context._pubkey_parse` or `secp256k1_musig_pubkey_get`
+            returns.
         compressed: whether to return 33 bytes rather than 65.
 
     Returns:
@@ -241,23 +214,6 @@ def _keypair(ffi: Any, lib: Any, ctx: Any, prvkey: BytesLike | int) -> CData:
     if not lib.secp256k1_keypair_create(ctx, buffer, scalar(prvkey, "private key")):
         raise ValueError("invalid private key: not in [1, n-1]")
     return buffer
-
-
-def _array(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
-    """Build the array of borrowed pointers libsecp256k1-zkp reads.
-
-    The local equivalent of `btclib_secp256k1._cdata.array`, over this
-    module's own `ffi`.
-
-    Args:
-        ffi: this module's `ffi`, from `context._bindings()`.
-        cdecl: the cffi declaration of the array type.
-        items: the objects to point at, which the caller keeps alive.
-
-    Returns:
-        The array, or NULL where there is nothing to point at.
-    """
-    return ffi.new(cdecl, list(items)) if items else ffi.NULL
 
 
 def pubnonce_parse(pubnonce_bytes: BytesLike, name: str = "public nonce") -> CData:
@@ -433,7 +389,7 @@ def nonce_agg(pubnonces_bytes: Sequence[BytesLike]) -> bytes:
     if not lib.secp256k1_musig_nonce_agg(
         ctx,
         aggnonce,
-        _array(ffi, "secp256k1_musig_pubnonce *[]", pubnonces),
+        context._array_or_null(ffi, "secp256k1_musig_pubnonce *[]", pubnonces),
         len(pubnonces),
     ):
         raise RuntimeError("nonce aggregation failed")
@@ -486,7 +442,9 @@ class KeyAggCache:
             raise ValueError("at least one public key is required")
         # a per-contribution parse loop, for the reason nonce_agg's has
         pubkeys = [
-            _pubkey_parse(ffi, lib, ctx, pubkey_bytes, f"public key at index {index}")
+            context._pubkey_parse(
+                ffi, lib, ctx, pubkey_bytes, f"public key at index {index}"
+            )
             for index, pubkey_bytes in enumerate(pubkeys_bytes)
         ]
         cache = ffi.new("secp256k1_musig_keyagg_cache *")
@@ -495,7 +453,7 @@ class KeyAggCache:
             ctx,
             agg_pk,
             cache,
-            _array(ffi, "secp256k1_pubkey *[]", pubkeys),
+            context._array_or_null(ffi, "secp256k1_pubkey *[]", pubkeys),
             len(pubkeys),
         ):
             raise RuntimeError("key aggregation failed")
@@ -695,7 +653,7 @@ def nonce_gen(
             `extra_input32` is given and is not 32 bytes.
     """
     ffi, lib, ctx = context._bindings()
-    pubkey = _pubkey_parse(ffi, lib, ctx, pubkey_bytes, "public key")
+    pubkey = context._pubkey_parse(ffi, lib, ctx, pubkey_bytes, "public key")
     prvkey_bytes = None if prvkey is None else scalar(prvkey, "private key")
     msg_bytes = None if msg32 is None else octets(msg32, "message", 32)
     extra_bytes = (
@@ -1056,7 +1014,7 @@ class Session:
         adaptor = (
             ffi.NULL
             if adaptor_bytes is None
-            else _pubkey_parse(ffi, lib, ctx, adaptor_bytes, "adaptor")
+            else context._pubkey_parse(ffi, lib, ctx, adaptor_bytes, "adaptor")
         )
         session = ffi.new("secp256k1_musig_session *")
         if not lib.secp256k1_musig_nonce_process(
@@ -1101,7 +1059,7 @@ class Session:
         ffi, lib, ctx = context._bindings()
         partial_sig = partial_sig_parse(partial_sig_bytes)
         pubnonce = pubnonce_parse(pubnonce_bytes)
-        pubkey = _pubkey_parse(ffi, lib, ctx, pubkey_bytes, "public key")
+        pubkey = context._pubkey_parse(ffi, lib, ctx, pubkey_bytes, "public key")
         return bool(
             lib.secp256k1_musig_partial_sig_verify(
                 ctx,
@@ -1155,7 +1113,9 @@ class Session:
             ctx,
             signature,
             self._session,
-            _array(ffi, "secp256k1_musig_partial_sig *[]", partial_sigs),
+            context._array_or_null(
+                ffi, "secp256k1_musig_partial_sig *[]", partial_sigs
+            ),
             len(partial_sigs),
         ):
             raise RuntimeError("partial signature aggregation failed")

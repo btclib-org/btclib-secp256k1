@@ -67,36 +67,6 @@ _OPENING_SIZE = 33
 _SIGNATURE_SIZE = 64
 
 
-def _pubkey_parse(ffi: Any, lib: Any, ctx: CData, pubkey_bytes: BytesLike) -> CData:
-    """Parse a public key, using zkp's own context rather than the primary one.
-
-    `btclib_secp256k1.keys.parse` is the same call against the wrong
-    library: a `secp256k1_pubkey` it builds is not pointer-compatible
-    with what this extension's own `secp256k1_ec_pubkey_parse` expects,
-    two independently built cffi extensions never sharing a struct type
-    -- so `anti_exfil_host_verify`, the one function here that takes a
-    public key, parses it again rather than reusing that module.
-
-    Args:
-        ffi: this extension's `ffi`.
-        lib: this extension's `lib`.
-        ctx: the shared context.
-        pubkey_bytes: the public key, 33 or 65 bytes.
-
-    Returns:
-        The libsecp256k1-zkp public key object.
-
-    Raises:
-        ValueError: if the bytes are not a valid point in either
-            serialization.
-    """
-    pubkey_bytes = octets(pubkey_bytes, "public key")
-    pubkey = ffi.new("secp256k1_pubkey *")
-    if not lib.secp256k1_ec_pubkey_parse(ctx, pubkey, pubkey_bytes, len(pubkey_bytes)):
-        raise ValueError("invalid public key")
-    return pubkey
-
-
 def _signature_parse(
     ffi: Any, lib: Any, ctx: CData, signature_bytes: BytesLike
 ) -> CData:
@@ -142,6 +112,41 @@ def _signature_serialize(ffi: Any, lib: Any, ctx: CData, signature: CData) -> by
     if not lib.secp256k1_ecdsa_signature_serialize_compact(ctx, sig_bytes, signature):
         raise RuntimeError("signature serialization failed")
     return bytes(ffi.unpack(sig_bytes, _SIGNATURE_SIZE))
+
+
+def _abort_unless_verified(
+    signature: CData, msg_bytes: bytes, prvkey_bytes: bytes
+) -> None:
+    """Check a signature just made, under the key's own public key.
+
+    What `dsa.sign` does after signing, and named as
+    `ssa._abort_unless_verified` is: the public key is derived, the same
+    `secp256k1_ec_pubkey_create` `dsa._checked` pays when a caller hands
+    it nothing to check against, and Bitcoin Core's `CKey::Sign` makes
+    the same check under a comment reading "Additional verification step
+    to prevent using a potentially corrupted signature". What it catches
+    is not a bad argument -- those have all raised by the time it runs --
+    but the computation itself going wrong, whether by bad memory or by a
+    fault induced on purpose, whose cost is a published signature that is
+    invalid and may say something about the key.
+
+    Args:
+        signature: the signature just made.
+        msg_bytes: the 32-byte hash it was made over, already checked.
+        prvkey_bytes: the 32-byte private key that made it, already
+            checked, and what this derives the public key from.
+
+    Raises:
+        RuntimeError: if the signature does not verify, which no input
+            can make happen: what it reports is the computation itself
+            having gone wrong.
+    """
+    ffi, lib, ctx = context._bindings()
+    pubkey = ffi.new("secp256k1_pubkey *")
+    if not lib.secp256k1_ec_pubkey_create(ctx, pubkey, prvkey_bytes):
+        raise RuntimeError("signing produced a signature that does not verify")
+    if not lib.secp256k1_ecdsa_verify(ctx, signature, msg_bytes, pubkey):
+        raise RuntimeError("signing produced a signature that does not verify")
 
 
 def opening_parse(opening_bytes: BytesLike) -> CData:
@@ -193,7 +198,11 @@ def opening_serialize(opening: CData) -> bytes:
 
 
 def sign(
-    msg_bytes: BytesLike, prvkey: BytesLike | int, s2c_data32: BytesLike
+    msg_bytes: BytesLike,
+    prvkey: BytesLike | int,
+    s2c_data32: BytesLike,
+    *,
+    verify: bool = True,
 ) -> tuple[bytes, bytes]:
     """Create an ECDSA signature committing to 32 bytes of data.
 
@@ -202,10 +211,18 @@ def sign(
     derives, and the C entry point itself takes no nonce-function
     argument at all, so no other one can be supplied.
 
+    `verify` is `dsa.sign`'s, and `dsa.sign`'s docstring has the reason
+    it is on by default: the signature is checked under the key's own
+    public key, and the commitment with
+    `secp256k1_ecdsa_s2c_verify_commit` against `s2c_data32`, before
+    either is returned.
+
     Args:
         msg_bytes: the 32-byte hash of the message.
         prvkey: the private key, 32 bytes or an int below 2**256.
         s2c_data32: the 32 bytes of data to commit to.
+        verify: whether to check the signature and the commitment before
+            returning them.
 
     Returns:
         The signature, as the 64 bytes of `r || s`, and the opening of
@@ -217,8 +234,9 @@ def sign(
             if the private key is not 32 bytes, does not fit in them, or
             is not in [1, n-1].
         RuntimeError: if libsecp256k1-zkp fails to serialize the
-            signature or the opening, which neither it produced can
-            make it do.
+            signature or the opening, which neither it produced can make
+            it do, or if `verify` asks and the signature or its
+            commitment does not verify.
 
     Example:
         >>> from btclib_secp256k1.zkp import ecdsa_s2c
@@ -237,6 +255,14 @@ def sign(
         ctx, signature, opening, msg_bytes, prvkey_bytes, s2c_data32
     ):
         raise ValueError("invalid private key: not in [1, n-1]")
+    if verify:
+        _abort_unless_verified(signature, msg_bytes, prvkey_bytes)
+        if not lib.secp256k1_ecdsa_s2c_verify_commit(
+            ctx, signature, s2c_data32, opening
+        ):
+            raise RuntimeError(
+                "signing produced a signature whose commitment does not verify"
+            )
     return (
         _signature_serialize(ffi, lib, ctx, signature),
         opening_serialize(opening),
@@ -347,7 +373,11 @@ def anti_exfil_signer_commit(
 
 
 def anti_exfil_sign(
-    msg_bytes: BytesLike, prvkey: BytesLike | int, host_data32: BytesLike
+    msg_bytes: BytesLike,
+    prvkey: BytesLike | int,
+    host_data32: BytesLike,
+    *,
+    verify: bool = True,
 ) -> bytes:
     """Sign, committing to the host's randomness. Step 4 of the protocol.
 
@@ -356,10 +386,17 @@ def anti_exfil_sign(
     answered: the host already holds it, from
     `anti_exfil_signer_commit` at step 2.
 
+    `verify` is `sign`'s, minus the commitment check: this call answers
+    no opening for `secp256k1_ecdsa_s2c_verify_commit` to check against,
+    and the host's `anti_exfil_host_verify` at step 5 is where the
+    signature and the commitment from step 2 are checked together.
+
     Args:
         msg_bytes: the 32-byte hash of the message.
         prvkey: the private key, 32 bytes or an int below 2**256.
         host_data32: the randomness the host revealed.
+        verify: whether to check the signature under the key's own
+            public key before returning it.
 
     Returns:
         The signature, as the 64 bytes of `r || s`.
@@ -369,7 +406,8 @@ def anti_exfil_sign(
             if the private key is not 32 bytes, does not fit in them, or
             is not in [1, n-1].
         RuntimeError: if libsecp256k1-zkp fails to serialize the
-            signature, which no signature it produced can make it do.
+            signature, which no signature it produced can make it do, or
+            if `verify` asks and the signature does not verify.
     """
     msg_bytes = octets(msg_bytes, "message hash", 32)
     prvkey_bytes = scalar(prvkey, "private key")
@@ -381,6 +419,8 @@ def anti_exfil_sign(
         ctx, signature, msg_bytes, prvkey_bytes, host_data32
     ):
         raise ValueError("invalid private key: not in [1, n-1]")
+    if verify:
+        _abort_unless_verified(signature, msg_bytes, prvkey_bytes)
     return _signature_serialize(ffi, lib, ctx, signature)
 
 
@@ -427,7 +467,7 @@ def anti_exfil_host_verify(
     opening_bytes = octets(opening_bytes, "opening", _OPENING_SIZE)
     ffi, lib, ctx = context._bindings()
     signature = _signature_parse(ffi, lib, ctx, signature_bytes)
-    pubkey = _pubkey_parse(ffi, lib, ctx, pubkey_bytes)
+    pubkey = context._pubkey_parse(ffi, lib, ctx, pubkey_bytes, "public key")
     opening = opening_parse(opening_bytes)
     return bool(
         lib.secp256k1_anti_exfil_host_verify(

@@ -14,6 +14,10 @@ a tag is generated from.
   already allows it to do; a caller catching that `RuntimeError` to keep
   running past a failed self-test, a miscompilation or a memory
   corruption no longer gets the chance to.
+- **Breaking: `zkp.rangeproof.borromean_verify` refuses an `rsizes`
+  element that is not an `int`, or is a `bool`.** A whole-number `float`
+  such as `1.0`, or `True`, raises `TypeError` or `ValueError` where it
+  was accepted as the ring size it equals; pass `int` ring sizes.
 
 ## v0.8.0.8
 

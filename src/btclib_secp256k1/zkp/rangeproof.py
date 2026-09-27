@@ -399,58 +399,6 @@ def info(proof: BytesLike) -> tuple[int, int, int, int]:
     return int(exp[0]), int(mantissa[0]), int(min_value[0]), int(max_value[0])
 
 
-def _pubkey_parse(
-    ffi: Any, lib: Any, ctx: Any, pubkey_bytes: BytesLike, name: str
-) -> CData:
-    """Parse a public key, through zkp's own `ffi` and `lib`.
-
-    `zkp.musig`'s own `_pubkey_parse` has the identical shape, over that
-    module's `ffi`: a different cffi `ffi` type identity per zkp
-    submodule is why this module carries its own copy rather than
-    importing that one, the same reason `borromean_verify`'s own module
-    docstring below gives.
-
-    Args:
-        ffi: this module's `ffi`, from `context._bindings()`.
-        lib: this module's `lib`, from `context._bindings()`.
-        ctx: this module's `ctx`, from `context._bindings()`.
-        pubkey_bytes: the public key, ordinary SEC compressed or
-            uncompressed -- never zkp's own generator/commitment
-            encoding.
-        name: what the key is, as the exception should call it.
-
-    Returns:
-        The zkp-native `secp256k1_pubkey *` object.
-
-    Raises:
-        ValueError: if the bytes are not a valid point in either
-            serialization.
-    """
-    pubkey_bytes = octets(pubkey_bytes, name)
-    pubkey = ffi.new("secp256k1_pubkey *")
-    if not lib.secp256k1_ec_pubkey_parse(ctx, pubkey, pubkey_bytes, len(pubkey_bytes)):
-        raise ValueError(f"invalid {name}")
-    return pubkey
-
-
-def _array(ffi: Any, cdecl: str, items: Sequence[CData]) -> CData:
-    """Build the array of borrowed pointers libsecp256k1-zkp reads.
-
-    The local equivalent of `btclib_secp256k1._cdata.array`, over this
-    module's own `ffi` -- `zkp.musig`'s own `_array` is the same shape,
-    for the same reason `_pubkey_parse` above is not imported from it.
-
-    Args:
-        ffi: this module's `ffi`, from `context._bindings()`.
-        cdecl: the cffi declaration of the array type.
-        items: the objects to point at, which the caller keeps alive.
-
-    Returns:
-        The array, or NULL where there is nothing to point at.
-    """
-    return ffi.new(cdecl, list(items)) if items else ffi.NULL
-
-
 def borromean_verify(
     e0: BytesLike,
     s: BytesLike,
@@ -480,7 +428,8 @@ def borromean_verify(
         m: the message the signature covers, any length.
         pubkeys: one public key per ring member, ring-major, ordinary
             SEC compressed or uncompressed.
-        rsizes: the size of each ring; must sum to `len(pubkeys)`.
+        rsizes: the size of each ring, each a non-bool int in [0, 128];
+            must sum to `len(pubkeys)`.
 
     Returns:
         Whether the signature verifies -- `False` covers both a
@@ -488,31 +437,46 @@ def borromean_verify(
         at or above the curve order, neither being misuse.
 
     Raises:
+        TypeError: if an `rsizes` element is not an int.
         ValueError: if `e0` is not 32 bytes, if `s` is not exactly 32
             bytes per `pubkeys` entry, if any of `pubkeys` is not a
             valid public key, if `pubkeys` is empty or holds more than
             128 entries, if `rsizes` is empty or holds more than 32
-            entries, or if `sum(rsizes)` does not equal `len(pubkeys)` --
-            the same ring-shape `ARG_CHECK` conditions
-            `secp256k1_borromean_verify` itself enforces, matched here
-            rather than left to its illegal callback.
+            entries, if an `rsizes` element is a bool or outside
+            [0, 128] -- the largest a single ring can be, `pubkeys`
+            holding at most 128 entries in all -- or if `sum(rsizes)`
+            does not equal `len(pubkeys)`: the same ring-shape
+            `ARG_CHECK` conditions `secp256k1_borromean_verify` itself
+            enforces, matched here rather than left to its illegal
+            callback or to cffi's own refusal of a negative `size_t`.
     """
     ffi, lib, ctx = context._bindings()
     if not 1 <= len(pubkeys) <= 128:
         raise ValueError("pubkeys must hold between 1 and 128 entries")
     if not 1 <= len(rsizes) <= 32:
         raise ValueError("rsizes must hold between 1 and 32 entries")
-    if sum(rsizes) != len(pubkeys):
+    checked_rsizes = []
+    for index, rsize in enumerate(rsizes):
+        if not isinstance(rsize, int):
+            raise TypeError(
+                f"rsizes[{index}] must be an int, not {type(rsize).__name__}"
+            )
+        if isinstance(rsize, bool) or not 0 <= rsize <= 128:
+            raise ValueError(f"rsizes[{index}] must be an int in [0, 128]")
+        checked_rsizes.append(rsize)
+    if sum(checked_rsizes) != len(pubkeys):
         raise ValueError("sum(rsizes) must equal len(pubkeys)")
     e0_bytes = octets(e0, "e0", 32)
     s_bytes = octets(s, "s", 32 * len(pubkeys))
     m_bytes = octets(m, "m")
     parsed = [
-        _pubkey_parse(ffi, lib, ctx, pubkey_bytes, f"public key at index {index}")
+        context._pubkey_parse(
+            ffi, lib, ctx, pubkey_bytes, f"public key at index {index}"
+        )
         for index, pubkey_bytes in enumerate(pubkeys)
     ]
-    pubkeys_arr = _array(ffi, "secp256k1_pubkey *[]", parsed)
-    rsizes_arr = _array(ffi, "size_t[]", [int(r) for r in rsizes])
+    pubkeys_arr = context._array_or_null(ffi, "secp256k1_pubkey *[]", parsed)
+    rsizes_arr = context._array_or_null(ffi, "size_t[]", checked_rsizes)
     ok = lib.secp256k1_borromean_verify(
         ctx,
         e0_bytes,

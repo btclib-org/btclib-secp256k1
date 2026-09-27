@@ -145,6 +145,24 @@ raising the same `ValueError` `dsa.sign` already does (closes #1027).
   longer reported as already documented as behind: each is named for
   what it is** (closes #1046).
 
+### `zkp.context` holds the one `_pubkey_parse` and array helper
+
+The zkp modules import them rather than keep copies under a false claim
+that each submodule has its own cffi `ffi`: all of them resolve one `ffi`
+through `context._bindings()` (closes #1035).
+
+### `zkp.rangeproof.borromean_verify` validates every `rsizes` element
+
+Non-ints are a `TypeError`, bools and ints outside [0, 128] a `ValueError`,
+before the sum is taken: whole-number floats and bools, accepted before, are
+now refused (closes #1028).
+
+### `zkp.ecdsa_s2c.sign` and `anti_exfil_sign` verify before returning
+
+Both take a keyword-only `verify`, on by default as in `dsa.sign`: the
+signature is checked under the key's own public key, and `sign`'s commitment
+too, before either is returned (closes #1029).
+
 ## v0.8.0.8
 
 ### `ignore` names the flake8-todos rules, not the bare `TD` code

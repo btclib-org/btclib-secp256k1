@@ -34,6 +34,11 @@ requirement of its own -- reading `ctx` first, as this module's
 `__getattr__` already does, is what makes `ffi` and `lib` real, and a
 caller of `_bindings` never reads either before that has happened.
 
+`_pubkey_parse` and `_array_or_null` below are shared the same way,
+and can be: every wrapper module gets its `ffi` from `_bindings`, so
+the subpackage has one `ffi`, and a `secp256k1_pubkey *` parsed for
+one module is the type every other one takes.
+
 Deferred to the first call is also what the primary package's own
 `context.py` is not: that one builds at plain module scope, which
 Python's own import lock serializes -- every thread importing it blocks
@@ -54,9 +59,11 @@ from __future__ import annotations
 
 import secrets
 import threading
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
-from btclib_secp256k1 import CData
+from btclib_secp256k1 import BytesLike, CData
+from btclib_secp256k1._scalar import octets
 
 __all__ = ["check", "ctx"]
 
@@ -236,6 +243,57 @@ def _bindings() -> tuple[Any, Any, CData]:
     """
     ctx = globals()["ctx"] if "ctx" in globals() else _load("ctx")
     return ffi, lib, ctx
+
+
+def _pubkey_parse(
+    ffi: Any, lib: Any, ctx: CData, pubkey_bytes: BytesLike, name: str
+) -> CData:
+    """Parse a public key, through zkp's own `ffi` and `lib`.
+
+    `btclib_secp256k1.keys.parse` is the same call against the wrong
+    library: a `secp256k1_pubkey` it builds is not pointer-compatible
+    with what this extension's own `secp256k1_ec_pubkey_parse` expects,
+    two independently built cffi extensions never sharing a struct type.
+
+    Args:
+        ffi: this subpackage's own `ffi`, from `_bindings()`.
+        lib: this subpackage's own `lib`, from `_bindings()`.
+        ctx: this subpackage's own `ctx`, from `_bindings()`.
+        pubkey_bytes: the public key, ordinary SEC compressed or
+            uncompressed -- never zkp's own generator/commitment
+            encoding.
+        name: what the key is, as the exception should call it.
+
+    Returns:
+        The zkp-native `secp256k1_pubkey *` object.
+
+    Raises:
+        ValueError: if the bytes are not a valid point in either
+            serialization.
+    """
+    pubkey_bytes = octets(pubkey_bytes, name)
+    pubkey = ffi.new("secp256k1_pubkey *")
+    if not lib.secp256k1_ec_pubkey_parse(ctx, pubkey, pubkey_bytes, len(pubkey_bytes)):
+        raise ValueError(f"invalid {name}")
+    return pubkey
+
+
+def _array_or_null(ffi: Any, cdecl: str, items: Sequence[Any]) -> CData:
+    """Build an array libsecp256k1-zkp reads, or NULL for an empty one.
+
+    The local equivalent of `btclib_secp256k1._cdata.array`, over this
+    subpackage's own `ffi`: pointers to objects the caller keeps alive,
+    for a `*[]` declaration, or plain values, for one such as `size_t[]`.
+
+    Args:
+        ffi: this subpackage's own `ffi`, from `_bindings()`.
+        cdecl: the cffi declaration of the array type.
+        items: the array's elements.
+
+    Returns:
+        The array, or NULL where `items` is empty.
+    """
+    return ffi.new(cdecl, list(items)) if items else ffi.NULL
 
 
 if TYPE_CHECKING:

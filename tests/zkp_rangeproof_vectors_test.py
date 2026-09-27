@@ -50,6 +50,7 @@ import pytest
 
 pytest.importorskip("_btclib_secp256k1_zkp")
 
+from btclib_secp256k1 import keys
 from btclib_secp256k1.zkp import generator as g
 from btclib_secp256k1.zkp import rangeproof as r
 
@@ -389,3 +390,32 @@ def test_borromean_verify_answers_for_the_largest_shape_the_header_allows() -> N
         )
         is False
     )
+
+
+def test_borromean_verify_rejects_a_float_rsize_against_the_real_library() -> None:
+    """ISS 1028's float reproduction is refused before the library is called.
+
+    `[0.5, 0.5]` sums to `len(pubkeys)`, so without the per-element check
+    it passes the Python sum and fails `secp256k1_borromean_verify`'s own
+    `ARG_CHECK(total == n_pubkeys)` as a bare `False`.
+    """
+    pubkey = keys.pubkey_from_prvkey(1)
+    with pytest.raises(TypeError, match=r"rsizes\[0\] must be an int, not float"):
+        r.borromean_verify(
+            bytes(32),
+            bytes(32),
+            b"m",
+            [pubkey],
+            [0.5, 0.5],  # type: ignore[list-item]
+        )
+
+
+def test_borromean_verify_rejects_a_negative_rsize_against_the_real_library() -> None:
+    """ISS 1028's negative reproduction is a ValueError naming the bound.
+
+    Without the per-element check, `[-1, 2]` reaches cffi's own `size_t`
+    conversion and raises an undocumented `OverflowError`.
+    """
+    pubkey = keys.pubkey_from_prvkey(1)
+    with pytest.raises(ValueError, match=r"rsizes\[0\] must be an int in \[0, 128\]"):
+        r.borromean_verify(bytes(32), bytes(32), b"m", [pubkey], [-1, 2])
