@@ -170,7 +170,8 @@ def generate(seed32: BytesLike) -> bytes:
     seed_bytes = octets(seed32, "seed32", 32)
     gen = ffi.new("secp256k1_generator *")
     if not lib.secp256k1_generator_generate(ctx, gen, seed_bytes):
-        raise RuntimeError("generator generation failed")
+        msg = "generator generation failed"
+        raise RuntimeError(msg)
     return serialize(gen)
 
 
@@ -284,7 +285,8 @@ def pedersen_commit(
     )
     commit = ffi.new("secp256k1_pedersen_commitment *")
     if not lib.secp256k1_pedersen_commit(ctx, commit, blind_bytes, value, gen_obj):
-        raise RuntimeError("Pedersen commitment failed")
+        msg = "Pedersen commitment failed"
+        raise RuntimeError(msg)
     return pedersen_commitment_serialize(commit)
 
 
@@ -355,7 +357,8 @@ def pedersen_blind_sum(
         if not lib.secp256k1_pedersen_blind_sum(
             ctx, blind_out, blinds_array, len(blind_buffers), npositive
         ):
-            raise RuntimeError("blinding factor sum failed")
+            msg = "blinding factor sum failed"
+            raise RuntimeError(msg)
         return take(blind_out, into=into)
     finally:
         for buffer in blind_buffers:
@@ -569,7 +572,8 @@ def pedersen_blind_generator_blind_sum(
             n_total,
             n_inputs,
         ):
-            raise RuntimeError("blinding factor correction failed")
+            msg = "blinding factor correction failed"
+            raise RuntimeError(msg)
         return take(blinding_factor_buffers[-1], into=into)
     finally:
         # the last blinding-factor buffer is in this loop too: `take`

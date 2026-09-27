@@ -140,17 +140,17 @@ requires = [
     # the ceiling is not the departure an upper bound on a runtime
     # dependency would be: section 3 of btclib-org/.github's README.md
     # draws that line, a build requirement's bound narrowing only what
-    # an isolated build resolves for itself. This is the break that
-    # forced one here: 1.32.1 gave BuildHookInterface a second type
-    # parameter and scripts/hatch_build.py subscripts it with one, which
-    # raises TypeError at class definition rather than under mypy. It
-    # was yanked, but 1.32.3 carries the same signature and is not, so
-    # the yank does not reopen the range. uv.lock cannot pin a build
-    # requirement: every PEP 517 isolated build resolves `requires`
-    # fresh, outside the lock. The ceiling lifts once
-    # scripts/hatch_build.py takes the two-parameter signature
-    # (btclib-org/.github#1194)
-    "hatchling>=1.27,<1.32.1",
+    # an isolated build resolves for itself, at the next major above
+    # the newest release measured to work. 1.32.3 gives
+    # BuildHookInterface a second type parameter, so the one-argument
+    # subscript in scripts/hatch_build.py raises TypeError at class
+    # definition; 1.32.4 takes that parameter back, and an isolated
+    # build resolving it produces the sdist and a wheel that imports.
+    # uv.lock cannot pin a build requirement: every PEP 517 isolated
+    # build resolves `requires` fresh, outside the lock. 1.32.3 is not
+    # yanked, so it is excluded by name rather than left to 1.32.4
+    # being the newest release a resolver finds
+    "hatchling>=1.27,<2,!=1.32.3",
     # the same floors as the runtime dependency above, and for the same
     # reason: the build runs the cdef through the very cffi it resolves.
     #
@@ -463,7 +463,7 @@ check = [
     # tests/hook_pins_test.py fails when the two part: section 12 of the
     # organization standard asks that a hook building the project use a
     # backend [build-system] admits
-    "hatchling>=1.27,<1.32.1",
+    "hatchling>=1.27,<2,!=1.32.3",
 ]
 # mutation testing, which asks what coverage cannot: a line the suite
 # executes is not a line the suite checks. Its own group and not part of
@@ -1038,19 +1038,28 @@ skip_covered = true
 # into a "100%"
 # that reads as green
 precision = 2
-# the two exceptions the bindings raise are not equally reachable, and
-# counting them together made the ratchet meaningless: a ValueError
-# reports an argument out of the domain, and every one of them is
-# exercised, while a RuntimeError reports a libsecp256k1 call failing
-# where no input can make it fail, and none of them can be. Excluding
-# the latter leaves a number that only untested code can lower.
+# a ValueError the bindings raise reports an argument out of the
+# domain, and every one of them is exercised. The first pattern below
+# excludes a RuntimeError raised with a literal message ending in
+# "failed", the shape of a libsecp256k1 failure the wrapper's docstring
+# documents as unreachable. Where an input reaches one -- an object the
+# caller holds that libsecp256k1 refuses, a blinding factor not below
+# the order, a fake library's refusal -- the message is bound to `msg`
+# before the raise, so the pattern does not match it and a test drives
+# it. tests/coverage_exclusion_test.py fails on a matched raise inside a
+# function taking a CData argument; that the others are unreachable is
+# their docstrings' claim, and no gate checks it
+# (btclib-org/btclib-secp256k1#1030)
 # `raise AssertionError` joins it now that tests are measured, and for a
 # stronger reason than reachability: it is how a stub substituted to
 # prove a path is never taken reports being called, so executing that
 # line is the run in which the suite is red. A green run cannot cover
 # it, and no amount of testing would. The package raises none, so the
 # entry reaches the two stubs in tests/ and nothing shipped
-exclude_also = ["raise RuntimeError", "raise AssertionError"]
+exclude_also = [
+    'raise RuntimeError\("[^"]* failed"\)',
+    "raise AssertionError",
+]
 # with those excluded the suite reaches every line and every branch, so
 # the ratchet can be the only value that fails on a single new untested
 # one. What meets it is the union the coverage job of test.yml
@@ -1075,8 +1084,15 @@ fail_under = 100
 # group's to state and not this one's to restate. What is this list's
 # own is that it is a second environment: cibuildwheel installs what is
 # named here and nothing of that group, so a dependency the suite needs
-# has to be declared twice to be there twice
-test-requires = ["pytest", "pytest-cov", "pathspec"]
+# has to be declared twice to be there twice.
+#
+# Each is pinned to the version uv.lock resolves for it: unpinned, this
+# list installs whatever the index holds the day a wheel job runs, with
+# filterwarnings = error in force. tests/hook_pins_test.py fails where
+# an item carries no pin or a pin the lock does not resolve, so a lock
+# update moving one of these has to move this list with it
+# (btclib-org/btclib-secp256k1#1032)
+test-requires = ["pytest==9.1.1", "pytest-cov==7.1.0", "pathspec==1.1.1"]
 test-command = "pytest --no-cov {project}/tests/"
 build-frontend = "build"
 archs = "auto64"

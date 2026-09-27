@@ -662,9 +662,10 @@ def _sign32(
     Raises:
         ValueError: if the message hash is not 32 bytes, or if
             aux_rand32 is given and is not 32 bytes.
-        RuntimeError: if libsecp256k1 fails to sign, which no input can
-            make it do, or if `verify` asks and the signature does not
-            verify.
+        RuntimeError: if libsecp256k1 refuses the keypair -- one it
+            cannot read -- or fails to sign for any other reason,
+            which a keypair it built cannot make it do, or if `verify`
+            asks and the signature does not verify.
     """
     msg_bytes = octets(msg_bytes, "message hash", 32)
 
@@ -672,7 +673,8 @@ def _sign32(
     if not lib.secp256k1_schnorrsig_sign32(
         ctx, sig, msg_bytes, keypair_obj, entropy(aux_rand32)
     ):
-        raise RuntimeError("schnorr signing failed")
+        msg = "schnorr signing failed"
+        raise RuntimeError(msg)
     signature_bytes = ffi.unpack(sig, _SIGNATURE_SIZE)
     if verify:
         _abort_unless_verified(keypair_obj, msg_bytes, signature_bytes)
@@ -704,9 +706,10 @@ def _sign_custom(
 
     Raises:
         ValueError: if aux_rand32 is given and is not 32 bytes.
-        RuntimeError: if libsecp256k1 fails to sign, which no input can
-            make it do, or if `verify` asks and the signature does not
-            verify.
+        RuntimeError: if libsecp256k1 refuses the keypair -- one it
+            cannot read -- or fails to sign for any other reason,
+            which a keypair it built cannot make it do, or if `verify`
+            asks and the signature does not verify.
     """
     msg_bytes = octets(msg_bytes, "message")
 
@@ -722,7 +725,8 @@ def _sign_custom(
     if not lib.secp256k1_schnorrsig_sign_custom(
         ctx, sig, msg_bytes, len(msg_bytes), keypair_obj, extraparams
     ):
-        raise RuntimeError("schnorr signing failed")
+        msg = "schnorr signing failed"
+        raise RuntimeError(msg)
     signature_bytes = ffi.unpack(sig, _SIGNATURE_SIZE)
     if verify:
         _abort_unless_verified(keypair_obj, msg_bytes, signature_bytes)

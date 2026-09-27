@@ -727,3 +727,18 @@ def test_abort_unless_verified_refuses_what_does_not_verify() -> None:
         ecdsa_s2c._abort_unless_verified(signature, other_msg, _PRVKEY)
     with pytest.raises(RuntimeError, match="does not verify"):
         ecdsa_s2c._abort_unless_verified(signature, _MESSAGE, other_prvkey)
+
+
+@pytest.mark.zkp
+def test_a_refused_object_raises_the_serializers_own_failure() -> None:
+    """A NULL opening or signature is one libsecp256k1-zkp refuses."""
+    pytest.importorskip("_btclib_secp256k1_zkp")
+    zffi, zlib, zctx = zkp_context._bindings()
+    with pytest.raises(RuntimeError, match="opening serialization failed"):
+        ecdsa_s2c.opening_serialize(zffi.NULL)
+    with pytest.raises(ValueError, match="illegal argument"):
+        zkp_context.check()
+    with pytest.raises(RuntimeError, match="signature serialization failed"):
+        ecdsa_s2c._signature_serialize(zffi, zlib, zctx, zffi.NULL)
+    with pytest.raises(ValueError, match="illegal argument"):
+        zkp_context.check()

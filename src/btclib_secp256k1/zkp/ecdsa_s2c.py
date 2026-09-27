@@ -110,7 +110,8 @@ def _signature_serialize(ffi: Any, lib: Any, ctx: CData, signature: CData) -> by
     """
     sig_bytes = ffi.new(f"char[{_SIGNATURE_SIZE}]")
     if not lib.secp256k1_ecdsa_signature_serialize_compact(ctx, sig_bytes, signature):
-        raise RuntimeError("signature serialization failed")
+        msg = "signature serialization failed"
+        raise RuntimeError(msg)
     return bytes(ffi.unpack(sig_bytes, _SIGNATURE_SIZE))
 
 
@@ -193,7 +194,8 @@ def opening_serialize(opening: CData) -> bytes:
     ffi, lib, ctx = context._bindings()
     output = ffi.new(f"char[{_OPENING_SIZE}]")
     if not lib.secp256k1_ecdsa_s2c_opening_serialize(ctx, output, opening):
-        raise RuntimeError("opening serialization failed")
+        msg = "opening serialization failed"
+        raise RuntimeError(msg)
     return bytes(ffi.unpack(output, _OPENING_SIZE))
 
 

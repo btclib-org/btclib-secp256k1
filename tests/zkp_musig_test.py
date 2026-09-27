@@ -697,3 +697,47 @@ def test_a_call_made_through_lib_reports_through_zkp_context_check() -> None:
     )
     with pytest.raises(ValueError, match="secnonce_magic"):
         zkp_context.check()
+
+
+@pytest.mark.parametrize(
+    "serialize, type_name, message",
+    [
+        (musig.pubnonce_serialize, "secp256k1_musig_pubnonce", "public nonce"),
+        (musig.aggnonce_serialize, "secp256k1_musig_aggnonce", "aggregate nonce"),
+        (
+            musig.partial_sig_serialize,
+            "secp256k1_musig_partial_sig",
+            "partial signature",
+        ),
+    ],
+    ids=["pubnonce", "aggnonce", "partial_sig"],
+)
+def test_a_refused_object_raises_the_serializers_own_failure(
+    serialize: Callable[[object], bytes], type_name: str, message: str
+) -> None:
+    """An object nothing has written to is one libsecp256k1-zkp refuses."""
+    zffi, _, _ = zkp_context._bindings()
+    with pytest.raises(RuntimeError, match=f"{message} serialization failed"):
+        serialize(zffi.new(f"{type_name} *"))
+    with pytest.raises(ValueError, match="illegal argument"):
+        zkp_context.check()
+
+
+def test_a_refused_point_raises_the_helpers_own_failure() -> None:
+    """`_pubkey_serialize` and `_xonly_serialize` take the object on trust."""
+    zffi, zlib, zctx = zkp_context._bindings()
+    with pytest.raises(RuntimeError, match="point serialization failed"):
+        musig._pubkey_serialize(zffi, zlib, zctx, zffi.NULL, True)
+    with pytest.raises(ValueError, match="illegal argument"):
+        zkp_context.check()
+    with pytest.raises(RuntimeError, match="x-only public key serialization failed"):
+        musig._xonly_serialize(zffi, zlib, zctx, zffi.NULL)
+    with pytest.raises(ValueError, match="illegal argument"):
+        zkp_context.check()
+
+
+def test_the_static_context_is_not_randomized() -> None:
+    """The static context is refused with `_randomize`'s own failure."""
+    _, zlib, _ = zkp_context._bindings()
+    with pytest.raises(RuntimeError, match="context randomization failed"):
+        zkp_context._randomize(zlib.secp256k1_context_static)

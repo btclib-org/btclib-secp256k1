@@ -151,7 +151,8 @@ def pubnonce_serialize(pubnonce: CData) -> bytes:
     """
     output = ffi.new(_PUBNONCE_BUFFER_TYPE)
     if not lib.secp256k1_musig_pubnonce_serialize(ctx, output, pubnonce):
-        raise RuntimeError("public nonce serialization failed")
+        msg = "public nonce serialization failed"
+        raise RuntimeError(msg)
     return ffi.unpack(output, _PUBNONCE_SIZE)
 
 
@@ -192,7 +193,8 @@ def aggnonce_serialize(aggnonce: CData) -> bytes:
     """
     output = ffi.new(_AGGNONCE_BUFFER_TYPE)
     if not lib.secp256k1_musig_aggnonce_serialize(ctx, output, aggnonce):
-        raise RuntimeError("aggregate nonce serialization failed")
+        msg = "aggregate nonce serialization failed"
+        raise RuntimeError(msg)
     return ffi.unpack(output, _AGGNONCE_SIZE)
 
 
@@ -236,7 +238,8 @@ def partial_sig_serialize(partial_sig: CData) -> bytes:
     """
     output = ffi.new(_PARTIAL_SIG_BUFFER_TYPE)
     if not lib.secp256k1_musig_partial_sig_serialize(ctx, output, partial_sig):
-        raise RuntimeError("partial signature serialization failed")
+        msg = "partial signature serialization failed"
+        raise RuntimeError(msg)
     return ffi.unpack(output, _PARTIAL_SIG_SIZE)
 
 

@@ -35,10 +35,24 @@ reasoning.
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 
 import pytest
 
-from btclib_secp256k1 import context, dsa, ecdh, ffi, keys, lib, recovery, ssa, xonly
+from btclib_secp256k1 import (
+    context,
+    dsa,
+    ecdh,
+    ellswift,
+    ffi,
+    keys,
+    lib,
+    musig,
+    recovery,
+    silentpayments,
+    ssa,
+    xonly,
+)
 from btclib_secp256k1.context import ctx
 
 # a public key libsecp256k1 is asked to parse into nowhere: the bindings
@@ -55,10 +69,9 @@ def test_check_with_nothing_reported() -> None:
 def test_illegal_argument() -> None:
     """An illegal argument reaches the caller as ValueError, with its text.
 
-    Driven through `lib`, which all but two of the bindings' wrappers
-    cannot do: they give libsecp256k1 bytes they have already checked.
-    `keys.serialize` and `xonly.from_keypair` are the exceptions, and
-    have tests of their own below.
+    Driven through `lib`, which a wrapper taking octets cannot do: it
+    gives libsecp256k1 bytes it has already checked. The wrappers taking
+    an object the caller holds are the exception, and are driven below.
     """
     assert not lib.secp256k1_ec_pubkey_parse(ctx, *NOWHERE_ARGS)
     with pytest.raises(ValueError, match="illegal argument: pubkey != NULL"):
@@ -323,3 +336,102 @@ def test_the_key_the_recoverable_check_trusts_is_the_one_nobody_validated() -> N
         recovery._sign_(msg, 7, pubkey=unreadable)
     with pytest.raises(ValueError, match="secp256k1_fe_is_zero"):
         context.check()
+
+
+def _refused(type_name: str) -> object:
+    """Return an object of `type_name` that nothing has written to."""
+    return ffi.new(f"{type_name} *")
+
+
+# every wrapper here takes an object the caller holds and answers its
+# own RuntimeError where libsecp256k1 refuses it, so each of those raises
+# is one an input reaches and the coverage ratchet counts
+# (btclib-org/btclib-secp256k1#1030). `keys.serialize`,
+# `xonly._from_keypair_` and `dsa.serialize_compact` have tests of their
+# own above
+_REFUSING_WRAPPERS: dict[str, tuple[Callable[[], object], str]] = {
+    "dsa.serialize_der": (
+        lambda: dsa.serialize_der(ffi.NULL),
+        "signature serialization failed",
+    ),
+    "ellswift._encode_": (
+        lambda: ellswift._encode_(_refused("secp256k1_pubkey"), None),
+        "ElligatorSwift encoding failed",
+    ),
+    "keys._pubkey_negate_": (
+        lambda: keys._pubkey_negate_(_refused("secp256k1_pubkey")),
+        "public key negation failed",
+    ),
+    "keys._pubkey_sort_": (
+        lambda: keys._pubkey_sort_([ffi.NULL, ffi.NULL]),
+        "public key sorting failed",
+    ),
+    "musig.pubnonce_serialize": (
+        lambda: musig.pubnonce_serialize(_refused("secp256k1_musig_pubnonce")),
+        "public nonce serialization failed",
+    ),
+    "musig.aggnonce_serialize": (
+        lambda: musig.aggnonce_serialize(_refused("secp256k1_musig_aggnonce")),
+        "aggregate nonce serialization failed",
+    ),
+    "musig.partial_sig_serialize": (
+        lambda: musig.partial_sig_serialize(_refused("secp256k1_musig_partial_sig")),
+        "partial signature serialization failed",
+    ),
+    "recovery._to_der_": (
+        lambda: recovery._to_der_(ffi.NULL),
+        "signature conversion failed",
+    ),
+    "recovery.serialize_compact": (
+        lambda: recovery.serialize_compact(ffi.NULL),
+        "signature serialization failed",
+    ),
+    "silentpayments.serialize_label": (
+        lambda: silentpayments.serialize_label(
+            _refused("secp256k1_silentpayments_label")
+        ),
+        "label serialization failed",
+    ),
+    "ssa._sign32": (
+        lambda: ssa._sign32(bytes(32), _refused("secp256k1_keypair"), None),
+        "schnorr signing failed",
+    ),
+    "ssa._sign_custom": (
+        lambda: ssa._sign_custom(b"msg", _refused("secp256k1_keypair"), None),
+        "schnorr signing failed",
+    ),
+    "xonly._from_pubkey_": (
+        lambda: xonly._from_pubkey_(_refused("secp256k1_pubkey")),
+        "x-only public key conversion failed",
+    ),
+    "xonly.serialize": (
+        lambda: xonly.serialize(_refused("secp256k1_xonly_pubkey")),
+        "x-only public key serialization failed",
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_REFUSING_WRAPPERS))
+def test_a_refused_object_raises_the_wrappers_own_failure(name: str) -> None:
+    """The wrapper's own message, and libsecp256k1's reason on the thread.
+
+    Each call hands libsecp256k1 a NULL pointer or an object nothing has
+    written to, the two ways a caller-held object can be one it will not
+    read.
+    """
+    call, message = _REFUSING_WRAPPERS[name]
+    with pytest.raises(RuntimeError, match=message):
+        call()
+    with pytest.raises(ValueError, match="illegal argument"):
+        context.check()
+
+
+def test_the_static_context_is_not_randomized() -> None:
+    """`context._randomize` answers its own failure for a context it refuses.
+
+    `secp256k1_context_static` has no signing precomputation to re-blind,
+    and `secp256k1_context_randomize` refuses a context that is not a
+    proper one.
+    """
+    with pytest.raises(RuntimeError, match="context randomization failed"):
+        context._randomize(lib.secp256k1_context_static)

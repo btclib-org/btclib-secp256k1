@@ -209,3 +209,14 @@ def test_pedersen_blind_generator_blind_sum_takes_many_terms() -> None:
         for blind, value in zip(blinding_factors, values, strict=True)
     ]
     assert g.pedersen_verify_tally(commits[:1], commits[1:]) is True
+
+
+def test_pedersen_blind_sum_refuses_a_factor_not_below_n() -> None:
+    """A blinding factor of 32 octets that overflows the order is refused.
+
+    `scalar` takes any 32 octets, so the refusal is libsecp256k1-zkp's,
+    and the RuntimeError its docstring puts at ~2**-127 for a random
+    factor is one a chosen factor reaches every time.
+    """
+    with pytest.raises(RuntimeError, match="blinding factor sum failed"):
+        g.pedersen_blind_sum([b"\xff" * 32], 1)

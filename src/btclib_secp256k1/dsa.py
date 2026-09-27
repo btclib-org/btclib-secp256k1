@@ -1077,7 +1077,8 @@ def serialize_der(signature: CData) -> bytes:
         ctx, sig_bytes, length, signature
     )
     if not serialized:
-        raise RuntimeError("signature serialization failed")
+        msg = "signature serialization failed"
+        raise RuntimeError(msg)
     return ffi.unpack(sig_bytes, length[0])
 
 
@@ -1102,5 +1103,6 @@ def serialize_compact(signature: CData) -> bytes:
         ctx, sig_bytes, signature
     )
     if not serialized:
-        raise RuntimeError("signature serialization failed")
+        msg = "signature serialization failed"
+        raise RuntimeError(msg)
     return ffi.unpack(sig_bytes, _COMPACT_SIZE)

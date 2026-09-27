@@ -129,7 +129,8 @@ def _drop_y(pubkey: CData, parity: CData = ffi.NULL) -> CData:
         ctx, xonly_pubkey, parity, pubkey
     )
     if not converted:
-        raise RuntimeError("x-only public key conversion failed")
+        msg = "x-only public key conversion failed"
+        raise RuntimeError(msg)
     return xonly_pubkey
 
 
@@ -281,7 +282,8 @@ def _from_keypair_(keypair_obj: CData, parity: CData = ffi.NULL) -> CData:
     xonly_pubkey = ffi.new("secp256k1_xonly_pubkey *")
     converted = lib.secp256k1_keypair_xonly_pub(ctx, xonly_pubkey, parity, keypair_obj)
     if not converted:
-        raise RuntimeError("x-only public key conversion failed")
+        msg = "x-only public key conversion failed"
+        raise RuntimeError(msg)
     return xonly_pubkey
 
 
@@ -716,7 +718,8 @@ def serialize(xonly_pubkey: CData) -> bytes:
     output = ffi.new(_XONLY_BUFFER_TYPE)
     serialized = lib.secp256k1_xonly_pubkey_serialize(ctx, output, xonly_pubkey)
     if not serialized:
-        raise RuntimeError("x-only public key serialization failed")
+        msg = "x-only public key serialization failed"
+        raise RuntimeError(msg)
     # the length is the constant the buffer's type was built from, so
     # the two cannot say different numbers, and `ffi.sizeof` of the
     # cdata would be 0.0175 microseconds nothing reads, measured as the
