@@ -242,7 +242,7 @@ repos:
   # check-yaml reads, on a service whose failure mode is a docs build
   # that stops happening
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.38.0
+    rev: 0.38.2
     hooks:
       - id: check-dependabot
       - id: check-readthedocs
@@ -317,7 +317,7 @@ repos:
   # check-changelog runs ahead of markdownlint-cli2 below: that hook's
   # `--fix` repairs the very seam the third check exists to name.
   - repo: https://github.com/btclib-org/.github
-    rev: 93615580cdf8afb1b0a89bf38b707232d39a502a
+    rev: 1c3cb979a34a31b5cfa3b7abfc924e4962a2b963
     hooks:
       - id: check-changelog
         args: [--grandfathered, "24"]
@@ -480,7 +480,7 @@ repos:
   # .markdownlint.jsonc, and prettier is also what parses the last two --
   # check-json cannot read a comment
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.9.8
+    rev: v3.9.9
     hooks:
       - id: prettier
         name: prettier (yaml and jsonc, in place fixes)
@@ -531,7 +531,7 @@ repos:
   # The rule selection (and what each family stands in for) is documented
   # there
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.8
+    rev: v0.16.9
     hooks:
       - id: ruff-check
         name: ruff (lint, in place fixes)
@@ -548,7 +548,7 @@ repos:
   # its fixtures, and the build scripts are read from the source tree by
   # whoever changes them
   - repo: https://github.com/jsh9/pydoclint
-    rev: 0.9.1
+    rev: 0.10.1
     hooks:
       - id: pydoclint
         name: pydoclint (arguments and return values)
@@ -675,7 +675,7 @@ repos:
   # declares, was found by running the workflow. The python packaging of
   # actionlint, rather than the upstream hook, which is a go one
   - repo: https://github.com/Mateusz-Grzelinski/actionlint-py
-    rev: v1.7.12.24
+    rev: v1.7.12.25
     # pre-commit.ci's weekly autoupdate is what moves this rev, so a pull
     # request bumping it is the moment to re-test whether the actionlint
     # it now pins parses GitHub's `$/...` syntax. If it does, drop the
@@ -798,7 +798,7 @@ repos:
   # a dependency added to pyproject.toml from reaching a branch without
   # the lock entry that pins it
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.12.17
+    rev: 0.12.19
     hooks:
       - id: uv-lock
 
