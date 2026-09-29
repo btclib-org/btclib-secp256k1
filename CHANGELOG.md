@@ -22,6 +22,12 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.10 (work in progress, not released yet)
 
+### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`
+
+- **`required-version` reads `>=0.12.19`, not `>=0.12.17`** (issue
+  btclib-org/.github#1438): a floor below the pin admits a `uv` older
+  than the one Dependabot writes `uv.lock` with.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
