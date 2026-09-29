@@ -316,8 +316,11 @@ repos:
         stages: [pre-commit, pre-merge-commit, pre-push, manual]
   # check-changelog runs ahead of markdownlint-cli2 below: that hook's
   # `--fix` repairs the very seam the third check exists to name.
+  # The rev is a commit sha, which detect-secrets' hex-entropy plugin
+  # reports: the pragma survives autoupdate, which keeps a trailing
+  # comment, where a baseline entry would match only the one sha
   - repo: https://github.com/btclib-org/.github
-    rev: 1c3cb979a34a31b5cfa3b7abfc924e4962a2b963
+    rev: 1c3cb979a34a31b5cfa3b7abfc924e4962a2b963 # pragma: allowlist secret
     hooks:
       - id: check-changelog
         args: [--grandfathered, "24"]
