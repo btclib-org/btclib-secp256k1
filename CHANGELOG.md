@@ -28,6 +28,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github#1438): a floor below the pin admits a `uv` older
   than the one Dependabot writes `uv.lock` with.
 
+### `pypi-install.yml` installs the version the release published
+
+- **The install names `btclib-secp256k1==<version>` from the tag `release.yml`
+  passes** (issue btclib-org/.github#1456): a bare name let a lagging
+  index serve the release before it.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
