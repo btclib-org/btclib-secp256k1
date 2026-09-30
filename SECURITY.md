@@ -112,10 +112,11 @@ signed. The PEP 740 attestations on PyPI name `release.yml`, the job
 that uploads there being its own rather than a called workflow's.
 
 The signed statement
-is attached to the release as well, as `<tag>.attestation.jsonl`, so
-`--bundle <tag>.attestation.jsonl` runs the same check reading it from
-disk instead of asking GitHub for it — the form for whoever mirrors the
-releases page rather than trusting it live. The wheels are on PyPI and
+is attached to the release as well, as `<tag>.intoto.jsonl`, or
+as `<tag>.attestation.jsonl` on a release that carries that name instead,
+so `--bundle <that file>` runs the same check reading it from disk instead
+of asking GitHub for it — the form for whoever mirrors the releases page
+rather than trusting it live. The wheels are on PyPI and
 nowhere else, so what verifies them is their PEP 740 attestation there.
 
 A CycloneDX 1.6 bill of materials is attached beside the sdist,
