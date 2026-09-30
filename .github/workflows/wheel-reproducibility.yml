@@ -30,7 +30,9 @@ name: wheel-reproducibility
 # naming no repair-wheel-command of its own. What that hands back is
 # the repair's own file rather than the build's. The repaired job below
 # builds through cibuildwheel twice and diffs the pair, so the file
-# PyPI receives is the one under measurement.
+# PyPI receives is the one under measurement, all but its bill of
+# materials, which check_wheel_reproducibility.py's docstring says why
+# no build here writes.
 #
 # And #540, which is the wheels neither of those two builds. The
 # release uploads what build-dynamic and build-windows in test.yml

@@ -105,6 +105,11 @@ WHEEL_METADATA_FILES = frozenset({"METADATA", "RECORD", "WHEEL"})
 # any other missing member, which is what keeps a build change from
 # dropping the vendored library's notice unnoticed
 WHEEL_LICENSE_FILES = frozenset({"AUTHORS.md", "LICENSE", "secp256k1/COPYING"})
+# the PEP 770 bill of materials scripts/hatch_build.py hands hatchling,
+# under `sboms/`, named by .github/scripts/generate_sbom.py's
+# `write_wheel_sbom`. Required: every wheel this checks is built from a
+# checkout, which is where the hook writes one
+WHEEL_SBOM_FILES = frozenset({"btclib_secp256k1.cdx.json"})
 
 # suffixes a compiled extension module carries, keyed by platform: cffi's
 # static path compiles one of these, named `_btclib_secp256k1` with an
@@ -227,14 +232,20 @@ def verify_wheel(wheel: Path) -> list[str]:
         relative = name[len(dist_info) + 1 :]
         if relative in WHEEL_METADATA_FILES:
             continue
+        if relative.startswith("sboms/") and relative[len("sboms/") :] in (
+            WHEEL_SBOM_FILES
+        ):
+            continue
         if relative.startswith("licenses/") and relative[len("licenses/") :] in (
             WHEEL_LICENSE_FILES
         ):
             continue
         complaints.append(f"{name} is under {dist_info}/ and is not one of its files")
-    required_dist_info = WHEEL_METADATA_FILES | {
-        f"licenses/{name}" for name in WHEEL_LICENSE_FILES
-    }
+    required_dist_info = (
+        WHEEL_METADATA_FILES
+        | {f"licenses/{name}" for name in WHEEL_LICENSE_FILES}
+        | {f"sboms/{name}" for name in WHEEL_SBOM_FILES}
+    )
     complaints += [
         f"{dist_info}/{name} is missing"
         for name in sorted(

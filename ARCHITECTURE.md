@@ -173,7 +173,9 @@ signed in the run that built it. A CycloneDX bill of materials is
 attached beside the sdist, naming each vendored C library at the commit
 its submodule gitlink pins — the one fact the package's own metadata
 cannot state, `Requires-Dist` naming `cffi` and nothing of
-libsecp256k1 — and is itself covered by the sdist's attestation.
+libsecp256k1 — and is itself covered by the sdist's attestation. Each
+wheel the release publishes carries its own, at `.dist-info/sboms/`,
+written by `scripts/hatch_build.py` while it builds the wheel.
 SECURITY.md's *Supported versions* states what each of these documents
 is signed by and gives the commands that verify them; this page states
 only how they come to exist.

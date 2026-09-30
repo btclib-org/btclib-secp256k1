@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Write a CycloneDX bill of materials for a built source distribution.
+"""Write the CycloneDX bill of materials of an sdist, or of a wheel.
 
 A release says where its files came from: PEP 740 attestations on the
 index, and a build provenance attestation over the sdist the GitHub
@@ -11,16 +11,30 @@ it -- one CycloneDX 1.6 document naming the distribution, its licence,
 the sdist and its digest, every dependency the metadata declares, and
 every vendored submodule at the commit it is pinned to.
 
-**The sdist and not the wheels.** The document describes the file the
-`attest` job signs and `github-release` attaches, which is the sdist
-alone: a wheel's only public copy is the one PyPI already attests under
-PEP 740. Section 12 of the organization standard puts the compiled
-wheels outside the property that a released file rebuilds from its tag,
-and RELEASING.md's "Rebuild a release from its tag" is where this
-repository states which of them a stranger can rebuild at all -- so a
-document whose serial number derived from their digests would be a
-document nobody could rebuild either, where the same section asks that
-one can. That recipe rebuilds the sdist, and this document with it.
+**The sdist beside it, and each wheel from inside.** The document `main()`
+writes describes the file the `attest` job signs and `github-release`
+attaches, which is the sdist alone: a wheel's only public copy is the one
+PyPI already attests under PEP 740. Section 12 of the organization
+standard puts the compiled wheels outside the property that a released
+file rebuilds from its tag, and RELEASING.md's "Rebuild a release from
+its tag" is where this repository states which of them a stranger can
+rebuild at all -- so a document whose serial number derived from their
+digests would be a document nobody could rebuild either, where the same
+section asks that one can. That recipe rebuilds the sdist, and this
+document with it.
+
+A wheel carries its own document instead, at `.dist-info/sboms/` as PEP
+770 places it, which `scripts/hatch_build.py` has `write_wheel_sbom`
+below write while the wheel is built. It reads the core metadata and the
+gitlinks as the sdist's does, narrowed to the wheel: the vendored
+libraries this build compiled rather than every submodule the tree
+holds, and how they are linked. It carries no digest, a document inside
+an archive being unable to name the archive's own, and no
+`vulnerabilities`: an entry of `.github/vex.toml` may name a library a
+given wheel did not compile, which `vulnerabilities` refuses rather than
+skips. Nothing in it comes from the clock or from the compiled files, so
+two builds of one commit write it byte for byte alike, whatever
+toolchain compiled the extension beside it.
 
 **The archive's own metadata is the source, not pyproject.toml.** They
 agree on a release and not in a rehearsal, where `version-check` computes
@@ -87,7 +101,7 @@ import subprocess
 import sys
 import tarfile
 import tomllib
-from email import message_from_bytes
+from email import message_from_bytes, message_from_string
 from email.message import Message
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -626,30 +640,31 @@ def vulnerabilities(
     return sorted(result, key=lambda entry: (entry["id"], entry["affects"][0]["ref"]))
 
 
-def build_sbom(sdist: Path, epoch: int, repo_root: Path) -> dict[str, Any]:
-    """Return the CycloneDX document describing one source distribution.
+def distribution_component(
+    metadata: Message, source: str, references: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Return the component the core metadata describes, the document's subject.
 
     Args:
-        sdist: the archive to describe.
-        epoch: `SOURCE_DATE_EPOCH`, the document's own timestamp.
-        repo_root: the checked-out tree the archive was built from.
+        metadata: the parsed core metadata.
+        source: the file the metadata was read from, for the message.
+        references: the externalReferences to put ahead of the project
+            urls the metadata declares.
 
     Returns:
-        The document, as the object `json.dumps` is given below.
+        The CycloneDX component.
 
     Raises:
-        SystemExit: where the archive's metadata declares no name or no
-            version.
+        SystemExit: where the metadata declares no name or no version.
     """
-    metadata = sdist_metadata(sdist)
     name = metadata["Name"]
     version = metadata["Version"]
     if name is None or version is None:
-        msg = f"{sdist.name} declares no Name or no Version"
+        msg = f"{source} declares no Name or no Version"
         raise SystemExit(msg)
     reference = purl(name, version, None)
 
-    references = [distribution_reference(sdist)]
+    references = list(references)
     for entry in metadata.get_all("Project-URL", []):
         label, _, url = entry.partition(", ")
         references.append({
@@ -683,31 +698,51 @@ def build_sbom(sdist: Path, epoch: int, repo_root: Path) -> dict[str, Any]:
         root["properties"] = [
             {"name": "btclib:requires-python", "value": requires_python}
         ]
+    return root
 
+
+def dependency_components(metadata: Message) -> list[dict[str, Any]]:
+    """Return one component per dependency the core metadata declares.
+
+    Args:
+        metadata: the parsed core metadata.
+
+    Returns:
+        The components, in the order the metadata first names each.
+    """
     # grouped by the name the lines normalize to, which is what makes the
-    # references below distinct: the dict keeps each dependency's lines in
-    # the order the metadata declares them
+    # references distinct: the dict keeps each dependency's lines in the
+    # order the metadata declares them
     by_name: dict[str, list[Reading]] = {}
     for requirement in metadata.get_all("Requires-Dist", []):
         declared = reading(requirement)
         by_name.setdefault(declared.name, []).append(declared)
-    components = sorted(
-        [component(readings) for readings in by_name.values()]
-        + submodule_components(repo_root),
-        key=lambda dependency: str(dependency["bom-ref"]),
-    )
-    findings = vulnerabilities(repo_root, [root, *components])
-    serial = f"{reference}:{file_hash(sdist)}"
-    document: dict[str, Any] = {
+    return [component(readings) for readings in by_name.values()]
+
+
+def document(
+    serial: str, root: dict[str, Any], components: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Return the CycloneDX document around its subject and its components.
+
+    Args:
+        serial: what the serial number is derived from.
+        root: the component the document describes.
+        components: every other component, in the order to write them.
+
+    Returns:
+        The document, with no timestamp and no vulnerabilities.
+    """
+    reference = root["bom-ref"]
+    return {
         "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
         "bomFormat": "CycloneDX",
         "specVersion": "1.6",
-        # derived and not random, so that a rebuild of a tag writes this
-        # file byte for byte as the release did
+        # derived and not random, so that a rebuild writes this file byte
+        # for byte as the first build did
         "serialNumber": f"urn:uuid:{uuid5(NAMESPACE_URL, serial)}",
         "version": 1,
         "metadata": {
-            "timestamp": timestamp(epoch),
             "tools": {
                 "components": [
                     {"type": "application", "name": ".github/scripts/generate_sbom.py"}
@@ -721,9 +756,118 @@ def build_sbom(sdist: Path, epoch: int, repo_root: Path) -> dict[str, Any]:
             *({"ref": entry["bom-ref"], "dependsOn": []} for entry in components),
         ],
     }
+
+
+def build_sbom(sdist: Path, epoch: int, repo_root: Path) -> dict[str, Any]:
+    """Return the CycloneDX document describing one source distribution.
+
+    Args:
+        sdist: the archive to describe.
+        epoch: `SOURCE_DATE_EPOCH`, the document's own timestamp.
+        repo_root: the checked-out tree the archive was built from.
+
+    Returns:
+        The document, as the object `json.dumps` is given below.
+    """
+    metadata = sdist_metadata(sdist)
+    root = distribution_component(metadata, sdist.name, [distribution_reference(sdist)])
+    components = sorted(
+        dependency_components(metadata) + submodule_components(repo_root),
+        key=lambda dependency: str(dependency["bom-ref"]),
+    )
+    findings = vulnerabilities(repo_root, [root, *components])
+    result = document(f"{root['bom-ref']}:{file_hash(sdist)}", root, components)
+    result["metadata"]["timestamp"] = timestamp(epoch)
     if findings:
-        document["vulnerabilities"] = findings
-    return document
+        result["vulnerabilities"] = findings
+    return result
+
+
+def build_wheel_sbom(
+    metadata: Message, repo_root: Path, compiled: list[str], linkage: str
+) -> dict[str, Any]:
+    """Return the CycloneDX document a wheel carries about itself.
+
+    The subject and its dependencies are read as `build_sbom` reads them,
+    and of the submodules only those `compiled` names: a wheel carries
+    what its build compiled, and a vendored library it did not compile is
+    not in it. The serial number is derived from the document's own
+    content, the archive holding the document having no digest yet, and
+    there is no timestamp and no `vulnerabilities` key.
+
+    Args:
+        metadata: the core metadata the wheel carries.
+        repo_root: the checked-out tree the wheel is built from.
+        compiled: the path of each submodule the build compiled.
+        linkage: how the build links them, `static` or `dynamic`.
+
+    Returns:
+        The document, as the object `json.dumps` is given below.
+
+    Raises:
+        SystemExit: where a compiled path is no submodule `.gitmodules`
+            declares.
+    """
+    root = distribution_component(metadata, "the wheel's METADATA", [])
+    root.setdefault("properties", []).append({
+        "name": "btclib:linkage",
+        "value": linkage,
+    })
+    vendored = {
+        entry["properties"][0]["value"]: entry
+        for entry in submodule_components(repo_root)
+    }
+    unknown = sorted(set(compiled) - set(vendored))
+    if unknown:
+        msg = f"{unknown} compiled, and not declared in .gitmodules"
+        raise SystemExit(msg)
+    components = sorted(
+        dependency_components(metadata) + [vendored[path] for path in compiled],
+        key=lambda dependency: str(dependency["bom-ref"]),
+    )
+    content = json.dumps([root, components], sort_keys=True)
+    digest = hashlib.sha256(content.encode()).hexdigest()
+    return document(f"{root['bom-ref']}:{digest}", root, components)
+
+
+def write_document(sbom: dict[str, Any], output: Path) -> None:
+    """Write a document as every one of them is written.
+
+    Args:
+        sbom: the document.
+        output: the file to write, its directory created if missing.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(sbom, indent=2, sort_keys=True)
+    output.write_text(f"{text}\n", encoding="utf-8")
+
+
+def write_wheel_sbom(
+    metadata: str, repo_root: Path, compiled: list[str], linkage: str, directory: Path
+) -> Path:
+    """Write the document a wheel carries, for the build hook to hand over.
+
+    Named `<distribution>.cdx.json` after the wheel's own distribution
+    field, which is what `.github/scripts/verify_wheel_contents.py` looks
+    for under `sboms/`.
+
+    Args:
+        metadata: the text of the METADATA file the wheel carries.
+        repo_root: the checked-out tree the wheel is built from.
+        compiled: the path of each submodule the build compiled.
+        linkage: how the build links them, `static` or `dynamic`.
+        directory: where to write the file.
+
+    Returns:
+        The file written.
+    """
+    parsed = message_from_string(metadata)
+    sbom = build_wheel_sbom(parsed, repo_root, compiled, linkage)
+    # the wheel filename's escaping of the distribution name, PEP 427's
+    distribution = canonical_name(sbom["metadata"]["component"]["name"])
+    output = directory / f"{distribution.replace('-', '_')}.cdx.json"
+    write_document(sbom, output)
+    return output
 
 
 def one_of(directory: Path, pattern: str) -> Path:
@@ -786,9 +930,7 @@ def main(argv: list[str]) -> int:
     # rehearsal, where the version carries a `.dev<run*100+attempt>` the
     # workflow patched in, it does not
     output = Path(argv[2]) / f"{sdist.name.removesuffix('.tar.gz')}.cdx.json"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(sbom, indent=2, sort_keys=True)
-    output.write_text(f"{text}\n", encoding="utf-8")
+    write_document(sbom, output)
     print(f"wrote {output}")
     return 0
 

@@ -104,6 +104,11 @@ points that build each twice and compare, `_DYNAMIC_ENV` and
 `cibuildwheel`'s, so neither is `--repaired` with a variable moved: the
 frontend, the repair and the platform tag are all the job's own.
 
+One member of a released wheel is outside every comparison here, its
+bill of materials under `.dist-info/sboms/`: `scripts/hatch_build.py`
+writes it only in a tree with a `.git`, and `copy_source_tree`'s
+extracts have none, so no build here carries it (#1094).
+
 Run it from a checkout with the submodule initialized, and with the
 commit under test the current `HEAD`:
 

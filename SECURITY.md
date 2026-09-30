@@ -131,7 +131,11 @@ and says nothing of libsecp256k1 — so a reader asking which
 libsecp256k1 a release carries has the answer in a signed document
 rather than in prose. One attestation covers the sdist and the document,
 that command run over the `.cdx.json` verifying it the same way; the
-bundle is that attestation and is not among its subjects.
+bundle is that attestation and is not among its subjects. Every wheel
+from v0.8.0.10 on carries its own document, at
+`.dist-info/sboms/btclib_secp256k1.cdx.json`, naming the vendored
+libraries that wheel compiled and how it links them, and its PEP 740
+attestation on PyPI covers it with the rest of the wheel.
 
 ## Limitations of the binding layer
 

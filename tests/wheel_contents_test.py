@@ -54,6 +54,7 @@ _DIST_INFO_MEMBERS = (
     f"{_DIST_INFO}/licenses/AUTHORS.md",
     f"{_DIST_INFO}/licenses/LICENSE",
     f"{_DIST_INFO}/licenses/secp256k1/COPYING",
+    f"{_DIST_INFO}/sboms/btclib_secp256k1.cdx.json",
 )
 
 
@@ -198,6 +199,33 @@ def test_a_missing_vendored_notice_is_reported(
         omit=(notice,),
     )
     assert script.verify_wheel(wheel) == [f"{wheel.name}: {notice} is missing"]
+
+
+def test_a_missing_bill_of_materials_is_reported(
+    script: ModuleType, tmp_path: Path
+) -> None:
+    """A wheel without its PEP 770 document says so (#1093)."""
+    sbom = f"{_DIST_INFO}/sboms/btclib_secp256k1.cdx.json"
+    wheel = write_wheel(
+        tmp_path / f"btclib_secp256k1-{_VERSION}-cp314-cp314-macosx_11_0_arm64.whl",
+        omit=(sbom,),
+    )
+    assert script.verify_wheel(wheel) == [f"{wheel.name}: {sbom} is missing"]
+
+
+def test_a_second_bill_of_materials_is_refused(
+    script: ModuleType, tmp_path: Path
+) -> None:
+    """A document under `sboms/` that the build does not write is refused."""
+    stray = f"{_DIST_INFO}/sboms/another.spdx.json"
+    wheel = write_wheel(
+        tmp_path / f"btclib_secp256k1-{_VERSION}-cp314-cp314-macosx_11_0_arm64.whl",
+        extra=(stray,),
+    )
+    complaints = script.verify_wheel(wheel)
+    assert complaints == [
+        f"{wheel.name}: {stray} is under {_DIST_INFO}/ and is not one of its files"
+    ]
 
 
 def test_a_missing_package_file_is_reported(script: ModuleType, tmp_path: Path) -> None:
