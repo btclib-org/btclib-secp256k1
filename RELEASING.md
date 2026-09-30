@@ -637,13 +637,13 @@ Then:
      --name sbom --dir sbom &&
    gh run download "${run:?}" --repo "${repo:?}" \
      --name attestation --dir attestation &&
-   cp attestation/attestation.jsonl "${tag:?}.attestation.jsonl" &&
+   cp attestation/attestation.jsonl "${tag:?}.intoto.jsonl" &&
    awk -v tag="${tag:?}" '
      $0 ~ "^## " tag "( |$)" {found=1; next}
      /^## / && found {exit}
      found {print}
    ' RELEASE_NOTES.md > notes.md &&
-   gh release create "${tag:?}" dist/* sbom/* "${tag:?}.attestation.jsonl" \
+   gh release create "${tag:?}" dist/* sbom/* "${tag:?}.intoto.jsonl" \
      --repo "${repo:?}" --title "${tag:?}" \
      --notes-file notes.md --verify-tag
    ```
@@ -654,7 +654,7 @@ Then:
    hash has to match the file `pypi.org/pypi/<project>/<version>/json`
    already lists, since nothing rebuilt it. Its notes are the tag's
    section of `RELEASE_NOTES.md`, and the sdist is attached, with the
-   bill of materials and `<tag>.attestation.jsonl` beside it. The three
+   bill of materials and `<tag>.intoto.jsonl` beside it. The three
    artifacts are all downloaded above because a release missing the
    `sbom` one leaves the step below nothing to read and the attestation
    a subject short. A run that warns
@@ -688,7 +688,7 @@ Then:
    `publish-pypi` is `release.yml`'s own job, which is why the PEP 740
    provenance the rehearsal below checks names `release.yml` instead.
 
-   Adding `--bundle "$dir/$tag.attestation.jsonl"`
+   Adding `--bundle "$dir/$tag.intoto.jsonl"`
    asks the same question of the statement downloaded beside the file
    rather than of the attestations API, which is the form for whoever
    mirrors the page instead of trusting it live.

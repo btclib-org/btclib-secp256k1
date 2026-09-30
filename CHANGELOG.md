@@ -52,6 +52,12 @@ release-notes length in the first place, and are still in
   `install_published_release.py`, which retries only while the installer says
   the pin is not resolvable** (issue btclib-org/.github#1458).
 
+### The release's attestation bundle is attached as `*.intoto.jsonl`
+
+- **`RELEASING.md`'s commands and `SECURITY.md`'s verification name the bundle
+  `<tag>.intoto.jsonl`** (issue btclib-org/.github#1468):
+  `reusable-github-release.yml` attaches it under that name.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

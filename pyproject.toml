@@ -572,6 +572,12 @@ ignore_missing_imports = true
 # it runs with --write-changes, so a "misspelling" it read there would be
 # rewritten into a different input
 skip = "fuzz/corpus/*"
+# `intoto` is in-toto's own spelling, in the bundle's name
+# `<tag>.intoto.jsonl`. This table has no `ignore-regex`, so the entry covers
+# every file the hook reads -- RELEASING.md's fenced commands, SECURITY.md,
+# CHANGELOG.md -- and the dictionary offers "into" for it, which
+# --write-changes applies
+ignore-words-list = "intoto"
 
 [tool.typos.files]
 # the vendored trees, as for mypy above and ruff below. Not needed for the
@@ -590,6 +596,9 @@ delocate = "delocate"
 # comment below it, and again in CHANGELOG.md's prose: a real rule code,
 # not a typo of "copy" or "cpu"
 cpy = "cpy"
+# `intoto` in the bundle's name `<tag>.intoto.jsonl`, as for codespell above:
+# typos' dictionary offers "into" for it too
+intoto = "intoto"
 
 [tool.typos.default]
 # a quoted run of hexadecimal digits is a vector, not a word. The rule has
