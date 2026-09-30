@@ -100,8 +100,11 @@ FORBIDDEN_NAMES = ("sitecustomize.py", "usercustomize.py")
 # `top_level.txt`: that is a setuptools file, and this build backend is
 # hatchling
 WHEEL_METADATA_FILES = frozenset({"METADATA", "RECORD", "WHEEL"})
-# `license-files` in pyproject.toml, copied into `licenses/` verbatim
-WHEEL_LICENSE_FILES = frozenset({"AUTHORS.md", "LICENSE"})
+# `license-files` in pyproject.toml, copied into `licenses/` verbatim and
+# at the path each has in the checkout; a missing one is a complaint like
+# any other missing member, which is what keeps a build change from
+# dropping the vendored library's notice unnoticed
+WHEEL_LICENSE_FILES = frozenset({"AUTHORS.md", "LICENSE", "secp256k1/COPYING"})
 
 # suffixes a compiled extension module carries, keyed by platform: cffi's
 # static path compiles one of these, named `_btclib_secp256k1` with an

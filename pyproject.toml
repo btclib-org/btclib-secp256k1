@@ -11,7 +11,21 @@ license = "MIT"
 # LICENSE already, and COPYRIGHT is the source of a source-file header
 # rather than a statement to a consumer (btclib-org/.github#135). The
 # sdist target below keeps it out of that archive for the same reason
-license-files = ["LICENSE", "AUTHORS.md"]
+#
+# secp256k1/COPYING is libsecp256k1's MIT notice, owed by every wheel
+# that carries its compiled code, in the extension or in the shared
+# library beside it; hatchling keeps its path, so it lands under
+# dist-info/licenses/secp256k1/. secp256k1-zkp's notice is not listed:
+# no published wheel compiles that library, only a build under
+# BTCLIB_LIBSECP256K1_ZKP=true does, and a wheel from such a build does
+# not carry secp256k1-zkp's notice (btclib-org/btclib-secp256k1#1066).
+#
+# hatchling reads each entry as a pattern and drops one that matches
+# nothing without an error, so a build from a checkout whose submodules
+# are empty omits the notice from the metadata it writes;
+# `WHEEL_LICENSE_FILES` in .github/scripts/verify_wheel_contents.py is
+# what fails a wheel without it
+license-files = ["LICENSE", "AUTHORS.md", "secp256k1/COPYING"]
 requires-python = ">=3.11"
 # the organization and not a list of people, which is a sibling
 # repository's convention and the only one that stays true: a name in

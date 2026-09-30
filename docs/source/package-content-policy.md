@@ -58,6 +58,9 @@ and, under `licenses/`, `WHEEL_LICENSE_FILES`:
 - `AUTHORS.md`, `LICENSE` — `project.license-files` in `pyproject.toml`,
   copied into `licenses/` verbatim. Not `COPYRIGHT`: that is a
   repository file, and `pyproject.toml` says why beside the setting
+- `secp256k1/COPYING` — libsecp256k1's MIT notice, by the same setting,
+  under its own directory inside `licenses/`. secp256k1-zkp's notice is
+  not listed, and `pyproject.toml` says why beside the setting
 
 Under `btclib_secp256k1/` — exactly the files this checkout's own
 `src/btclib_secp256k1/` directory has, source and `py.typed` alike. The
