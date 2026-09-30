@@ -82,6 +82,16 @@ release-notes length in the first place, and are still in
   vulnerabilities its release is not affected by, into the document's
   `vulnerabilities`; no list, no key (issue btclib-org/.github#1469).
 
+### `CLAUDE.md` names `check-wheel-contents` as run by CI alone
+
+- **Its non-obvious facts say no local gate runs `check-wheel-contents`,
+  and how to run it by hand on a wheel built outside the worktree.**
+
+### `CLAUDE.md` names the decimal comma in `sysctl -n vm.loadavg`
+
+- **Its non-obvious facts say the load average prints a decimal comma on
+  the maintainer's Mac, which a load wait converts before comparing.**
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
