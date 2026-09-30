@@ -178,9 +178,9 @@ jobs:
             kind: dynamic
 
     steps:
-      # no checkout on purpose: nothing from this repository takes part,
-      # which is also what guarantees that the import below resolves to
-      # what pip installed and not to a source tree
+      # no checkout of this repository on purpose: nothing from it takes
+      # part, which is also what guarantees that the import below resolves
+      # to what pip installed and not to a source tree
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -191,12 +191,35 @@ jobs:
           # final
           allow-prereleases: true
 
+      # the install runs through btclib-org/.github's
+      # install_published_release.py, which runs it again after a pause
+      # while the installer says the pinned requirement is not resolvable
+      # (btclib-org/.github#1458): the wait above asks the index from one
+      # runner and each cell reads it through an edge of its own, which can
+      # still hold the page from before the upload. This sparse checkout of
+      # the organization's scripts is the one checkout of this job, and its
+      # `path:` keeps the root files that cone mode adds with the scripts
+      # out of the directory the cell runs in; no source of the tree under
+      # test lands
+      - name: Check out the install script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: btclib-org/.github
+          ref: main
+          path: btclib-org-github
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
       # --only-binary on every cell but the sdist one: see the header. In
       # both directions only this package is constrained, never its
-      # dependencies. An environment variable and a shell conditional
-      # rather than a ${{ }} expression inside run, as everywhere else in
-      # these workflows: matrix values are not attacker-controlled, but
-      # the pattern is worth keeping uniform
+      # dependencies. `--no-cache-dir` stays here and not in the script:
+      # the index sends `Cache-Control: max-age` on its pages, and neither
+      # pip nor uv asks again for a page it holds for that long, so a retry
+      # with the cache on would read back the page it failed on. An
+      # environment variable and a shell conditional rather than a ${{ }}
+      # expression inside run, as everywhere else in these workflows:
+      # matrix values are not attacker-controlled, but the pattern is worth
+      # keeping uniform
       - name: Install the published package
         shell: bash
         env:
@@ -208,13 +231,11 @@ jobs:
           TAG: ${{ inputs.version }}
         run: |
           python -m pip install -U pip
-          requirement=btclib-secp256k1
-          if [ -n "$TAG" ]; then requirement="btclib-secp256k1==${TAG#v}"; fi
-          if [ "$NO_BINARY" = "true" ]; then
-            python -m pip install --verbose --no-binary btclib-secp256k1 "$requirement"
-          else
-            python -m pip install --verbose --only-binary btclib-secp256k1 "$requirement"
-          fi
+          package=btclib-secp256k1
+          if [ "$NO_BINARY" = "true" ]; then binary=--no-binary; else binary=--only-binary; fi
+          python btclib-org-github/.github/scripts/install_published_release.py \
+            "$package" "$TAG" -- \
+            python -m pip install --no-cache-dir --verbose "$binary" "$package"
 
       # asserted rather than printed: which kind of artifact pip selected
       # is the property this matrix samples. Cells expect static unless
