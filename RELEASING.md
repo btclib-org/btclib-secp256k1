@@ -929,7 +929,7 @@ uv run --locked --only-group build python -m build -s &&
 uv run --no-project --python "$python" \
   .github/scripts/normalize_sdist.py dist/ &&
 uv run --no-project --python "$python" \
-  .github/scripts/generate_sbom.py dist/ sbom/ &&
+  .github/scripts/generate_sbom.py --sdist-only dist/ sbom/ &&
 repo=btclib-org/btclib-secp256k1 &&
 signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&
 gh attestation verify "dist/btclib_secp256k1-${tag#v}.tar.gz" \
@@ -958,6 +958,9 @@ sdist's digest moves this document's serial number with it, so that
 command fails wherever the first one does. A tag whose release carries
 no such document has nothing for it to check, and it is the line to
 leave out there.
+
+Through v0.8.0.9, a tag's `generate_sbom.py` refuses `--sdist-only` and
+describes the sdist alone anyway: drop the flag for those tags.
 
 `signer` is the workflow that signed the tag's attestation, which is
 `reusable-attest.yml` from v0.8.0.7 on, and for those tags

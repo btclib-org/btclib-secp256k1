@@ -109,6 +109,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github's `reusable-audit.yml`, and both publish jobs wait for
   its success (issue btclib-org/.github#1466).
 
+### `generate_sbom.py` is btclib-org/.github's
+
+- **`.github/scripts/generate_sbom.py` is btclib-org/.github's file, byte for
+  byte**, kept because the build hook loads it and an offline build cannot
+  fetch it (issue btclib-org/.github#1478).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

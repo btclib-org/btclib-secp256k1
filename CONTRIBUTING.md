@@ -830,7 +830,7 @@ command at all, for the reason below, and nothing requires its result.
   uv run --no-project --python 3.15 \
       .github/scripts/normalize_sdist.py dist/
   uv run --no-project --python 3.15 \
-      .github/scripts/generate_sbom.py dist/ sbom/
+      .github/scripts/generate_sbom.py --sdist-only dist/ sbom/
   python -m pip install --verbose dist/*.tar.gz
   ```
 
