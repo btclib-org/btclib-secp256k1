@@ -324,6 +324,21 @@ Do not use Fable unless explicitly instructed.
   breaks this one. The fix is not rerunning the hook; it is not leaving
   such a directory inside the worktree in the first place, or building
   it somewhere else entirely
+- **no local gate runs `check-wheel-contents`; only CI does**, in the
+  `Check wheel contents` step of `test.yml`'s `check-dist` job and in
+  `deps-latest.yml`. Neither `.pre-commit-config.yaml` nor `tests/`
+  invokes it, so a change to what a wheel carries -- `license-files`,
+  `scripts/hatch_build.py` -- meets its checks for the first time on the
+  runner. Its W002, duplicate files, reads every member of the wheel,
+  `.dist-info/licenses/` included, and `secp256k1/COPYING` and
+  `secp256k1-zkp/COPYING` are byte-identical, so a `license-files`
+  listing both is refused. Checking by hand is a wheel built with `uv
+  build --wheel --out-dir` pointed outside the worktree, for the reason
+  the bullet above gives, then `uv run --locked --only-group check
+  check-wheel-contents <wheel>` run from the worktree's root: the tool
+  finds `[tool.check-wheel-contents]` by searching the working directory
+  and its parents, and run from elsewhere it reports the codes that
+  table ignores
 - **the merge API queues behind the required checks even for a pull
   request that touches no workflow file.** `gh api -X PUT .../merge` on
   a pull request touching no workflow file -- `pyproject.toml`, source
@@ -420,6 +435,14 @@ Do not use Fable unless explicitly instructed.
   on its own. That comment says which form a raise an input can reach
   takes, and `tests/coverage_exclusion_test.py`'s docstring says where
   that is checked and where it is not
+- **`sysctl -n vm.loadavg` prints a decimal comma on the maintainer's
+  Mac**, whose locale is Italian: `{ 5,29 9,43 8,02 }`. A load wait
+  that compares the value as printed does not compare the load: zsh's
+  `(( l < 20 ))` reads the comma as its comma operator and compares only
+  the digits after it, passing at `45,10` and holding at `5,29`, and
+  `[ "$l" -lt 20 ]` refuses the value with exit 2. `LC_ALL=C sysctl -n
+  vm.loadavg` prints a decimal point, and so does piping the value
+  through `tr , .`
 
 ## Conventions to match
 
