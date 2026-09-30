@@ -92,6 +92,11 @@ release-notes length in the first place, and are still in
 - **Its non-obvious facts say the load average prints a decimal comma on
   the maintainer's Mac, which a load wait converts before comparing.**
 
+### `SECURITY.md` promises a response time
+
+- **`SECURITY.md` says a report is acknowledged within 7 days**, and a
+  fix or a published advisory within 90 (issue btclib-org/.github#1460).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
