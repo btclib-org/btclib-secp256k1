@@ -70,6 +70,12 @@ release-notes length in the first place, and are still in
   `verify_wheel_contents.py` fails a wheel without it; secp256k1-zkp's notice
   is not listed, no published wheel compiling that library.
 
+### `wheel-reproducibility.yml`'s aggregate runs `check_run_jobs.py`
+
+- **The aggregate's step runs `check_run_jobs.py`, served from
+  `btclib-org/.github`,** which reads the jobs listing again up to a
+  deadline (issue btclib-org/.github#1470).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

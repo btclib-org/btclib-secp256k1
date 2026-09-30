@@ -831,6 +831,25 @@ jobs:
         run: |
           echo "::error::this pull request is a draft"
           exit 1
+      # the script is btclib-org/.github's, served from there at main under a
+      # `path:` of its own and sparse on .github/scripts, so no copy of it is
+      # kept in this tree: the wait and the verdict are tested where it lives
+      # (section 10 of that repository's README.md)
+      - name: Check out the check script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: btclib-org/.github
+          ref: main
+          path: btclib-org-github
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      # a row of a `needs` job that the listing still shows unfinished is
+      # accepted where that job's own result is success or skipped: `needs`
+      # does not let this job start before every one of them concludes, so
+      # such a row is the listing lagging and not the run
+      # (btclib-org/.github#1395). A row is that job's where its name equals
+      # one NEEDS_ROWS gives the job's id, and the id joins it to
+      # NEEDS_RESULTS; a job with any other result accepts no row
       - name: Fail unless every other job of this run succeeded or was skipped
         env:
           GH_TOKEN: ${{ github.token }}
@@ -877,111 +896,6 @@ jobs:
             dynamic Build the dynamic wheel twice on macos-latest and diff them
             cross-windows Cross-compile the Windows wheel twice and diff them
             across-images Compare the wheels two images of one platform built
-        run: |
-          set -euo pipefail
-          # a row of a `needs` job that the listing still shows unfinished
-          # is accepted where that job's own result is success or skipped:
-          # `needs` does not let this job start before every one of them
-          # concludes, so such a row is the listing lagging and not the run
-          # (btclib-org/.github#1395). A row is that job's where its name
-          # equals one NEEDS_ROWS gives the job's id, and the id joins it to
-          # NEEDS_RESULTS; a job with any other result accepts no row
-          own='BEGIN {
-            n = split(ENVIRON["NEEDS_RESULTS"], line, "\n")
-            for (i = 1; i <= n; i++) {
-              split(line[i], field, " ")
-              result[field[1]] = field[2]
-            }
-            n = split(ENVIRON["NEEDS_ROWS"], line, "\n")
-            for (i = 1; i <= n; i++) {
-              id = line[i]
-              sub(/ .*/, "", id)
-              row = line[i]
-              sub(/^[^ ]+ /, "", row)
-              if (result[id] == "success" || result[id] == "skipped")
-                accepted[row] = id
-            }
-          }'
-          # such a row is read again, up to three times ten seconds apart,
-          # before it is accepted: a job's result is not the listing's
-          # equal, `needs` having missed matrix cells that died in *Set up
-          # job* (btclib-org/btclib#1001), and a row that concludes between
-          # reads is judged below on its conclusion. Only a row this step
-          # would tolerate is waited for, which is a row whose job's result
-          # is success or skipped; a listing with no such row is read once
-          # (btclib-org/.github#1416)
-          reads=0
-          while :; do
-            # `.status` beside the conclusion so that an unfinished job
-            # says which kind it is: queued and running are one word to
-            # `.conclusion` and two facts to a reader of the log
-            jobs=$(gh api --paginate \
-              "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
-              --jq '.jobs[] | "\(.conclusion // "unfinished")\t\(.status)\t\(.name)"')
-            lagging=$(printf '%s\n' "${jobs}" | awk -F'\t' "${own}"'
-              $1 == "unfinished" && ($3 in accepted) {
-                print accepted[$3] " (" result[accepted[$3]] "): " $3
-              }')
-            if [ -z "${lagging}" ] || [ "${reads}" -eq 3 ]; then
-              break
-            fi
-            reads=$((reads + 1))
-            echo "listed unfinished, read again in 10 s (${reads} of 3):"
-            printf '%s\n' "${lagging}"
-            sleep 10
-          done
-          # printed before it is judged: the job whose purpose is to be
-          # trusted is the one that has to be able to say what it saw
-          printf '%s\n' "${jobs}"
-          # awk and not grep: a tab in a grep pattern is one
-          # implementation's extension and a literal "t" in another's,
-          # where awk's field separator is POSIX
-          bad=$(printf '%s\n' "${jobs}" |
-            awk -F'\t' '$1 != "success" && $1 != "skipped" && $1 != "unfinished"')
-          if [ -n "${lagging}" ]; then
-            echo "still listed unfinished, accepted as a needs job's own:"
-            printf '%s\n' "${lagging}"
-          fi
-          counted=$(printf '%s\n' "${jobs}" | awk -F'\t' "${own}"'
-            $1 == "unfinished" && !($3 in accepted)')
-          unfinished=$(printf '%s' "${counted}" | awk 'END { print NR }')
-          # each annotation names the rows it is about, an annotation
-          # being what the checks page shows without the log being
-          # opened. `%0A` is a newline to one, and the tab goes with it:
-          # the columns line up in a log and not in this
-          annotate() {
-            printf '::error::%s' "$1"
-            printf '%s' "$2" | tr '\t' ' ' | awk '{ printf "%%0A%s", $0 }'
-            printf '\n'
-          }
-          verdict=0
-          # each job's own result is judged beside the listing and not only
-          # through it: a failure `needs` reports with no row of that job's
-          # listed as failed, or with its rows missing, is still a failure
-          # (btclib-org/.github#1424). An empty result is refused with the
-          # rest. This turns a pass into a fail and never the reverse, so
-          # the judgements of the listing below lose nothing
-          refused=$(printf '%s\n' "${NEEDS_RESULTS}" |
-            awk '$2 != "success" && $2 != "skipped"')
-          if [ -n "${refused}" ]; then
-            annotate "these needs jobs' own results are neither success nor skipped:" \
-              "${refused}"
-            verdict=1
-          fi
-          if [ -n "${bad}" ]; then
-            annotate "these jobs of the run did not succeed:" "${bad}"
-            verdict=1
-          fi
-          # beside the accepted rows, exactly one job of the run may be
-          # unfinished, and it is this one. Counted rather than excluded by
-          # name, a name being what goes stale when this job is renamed --
-          # and none unfinished at all is refused too, a listing with no
-          # job running not being a listing of the run this step is
-          # running in
-          if [ "${unfinished}" -ne 1 ]; then
-            annotate \
-              "this check should be the run's one unfinished job; ${unfinished} are" \
-              "${counted}"
-            verdict=1
-          fi
-          exit "${verdict}"
+        run: >-
+          python3 btclib-org-github/.github/scripts/check_run_jobs.py
+          --results-env NEEDS_RESULTS --rows-env NEEDS_ROWS
