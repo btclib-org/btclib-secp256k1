@@ -598,3 +598,208 @@ def test_the_main_guard_runs_the_script_as___main__(
         )
 
     assert excinfo.value.code == 1
+
+
+def write_vex(root: Path, *entries: str) -> None:
+    """Write the tree's not-affected list.
+
+    Args:
+        root: the repository root to write `.github/vex.toml` under.
+        entries: the body of one `[[not_affected]]` table each.
+    """
+    (root / ".github").mkdir(exist_ok=True)
+    text = "".join(f"[[not_affected]]\n{entry}\n" for entry in entries)
+    (root / ".github" / "vex.toml").write_text(text, encoding="utf-8")
+
+
+_FINDING = """id = "GHSA-xxxx-xxxx-xxxx"
+source = "GitHub Advisories"
+component = "CFFI"
+justification = "code_not_reachable"
+detail = "The vulnerable parser is never called."
+"""
+
+
+def test_a_tree_with_no_list_states_no_vulnerabilities(tmp_path: Path) -> None:
+    """No file leaves the key out, not an empty array.
+
+    Args:
+        tmp_path: pytest's own.
+    """
+    sdist = write_sdist(tmp_path)
+    root = repository(tmp_path, gitmodules=None)
+    assert "vulnerabilities" not in sbom.build_sbom(sdist, _EPOCH, root)
+
+
+def test_a_finding_reaches_the_document_against_its_component(
+    tmp_path: Path,
+) -> None:
+    """The finding names the dependency by its `bom-ref` and says why.
+
+    Args:
+        tmp_path: pytest's own.
+    """
+    sdist = write_sdist(tmp_path)
+    write_vex(tmp_path, _FINDING)
+    document = sbom.build_sbom(sdist, _EPOCH, repository(tmp_path, gitmodules=None))
+
+    assert document["vulnerabilities"] == [
+        {
+            "id": "GHSA-xxxx-xxxx-xxxx",
+            "source": {"name": "GitHub Advisories"},
+            "affects": [{"ref": "pkg:pypi/cffi"}],
+            "analysis": {
+                "state": "not_affected",
+                "justification": "code_not_reachable",
+                "detail": "The vulnerable parser is never called.",
+            },
+        }
+    ]
+
+
+def test_a_finding_may_name_the_distribution_itself(tmp_path: Path) -> None:
+    """The root component is a component too, its own code being a subject.
+
+    Args:
+        tmp_path: pytest's own.
+    """
+    sdist = write_sdist(tmp_path)
+    root = repository(tmp_path, gitmodules=None)
+    component = sbom.build_sbom(sdist, _EPOCH, root)["metadata"]["component"]
+    write_vex(tmp_path, _FINDING.replace("CFFI", component["name"]))
+
+    (finding,) = sbom.build_sbom(sdist, _EPOCH, root)["vulnerabilities"]
+    assert finding["affects"] == [{"ref": component["bom-ref"]}]
+
+
+def test_a_finding_for_a_component_the_document_lacks_is_refused(
+    tmp_path: Path,
+) -> None:
+    """A finding that answers nothing is an error, not a silent omission.
+
+    Args:
+        tmp_path: pytest's own.
+    """
+    sdist = write_sdist(tmp_path)
+    write_vex(tmp_path, _FINDING.replace("CFFI", "some_dep"))
+    with pytest.raises(SystemExit, match="some-dep, which this document"):
+        sbom.build_sbom(sdist, _EPOCH, repository(tmp_path, gitmodules=None))
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        _FINDING.replace("code_not_reachable", "not_reachable"),
+        _FINDING.replace('detail = "The vulnerable parser is never called."\n', ""),
+        _FINDING + 'severity = "low"\n',
+        _FINDING.replace("The vulnerable parser is never called.", ""),
+    ],
+    ids=["justification", "missing key", "extra key", "empty value"],
+)
+def test_a_malformed_finding_is_refused(tmp_path: Path, entry: str) -> None:
+    """A finding is stated whole or not at all.
+
+    Args:
+        tmp_path: pytest's own.
+        entry: the body of the one `[[not_affected]]` table.
+    """
+    sdist = write_sdist(tmp_path)
+    write_vex(tmp_path, entry)
+    with pytest.raises(SystemExit):
+        sbom.build_sbom(sdist, _EPOCH, repository(tmp_path, gitmodules=None))
+
+
+def test_a_finding_may_name_a_vendored_submodule(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A submodule is a component under its upstream repository's name.
+
+    Args:
+        tmp_path: pytest's own.
+        monkeypatch: the fixture `git` is stubbed through.
+    """
+    sdist = write_sdist(tmp_path)
+    stub_git(
+        monkeypatch,
+        {
+            "secp256k1": f"160000 commit {_PINNED}\tsecp256k1\n",
+            "secp256k1-zkp": f"160000 commit {_ZKP_PINNED}\tsecp256k1-zkp\n",
+        },
+    )
+    write_vex(tmp_path, _FINDING.replace("CFFI", "secp256k1-zkp"))
+    document = sbom.build_sbom(sdist, _EPOCH, repository(tmp_path))
+
+    (finding,) = document["vulnerabilities"]
+    assert finding["affects"] == [
+        {"ref": f"pkg:github/fametrano/secp256k1-zkp@{_ZKP_PINNED}"}
+    ]
+
+
+def test_a_name_the_document_carries_twice_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dependency and a submodule spelling one name make an entry ambiguous.
+
+    Args:
+        tmp_path: pytest's own.
+        monkeypatch: the fixture `git` is stubbed through.
+    """
+    sdist = write_sdist(tmp_path)
+    stub_git(monkeypatch, {"cffi": f"160000 commit {_PINNED}\tcffi\n"})
+    gitmodules = (
+        '[submodule "cffi"]\n\tpath = cffi\n\turl = https://github.com/o/cffi.git\n'
+    )
+    write_vex(tmp_path, _FINDING)
+    root = repository(tmp_path, gitmodules=gitmodules)
+    with pytest.raises(SystemExit, match="cffi, which the document carries"):
+        sbom.build_sbom(sdist, _EPOCH, root)
+
+
+@pytest.mark.parametrize(
+    "text, message",
+    [
+        ("", "holds no `\\[\\[not_affected\\]\\]` entry"),
+        ("not_affected = [1]\n", "must be a list of"),
+        ("[not_affected]\nid = 'a'\n", "must be a list of"),
+        ("not_affected = [\n", "does not parse"),
+    ],
+    ids=["empty file", "list of integers", "single table", "unparsable"],
+)
+def test_a_list_the_rule_does_not_allow_is_refused_cleanly(
+    tmp_path: Path, text: str, message: str
+) -> None:
+    """Each shape of a bad file stops the run with a message.
+
+    Args:
+        tmp_path: pytest's own.
+        text: the content of the list.
+        message: what the refusal says, as a regular expression.
+    """
+    sdist = write_sdist(tmp_path)
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github" / "vex.toml").write_text(text, encoding="utf-8")
+    with pytest.raises(SystemExit, match=message):
+        sbom.build_sbom(sdist, _EPOCH, repository(tmp_path, gitmodules=None))
+
+
+def test_a_submodule_named_in_another_spelling_is_still_reached(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An entry may name a submodule in its PEP 503 spelling.
+
+    Args:
+        tmp_path: pytest's own.
+        monkeypatch: the fixture `git` is stubbed through.
+    """
+    sdist = write_sdist(tmp_path)
+    stub_git(monkeypatch, {"zkp": f"160000 commit {_ZKP_PINNED}\tzkp\n"})
+    gitmodules = (
+        '[submodule "zkp"]\n\tpath = zkp\n\turl = https://github.com/o/Zkp_Lib.git\n'
+    )
+    write_vex(tmp_path, _FINDING.replace("CFFI", "zkp-lib"))
+    document = sbom.build_sbom(
+        sdist, _EPOCH, repository(tmp_path, gitmodules=gitmodules)
+    )
+
+    (finding,) = document["vulnerabilities"]
+    assert finding["affects"] == [{"ref": f"pkg:github/o/Zkp_Lib@{_ZKP_PINNED}"}]
