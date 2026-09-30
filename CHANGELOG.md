@@ -103,6 +103,12 @@ release-notes length in the first place, and are still in
   `.dist-info/sboms/`**, as PEP 770 places it (closes #1093); the build
   requires `hatchling>=1.29`, the first to take one from a build hook.
 
+### `release.yml` audits the lock before it publishes
+
+- **The `audit` job runs `uv audit` over what the wheel declares**, by calling
+  btclib-org/.github's `reusable-audit.yml`, and both publish jobs wait for
+  its success (issue btclib-org/.github#1466).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
