@@ -1053,6 +1053,9 @@ source = ["btclib_secp256k1", "tests", ".github/scripts"]
 # the interesting misses are the guard clauses of a wrapper: statement
 # coverage alone would call a half-tested if fully covered
 branch = true
+# btclib-org/.github's own file, tested there and compared with this copy
+# byte for byte by that repository's suite, so not measured here
+omit = [".github/scripts/generate_sbom.py"]
 
 [tool.coverage.report]
 show_missing = true

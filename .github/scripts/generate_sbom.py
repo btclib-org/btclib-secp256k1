@@ -2,94 +2,97 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Write the CycloneDX bill of materials of an sdist, or of a wheel.
+"""Write the CycloneDX bill of materials of a built distribution.
 
-A release says where its files came from: PEP 740 attestations on the
-index, and a build provenance attestation over the sdist the GitHub
-release attaches. What is *in* them is the other half, and this writes
-it -- one CycloneDX 1.6 document naming the distribution, its licence,
-the sdist and its digest, every dependency the metadata declares, and
-every vendored submodule at the commit it is pinned to.
+A release says where its files came from -- PEP 740 attestations on the
+index, a build provenance attestation over the copies attached to the
+GitHub release -- and said nothing about what is *in* them. This is the
+second half: one CycloneDX 1.6 document naming the distribution, its
+licence, its files and their digests, and every dependency their metadata
+declares.
 
-**The sdist beside it, and each wheel from inside.** The document `main()`
-writes describes the file the `attest` job signs and `github-release`
-attaches, which is the sdist alone: a wheel's only public copy is the one
-PyPI already attests under PEP 740. Section 12 of the organization
-standard puts the compiled wheels outside the property that a released
-file rebuilds from its tag, and RELEASING.md's "Rebuild a release from
-its tag" is where this repository states which of them a stranger can
-rebuild at all -- so a document whose serial number derived from their
-digests would be a document nobody could rebuild either, where the same
-section asks that one can. That recipe rebuilds the sdist, and this
-document with it.
-
-A wheel carries its own document instead, at `.dist-info/sboms/` as PEP
-770 places it, which `scripts/hatch_build.py` has `write_wheel_sbom`
-below write while the wheel is built. It reads the core metadata and the
-gitlinks as the sdist's does, narrowed to the wheel: the vendored
-libraries this build compiled rather than every submodule the tree
-holds, and how they are linked. It carries no digest, a document inside
-an archive being unable to name the archive's own, and no
-`vulnerabilities`: an entry of `.github/vex.toml` may name a library a
+**A wheel and an sdist, the sdist alone, or a wheel from inside.** By
+default the document describes both files and reads the wheel's `METADATA`.
+`--sdist-only` describes the sdist alone and reads its `PKG-INFO`, for a
+distribution whose compiled wheels section 12 of the organization standard
+puts outside the property that a released file rebuilds from its tag: a
+serial number derived from their digests would be one nobody could
+rebuild, where the same section asks that it can be. A wheel carries its
+own document instead, at `.dist-info/sboms/` as PEP 770 places it, which a
+build hook has `write_wheel_sbom` write while the wheel is built. It reads
+the core metadata and the gitlinks as the others do, narrowed to the
+wheel: the vendored libraries the build compiled rather than every
+submodule the tree holds, and how they are linked. It carries no digest,
+a document inside an archive being unable to name the archive's own, and
+no `vulnerabilities`: an entry of `.github/vex.toml` may name a library a
 given wheel did not compile, which `vulnerabilities` refuses rather than
 skips. Nothing in it comes from the clock or from the compiled files, so
-two builds of one commit write it byte for byte alike, whatever
-toolchain compiled the extension beside it.
+two builds of one commit write it byte for byte alike.
+
+**The standard library alone, and no network.** A tree whose build calls
+`write_wheel_sbom` keeps a byte-identical copy of this file, because an
+offline build of a wheel from a checkout cannot fetch it;
+`tests/verbatim_test.py` in `btclib-org/.github` compares that copy with
+this one.
 
 **The archive's own metadata is the source, not pyproject.toml.** They
-agree on a release and not in a rehearsal, where `version-check` computes
-a `.dev<run*100+attempt>` suffix that `dev-version` writes into the tree
-before the build: the document has to describe the file beside it, so it
-reads the `PKG-INFO` of the archive it is given. Which also means the
-only version it can report for a dependency is the one the metadata pins,
-and that is deliberate -- what a user's installer resolves is not a fact
-about this file, so a resolved version recorded here would be a claim the
-sdist does not make. A requirement pinned with `==` gets a `version`;
-anything else gets the specifier as a property and no version.
+agree on a release and not in a rehearsal, where the version carries a
+`.dev<run*100+attempt>` suffix written into the tree before the build: the
+document has to describe the files beside it, so it reads the archive it is
+given. Which also means the only version it can report for a dependency is
+the one the metadata pins, and that is deliberate -- what a user's
+installer resolves is not a fact about these files, so a resolved version
+recorded here would be a claim they do not make. A requirement pinned with
+`==` gets a `version`; anything else gets the specifier as a property and
+no version.
 
-**It is reproducible, like the file it describes.** The timestamp is
-`SOURCE_DATE_EPOCH`, which `build-sdist` exports from the commit date for
-the sdist normalizer, and the serial number is a UUID5 over the purl and
-the digest -- so a rebuild of a tag writes the same bytes here too, and
-the attestation over the release assets covers this file as well. Nothing
-is read from the clock, and nothing is random: `uuid4` would make a
-rebuild differ in the one field nobody could check.
+**It is reproducible, like the files it describes.** The timestamp is
+`SOURCE_DATE_EPOCH`, which the build exports from the commit date, and the
+serial number is a UUID5 over the purl and the digests of the files
+described -- so a rebuild of a tag writes the same bytes here too, until
+this script changes what it writes, and the attestation over the release
+assets covers this file as well. Nothing is
+read from the clock, and nothing is random: `uuid4` would make a rebuild
+differ in the one field nobody could check.
 
 **`Requires-Dist` is not the only source.** It says what a distribution
-*declares*, and this one declares `cffi` alone, where what the archive
-carries is the vendored C libraries `.gitmodules` names -- trees git
-records as a gitlink and the sdist builder copies in, named in no
-metadata. `.gitmodules` and the gitlink `git ls-tree` reads off the tree
-are what name them, so each submodule is reported as its own component:
-a `library` with a `pkg:github/<owner>/<repo>@<sha>` purl, a `vcs`
-externalReference naming the upstream repository, and `version` set to
-that sha. A commit is a narrower pin than any `==` this script otherwise
-grants a version to, so withholding one here would be the stricter rule
-protecting the weaker case; the sha rather than an upstream tag name,
-because the sha is what the gitlink actually stores and every commit has
-one, where resolving a tag would be a network call this script otherwise
-makes none of, for a result that may not exist
-(issue btclib-org/btclib#1280).
+*declares*, and for one that vendors a git submodule -- object code baked in
+at build time, never named in the metadata -- that is not what it
+*contains*. `.gitmodules` and the gitlink `git ls-tree` reads from the tree
+are, so a submodule pinned to a commit is read from there and reported as
+its own component: a `library` with a `pkg:github/<owner>/<repo>@<sha>`
+purl, a `vcs` externalReference naming the upstream repository, and
+`version` set to that sha. A commit is a narrower pin than any `==` this
+script otherwise grants a version to, so withholding one here would be the
+stricter rule protecting the weaker case; the sha rather than an upstream
+tag name, because the sha is what the gitlink actually stores and every
+commit has one, where resolving a tag would be a network call this script
+otherwise makes none of, for a result that may not exist
+(issue btclib-org/btclib#1280). A tree with no `.gitmodules` gets none.
 
 **The tree's not-affected findings are a second input.** The script reads
 `.github/vex.toml` from the tree the archive was built from and writes its
 entries as the document's `vulnerabilities`; a tree with no such file gets no
 such key, and a file it cannot read as section 12 states it stops the run.
 
-Run it on a freshly built dist directory, after the sdist normalizer,
-whose rewrite changes the digest this records:
+**The tree is the working directory.** The submodule scan and the findings
+are read from it, so the script runs at the root of the tree that built the
+files, wherever the script itself was fetched from.
+
+Run it on a freshly built dist directory, after the sdist normalizer where
+there is one, whose rewrite changes the digest this records:
 
     uv run --no-project --python 3.15 \
-        .github/scripts/generate_sbom.py dist/ sbom/
+        .github/scripts/generate_sbom.py [--sdist-only] dist/ sbom/
 
 The output is named `<distribution>-<version>.cdx.json` after the sdist,
 so the workflow does not have to know the version -- which in a rehearsal
-it does not. RELEASING.md has the command that regenerates it from a tag
-and verifies it against the attestation.
+it does not.
 """
 
 from __future__ import annotations
 
+import argparse
 import configparser
 import datetime
 import hashlib
@@ -101,12 +104,19 @@ import subprocess
 import sys
 import tarfile
 import tomllib
+import zipfile
 from email import message_from_bytes, message_from_string
-from email.message import Message
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 from urllib.parse import quote
 from uuid import NAMESPACE_URL, uuid5
+
+if TYPE_CHECKING:
+    from email.message import Message
+
+# the prefix of every property the document names, the organization's and
+# not a tree's: the same property reads the same in every tree's document
+NAMESPACE = "btclib"
 
 # PEP 508, cut down to the two forms a distribution's `Requires-Dist` takes
 # here: a name with a version specifier, and a name with a direct
@@ -166,7 +176,7 @@ VEX = Path(".github") / "vex.toml"
 VEX_KEYS = frozenset({"id", "source", "component", "justification", "detail"})
 
 # CycloneDX 1.6's `impactAnalysisJustification`, the whole enumeration
-JUSTIFICATIONS = frozenset({
+_JUSTIFICATIONS = (
     "code_not_present",
     "code_not_reachable",
     "requires_configuration",
@@ -176,7 +186,8 @@ JUSTIFICATIONS = frozenset({
     "protected_at_runtime",
     "protected_at_perimeter",
     "protected_by_mitigating_control",
-})
+)
+JUSTIFICATIONS = frozenset(_JUSTIFICATIONS)
 
 # resolved once: S607 is what a bare "git" in a subprocess list would be,
 # a partial executable path relying on PATH's own search order rather
@@ -185,27 +196,12 @@ _GIT = shutil.which("git") or "git"
 
 
 def canonical_name(name: str) -> str:
-    """Return the PEP 503 normalized form of a distribution name.
-
-    Args:
-        name: the distribution name as the metadata spells it.
-
-    Returns:
-        The name lowercased, with each run of `-`, `_` and `.` collapsed
-        to a single `-`.
-    """
+    """Return the PEP 503 normalized form of a distribution name."""
     return re.sub(r"[-_.]+", "-", name).lower()
 
 
 def file_hash(path: Path) -> str:
-    """Return the SHA-256 of a file, read a megabyte at a time.
-
-    Args:
-        path: the file to digest.
-
-    Returns:
-        The hex digest.
-    """
+    """Return the SHA-256 of a file, read a megabyte at a time."""
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -213,24 +209,24 @@ def file_hash(path: Path) -> str:
     return digest.hexdigest()
 
 
+def wheel_metadata(wheel: Path) -> Message:
+    """Return the parsed METADATA of a wheel."""
+    with zipfile.ZipFile(wheel) as archive:
+        names = [
+            name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
+        ]
+        if len(names) != 1:
+            msg = f"{wheel.name} carries {len(names)} dist-info/METADATA members"
+            raise SystemExit(msg)
+        return message_from_bytes(archive.read(names[0]))
+
+
 def sdist_metadata(sdist: Path) -> Message:
     """Return the parsed PKG-INFO of a source distribution.
 
-    The archive's own copy of the core metadata, which is what the wheels
-    built from this tree carry too -- measured equal, field for field, on
-    a build of this repository. Reading it here is what lets the document
-    describe a rehearsal's `.dev` version rather than the one
+    The archive's own copy of the core metadata. Reading it is what lets
+    the document describe a rehearsal's `.dev` version rather than the one
     pyproject.toml declares.
-
-    Args:
-        sdist: the `.tar.gz` to read.
-
-    Returns:
-        The parsed `<distribution>-<version>/PKG-INFO` member.
-
-    Raises:
-        SystemExit: where the archive carries no such member, or more
-            than one.
     """
     with tarfile.open(sdist) as archive:
         names = [
@@ -249,16 +245,7 @@ def sdist_metadata(sdist: Path) -> Message:
 
 
 def purl(name: str, version: str | None, url: str | None) -> str:
-    """Return the package url of a PyPI distribution, qualified by its vcs.
-
-    Args:
-        name: the distribution name.
-        version: the version to pin the reference to, or None.
-        url: the direct reference the requirement carries, or None.
-
-    Returns:
-        The package url.
-    """
+    """Return the package url of a PyPI distribution, qualified by its vcs."""
     reference = f"pkg:pypi/{canonical_name(name)}"
     if version is not None:
         reference += f"@{version}"
@@ -282,18 +269,7 @@ class Reading(NamedTuple):
 
 
 def reading(requirement: str) -> Reading:
-    """Return the reading of one `Requires-Dist` line.
-
-    Args:
-        requirement: the line as the metadata carries it.
-
-    Returns:
-        What the line says about the dependency it names.
-
-    Raises:
-        SystemExit: where the line is neither of the two PEP 508 forms
-            `REQUIREMENT` reads.
-    """
+    """Return the reading of one `Requires-Dist` line."""
     match = REQUIREMENT.match(requirement.strip())
     if match is None:
         msg = f"cannot read the requirement {requirement!r}"
@@ -323,12 +299,6 @@ def agreed(values: list[str | None]) -> str | None:
     one installation environment and not about the distribution, so the
     document states none of it -- the lines are kept below as properties,
     where each answer is read beside the marker it holds under.
-
-    Args:
-        values: one line's answer each.
-
-    Returns:
-        The answer they all give, or None.
     """
     first = values[0]
     return first if all(value == first for value in values) else None
@@ -349,13 +319,6 @@ def component(readings: list[Reading]) -> dict[str, Any]:
     consumer resolves the package by; the document is read to resolve a
     dependency graph, so the graph is what has to be right, and the lines
     survive as properties either way (issue btclib-org/btclib#1194).
-
-    Args:
-        readings: every line naming one dependency, in the order the
-            metadata declares them.
-
-    Returns:
-        The CycloneDX component.
     """
     version = agreed([entry.version for entry in readings])
     url = agreed([entry.url for entry in readings])
@@ -366,9 +329,9 @@ def component(readings: list[Reading]) -> dict[str, Any]:
         # the line as the metadata carries it, which is the whole of what
         # this document knows about the dependency: the fields above are a
         # reading of it, and the reading is checkable against it
-        properties.append({"name": "btclib:requires-dist", "value": entry.line})
+        properties.append({"name": f"{NAMESPACE}:requires-dist", "value": entry.line})
         if entry.extras is not None:
-            properties.append({"name": "btclib:extras", "value": entry.extras})
+            properties.append({"name": f"{NAMESPACE}:extras", "value": entry.extras})
 
     # optional only where every line naming it is under an extra: one line
     # asking for it unconditionally is the distribution asking for it
@@ -393,14 +356,7 @@ def component(readings: list[Reading]) -> dict[str, Any]:
 
 
 def timestamp(epoch: int) -> str:
-    """Return the epoch as the UTC ISO 8601 instant CycloneDX asks for.
-
-    Args:
-        epoch: `SOURCE_DATE_EPOCH`, as an integer.
-
-    Returns:
-        The instant, spelled with the `Z` the schema's own examples use.
-    """
+    """Return the epoch as the UTC ISO 8601 instant CycloneDX asks for."""
     # `isoformat` spells the zone "+00:00" and the schema's own examples
     # end in "Z"; both are valid ISO 8601 and one of them is what every
     # other tool writes
@@ -409,14 +365,7 @@ def timestamp(epoch: int) -> str:
 
 
 def distribution_reference(path: Path) -> dict[str, Any]:
-    """Return the externalReference for the distribution file.
-
-    Args:
-        path: the archive the document describes.
-
-    Returns:
-        A `distribution` reference carrying the file's name and digest.
-    """
+    """Return the externalReference for the distribution file."""
     return {
         "type": "distribution",
         # the name alone, and no url: the file is published to PyPI and
@@ -433,16 +382,6 @@ def submodule_commit(repo_root: Path, path: str) -> str:
     Read with `git ls-tree` rather than from a checkout of the submodule,
     which need not exist: a gitlink is recorded in the parent repository's
     own tree regardless of whether `git submodule update` ever ran.
-
-    Args:
-        repo_root: the checked-out tree holding the gitlink.
-        path: the submodule's path, as `.gitmodules` gives it.
-
-    Returns:
-        The 40-hex commit the gitlink pins.
-
-    Raises:
-        SystemExit: where the path is no gitlink in that tree.
     """
     result = subprocess.run(  # noqa: S603
         [_GIT, "ls-tree", "HEAD", "--", path],
@@ -459,20 +398,7 @@ def submodule_commit(repo_root: Path, path: str) -> str:
 
 
 def submodule_component(path: str, url: str, sha: str) -> dict[str, Any]:
-    """Return the component a vendored, commit-pinned submodule describes.
-
-    Args:
-        path: the submodule's path in this repository.
-        url: the upstream repository `.gitmodules` names.
-        sha: the commit the gitlink pins it to.
-
-    Returns:
-        The CycloneDX component.
-
-    Raises:
-        SystemExit: where the url is neither GitHub form
-            `GITHUB_SUBMODULE_URL` reads.
-    """
+    """Return the component a vendored, commit-pinned submodule describes."""
     match = GITHUB_SUBMODULE_URL.match(url)
     if match is None:
         msg = f"cannot read the submodule url {url!r}"
@@ -489,7 +415,7 @@ def submodule_component(path: str, url: str, sha: str) -> dict[str, Any]:
         "version": sha,
         "scope": "required",
         "externalReferences": [{"type": "vcs", "url": url}],
-        "properties": [{"name": "btclib:submodule-path", "value": path}],
+        "properties": [{"name": f"{NAMESPACE}:submodule-path", "value": path}],
     }
 
 
@@ -500,13 +426,6 @@ def submodule_components(repo_root: Path) -> list[dict[str, Any]]:
     the repository declares; `submodule_commit` reads the commit each is
     pinned to straight from the tree. A repository with no `.gitmodules`
     makes this a no-op.
-
-    Args:
-        repo_root: the checked-out tree to read.
-
-    Returns:
-        One component per submodule, in the order `.gitmodules` declares
-        them.
     """
     gitmodules = repo_root / ".gitmodules"
     if not gitmodules.is_file():
@@ -530,17 +449,6 @@ def vex_findings(repo_root: Path) -> list[dict[str, Any]]:
     A file it cannot read as section 12 states it stops the run with a
     message naming the file, and so does one with no entry: a tree with
     none has no file.
-
-    Args:
-        repo_root: the checked-out tree holding `.github/vex.toml`.
-
-    Returns:
-        The `[[not_affected]]` tables, or an empty list where the tree
-        keeps no file.
-
-    Raises:
-        SystemExit: where the file does not parse, is not a list of
-            tables, or holds none.
     """
     path = repo_root / VEX
     if not path.is_file():
@@ -576,19 +484,6 @@ def vulnerabilities(
     the tree looked and found nothing to report, which is a claim about the
     tree's process this script cannot check. A file with no entry is
     refused, section 12 giving a tree with none no file.
-
-    Args:
-        repo_root: the checked-out tree holding `.github/vex.toml`.
-        components: every component the document carries, the
-            distribution's own among them.
-
-    Returns:
-        One CycloneDX vulnerability per finding, sorted by id and
-        component.
-
-    Raises:
-        SystemExit: where an entry is malformed or names a component the
-            document does not carry.
     """
     findings = vex_findings(repo_root)
 
@@ -627,36 +522,25 @@ def vulnerabilities(
                 f"{VEX}: {finding['id']} names {name}, which the document carries twice"
             )
             raise SystemExit(msg)
-        result.append({
+        analysis = {
+            "state": "not_affected",
+            "justification": finding["justification"],
+            "detail": finding["detail"],
+        }
+        vulnerability = {
             "id": finding["id"],
             "source": {"name": finding["source"]},
             "affects": [{"ref": references[name]}],
-            "analysis": {
-                "state": "not_affected",
-                "justification": finding["justification"],
-                "detail": finding["detail"],
-            },
-        })
+            "analysis": analysis,
+        }
+        result.append(vulnerability)
     return sorted(result, key=lambda entry: (entry["id"], entry["affects"][0]["ref"]))
 
 
 def distribution_component(
     metadata: Message, source: str, references: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    """Return the component the core metadata describes, the document's subject.
-
-    Args:
-        metadata: the parsed core metadata.
-        source: the file the metadata was read from, for the message.
-        references: the externalReferences to put ahead of the project
-            urls the metadata declares.
-
-    Returns:
-        The CycloneDX component.
-
-    Raises:
-        SystemExit: where the metadata declares no name or no version.
-    """
+    """Return the component the core metadata describes: the subject."""
     name = metadata["Name"]
     version = metadata["Version"]
     if name is None or version is None:
@@ -667,11 +551,8 @@ def distribution_component(
     references = list(references)
     for entry in metadata.get_all("Project-URL", []):
         label, _, url = entry.partition(", ")
-        references.append({
-            "type": REFERENCE_TYPES.get(label, "other"),
-            "url": url,
-            "comment": label,
-        })
+        kind = REFERENCE_TYPES.get(label, "other")
+        references.append({"type": kind, "url": url, "comment": label})
 
     root: dict[str, Any] = {
         "type": "library",
@@ -679,9 +560,10 @@ def distribution_component(
         "name": canonical_name(name),
         "version": version,
         "purl": reference,
-        # no component-level `hashes`: the digest belongs on the
-        # reference above, where a verifier can check it against the file
-        # it has
+        # no component-level `hashes`: a hash over several files would be a
+        # number nothing else can recompute. The digests are on the
+        # references, where a verifier can check each against the file it
+        # has
         "externalReferences": references,
     }
     summary = metadata["Summary"]
@@ -696,20 +578,13 @@ def distribution_component(
     requires_python = metadata["Requires-Python"]
     if requires_python is not None:
         root["properties"] = [
-            {"name": "btclib:requires-python", "value": requires_python}
+            {"name": f"{NAMESPACE}:requires-python", "value": requires_python}
         ]
     return root
 
 
 def dependency_components(metadata: Message) -> list[dict[str, Any]]:
-    """Return one component per dependency the core metadata declares.
-
-    Args:
-        metadata: the parsed core metadata.
-
-    Returns:
-        The components, in the order the metadata first names each.
-    """
+    """Return one component per dependency the core metadata declares."""
     # grouped by the name the lines normalize to, which is what makes the
     # references distinct: the dict keeps each dependency's lines in the
     # order the metadata declares them
@@ -723,16 +598,7 @@ def dependency_components(metadata: Message) -> list[dict[str, Any]]:
 def document(
     serial: str, root: dict[str, Any], components: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    """Return the CycloneDX document around its subject and its components.
-
-    Args:
-        serial: what the serial number is derived from.
-        root: the component the document describes.
-        components: every other component, in the order to write them.
-
-    Returns:
-        The document, with no timestamp and no vulnerabilities.
-    """
+    """Return the CycloneDX document around its subject and its components."""
     reference = root["bom-ref"]
     return {
         "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
@@ -758,25 +624,27 @@ def document(
     }
 
 
-def build_sbom(sdist: Path, epoch: int, repo_root: Path) -> dict[str, Any]:
-    """Return the CycloneDX document describing one source distribution.
+def build_sbom(
+    sdist: Path, epoch: int, repo_root: Path, wheel: Path | None = None
+) -> dict[str, Any]:
+    """Return the CycloneDX document describing the sdist, and the wheel if any.
 
-    Args:
-        sdist: the archive to describe.
-        epoch: `SOURCE_DATE_EPOCH`, the document's own timestamp.
-        repo_root: the checked-out tree the archive was built from.
-
-    Returns:
-        The document, as the object `json.dumps` is given below.
+    The metadata is the wheel's where there is one and the sdist's where
+    not, and the serial number is derived from the digest of each file
+    described.
     """
-    metadata = sdist_metadata(sdist)
-    root = distribution_component(metadata, sdist.name, [distribution_reference(sdist)])
+    files = [sdist] if wheel is None else [wheel, sdist]
+    metadata = sdist_metadata(sdist) if wheel is None else wheel_metadata(wheel)
+    root = distribution_component(
+        metadata, files[0].name, [distribution_reference(each) for each in files]
+    )
     components = sorted(
         dependency_components(metadata) + submodule_components(repo_root),
         key=lambda dependency: str(dependency["bom-ref"]),
     )
     findings = vulnerabilities(repo_root, [root, *components])
-    result = document(f"{root['bom-ref']}:{file_hash(sdist)}", root, components)
+    digests = ":".join(file_hash(each) for each in files)
+    result = document(f"{root['bom-ref']}:{digests}", root, components)
     result["metadata"]["timestamp"] = timestamp(epoch)
     if findings:
         result["vulnerabilities"] = findings
@@ -794,25 +662,10 @@ def build_wheel_sbom(
     not in it. The serial number is derived from the document's own
     content, the archive holding the document having no digest yet, and
     there is no timestamp and no `vulnerabilities` key.
-
-    Args:
-        metadata: the core metadata the wheel carries.
-        repo_root: the checked-out tree the wheel is built from.
-        compiled: the path of each submodule the build compiled.
-        linkage: how the build links them, `static` or `dynamic`.
-
-    Returns:
-        The document, as the object `json.dumps` is given below.
-
-    Raises:
-        SystemExit: where a compiled path is no submodule `.gitmodules`
-            declares.
     """
     root = distribution_component(metadata, "the wheel's METADATA", [])
-    root.setdefault("properties", []).append({
-        "name": "btclib:linkage",
-        "value": linkage,
-    })
+    root.setdefault("properties", [])
+    root["properties"].append({"name": f"{NAMESPACE}:linkage", "value": linkage})
     vendored = {
         entry["properties"][0]["value"]: entry
         for entry in submodule_components(repo_root)
@@ -831,12 +684,7 @@ def build_wheel_sbom(
 
 
 def write_document(sbom: dict[str, Any], output: Path) -> None:
-    """Write a document as every one of them is written.
-
-    Args:
-        sbom: the document.
-        output: the file to write, its directory created if missing.
-    """
+    """Write a document as every one of them is written."""
     output.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(sbom, indent=2, sort_keys=True)
     output.write_text(f"{text}\n", encoding="utf-8")
@@ -848,18 +696,7 @@ def write_wheel_sbom(
     """Write the document a wheel carries, for the build hook to hand over.
 
     Named `<distribution>.cdx.json` after the wheel's own distribution
-    field, which is what `.github/scripts/verify_wheel_contents.py` looks
-    for under `sboms/`.
-
-    Args:
-        metadata: the text of the METADATA file the wheel carries.
-        repo_root: the checked-out tree the wheel is built from.
-        compiled: the path of each submodule the build compiled.
-        linkage: how the build links them, `static` or `dynamic`.
-        directory: where to write the file.
-
-    Returns:
-        The file written.
+    field.
     """
     parsed = message_from_string(metadata)
     sbom = build_wheel_sbom(parsed, repo_root, compiled, linkage)
@@ -871,18 +708,7 @@ def write_wheel_sbom(
 
 
 def one_of(directory: Path, pattern: str) -> Path:
-    """Return the single file in the directory matching the pattern.
-
-    Args:
-        directory: the dist directory to look in.
-        pattern: the glob to match.
-
-    Returns:
-        The one file matching it.
-
-    Raises:
-        SystemExit: where the directory holds none, or several.
-    """
+    """Return the single file in the directory matching the pattern."""
     matches = sorted(directory.glob(pattern))
     if len(matches) != 1:
         found = ", ".join(match.name for match in matches) if matches else "none"
@@ -891,24 +717,17 @@ def one_of(directory: Path, pattern: str) -> Path:
     return matches[0]
 
 
-# the script name plus the two positional arguments
-_EXPECTED_ARGC = 3
-
-
 def main(argv: list[str]) -> int:
-    """Write the bill of materials of one dist directory into another.
-
-    Args:
-        argv: `sys.argv`, the dist directory and the output directory
-            after the script's own name.
-
-    Returns:
-        0 where the document was written, 1 where `SOURCE_DATE_EPOCH` is
-        unset, 2 where the arguments are not the two expected.
-    """
-    if len(argv) != _EXPECTED_ARGC:
-        print(f"usage: {argv[0]} <dist directory> <output directory>", file=sys.stderr)
-        return 2
+    """Write the bill of materials of one dist directory into another."""
+    parser = argparse.ArgumentParser(prog=argv[0])
+    parser.add_argument(
+        "--sdist-only",
+        action="store_true",
+        help="describe the sdist alone, and read its PKG-INFO",
+    )
+    parser.add_argument("dist", type=Path, metavar="<dist directory>")
+    parser.add_argument("output", type=Path, metavar="<output directory>")
+    arguments = parser.parse_args(argv[1:])
 
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     if epoch is None:
@@ -918,18 +737,15 @@ def main(argv: list[str]) -> int:
         print("SOURCE_DATE_EPOCH is not set", file=sys.stderr)
         return 1
 
-    sdist = one_of(Path(argv[1]), "*.tar.gz")
-    # this file's own location within the checked-out tree, so the
-    # submodule scan finds the repository root regardless of the caller's
-    # working directory
-    repo_root = Path(__file__).resolve().parents[2]
-    sbom = build_sbom(sdist, int(epoch), repo_root)
+    sdist = one_of(arguments.dist, "*.tar.gz")
+    wheel = None if arguments.sdist_only else one_of(arguments.dist, "*.whl")
+    sbom = build_sbom(sdist, int(epoch), Path.cwd(), wheel)
 
     # named after the sdist's own two fields, {distribution} and
     # {version}, so the caller needs to know neither -- which in a
     # rehearsal, where the version carries a `.dev<run*100+attempt>` the
     # workflow patched in, it does not
-    output = Path(argv[2]) / f"{sdist.name.removesuffix('.tar.gz')}.cdx.json"
+    output = arguments.output / f"{sdist.name.removesuffix('.tar.gz')}.cdx.json"
     write_document(sbom, output)
     print(f"wrote {output}")
     return 0
