@@ -34,6 +34,12 @@ release-notes length in the first place, and are still in
   passes** (issue btclib-org/.github#1456): a bare name let a lagging
   index serve the release before it.
 
+### `CONTRIBUTING.md` points a newcomer at `good first issue`
+
+- **An issue carrying the label is small and self-contained** (issue
+  btclib-org/.github#1362): *The issue tracker* says so, and links the
+  organization-wide search for the open ones.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
