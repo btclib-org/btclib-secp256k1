@@ -147,9 +147,12 @@ pull_requests = "https://github.com/btclib-org/btclib-secp256k1/pulls"
 # way); a system cmake >= 3.22 works just as well, with
 # --no-build-isolation
 requires = [
-    # 1.27 is where hatchling learned PEP 639: an older one rejects the
-    # license expression and license-files above outright, so the floor
-    # is what the metadata of this project already requires
+    # 1.29 is where a build hook can hand hatchling a PEP 770 bill of
+    # materials, through `build_data["sbom_files"]`: 1.28 reads only the
+    # static `sbom-files` key, and has no such entry for
+    # scripts/hatch_build.py's `write_sbom` to append to. The PEP 639
+    # license expression and license-files above need 1.27, which the
+    # floor already clears
     #
     # the ceiling is not the departure an upper bound on a runtime
     # dependency would be: section 3 of btclib-org/.github's README.md
@@ -164,7 +167,7 @@ requires = [
     # build resolves `requires` fresh, outside the lock. 1.32.3 is not
     # yanked, so it is excluded by name rather than left to 1.32.4
     # being the newest release a resolver finds
-    "hatchling>=1.27,<2,!=1.32.3",
+    "hatchling>=1.29,<2,!=1.32.3",
     # the same floors as the runtime dependency above, and for the same
     # reason: the build runs the cdef through the very cffi it resolves.
     #
@@ -477,7 +480,7 @@ check = [
     # tests/hook_pins_test.py fails when the two part: section 12 of the
     # organization standard asks that a hook building the project use a
     # backend [build-system] admits
-    "hatchling>=1.27,<2,!=1.32.3",
+    "hatchling>=1.29,<2,!=1.32.3",
 ]
 # mutation testing, which asks what coverage cannot: a line the suite
 # executes is not a line the suite checks. Its own group and not part of

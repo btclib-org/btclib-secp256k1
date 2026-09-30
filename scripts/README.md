@@ -47,6 +47,10 @@ What it does with the result:
   `tests/extension_test.py` reads the installed distribution's own
   `WHEEL` back, on every build the suite runs, and fails if its tag
   is ever the universal one this rebind exists to avoid
+- `write_sbom` has `.github/scripts/generate_sbom.py` write the wheel's
+  bill of materials and hands it to hatchling, which puts it under
+  `.dist-info/sboms/`; a tree with no `.git` gets none, and the method's
+  docstring says why
 - a wheel mixing both modes raises, and so does one with no extension at
   all. Neither can arise from the configurations CI builds, which is the
   argument for refusing them rather than for reporting them: nothing

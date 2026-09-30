@@ -97,6 +97,12 @@ release-notes length in the first place, and are still in
 - **`SECURITY.md` says a report is acknowledged within 7 days**, and a
   fix or a published advisory within 90 (issue btclib-org/.github#1460).
 
+### Each wheel carries a bill of materials
+
+- **A wheel built from a checkout carries a CycloneDX document under
+  `.dist-info/sboms/`**, as PEP 770 places it (closes #1093); the build
+  requires `hatchling>=1.29`, the first to take one from a build hook.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

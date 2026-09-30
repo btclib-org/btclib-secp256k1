@@ -803,3 +803,139 @@ def test_a_submodule_named_in_another_spelling_is_still_reached(
 
     (finding,) = document["vulnerabilities"]
     assert finding["affects"] == [{"ref": f"pkg:github/o/Zkp_Lib@{_ZKP_PINNED}"}]
+
+
+# --- the document a wheel carries (#1093) ---------------------------------
+
+_BOTH_PINNED = {
+    "secp256k1": f"160000 commit {_PINNED}\tsecp256k1\n",
+    "secp256k1-zkp": f"160000 commit {_ZKP_PINNED}\tsecp256k1-zkp\n",
+}
+
+
+def test_a_wheel_names_the_libraries_its_build_compiled_and_no_other(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unflagged build compiles `secp256k1` alone, and says so.
+
+    Args:
+        tmp_path: pytest's own.
+        monkeypatch: the fixture `git` is stubbed through.
+    """
+    stub_git(monkeypatch, _BOTH_PINNED)
+    metadata = sbom.message_from_string(_METADATA)
+
+    document = sbom.build_wheel_sbom(
+        metadata, repository(tmp_path), ["secp256k1"], "static"
+    )
+
+    assert [entry["bom-ref"] for entry in document["components"]] == [
+        f"pkg:github/bitcoin-core/secp256k1@{_PINNED}",
+        "pkg:pypi/cffi",
+    ]
+    root = document["metadata"]["component"]
+    assert root["purl"] == "pkg:pypi/btclib-secp256k1@0.8.0.7"
+    assert root["properties"] == [
+        {"name": "btclib:requires-python", "value": ">=3.10"},
+        {"name": "btclib:linkage", "value": "static"},
+    ]
+    assert document["dependencies"][0]["dependsOn"] == [
+        f"pkg:github/bitcoin-core/secp256k1@{_PINNED}",
+        "pkg:pypi/cffi",
+    ]
+
+    flagged = sbom.build_wheel_sbom(
+        metadata, repository(tmp_path), ["secp256k1", "secp256k1-zkp"], "static"
+    )
+    assert f"pkg:github/fametrano/secp256k1-zkp@{_ZKP_PINNED}" in [
+        entry["bom-ref"] for entry in flagged["components"]
+    ]
+    assert flagged["serialNumber"] != document["serialNumber"]
+
+
+def test_a_wheel_document_has_no_clock_and_no_digest_of_its_archive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """What differs between two builds of one commit is not in it.
+
+    Args:
+        tmp_path: pytest's own.
+        monkeypatch: the fixture `git` is stubbed through.
+    """
+    stub_git(monkeypatch, _BOTH_PINNED)
+    metadata = sbom.message_from_string(_METADATA)
+    root = repository(tmp_path)
+
+    static = sbom.build_wheel_sbom(metadata, root, ["secp256k1"], "static")
+    dynamic = sbom.build_wheel_sbom(metadata, root, ["secp256k1"], "dynamic")
+
+    assert "timestamp" not in static["metadata"]
+    assert "vulnerabilities" not in static
+    assert static["metadata"]["component"]["externalReferences"][0]["comment"] == (
+        "homepage"
+    )
+    assert static == sbom.build_wheel_sbom(metadata, root, ["secp256k1"], "static")
+    assert static["serialNumber"] != dynamic["serialNumber"]
+
+
+def test_a_compiled_path_no_gitmodules_entry_declares_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A library the document cannot pin is one it would omit in silence.
+
+    Args:
+        tmp_path: pytest's own.
+        monkeypatch: the fixture `git` is stubbed through.
+    """
+    stub_git(monkeypatch, _BOTH_PINNED)
+
+    with pytest.raises(SystemExit, match=r"\['vendored'\] compiled"):
+        sbom.build_wheel_sbom(
+            sbom.message_from_string(_METADATA),
+            repository(tmp_path),
+            ["secp256k1", "vendored"],
+            "static",
+        )
+
+
+def test_a_wheel_metadata_declaring_no_version_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The message names the wheel's metadata rather than an archive.
+
+    Args:
+        tmp_path: pytest's own.
+        monkeypatch: the fixture the submodule scan is stubbed through.
+    """
+    monkeypatch.setattr(sbom, "submodule_components", lambda _root: [])
+    metadata = sbom.message_from_string(
+        "Metadata-Version: 2.5\nName: btclib-secp256k1\n"
+    )
+
+    with pytest.raises(SystemExit, match="the wheel's METADATA declares no Name"):
+        sbom.build_wheel_sbom(metadata, repository(tmp_path), [], "static")
+
+
+def test_the_wheel_document_is_written_under_the_wheels_own_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`verify_wheel_contents.py` looks for exactly this file name.
+
+    Args:
+        tmp_path: pytest's own.
+        monkeypatch: the fixture `git` is stubbed through.
+    """
+    stub_git(monkeypatch, _BOTH_PINNED)
+    root = repository(tmp_path)
+
+    output = sbom.write_wheel_sbom(
+        _METADATA, root, ["secp256k1"], "dynamic", tmp_path / "out"
+    )
+
+    assert output == tmp_path / "out" / "btclib_secp256k1.cdx.json"
+    text = output.read_text(encoding="utf-8")
+    assert text.endswith("}\n")
+    expected = sbom.build_wheel_sbom(
+        sbom.message_from_string(_METADATA), root, ["secp256k1"], "dynamic"
+    )
+    assert json.loads(text) == expected

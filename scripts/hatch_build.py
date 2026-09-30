@@ -16,6 +16,7 @@ See scripts/README.md for the three build paths, and README.md for why
 the distinction reaches the installed package at all.
 """
 
+import importlib.util
 import os
 import platform
 import shutil
@@ -79,8 +80,9 @@ class CustomBuildHook(BuildHookInterface[Any]):
 
         An sdist returns at once, carrying sources and no build; a wheel
         gets `pure_python` cleared, every artifact force-included under its
-        own name, and one of the two tags -- inferred for a static build,
-        `py3-none-<platform>` for a dynamic one.
+        own name, one of the two tags -- inferred for a static build,
+        `py3-none-<platform>` for a dynamic one -- and the bill of
+        materials `write_sbom` below writes.
 
         A `cffi_modules` entry that resolves to `None` -- `ffi_ext_zkp`,
         unflagged -- contributes no artifact and no mode, rather than
@@ -125,6 +127,9 @@ class CustomBuildHook(BuildHookInterface[Any]):
         # what has to be caught, and a flag catches it in one order of the
         # modules only
         modes = set()
+        # the submodule each built extension compiled, for the bill of
+        # materials: `configure` in scripts/cffi_build.py sets `wd` to it
+        compiled = []
 
         for script, ext_name in cffi_config:
             ext = self.get_ext_object(script, ext_name)
@@ -147,6 +152,7 @@ class CustomBuildHook(BuildHookInterface[Any]):
 
             ffi, artifacts = ext.create_cffi(temp_dir)
             modes.add(bool(ffi._assigned_source[1]))
+            compiled.append(ext.wd.name)
 
             for artifact in artifacts:
                 build_data["force_include"][artifact] = artifact.name
@@ -163,13 +169,60 @@ class CustomBuildHook(BuildHookInterface[Any]):
         # through the one public path in from a hook: see the docstring
         # above for why a standard build's build_data is not enough
         builder = cast(WheelBuilder, self.build_config.builder)
-        if modes.pop():
+        static = modes.pop()
+        if static:
             build_data["infer_tag"] = True
             builder.get_default_tag = builder.get_best_matching_tag  # type: ignore[method-assign]
         else:
             tag = f"py3-none-{self.dynamic_platform_tag()}"
             build_data["tag"] = tag
             builder.get_default_tag = lambda: tag  # type: ignore[method-assign]
+
+        self.write_sbom(build_dir, compiled, static, build_data)
+
+    def write_sbom(
+        self,
+        build_dir: Path,
+        compiled: list[str],
+        static: bool,
+        build_data: dict[str, Any],
+    ) -> None:
+        """Write the wheel's bill of materials and hand it to hatchling.
+
+        `.github/scripts/generate_sbom.py`'s `write_wheel_sbom` is what
+        writes it, loaded by path, `.github/scripts` being no package; the
+        document is that module's to describe. Handed over through
+        `build_data["sbom_files"]`, which hatchling copies into
+        `.dist-info/sboms/` and lists in `RECORD`.
+
+        A tree with no `.git` gets none. The pins the document states are
+        read from the gitlinks, which only a git checkout holds: a build
+        from the sdist, or from the `git archive` copies
+        `.github/scripts/check_wheel_reproducibility.py` builds from, has
+        the vendored sources and no record of which commit they are. Every
+        wheel `test.yml`'s `check-dist` job inspects is built from a
+        checkout, and `verify_wheel_contents.py` fails one without the
+        document.
+        """
+        root = Path(self.root)
+        if not (root / ".git").exists():
+            return
+        path = root / ".github" / "scripts" / "generate_sbom.py"
+        spec = importlib.util.spec_from_file_location("generate_sbom", path)
+        if spec is None or spec.loader is None:
+            msg = f"cannot load {path}"
+            raise RuntimeError(msg)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        output = module.write_wheel_sbom(
+            self.build_config.core_metadata_constructor(self.metadata),
+            root,
+            compiled,
+            "static" if static else "dynamic",
+            build_dir / "sbom",
+        )
+        build_data["sbom_files"].append(str(output))
 
     def dynamic_platform_tag(self) -> str:
         """Platform tag of a dynamic (cffi ABI mode) wheel.

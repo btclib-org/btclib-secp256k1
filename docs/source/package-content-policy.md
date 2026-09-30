@@ -49,8 +49,9 @@ A `__pycache__` directory is refused too, by name rather than by suffix.
 
 Three regions, and nothing outside them.
 
-Under `btclib_secp256k1-<version>.dist-info/` — `WHEEL_METADATA_FILES`
-and, under `licenses/`, `WHEEL_LICENSE_FILES`:
+Under `btclib_secp256k1-<version>.dist-info/` — `WHEEL_METADATA_FILES`,
+under `licenses/`, `WHEEL_LICENSE_FILES`, and, under `sboms/`,
+`WHEEL_SBOM_FILES`:
 
 - `METADATA`, `RECORD`, `WHEEL` — what hatchling writes for a package
   configured as this one is. No `top_level.txt`: that file is
@@ -61,6 +62,12 @@ and, under `licenses/`, `WHEEL_LICENSE_FILES`:
 - `secp256k1/COPYING` — libsecp256k1's MIT notice, by the same setting,
   under its own directory inside `licenses/`. secp256k1-zkp's notice is
   not listed, and `pyproject.toml` says why beside the setting
+- `btclib_secp256k1.cdx.json` — the CycloneDX bill of materials PEP 770
+  places there, written while the wheel is built: the distribution, its
+  dependencies and the vendored libraries this build compiled, each at
+  the commit its gitlink pins. `.github/scripts/generate_sbom.py` says
+  what it holds, and `scripts/hatch_build.py` why a build from the sdist
+  writes none
 
 Under `btclib_secp256k1/` — exactly the files this checkout's own
 `src/btclib_secp256k1/` directory has, source and `py.typed` alike. The

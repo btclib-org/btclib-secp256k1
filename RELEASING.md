@@ -23,7 +23,10 @@ is attested with the file it describes and rebuilds with it, where a
 compiled wheel is outside that property: "Rebuild a release from its
 tag" below is where this repository says which of its wheels a stranger
 can rebuild at all, and section 12 of the organization standard is where
-the sdist is asked for it.
+the sdist is asked for it. Each wheel the release publishes carries a
+document of its own instead, at
+`.dist-info/sboms/btclib_secp256k1.cdx.json`, written by the build hook
+while the wheel is built.
 
 The version published is the one in `pyproject.toml`; the tag only
 decides which index is reached. The `version-check` job cross-checks
