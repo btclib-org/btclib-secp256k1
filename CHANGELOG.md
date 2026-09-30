@@ -64,6 +64,12 @@ release-notes length in the first place, and are still in
   `btclib-org/.github`,** which reads the jobs listing again up to a
   deadline (issue btclib-org/.github#1463).
 
+### The wheel ships libsecp256k1's MIT notice
+
+- **`license-files` names `secp256k1/COPYING`** (closes #1066), and
+  `verify_wheel_contents.py` fails a wheel without it; secp256k1-zkp's notice
+  is not listed, no published wheel compiling that library.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
