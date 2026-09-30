@@ -58,6 +58,12 @@ release-notes length in the first place, and are still in
   `<tag>.intoto.jsonl`** (issue btclib-org/.github#1468):
   `reusable-github-release.yml` attaches it under that name.
 
+### `codeql.yml`'s aggregate runs `check_run_jobs.py`
+
+- **The aggregate's step runs `check_run_jobs.py`, served from
+  `btclib-org/.github`,** which reads the jobs listing again up to a
+  deadline (issue btclib-org/.github#1463).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
