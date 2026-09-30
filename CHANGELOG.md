@@ -40,6 +40,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github#1362): *The issue tracker* says so, and links the
   organization-wide search for the open ones.
 
+### The OpenSSF Baseline badge
+
+- **`README.md`'s badge row ends with the OpenSSF Baseline badge**,
+  beside the Best Practices badge, which section 2 of the organization
+  standard admits (issue btclib-org/.github#1460).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
