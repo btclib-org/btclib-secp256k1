@@ -155,6 +155,12 @@ that records it (issue btclib-org/.github#1362).
   what `<scratchpad>` is and names the pull** (issue
   btclib-org/.github#1500).
 
+### The `python` inventory has a copy kept in the tree
+
+- **`docs/source/_inventories/python.inv` is read when `docs.python.org`
+  fails** (issue btclib-org/.github#1508), so an outage of that site no
+  longer fails the `-n -W` docs build.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

@@ -139,8 +139,9 @@ _EXCLUDED_FILES = frozenset({
     "tests/" + Path(__file__).name,
 })
 # fuzz/corpus/ holds the fuzzing seeds, octets rather than prose: a
-# public key or a DER signature decodes as no text at all
-_EXCLUDED_DIRECTORIES = ("fuzz/corpus/",)
+# public key or a DER signature decodes as no text at all. So does
+# docs/source/_inventories/, which `read_text` cannot decode
+_EXCLUDED_DIRECTORIES = ("fuzz/corpus/", "docs/source/_inventories/")
 
 
 def _collapse(text: str) -> str:

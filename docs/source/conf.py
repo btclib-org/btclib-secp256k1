@@ -79,7 +79,16 @@ source_suffix = [".rst", ".md"]
 # inventory to map them against, but neither draws a reference here:
 # CData, the boundary's own name for cffi's cdata objects, is declared in
 # this package (__init__.py) rather than imported from cffi
-intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", (None, "_inventories/python.inv")),
+}
+# `_inventories/python.inv` is a copy of Python 3.14's inventory and no
+# cache: sphinx reads it only when `docs.python.org` fails, so a live site
+# always wins. It is the Wayback Machine's capture of 2026-08-28,
+# https://web.archive.org/web/20260828181213id_/https://docs.python.org/3/objects.inv
+# To refresh it, run this from the repository root and rewrite the version
+# and source above:
+# curl -fsSL -o docs/source/_inventories/python.inv https://docs.python.org/3/objects.inv
 
 # CONTRIBUTING.md links to "README.md#build", an anchor into a markdown
 # heading rather than a whole file, and myst generates no heading ids at
