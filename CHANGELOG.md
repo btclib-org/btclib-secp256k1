@@ -149,6 +149,12 @@ that records it (issue btclib-org/.github#1362).
   trailer** (issue btclib-org/.github#1467): *Pull requests* says how
   to add it.
 
+### The primary-checkout section uses one form for the checkout
+
+- **The section writes the checkout as `"${checkout:?}"` throughout, says
+  what `<scratchpad>` is and names the pull** (issue
+  btclib-org/.github#1500).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
