@@ -70,6 +70,14 @@ affecting how these bindings drive it:
     vendored submodule is pinned to
 - the distributions published to PyPI and their provenance
 
+## Security review
+
+The latest security review is dated 2026-09-30.
+[pmazzocchi](https://github.com/pmazzocchi) did it against the
+[assurance case](./ASSURANCE_CASE.md), and
+[issue 1089](https://github.com/btclib-org/btclib-secp256k1/issues/1089)
+records it.
+
 ## Supported versions
 
 Only the latest release is supported. Version numbers track the wrapped
