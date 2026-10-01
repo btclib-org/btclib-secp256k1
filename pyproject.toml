@@ -507,10 +507,10 @@ dev = [
 ]
 
 [tool.uv]
-# the oldest uv that may read uv.lock, at the ceiling rather than safely
-# below it -- section 1 has the argument and section 15 the command that
-# re-derives the ceiling
-required-version = ">=0.12.19"
+# the oldest uv that may read uv.lock, at most the uv a Dependabot run's
+# log names -- section 1 of the organization standard has the argument,
+# section 15 the commands that measure it
+required-version = ">=0.12.18"
 
 [tool.mypy]
 # the package ships py.typed: its annotations are what the library

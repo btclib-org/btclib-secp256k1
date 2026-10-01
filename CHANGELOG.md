@@ -132,6 +132,12 @@ release-notes length in the first place, and are still in
 - **`REPOSITORY.md` reads `lint / Dependency review` back with the other
   required checks** (issue btclib-org/.github#1465).
 
+### `[tool.uv] required-version` is `>=0.12.18`
+
+- **`required-version` reads `>=0.12.18`, not `>=0.12.19`** (issue
+  btclib-org/.github#1482): the Dependabot service refused `0.12.19` with
+  `tool_version_not_supported`.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
