@@ -143,6 +143,12 @@ release-notes length in the first place, and are still in
 `SECURITY.md` gives the date of the latest security review and links the issue
 that records it (issue btclib-org/.github#1362).
 
+### A `Signed-off-by:` trailer on every commit of a pull request
+
+- **Every commit of a pull request carries a `Signed-off-by:`
+  trailer** (issue btclib-org/.github#1467): *Pull requests* says how
+  to add it.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
