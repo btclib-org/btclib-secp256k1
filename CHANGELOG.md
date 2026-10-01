@@ -127,6 +127,11 @@ release-notes length in the first place, and are still in
   `scripts/libsecp256k1_wrappers.py`**, a file that repository does not
   have (issue btclib-org/.github#1494).
 
+### `Dependency review` is a required check
+
+- **`REPOSITORY.md` reads `lint / Dependency review` back with the other
+  required checks** (issue btclib-org/.github#1465).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
