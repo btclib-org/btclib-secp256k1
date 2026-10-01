@@ -115,6 +115,18 @@ release-notes length in the first place, and are still in
   byte**, kept because the build hook loads it and an offline build cannot
   fetch it (issue btclib-org/.github#1478).
 
+### `CLAUDE.md` carries the organization's shared worktree section
+
+- **Its section on the primary checkout is btclib-org/.github's shared
+  text, byte for byte, and the submodule section stands on its own**
+  (issue btclib-org/.github#1494).
+
+### The benchmark script is `scripts/01-libsecp256k1.py` in btclib-benchmarks
+
+- **`CONTRIBUTING.md` and `scripts/README.md` named it
+  `scripts/libsecp256k1_wrappers.py`**, a file that repository does not
+  have (issue btclib-org/.github#1494).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

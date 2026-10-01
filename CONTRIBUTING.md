@@ -568,7 +568,7 @@ flagged step of the coverage job.
 To time these bindings against the other python wrappers of
 libsecp256k1, clone
 [btclib-benchmarks](https://github.com/btclib-org/btclib-benchmarks) and
-run `scripts/libsecp256k1_wrappers.py` there. The comparands are that
+run `scripts/01-libsecp256k1.py` there. The comparands are that
 project's dependencies rather than this one's, which is the point: the
 library downstream of these bindings is one of them, and depends on
 these bindings itself.
