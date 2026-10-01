@@ -120,7 +120,7 @@ whole body is a call to a `btclib-org/.github` reusable workflow, so the
 context joins the calling job's id to the called job's own name.
 `lint.yml`'s `lint` job calls `reusable-lint.yml`, whose own job is still
 named `Lint and type-check`, producing `lint / Lint and type-check`, and
-whose other job, `Dependency review`, produces `lint / Dependency review`;
+whose `Dependency review` job produces `lint / Dependency review`;
 `docs.yml`'s `docs` job calls `reusable-docs.yml` the same way, whose own
 job is still named `Build the documentation`, producing
 `docs / Build the documentation` (issue btclib-org/.github#35).

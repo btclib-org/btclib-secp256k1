@@ -56,6 +56,13 @@ the standard][s11]. Run the gates locally before opening anything —
 the last section of this file says which they are — because CI runs
 exactly them, so a red run there is a local run that was not done.
 
+**Every commit of a pull request carries a `Signed-off-by:` trailer
+naming its author**, which certifies the [Developer Certificate of
+Origin][dco]. `git commit -s` adds it, and `git rebase --signoff <base>`
+adds it to commits already made. [The standard's *Signatures*][s-sigs]
+says why a signature does not replace it, and which commits the
+`Sign-off` job skips.
+
 What a pull request's title and description have to say about the issues
 it closes, and why a manual link in the Development panel is a trap
 neither of them shows, is [the standard's *What a pull request says it
@@ -249,6 +256,7 @@ settings and why they are what they are.
 [s-title]: https://github.com/btclib-org/.github#what-a-pull-request-says-it-is
 [s-rev]: https://github.com/btclib-org/.github#review
 [s-sigs]: https://github.com/btclib-org/.github#signatures
+[dco]: https://developercertificate.org/
 [gh-merge]: https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request
 [governance]: https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md
 [roadmap]: https://github.com/btclib-org/.github/blob/main/ROADMAP.md
@@ -657,6 +665,13 @@ command at all, for the reason below, and nothing requires its result.
 
 - `lint / Dependency review` reproduces as nothing: it asks the forge's
   dependency graph what a pull request adds, and has no local command
+
+- `lint / Sign-off`, run from a checkout of `btclib-org/.github`
+
+  ```shell
+  uv run --no-project --python 3.15 \
+      <that checkout>/.github/scripts/check_sign_off.py origin/main..HEAD
+  ```
 
 - `Ask which files the pull request touches`, whose answer decides whether
   the rest of `test.yml` runs at all -- a step of `btclib-org/.github`'s
@@ -1330,12 +1345,13 @@ by nothing, rather than from a `local` hook naming the tool by hand.
 `check` group through `uv run --locked`, so the version is `uv.lock`'s. A
 check discovered by CI after a push is a check in the wrong place.
 
-The aggregate of `test`, the `lint` workflow's jobs, the documentation build
-and the aggregate of `wheel-reproducibility` are the required checks, and
-`REPOSITORY.md` reads that rule back from the endpoint rather than
-restating it. `release` reuses the first three. `wheel-reproducibility` is
-among them because a pull request can turn it red by changing the build,
-and `REPOSITORY.md` says why its trigger lets it be. Everything
+The aggregate of `test`, the `lint` workflow's jobs but `Sign-off`, the
+documentation build and the aggregate of `wheel-reproducibility` are the
+required checks, and `REPOSITORY.md` reads that rule back from the endpoint
+rather than restating it. `release` reuses the first three.
+`wheel-reproducibility` is among them because a pull request can turn it red
+by changing the build, and `REPOSITORY.md` says why its trigger lets it be.
+Everything
 else reports: a sentinel opens no issue when it fails, `vendored-vectors`
 excepted for the reason the header of the workflow it calls gives,
 because each is expected to go red for something no pull request
