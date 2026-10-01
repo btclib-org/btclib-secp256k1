@@ -366,8 +366,9 @@ That gate fails outright where a submodule `.gitmodules` names is not
 checked out at all: `submodules-checked-out` asks that on every
 invocation, whatever the commit touches.
 
-Three gates decide every merge, and `wheel-reproducibility` a merge that
-touches what its builds read, its command being among the sentinels
+The gates below decide every merge, together with `lint / Dependency
+review`, which has no command, and `wheel-reproducibility` decides a merge
+that touches what its builds read, its command being among the sentinels
 further down. Each command below is close to the one its workflow runs —
 the second is what a contributor types, not what `test.yml` runs, and
 coverage is the one flag between the two:
@@ -568,7 +569,7 @@ flagged step of the coverage job.
 To time these bindings against the other python wrappers of
 libsecp256k1, clone
 [btclib-benchmarks](https://github.com/btclib-org/btclib-benchmarks) and
-run `scripts/libsecp256k1_wrappers.py` there. The comparands are that
+run `scripts/01-libsecp256k1.py` there. The comparands are that
 project's dependencies rather than this one's, which is the point: the
 library downstream of these bindings is one of them, and depends on
 these bindings itself.
@@ -653,6 +654,9 @@ command at all, for the reason below, and nothing requires its result.
   still holds what the fixers wrote, so the flag is in the block
   because the job carries it rather than because a local run needs
   the diff printed
+
+- `lint / Dependency review` reproduces as nothing: it asks the forge's
+  dependency graph what a pull request adds, and has no local command
 
 - `Ask which files the pull request touches`, whose answer decides whether
   the rest of `test.yml` runs at all -- a step of `btclib-org/.github`'s
@@ -1326,8 +1330,8 @@ by nothing, rather than from a `local` hook naming the tool by hand.
 `check` group through `uv run --locked`, so the version is `uv.lock`'s. A
 check discovered by CI after a push is a check in the wrong place.
 
-The aggregate of `test`, the `lint` job, the documentation build and the
-aggregate of `wheel-reproducibility` are the required checks, and
+The aggregate of `test`, the `lint` workflow's jobs, the documentation build
+and the aggregate of `wheel-reproducibility` are the required checks, and
 `REPOSITORY.md` reads that rule back from the endpoint rather than
 restating it. `release` reuses the first three. `wheel-reproducibility` is
 among them because a pull request can turn it red by changing the build,

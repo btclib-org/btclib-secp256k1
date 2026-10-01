@@ -115,6 +115,34 @@ release-notes length in the first place, and are still in
   byte**, kept because the build hook loads it and an offline build cannot
   fetch it (issue btclib-org/.github#1478).
 
+### `CLAUDE.md` carries the organization's shared worktree section
+
+- **Its section on the primary checkout is btclib-org/.github's shared
+  text, byte for byte, and the submodule section stands on its own**
+  (issue btclib-org/.github#1494).
+
+### The benchmark script is `scripts/01-libsecp256k1.py` in btclib-benchmarks
+
+- **`CONTRIBUTING.md` and `scripts/README.md` named it
+  `scripts/libsecp256k1_wrappers.py`**, a file that repository does not
+  have (issue btclib-org/.github#1494).
+
+### `Dependency review` is a required check
+
+- **`REPOSITORY.md` reads `lint / Dependency review` back with the other
+  required checks** (issue btclib-org/.github#1465).
+
+### `[tool.uv] required-version` is `>=0.12.18`
+
+- **`required-version` reads `>=0.12.18`, not `>=0.12.19`** (issue
+  btclib-org/.github#1482): the Dependabot service refused `0.12.19` with
+  `tool_version_not_supported`.
+
+### `SECURITY.md` names the latest security review
+
+`SECURITY.md` gives the date of the latest security review and links the issue
+that records it (issue btclib-org/.github#1362).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
