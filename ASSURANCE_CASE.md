@@ -285,10 +285,15 @@ exposed to, and what counters each.
 - **Race condition (CWE-362).** `musig.SecretNonce` is read and cleared
   under a lock of its own, and `btclib_secp256k1.zkp`'s deferred context
   build is guarded the same way, so two threads racing either cannot
-  both proceed; `tests/concurrency_test.py`'s
-  `test_exactly_one_thread_signs_a_shared_secret_nonce` asserts the
-  first, and `tests/zkp_test.py`'s
-  `test_racing_threads_build_the_context_once` the second.
+  both proceed. `tests/concurrency_test.py`'s
+  `test_exactly_one_thread_takes_a_shared_secret_nonce` asserts the
+  first, and fails when the lock is replaced by `contextlib.nullcontext`;
+  `test_exactly_one_thread_signs_a_shared_secret_nonce` checks only the
+  outcome, which libsecp256k1's refusal of a reused secnonce also
+  produces. `tests/zkp_test.py`'s
+  `test_racing_threads_build_the_context_once` asserts the second.
+  `SecretNonce` refuses `copy.copy`, `copy.deepcopy` and `pickle`,
+  so none of them yields a second object sharing its native secnonce.
 - **Type confusion (CWE-843).** mypy runs with `strict = true`
   (`pyproject.toml`) over the package, the suite and the build scripts,
   as a hook of the lint gate in `.pre-commit-config.yaml`.

@@ -217,6 +217,18 @@ copy with `ValueError` or `NotImplementedError` (closes #1077).
 In `musig`, `zkp.musig` and `silentpayments.scan_outputs` the first
 attribute lookup raised `AttributeError` instead (closes #1078).
 
+### `SecretNonce` refuses `copy` and `pickle`
+
+`copy.copy` of a mainline or zkp `SecretNonce` raises `TypeError` rather than
+return a second object sharing its native secnonce and lock; `copy.deepcopy`
+and `pickle` raise it naming why (closes #1081).
+
+### A test fails when `SecretNonce._lock` is removed
+
+`test_exactly_one_thread_takes_a_shared_secret_nonce` counts the successful
+`_take` calls; the signing test passed without the lock, libsecp256k1
+refusing a reused secnonce itself (closes #1083).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

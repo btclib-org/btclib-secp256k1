@@ -82,7 +82,7 @@ import secrets
 import threading
 from collections.abc import Sequence
 from types import TracebackType
-from typing import Any, Self, overload
+from typing import Any, Never, Self, overload
 
 from btclib_secp256k1 import BytesLike, CData, MutableBytesLike
 from btclib_secp256k1._scalar import in_range, octets, scalar
@@ -807,6 +807,9 @@ def nonce_gen_counter(
     return SecretNonce(secnonce, pubnonce, pubkey)
 
 
+_NO_COPY = "a SecretNonce is the one handle to its secret nonce: no copy, no pickle"
+
+
 class SecretNonce:
     """A signer's secret nonce, held between `nonce_gen` and `partial_sign`.
 
@@ -952,6 +955,33 @@ class SecretNonce:
             self._secnonce = None
         if secnonce is not None:
             wipe(secnonce)
+
+    def __copy__(self) -> Never:
+        """Refuse: a copy would be a second handle to the one secret nonce.
+
+        It would share the native secnonce and the lock but have its own
+        `_secnonce` attribute, so both objects could pass `_take` and
+        sign with the same secnonce.
+
+        Returns:
+            Nothing: this always raises.
+
+        Raises:
+            TypeError: always.
+        """
+        raise TypeError(_NO_COPY)
+
+    # object has a __reduce__ and typing.override needs Python 3.12
+    def __reduce__(self) -> Never:  # type: ignore[explicit-override]
+        """Refuse `pickle` and `copy.deepcopy`, for the reason `__copy__` gives.
+
+        Returns:
+            Nothing: this always raises.
+
+        Raises:
+            TypeError: always.
+        """
+        raise TypeError(_NO_COPY)
 
     def __enter__(self) -> Self:
         """Return this secret nonce, for the `with` block that wipes it.
