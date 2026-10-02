@@ -195,6 +195,12 @@ the wheels keep PEP 740 attestations only (issue btclib-org/.github#1506).
   (closes #1079): no call fills a buffer from the OS on every platform.
   Passing `prvkey` keeps a copy of it from giving the nonce.
 
+### `ASSURANCE_CASE.md` and `ARCHITECTURE.md` say what the code and the tests do
+
+- **Corrected** (closes #1084): the test cited, "one C call", the zkp
+  context's randomization, the abort stub's test, the cffi-array caveats
+  and the environment variables the build reads.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
