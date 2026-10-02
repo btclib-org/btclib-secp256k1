@@ -9,27 +9,23 @@ disagreeing at a time, so that each assertion names the one thing that
 changed. Both sides carry the same filename, in two directories, which
 is what two builds of one commit produce and what makes the label a
 caller passes -- rather than the path -- the only thing a complaint can
-name the sides by. `_extract_archive` and `copy_source_tree` are
+name the sides by. `copy_source_tree` is
 exercised against real git repositories built by hand instead: what
 makes `#509`'s own fix worth trusting is that a commit and an
 uncommitted edit come out differently, and a mock of `subprocess.run`
-cannot tell the two apart -- it would have to reimplement `git archive`
+cannot tell the two apart -- it would have to reimplement `git clone`
 to do so, at which point the test measures the mock rather than the
-script. The extraction filter's fallback is the one exception: the
-archive that tells a filter is in force names a parent directory, which
-`git archive` does not produce, so that one is handed over directly.
+script.
 `build_wheel` and `main` never invoke the real `uv build`,
 though: what they are asked to build is a fake, `check.subprocess.run`
 replaced the way `tests/submodule_pin_test.py` and
 `tests/vendored_vectors_test.py` replace it, so the suite measures this
-script's plumbing rather than a real compile. The fake answers a `git
-archive` call too, now that `main` calls `copy_source_tree` before every
-build, with a real, empty tar archive -- `_extract_archive`'s own
-`tarfile.open` still runs unmocked against that, extracting nothing
-rather than being skipped. `python -m build` and the two repair tools
-are stood in for the same way on the `--dynamic` and `--cross-windows`
-paths, which is what lets a test on any machine say which tool the
-script reached for.
+script's plumbing rather than a real compile. The fake answers the
+`git` calls too, now that `main` calls `copy_source_tree` before every
+build, with a commit hash and nothing else. `python -m build` and the two
+repair tools are stood in for the same way on the `--dynamic` and
+`--cross-windows` paths, which is what lets a test on any machine say
+which tool the script reached for.
 
 `--across-images` needs no build at all: what it reads is a directory of
 wheels two jobs already built, so its tests write that directory by hand
@@ -42,12 +38,10 @@ other scripts under it are tested.
 from __future__ import annotations
 
 import importlib.util
-import io
 import runpy
 import shutil
 import subprocess
 import sys
-import tarfile
 import zipfile
 import zlib
 from pathlib import Path
@@ -70,6 +64,11 @@ _WHEEL = "pkg-1.0-py3-none-any.whl"
 # an arbitrary commit time, set for every --repaired test below since
 # build_repaired_twice_and_compare refuses to run without it
 _EPOCH = 1_700_000_000
+# the member every wheel a build here leaves must carry, which the fake
+# builds below add to what a test asks them to write
+_SBOM = ("pkg-1.0.dist-info/sboms/btclib_secp256k1.cdx.json", b"{}")
+# what a faked `git rev-parse HEAD` answers
+_COMMIT = "c0ffee"
 
 
 @pytest.fixture
@@ -155,18 +154,6 @@ def init_repo(path: Path, files: dict[str, bytes]) -> None:
     run_git("init", "-q", "-b", "main", cwd=path)
     run_git("config", "user.email", "test@example.invalid", cwd=path)
     run_git("config", "user.name", "test", cwd=path)
-    # no line-ending translation in the repositories these tests read
-    # back from, whatever the machine's git is set to do: the GitHub
-    # Windows images set core.autocrlf globally, a fresh `git init`
-    # inherits it, and `git archive` then hands back CRLF where the
-    # commit holds LF -- so an assertion on the bytes measures the
-    # runner's policy rather than what the script does. An attribute and
-    # not `git config core.autocrlf false`, which a global
-    # core.attributesFile marking files text overrides in turn where
-    # `-text` is not overridden; and in .git/info rather than a
-    # committed .gitattributes, so that what a test asks to be committed
-    # is the whole of what the archive holds
-    (path / ".git" / "info" / "attributes").write_text("* -text\n", encoding="utf-8")
     for name, content in files.items():
         file_path = path / name
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -175,45 +162,14 @@ def init_repo(path: Path, files: dict[str, bytes]) -> None:
     run_git("commit", "-q", "-m", "init", cwd=path)
 
 
-def _empty_tar_bytes() -> bytes:
-    """Return the bytes of a valid, empty tar archive.
-
-    What a faked `git archive` call answers with below: `_extract_archive`
-    still runs its own `tarfile.open`/`extractall` against this, for real,
-    rather than having that call skipped the way a mock returning `None`
-    would force it to.
-    """
-    buffer = io.BytesIO()
-    with tarfile.open(fileobj=buffer, mode="w"):
-        pass
-    return buffer.getvalue()
-
-
-def _escaping_tar_bytes() -> bytes:
-    """Return a tar archive whose one member names a parent directory.
-
-    What `git archive` never produces and a hostile archive does, so it
-    is what tells whether an extraction filter is in force: `data_filter`
-    refuses this member, and the fallback the script falls back to
-    extracts it where its name points.
-    """
-    buffer = io.BytesIO()
-    with tarfile.open(fileobj=buffer, mode="w") as archive:
-        content = b"escaped"
-        info = tarfile.TarInfo("../escaped.txt")
-        info.size = len(content)
-        archive.addfile(info, io.BytesIO(content))
-    return buffer.getvalue()
-
-
 def dispatching_run(build_call: Any, *, out_flag: str = "--out-dir") -> Any:
-    """Return a `subprocess.run` stand-in that fakes `git archive` calls.
+    """Return a `subprocess.run` stand-in that fakes `git` calls.
 
-    `main` now runs `copy_source_tree` -- two `git archive` calls -- ahead
-    of every build, and both go through the same `subprocess.run`
+    `main` now runs `copy_source_tree` -- a handful of `git` calls --
+    ahead of every build, and all go through the same `subprocess.run`
     a test here replaces. The flag naming the output directory is what
-    only a build call carries, so its absence is what marks a `git
-    archive` call, answered with an empty archive rather than reaching
+    only a build call carries, so its absence is what marks a `git`
+    call, answered with a commit hash rather than reaching
     `build_call`, which does not expect one; `args[0]` is not what tells
     the two apart, since it names `_GIT`'s own resolved, and possibly
     absolute, path rather than the literal string "git".
@@ -221,13 +177,13 @@ def dispatching_run(build_call: Any, *, out_flag: str = "--out-dir") -> Any:
     `out_flag` is what a caller changes to fake the `--repaired` path
     instead: `uv build` takes `--out-dir` and `cibuildwheel`
     `--output-dir`, and reading the flag off the command line rather
-    than assuming one is what keeps a `git archive` call from being
+    than assuming one is what keeps a `git` call from being
     mistaken for a build in either.
     """
 
     def fake_run(args: list[str], **kwargs: Any) -> Any:
         if out_flag not in args:
-            return subprocess.CompletedProcess(args, 0, stdout=_empty_tar_bytes())
+            return subprocess.CompletedProcess(args, 0, stdout=_COMMIT + "\n")
         return build_call(args, **kwargs)
 
     return fake_run
@@ -249,7 +205,7 @@ def fake_run_writing(
         out_dir = Path(args[args.index(out_flag) + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
         for name, members in wheels.items():
-            write_wheel(out_dir / name, members)
+            write_wheel(out_dir / name, [*members, _SBOM])
         return None
 
     return fake_run
@@ -280,8 +236,8 @@ def dynamic_dispatching_run(build_call: Any, record: list[list[str]]) -> Any:
     The flag naming an output directory is what tells apart the kinds
     of call that reach it there -- `--outdir` for a
     `python -m build`, `-w` for a repair, and neither for the
-    `git archive` calls `copy_source_tree` makes, which are answered
-    with an empty archive as `dispatching_run` answers them.
+    `git` calls `copy_source_tree` makes, which are answered
+    with a commit hash as `dispatching_run` answers them.
     """
     repair = repair_copying_the_wheel_across(record)
 
@@ -290,7 +246,7 @@ def dynamic_dispatching_run(build_call: Any, record: list[list[str]]) -> Any:
             return build_call(args, **kwargs)
         if "-w" in args:
             return repair(args, **kwargs)
-        return subprocess.CompletedProcess(args, 0, stdout=_empty_tar_bytes())
+        return subprocess.CompletedProcess(args, 0, stdout=_COMMIT + "\n")
 
     return fake_run
 
@@ -306,135 +262,61 @@ def build_writing_in_turn(contents: list[bytes], *, out_flag: str = "--out-dir")
     def build_call(args: list[str], **_kwargs: Any) -> None:
         out_dir = Path(args[args.index(out_flag) + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
-        write_wheel(out_dir / _WHEEL, [("pkg/a.py", remaining.pop(0))])
+        write_wheel(out_dir / _WHEEL, [("pkg/a.py", remaining.pop(0)), _SBOM])
 
     return build_call
 
 
-def test_extract_archive_copies_head_and_not_an_uncommitted_edit(
-    check: ModuleType, tmp_path: Path
-) -> None:
-    """`git archive HEAD` is a commit's content, not the working tree's.
-
-    `#509`'s own reason for building from an archive rather than the
-    checkout in place: two builds sharing a working directory would share
-    whatever is sitting there uncommitted too. This is the property that
-    makes the sentinel measure a commit rather than a checkout, and it is
-    real git commands answering it, not a stand-in for them.
-    """
-    source = tmp_path / "source"
-    init_repo(source, {"tracked.py": b"committed"})
-    (source / "tracked.py").write_bytes(b"edited-but-not-committed")
-    (source / "untracked.py").write_bytes(b"never added")
-
-    dest = tmp_path / "dest"
-    check._extract_archive(source, dest)
-
-    assert (dest / "tracked.py").read_bytes() == b"committed"
-    assert not (dest / "untracked.py").exists()
-
-
-def test_extract_archive_is_fully_trusted_without_the_data_filter(
+def test_copy_source_tree_clones_the_commit_with_its_submodule(
     check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Without `tarfile.data_filter` the extraction is `fully_trusted`.
+    """The copy is a clone of the commit, which is what holds a `.git`.
 
-    The interpreters that have no `data_filter` are CPython 3.11.0 to
-    3.11.3, which `requires-python` admits, and no interpreter the local
-    gate runs is one -- so the fallback of
-    `_extract_archive`'s `getattr` is asserted here or nowhere. What it
-    reverts to is CPython's own behaviour before the filter existed: the
-    member below is extracted where its name points, outside the
-    destination the caller named. That is acceptable because
-    `_extract_archive` reads `git archive HEAD` over this repository and
-    nothing else, which is also why the archive here is built by hand.
+    `scripts/hatch_build.py` writes the wheel's bill of materials only
+    in a tree with a `.git`, so a copy without one builds a wheel the
+    release does not. The submodule is a real one, its gitlink pins the
+    commit, and an uncommitted edit or an untracked file in `root`
+    reaches neither the clone nor the submodule's checkout.
+
+    The machine's git configuration is replaced by an empty one first:
+    the clone is checked out under it, and the GitHub Windows images set
+    `core.autocrlf` globally, which would turn the committed LF into CRLF
+    and make the assertion on bytes measure the runner.
     """
-    monkeypatch.delattr(check.tarfile, "data_filter", raising=False)
-    monkeypatch.setattr(
-        check.subprocess,
-        "run",
-        lambda args, **_kwargs: subprocess.CompletedProcess(
-            args, 0, stdout=_escaping_tar_bytes()
-        ),
-    )
+    empty = tmp_path / "gitconfig"
+    empty.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
 
-    dest = tmp_path / "outer" / "dest"
-    check._extract_archive(tmp_path / "source", dest)
-
-    assert (tmp_path / "outer" / "escaped.txt").read_bytes() == b"escaped"
-    assert not (dest / "escaped.txt").exists()
-
-
-def test_extract_archive_ignores_the_machines_line_ending_policy(
-    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A committed LF comes back an LF, whatever the machine's git says.
-
-    The GitHub Windows images set `core.autocrlf` in the global
-    configuration and a repository `init_repo` stands up inherits it, so
-    `git archive` handed back CRLF where the commit holds LF and
-    `test_copy_source_tree_extracts_the_submodule_from_its_own_repository`
-    measured the runner rather than the script. Pointing
-    `GIT_CONFIG_GLOBAL` at a configuration saying the same thing is what
-    asks that question from any platform: without it the property holds
-    only where the machine's git is already set the other way, which is
-    how the failure reached `main`.
-
-    The other two keys are what make this a test of `init_repo`'s
-    *choice* and not only of the symptom. A repository of its own saying
-    `core.autocrlf = false` survives the first key alone, so a test
-    carrying that key alone stays green against the weaker fix and goes
-    red only on somebody's laptop; an attributes file marking every path
-    text, with `core.eol`, is the configuration that tells the two apart,
-    because `-text` overrides it and a repository's own `core.autocrlf`
-    does not.
-
-    Written by `git config --file` rather than by hand: a value is
-    escape-processed when it is read, so a Windows `tmp_path` written
-    literally is `fatal: bad config line`, and this way the escaping is
-    git's to get right.
-    """
-    attributes = tmp_path / "global-attributes"
-    attributes.write_text("* text=auto\n", encoding="utf-8")
-    hostile = tmp_path / "gitconfig"
-    for key, value in (
-        ("core.autocrlf", "true"),
-        ("core.eol", "crlf"),
-        ("core.attributesFile", str(attributes)),
-    ):
-        run_git("config", "--file", str(hostile), key, value, cwd=tmp_path)
-    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(hostile))
-
-    source = tmp_path / "source"
-    init_repo(source, {"pyproject.toml": b"[project]\n"})
-
-    dest = tmp_path / "dest"
-    check._extract_archive(source, dest)
-
-    assert (dest / "pyproject.toml").read_bytes() == b"[project]\n"
-
-
-def test_copy_source_tree_extracts_the_submodule_from_its_own_repository(
-    check: ModuleType, tmp_path: Path
-) -> None:
-    """The submodule is a gitlink, and its own commit is archived on its own.
-
-    `root`'s own `git archive` never descends into a gitlink -- it leaves
-    an empty directory at that path instead -- so `copy_source_tree`'s
-    second `git archive`, against `root/secp256k1` itself, is what a real
-    submodule checkout actually needs and what this asserts landed.
-    """
+    vendored = tmp_path / "vendored"
+    init_repo(vendored, {"CMakeLists.txt": b"vendored\n"})
     root = tmp_path / "root"
     init_repo(root, {"pyproject.toml": b"[project]\n"})
-    init_repo(root / "secp256k1", {"CMakeLists.txt": b"vendored\n"})
-    run_git("add", "-A", cwd=root)
+    run_git(
+        "-c",
+        "protocol.file.allow=always",
+        "submodule",
+        "add",
+        "-q",
+        str(vendored),
+        "secp256k1",
+        cwd=root,
+    )
     run_git("commit", "-q", "-m", "pin submodule", cwd=root)
+    (root / "pyproject.toml").write_bytes(b"edited-but-not-committed")
+    (root / "untracked.py").write_bytes(b"never added")
+    (root / "secp256k1" / "CMakeLists.txt").write_bytes(b"edited too")
 
     dest = tmp_path / "dest"
     check.copy_source_tree(root, dest)
 
+    assert (dest / ".git").exists()
     assert (dest / "pyproject.toml").read_bytes() == b"[project]\n"
+    assert not (dest / "untracked.py").exists()
     assert (dest / "secp256k1" / "CMakeLists.txt").read_bytes() == b"vendored\n"
+    pinned = check._git("ls-tree", "HEAD", "--", "secp256k1", cwd=dest)
+    assert pinned == check._git("ls-tree", "HEAD", "--", "secp256k1", cwd=root)
+    assert pinned.startswith("160000 commit ")
 
 
 def test_build_wheel_returns_the_one_wheel_uv_left(
@@ -458,6 +340,33 @@ def test_build_wheel_refuses_an_empty_out_dir(
 
     with pytest.raises(RuntimeError, match="expected exactly one wheel"):
         check.build_wheel(tmp_path / "source", tmp_path / "out")
+
+
+def test_build_wheel_refuses_a_wheel_without_a_bill_of_materials(
+    check: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A build that wrote no document fails, and one that did names it.
+
+    Two builds without a `.git` agree with each other, so the comparison
+    alone would pass them; this is what turns that into a failure.
+    """
+
+    def build(args: list[str], **_kwargs: Any) -> None:
+        out_dir = Path(args[args.index("--out-dir") + 1])
+        write_wheel(out_dir / _WHEEL, [("pkg/a.py", b"x")])
+
+    monkeypatch.setattr(check.subprocess, "run", build)
+    with pytest.raises(RuntimeError, match="no bill of materials"):
+        check.build_wheel(tmp_path / "source", tmp_path / "out")
+
+    monkeypatch.setattr(
+        check.subprocess, "run", fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]})
+    )
+    check.build_wheel(tmp_path / "source", tmp_path / "out-with")
+    assert capsys.readouterr().out.endswith(f"carries {_SBOM[0]}\n")
 
 
 def test_build_wheel_refuses_more_than_one_wheel(
@@ -519,7 +428,7 @@ def test_build_repaired_wheels_runs_in_the_directory_it_builds(
         seen["cwd"] = kwargs["cwd"]
         out_dir = Path(args[args.index("--output-dir") + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
-        write_wheel(out_dir / _WHEEL, [("pkg/a.py", b"x")])
+        write_wheel(out_dir / _WHEEL, [("pkg/a.py", b"x"), _SBOM])
 
     monkeypatch.setattr(check.subprocess, "run", spy)
 
@@ -557,7 +466,7 @@ def test_build_dynamic_wheel_carries_the_linkage_its_environment_names(
         seen["env"] = kwargs["env"]
         out_dir = Path(args[args.index("--outdir") + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
-        write_wheel(out_dir / _WHEEL, [("pkg/a.py", b"x")])
+        write_wheel(out_dir / _WHEEL, [("pkg/a.py", b"x"), _SBOM])
 
     monkeypatch.setattr(check.subprocess, "run", spy)
     monkeypatch.setenv("A_VARIABLE_THE_BUILD_INHERITS", "kept")
@@ -593,7 +502,7 @@ def test_repair_wheel_runs_delocate_on_macos(
     """
     monkeypatch.setattr(check.sys, "platform", "darwin")
     built = tmp_path / "out" / _WHEEL
-    write_wheel(built, [("pkg/a.py", b"x")])
+    write_wheel(built, [("pkg/a.py", b"x"), _SBOM])
     record: list[list[str]] = []
     monkeypatch.setattr(
         check.subprocess, "run", repair_copying_the_wheel_across(record)
@@ -612,7 +521,7 @@ def test_repair_wheel_runs_auditwheel_off_macos(
     """And with auditwheel everywhere else, which there means Linux."""
     monkeypatch.setattr(check.sys, "platform", "linux")
     built = tmp_path / "out" / _WHEEL
-    write_wheel(built, [("pkg/a.py", b"x")])
+    write_wheel(built, [("pkg/a.py", b"x"), _SBOM])
     record: list[list[str]] = []
     monkeypatch.setattr(
         check.subprocess, "run", repair_copying_the_wheel_across(record)

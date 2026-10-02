@@ -1231,9 +1231,9 @@ but `links` run locally.
   signature it already made.
 
 - `wheel-reproducibility`, which builds this commit's wheel twice, from
-  two directories it extracts `HEAD` into, and diffs the two archives
-  member by member. The job pins the build timestamp first, as in
-  `Build wheels on <os>` above; `hatchling`'s own fallback constant
+  two clones of `HEAD`, and diffs the two archives member by member. The
+  job pins the build timestamp first, as in `Build wheels on <os>` above;
+  `hatchling`'s own fallback constant
   would make the two local builds agree either way, so what pinning it
   buys here is that this measurement and the wheel a release actually
   builds do not differ in an exported variable:

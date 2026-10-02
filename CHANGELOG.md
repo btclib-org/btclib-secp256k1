@@ -235,6 +235,12 @@ refusing a reused secnonce itself (closes #1083).
 and fails unless each refuses a shorter and a longer argument, and a scalar
 an int outside its range; `zkp` is not swept (closes #1075).
 
+### `wheel-reproducibility.yml` compares the bill of materials too
+
+- **`check_wheel_reproducibility.py` builds from `git clone`s, not `git
+  archive` extracts**, so each build writes the wheel's bill of materials
+  and the comparison covers it (closes #1094).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
