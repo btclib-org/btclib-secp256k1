@@ -241,6 +241,12 @@ an int outside its range; `zkp` is not swept (closes #1075).
   archive` extracts**, so each build writes the wheel's bill of materials
   and the comparison covers it (closes #1094).
 
+### `fuzz.yml` fuzzes the parsers and verifiers it left out
+
+The ECDSA, recovery, ElligatorSwift, MuSig2 and Silent Payments entry
+points that parse a stranger's octets, and `ssa.verify`'s key and
+signature, have a target under `fuzz/` (closes #1085).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

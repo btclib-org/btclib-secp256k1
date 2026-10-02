@@ -1,21 +1,18 @@
 ---
 name: fuzz
 
-# ClusterFuzzLite over the entry points of these bindings that take
-# octets of no fixed size -- `xonly.parse`, `keys.parse`,
-# `dsa.parse_der`, the message of `ssa.verify` and
-# `hashes.tagged_sha256`, one `fuzz/fuzz_*.py` each. What is worth
-# fuzzing here is not the vendored library but this package's own
-# guards in front of it: a length checked in Python ahead of a C call
-# that is handed a pointer and no length fails inside the C, and the
-# address-sanitized build below is what turns that into a crash. An
-# entry point taking a fixed size is left out on purpose, a
-# byte-oriented fuzzer spending nearly every input on the size check
-# and reaching the parser almost never. btclib-org/.github#342 is where
-# the target set and the harness are argued and where this build was
-# proved on a runner; section 10 of the organization standard is where
-# `fuzz` is named as a sentinel every tree parsing a stranger's own
-# octets owes.
+# ClusterFuzzLite over entry points that read octets a stranger chose,
+# outside the `zkp` subpackage; `ls fuzz/fuzz_*.py` lists the harnesses,
+# and each docstring names its entry point. A harness for an input of any
+# length drives this package's length check where one stands ahead of a
+# C call handed a pointer and no length; a fixed-size one pads or cuts to
+# the size, so its input reaches the parser behind that check. The
+# address-sanitized build below is what turns a fault in either into a
+# crash; an entry point taking several arguments reads them all from one
+# input. btclib-org/.github#342 is where the target set and the harness
+# are argued and where this build was proved on a runner; section 10 of
+# the organization standard is where `fuzz` is named as a sentinel every
+# tree parsing a stranger's own octets owes.
 #
 # `.clusterfuzzlite/` is what the two actions below read -- project.yaml,
 # Dockerfile and build.sh -- and build.sh discovers each target by glob,
@@ -74,9 +71,10 @@ jobs:
     # this line is widened on purpose
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
-    # the image pull, the build and fuzz-seconds below, far above their
-    # sum
-    timeout-minutes: 90
+    # the image pull, the build and fuzz-seconds below, with margin: the
+    # build and the overhead around each target's slice grow with every
+    # target, so a new harness is read against the last run's duration
+    timeout-minutes: 150
     steps:
       # pinned to a commit SHA, with the tag above the pin rather than
       # trailing it: the action's path and its sha fill the width

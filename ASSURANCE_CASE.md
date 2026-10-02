@@ -269,7 +269,10 @@ exposed to, and what counters each.
   targets under `fuzz/` run under ClusterFuzzLite in
   `.github/workflows/fuzz.yml`, each parsing octets it does not control
   through the entry point it names, and `tests/fuzz_corpus_test.py`
-  checks that every seed of their corpus still parses.
+  checks that every seed of their corpus still parses. `ls
+  fuzz/fuzz_*.py` lists the set, each harness's docstring naming its
+  entry point; the `zkp` subpackage is not fuzzed. The workflow runs
+  weekly and on dispatch, not on a pull request.
 - **Observable timing (CWE-208).** The constant-time calls and what is
   not, stated in SECURITY.md and pointed at from *What is not defended*
   above.
