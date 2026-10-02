@@ -264,6 +264,35 @@ def test_take_refuses_a_buffer_that_is_not_contiguous_octets() -> None:
         assert ffi.unpack(buffer, ffi.sizeof(buffer)) == bytes(ffi.sizeof(buffer))
 
 
+def test_take_writes_through_a_buffer_of_any_octet_format() -> None:
+    """Octets stated as `b`, `c`, `<B` or `<c` are written, not refused.
+
+    `memoryview` assigns only between views of one format, so these used
+    to fail the copy with `ValueError: different structures` or, for a
+    ctypes array, `NotImplementedError: unsupported format`. Each
+    destination is a different format, and the secret lands in all of
+    them.
+    """
+    owner = bytearray(32)
+    destinations: list[Any] = [
+        array.array("b", bytes(32)),
+        memoryview(owner).cast("c"),
+        (ctypes.c_ubyte * 32)(),
+        (ctypes.c_char * 32)(),
+    ]
+    assert {memoryview(d).format.lstrip("<") for d in destinations} == {"b", "c", "B"}
+    for destination in destinations:
+        buffer = ffi.new("char[32]", SECRET)
+        assert _secret.take(buffer, into=destination) is None
+        assert bytes(memoryview(destination)) == SECRET
+        assert ffi.unpack(buffer, ffi.sizeof(buffer)) == bytes(ffi.sizeof(buffer))
+
+    # and through a public entry point, the case the issue reported
+    ctypes_buffer = (ctypes.c_ubyte * 32)()
+    assert keys.prvkey_negate(7, into=ctypes_buffer) is None  # type: ignore[call-overload]
+    assert bytes(ctypes_buffer) == keys.prvkey_negate(7)
+
+
 def test_take_refuses_a_view_of_wider_items() -> None:
     """Eight uint32 are 32 octets of nobody's byte order.
 

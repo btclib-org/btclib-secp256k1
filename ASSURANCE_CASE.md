@@ -212,8 +212,9 @@ describes beside them.
   among them, and the only files it opens are its own.
 - **Psychological acceptability.** A verdict function —
   `keys.prvkey_verify`, `keys.pubkey_verify`, `xonly.pubkey_verify`,
-  `dsa.signature_verify` — answers `False` for input that does not hold
-  and never raises, where every entry point that goes on to *use* the
+  `dsa.signature_verify` — answers `False` for input that does not hold,
+  a wrong length included, and raises only `TypeError` for a value of the
+  wrong type, where every entry point that goes on to *use* the
   value raises instead: a caller can tell "not valid" from "cannot be
   used" (README.md's *What the boundary checks* section).
 - **Layering.** A public entry point speaks in octets, and the private

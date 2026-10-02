@@ -78,14 +78,19 @@ def prvkey_verify(prvkey: BytesLike | int) -> bool:
         prvkey: the private key, 32 bytes or an int below 2**256.
 
     Returns:
-        True if it is in [1, n-1]; False for zero and for anything at or
-        above the group order, which is a verdict and not an error.
+        True if it is in [1, n-1]; False for zero, for anything at or
+        above the group order, for octets of any other length and for an
+        int that does not fit in 32 bytes. Those are verdicts and not
+        errors: the length is part of the verdict, as in `pubkey_verify`.
 
     Raises:
-        ValueError: if it is not 32 bytes, or does not fit in them: that
-            is a malformed argument rather than an invalid key.
+        TypeError: if the value is neither bytes nor an int, which is a
+            malformed argument and not a key to have a verdict on.
     """
-    prvkey_bytes = scalar(prvkey, "private key")
+    try:
+        prvkey_bytes = scalar(prvkey, "private key")
+    except ValueError:
+        return False
     return bool(lib.secp256k1_ec_seckey_verify(ctx, prvkey_bytes))
 
 

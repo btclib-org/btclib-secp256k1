@@ -41,6 +41,28 @@ def test_prvkey_verify() -> None:
     assert not keys.prvkey_verify(b"\xff" * 32)
 
 
+def test_the_verdict_on_a_private_key_includes_its_length() -> None:
+    """A wrong length or an int too wide is False, and a wrong type raises.
+
+    The docs call `prvkey_verify` a verdict function: "do I have a
+    private key" is answered for 31 octets, for none and for 2**256 as it
+    is for zero. `pubkey_verify` answers `False` for its lengths; this is
+    the same question about the other key.
+    """
+    for wrong in (b"", b"\x01" * 31, b"\x01" * 33, 2**256, 2**300):
+        assert keys.prvkey_verify(wrong) is False
+    assert keys.prvkey_verify(bytearray(32)) is False
+    assert keys.prvkey_verify(1) is True
+
+    for not_a_key in (None, "x", [1], 1.0, True):
+        with pytest.raises(TypeError):
+            keys.prvkey_verify(not_a_key)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="must be 32 bytes"):
+        keys.prvkey_negate(b"")
+    with pytest.raises(ValueError, match="must fit in 32 bytes"):
+        keys.prvkey_negate(2**300)
+
+
 def test_prvkey_algebra() -> None:
     """Scalar algebra on a private key matches the arithmetic mod n.
 

@@ -341,8 +341,9 @@ def test_a_scalar_may_be_octets_this_package_can_overwrite() -> None:
     # a length either side of 32 is refused, the longer one too: it would
     # otherwise be read for its first 32 octets and the rest ignored
     for size in (31, 33):
+        assert keys.prvkey_verify(ffi.new(f"unsigned char[{size}]")) is False
         with pytest.raises(ValueError, match="private key must be 32 bytes"):
-            keys.prvkey_verify(ffi.new(f"unsigned char[{size}]"))
+            keys.prvkey_negate(ffi.new(f"unsigned char[{size}]"))
 
     # a str is the one thing the question itself would get wrong, and
     # `"char[32]"` is why it is refused before being asked rather than

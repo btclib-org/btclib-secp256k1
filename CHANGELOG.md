@@ -201,6 +201,22 @@ the wheels keep PEP 740 attestations only (issue btclib-org/.github#1506).
   context's randomization, the abort stub's test, the cffi-array caveats
   and the environment variables the build reads.
 
+### `keys.prvkey_verify` answers `False` for a wrong length
+
+`prvkey_verify` raised `ValueError` for octets of another length and for
+an `int` over 32 bytes (closes #1076). A verdict function raises only
+`TypeError`, for a value of the wrong type.
+
+### `into=` takes octets of any format
+
+An `array.array("b")`, a `cast("c")` view or a ctypes array failed the
+copy with `ValueError` or `NotImplementedError` (closes #1077).
+
+### A `keyagg_cache`, `session` or `labels` of the wrong type raises `TypeError`
+
+In `musig`, `zkp.musig` and `silentpayments.scan_outputs` the first
+attribute lookup raised `AttributeError` instead (closes #1078).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

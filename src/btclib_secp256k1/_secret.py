@@ -112,6 +112,10 @@ def into_buffer(into: object, size: int) -> memoryview:
     would be right while a wipe of the owner would look right and not
     be.
 
+    The format does not matter, only that the items are octets: a view of
+    another format is cast to `B`, over the same memory, since
+    `memoryview` assigns only between views of one format.
+
     Anything the buffer protocol offers is otherwise accepted, an
     `mmap` and an `array.array("B")` included -- the first of those
     being a plausible destination, `mlock`ed, for exactly the caller
@@ -157,6 +161,9 @@ def into_buffer(into: object, size: int) -> memoryview:
         raise TypeError(msg)
     if view.ndim != 1 or not view.c_contiguous:
         raise TypeError("the buffer to write into must be contiguous octets")
+    if view.format != "B":
+        # `memoryview` copies only between views of one format
+        view = view.cast("B")
     if view.nbytes != size:
         raise ValueError(f"the buffer to write into must be {size} bytes")
     return view

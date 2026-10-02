@@ -298,7 +298,11 @@ and decides nothing else.
   being the curve's. What they are not is passed through. The copy is
   taken at the boundary, so a caller holding a secret in memory they can
   overwrite — which is the reason to reach for a `bytearray` at all —
-  cannot change what libsecp256k1 is about to read
+  cannot change what libsecp256k1 is about to read. Objects are held to
+  their types the same way: a `keyagg_cache` that is not a `KeyAggCache`,
+  a `session` that is not a `Session` and `labels` that is not a mapping
+  raise `TypeError`, not the
+  `AttributeError` of the first attribute looked up on them
 - **validity is libsecp256k1's to decide, and it does.** Whether 32 bytes
   are a scalar in `[1, n-1]` is answered by
   `secp256k1_ec_seckey_verify`, and `keys.prvkey_verify` is that call, not
@@ -316,7 +320,11 @@ and decides nothing else.
   package's word for it is a message it would have to translate. The
   length is part of the verdict — 34 octets are no public key, and
   answering `False` is what a caller asking "do I have one" wants — where
-  every entry point that goes on to *use* the key raises instead
+  every entry point that goes on to *use* the key raises instead. An
+  `int` that does not fit in 32 bytes is `prvkey_verify`'s version of
+  the same case. What the four do raise is `TypeError` for a value of
+  the wrong type — `None`, a `str`, a `list`, a `float` — which is a
+  malformed call and not a key
 - **nothing is normalized into validity.** An argument of the wrong size
   raises, and is never padded: the 32 bytes of nonce entropy are 32 bytes
   or omitted, a shorter value being a caller mistake rather than a small
