@@ -838,10 +838,14 @@ command at all, for the reason below, and nothing requires its result.
   it -- its own docstring has the reasoning. The bill of materials reads
   it too, as the document's own timestamp, and is written after the
   normalizer because the rewrite moves the digest it records; `sbom/`
-  rather than `dist/`, an index taking distribution files. That job
-  installs with pip rather than uv, its subject being pip resolving the
-  published artifact rather than uv reading the lock, so reproducing the
-  install wants a fresh venv rather than the project's own:
+  rather than `dist/`, an index taking distribution files. On a release
+  `Build sdist` builds nothing: `release.yml`'s `build` job builds the
+  sdist and its bill of materials the same way through
+  btclib-org/.github's `reusable-build.yml`, which signs them, and the
+  install job reads that upload. The install job uses pip rather than
+  uv, its subject being pip resolving the published artifact rather than
+  uv reading the lock, so reproducing the install wants a fresh venv
+  rather than the project's own:
 
   ```shell
   export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
