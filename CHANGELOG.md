@@ -172,6 +172,12 @@ that records it (issue btclib-org/.github#1362).
 SBOM, verified with that `--signer-workflow` and the tag as `--source-ref`;
 the wheels keep PEP 740 attestations only (issue btclib-org/.github#1506).
 
+### While the bot review is off, `CONTRIBUTING.md` says what stands in for the ack
+
+- **There is no ack of record while `claude-review.yml` is off** (issue
+  btclib-org/.github#1527): *The review* says a local review of a named
+  sha by a reviewer other than the author stands in for it.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
