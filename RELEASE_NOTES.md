@@ -7,6 +7,14 @@ a tag is generated from.
 
 ## v0.8.0.10 (work in progress, not released yet)
 
+- **Verifying the sdist's attestation names a new signer and the tag.**
+  `gh attestation verify` takes
+  `--signer-workflow btclib-org/.github/.github/workflows/reusable-build.yml@refs/heads/main`
+  and `--source-ref refs/tags/v<version>`; SECURITY.md names the signer of
+  an earlier release. The attestation covers the sdist and its bill of
+  materials, at SLSA Build L3; the wheels keep only their PEP 740
+  attestations on PyPI.
+
 ## v0.8.0.9
 
 - **Breaking: `context.check()` and `zkp.context.check()` no longer raise

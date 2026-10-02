@@ -90,7 +90,13 @@ distribution can be traced back to the workflow run and the commit it
 was built from.
 
 The sdist is also attached to the GitHub release, and that copy carries a
-build provenance attestation of its own, signed in the run that built it.
+build provenance attestation of its own, signed at SLSA Build L3 by the
+organization's `reusable-build.yml`, which built it in the release's own
+run. The wheels are built by this repository's own `test.yml`, and that
+attestation does not cover them: their provenance is the PEP 740
+attestation alone, signed by `release.yml`, so they do not reach SLSA
+Build L3.
+
 The version takes a fence of its own with nothing under it to reach:
 written into the file name, `btclib_secp256k1-<version>.tar.gz` is a
 `<version` redirection that creates a file named `.tar.gz` wherever the
@@ -104,23 +110,28 @@ version=<version>
 
 ```shell
 repo=btclib-org/btclib-secp256k1
-signer=btclib-org/.github/.github/workflows/reusable-attest.yml
+workflows=btclib-org/.github/.github/workflows
+signer=$workflows/reusable-build.yml@refs/heads/main
 gh attestation verify "btclib_secp256k1-${version:?}.tar.gz" \
-  --repo "$repo" --signer-workflow "$signer"
+  --repo "$repo" --signer-workflow "$signer" \
+  --source-ref "refs/tags/v${version:?}"
 ```
 
-`--signer-workflow` names the workflow that signed. From 0.8.0.7 on that
-is the organization's `reusable-attest.yml`, which this repository's
-`release.yml` calls: an attestation made inside a called workflow names
-the callee as its signer, while `--repo` still names this repository as
-the source. For those releases the flag is required rather than a
-narrowing, the command refusing a genuine release without it. From 0.8.0
-to 0.8.0.6 the signer is `release.yml` itself, so for those releases
-`signer` is `"$repo/.github/workflows/release.yml"`, and there the flag
-narrows what passes: without it an attestation from any workflow in this
-repository is accepted. Neither path verifies a release the other
-signed. The PEP 740 attestations on PyPI name `release.yml`, the job
-that uploads there being its own rather than a called workflow's.
+`--signer-workflow` names the workflow that signed. For a release built
+by the organization's `reusable-build.yml`, which `release.yml` calls,
+that is that workflow: an attestation made inside a called workflow
+names the callee as its signer, while `--repo` still names this
+repository as the source. The flag is required rather than a narrowing,
+the command refusing a genuine release without it, and `--source-ref` is
+what keeps a build of a branch from passing as the release. From 0.8.0.7
+to 0.8.0.9 the signer is `reusable-attest.yml`, named the same way
+without `--source-ref`. From 0.8.0 to 0.8.0.6 the signer is
+`release.yml` itself, so for those releases `signer` is
+`"$repo/.github/workflows/release.yml"`, and there the flag narrows what
+passes: without it an attestation from any workflow in this repository
+is accepted. No path verifies a release another signed. The PEP 740
+attestations on PyPI name `release.yml`, the job that uploads there
+being its own rather than a called workflow's.
 
 The signed statement
 is attached to the release as well, as `<tag>.intoto.jsonl`, or

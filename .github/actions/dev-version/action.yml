@@ -3,9 +3,10 @@ name: Append a dev suffix to the version
 description: >
   Rewrites the version in pyproject.toml, appending the given suffix, and
   re-locks so that uv.lock agrees: what a rehearsal needs before it
-  builds a version no index has seen. Every build job of the test
-  workflow runs this, and they must all produce the same version: the
-  suffix is decided once, by the caller.
+  builds a version no index has seen. Every wheel build job of the test
+  workflow runs this, and so does btclib-org/.github's reusable-build.yml
+  before it builds the sdist; they must all produce the same version: the
+  suffix is decided once, by release.yml.
 
 inputs:
   suffix:
