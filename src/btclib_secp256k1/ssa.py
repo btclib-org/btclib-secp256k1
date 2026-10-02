@@ -133,23 +133,31 @@ def nonce_bip340(
     """
     msg_bytes = octets(msg_bytes, "message")
     xonly_pubkey, parity = xonly.from_prvkey(prvkey)
-    # the key that signs, which BIP340 negates where the point has odd y
-    prvkey_bytes = (
-        keys.prvkey_negate(prvkey) if parity else scalar(prvkey, "private key")
-    )
     aux = optional_entropy(aux_rand32)
-
     nonce = ffi.new("unsigned char[32]")
-    if not lib.secp256k1_nonce_function_bip340(
-        nonce,
-        msg_bytes,
-        len(msg_bytes),
-        prvkey_bytes,
-        xonly_pubkey,
-        _NONCE_ALGO,
-        len(_NONCE_ALGO),
-        aux,
-    ):
+    # the key that signs, which BIP340 negates where the point has odd y:
+    # negated into a buffer of ours, wiped below, so that no `bytes` of
+    # n - d is made
+    negated = ffi.new("unsigned char[32]")
+    try:
+        if parity:
+            keys.prvkey_negate(prvkey, into=ffi.buffer(negated))
+            prvkey_bytes = negated
+        else:
+            prvkey_bytes = scalar(prvkey, "private key")
+        derived = lib.secp256k1_nonce_function_bip340(
+            nonce,
+            msg_bytes,
+            len(msg_bytes),
+            prvkey_bytes,
+            xonly_pubkey,
+            _NONCE_ALGO,
+            len(_NONCE_ALGO),
+            aux,
+        )
+    finally:
+        wipe(negated)
+    if not derived:
         raise RuntimeError("BIP340 nonce derivation failed")
     return take(nonce, into=into)
 
