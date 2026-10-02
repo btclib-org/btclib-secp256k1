@@ -11,10 +11,14 @@ the ones [ARCHITECTURE](./ARCHITECTURE.md) describes.
 
 ## What is claimed
 
-- **The answer is libsecp256k1's, or secp256k1-zkp's.** Every wrapper is
-  one C call, with its arguments validated first and its return value
-  checked afterwards; none reimplements, extends or second-guesses the
-  cryptography, and README.md's *Design* section states so.
+- **The answer is libsecp256k1's, or secp256k1-zkp's.** Every wrapper
+  validates its arguments first and checks each return value that can
+  report a failure afterwards, and none reimplements or extends the
+  cryptography; README.md's *Design* section states so. A wrapper is
+  often several calls, parsing its arguments and serializing its result,
+  and some compose more: `dsa.sign` verifies the signature it made and,
+  with `grind=True`, signs again in a Python loop, and
+  `keys.pubkey_tweak_mul_sum` makes a call per term and one to sum.
 - **Malformed input is refused before it reaches C.** A size or a type
   that a bare pointer cannot carry safely is checked here, because no
   return code or callback of the library can report it once the call is
@@ -80,9 +84,11 @@ does not see as an import statement. `os` is not among them either:
 nothing under `src/` reads an environment variable at run time. The four
 variables that choose a build path (*Architecture*'s *The build*) are
 read only under `scripts/`, before any wheel exists to run —
-`scripts/cffi_build.py` reads all four, and `CFFI_PLATFORM` alone is
-read a second time, by `scripts/hatch_build.py`, to compute the wheel's
-own platform tag.
+`scripts/cffi_build.py` reads all four, and `scripts/hatch_build.py`
+reads `CFFI_PLATFORM` and `MACOSX_DEPLOYMENT_TARGET` to compute the
+wheel's own platform tag. `scripts/cffi_build.py` reads more than the
+four, the variables the compiler and CMake honour, and the CMake and
+compiler processes it starts inherit the whole environment.
 
 **What is defended.**
 
@@ -93,7 +99,9 @@ own platform tag.
   call itself.
 - The caller's process, against an argument that violates a
   precondition libsecp256k1 or secp256k1-zkp checks internally: what
-  answers for it is `context.check()`, never an abort().
+  answers for it is `context.check()`, never an abort(); the stub is
+  compiled into both builds, and the *Common implementation weaknesses*
+  entry for CWE-617 says what drives it.
 - The correctness of the answer, against an adversary who chooses the
   input: a signature accepted that should be refused, a key parsed that
   is not one, a scalar treated as valid outside `[1, n-1]`.
@@ -126,6 +134,10 @@ the binding layer*:
   variable time over
 - the operating system's random number generator, which this package
   uses through `secrets` rather than seeding one of its own
+- a cffi array passed in place of octets: the declared length is
+  trusted, since cffi cannot report what was allocated; a view that
+  does not keep its owner alive can dangle; and a write during the call
+  is not told apart from a fault
 
 Nor is the interpreter or the operating system this package runs on: a
 binding shares its caller's process and has no defence against it.
@@ -135,7 +147,7 @@ binding shares its caller's process and has no defence against it.
 **The caller and every public entry point.** Octets and scalars cross
 from the caller at every wrapper, and each is validated there before a
 pointer reaches C: README.md's *What the boundary checks* section states
-the rule, and `tests/core_test.py` and `tests/module_flags_test.py`
+the rule, and `tests/core_test.py` and `tests/modules_test.py`
 drive it. The caller is trusted with the choices the API offers: which
 serialization a key or a signature arrives in, `grind=True` on
 `dsa.sign`, or a private half taking a libsecp256k1 object already
@@ -167,8 +179,7 @@ distribution metadata, for `__version__`. Neither path is one a caller
 supplies.
 
 **The environment.** Nothing under `src/` reads one, as the *Threat
-model* census above shows; the four variables that choose a build path
-are read only at build time, by `scripts/cffi_build.py`.
+model* census above shows; what the build reads is there too.
 
 ## Secure design principles
 
@@ -178,8 +189,10 @@ describes beside them.
 - **Economy of mechanism.** One dispatch decides which library handle a
   wrapper calls through (`_load_lib`, *Architecture*'s *The two
   builds*), and one context is shared by every call into a given
-  library, randomized once before any thread exists rather than per
-  call.
+  library, randomized once at creation rather than per call. The primary
+  package creates its context at import, before any thread exists; the
+  `zkp` subpackage creates its own on the first call that needs it,
+  under a lock (README.md's *Thread safety*).
 - **Fail-safe defaults.** An argument of the wrong size or type is
   refused rather than padded or reinterpreted into a valid one, README's
   *What the boundary checks* section stating the rule and its one
@@ -234,7 +247,9 @@ exposed to, and what counters each.
   illegal-argument stub replaces libsecp256k1's abort()ing default, so a
   violated precondition is reported rather than crashing the process;
   `tests/core_test.py`'s `test_safe_abort` drives libsecp256k1 with
-  deliberately illegal arguments to prove the replacement holds. An
+  deliberately illegal arguments to prove the replacement holds. No
+  test drives the stub in secp256k1-zkp's build, which is compiled the
+  same way; the zkp tests reach the callback of zkp's own context. An
   internal error is not this weakness's concern: it is not a reachable
   assertion on a caller's input, and the vendored build keeps upstream's
   own aborting default for it, on purpose.

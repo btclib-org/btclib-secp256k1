@@ -225,10 +225,11 @@ went:
   survived, `context.check()` reporting it verbatim. What that
   validation is, and what it deliberately is not, is What the boundary
   checks below
-- side channels are the context's problem, and it is handled: the one
-  shared context is randomized at import time, before any thread
-  exists; concurrent use is documented and tested, free-threaded
-  interpreter included (see Thread safety)
+- side channels are the context's problem, and it is handled: each
+  shared context is randomized when it is created, which for the
+  primary package is at import time, before any thread exists, and for
+  `zkp` is its first call; concurrent use is documented and tested,
+  free-threaded interpreter included (see Thread safety)
 - the boundary is typed: `py.typed` ships, mypy runs in strict mode,
   and the cffi extension itself is described by a hand-written stub, so
   what downstream type-checks against is the real signatures rather
@@ -1124,13 +1125,14 @@ MuSig2 is wrapped, in `musig`. What its two-round protocol needs is a
 session whose secret nonce cannot be reused, and that is a property of
 an object's lifetime rather than of a function: only whoever owns the
 session can invalidate it. This package is otherwise stateless by
-construction, every other function being one libsecp256k1 call with its
-arguments validated, and `musig.KeyAggCache` and `musig.Session` are its
-exception -- the *Outposts past the boundary* section above says why the
-existing rule for holding an object does not reach them, and `musig.py`'s
-own module docstring records the decision to take the exception rather
-than to leave the state to whoever calls this package, `KeyAggCache` and
-`Session` having no serialization to hand back regardless.
+construction: every other function validates its arguments and calls
+libsecp256k1. The exceptions are the two outposts of *Outposts past the
+boundary* above and, of another kind, `musig.KeyAggCache` and
+`musig.Session`: that section says why the existing rule for holding an
+object does not reach them, and `musig.py`'s own module docstring
+records the decision to take the exception rather than to leave the
+state to whoever calls this package, `KeyAggCache` and `Session` having
+no serialization to hand back regardless.
 
 `musig.SecretNonce` is the object that carries the secret: `nonce_gen`
 and `nonce_gen_counter` return one, `partial_sign` wipes it whether it

@@ -1,13 +1,14 @@
 # Architecture
 
-btclib-secp256k1 is bindings, not a library: every entry point is one
-libsecp256k1 or secp256k1-zkp call, with its arguments validated first
-and its return value checked afterwards. This page is the design behind
-that boundary — the two builds a wheel can be, the module layout, the
-vendored submodules and how they are compiled, and how a release is
-produced and can be checked. What a user can and cannot expect of it in
-terms of security is [SECURITY](./SECURITY.md), and why those
-expectations hold is the [assurance case](./ASSURANCE_CASE.md).
+btclib-secp256k1 is bindings, not a library: every entry point validates
+its arguments first, calls libsecp256k1 or secp256k1-zkp, and afterwards
+checks each return value that can report a failure. An entry point is
+often several calls. This page is the design behind that boundary — the
+two builds a wheel can be, the module layout, the vendored submodules
+and how they are compiled, and how a release is produced and can be
+checked. What a user can and cannot expect of it in terms of security is
+[SECURITY](./SECURITY.md), and why those expectations hold is the
+[assurance case](./ASSURANCE_CASE.md).
 
 ## The two builds
 
