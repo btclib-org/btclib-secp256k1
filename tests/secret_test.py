@@ -491,3 +491,33 @@ def test_a_key_held_in_a_buffer_never_becomes_a_bytes_of_the_secret() -> None:
 
     _secret.wipe(held)
     assert bytes(ffi.buffer(held)) == bytes(32)
+
+
+def test_nonce_bip340_negates_an_odd_y_key_into_a_buffer_it_wipes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No `bytes` of n - d is made, and the scratch buffer ends zeroed.
+
+    The key is held in a buffer of the caller's, so a `bytes` of the
+    negated key would be the only copy of it that nothing can overwrite.
+    The spy refuses a call to `keys.prvkey_negate` without `into`.
+    """
+    odd = next(k for k in range(1, 100) if xonly.from_prvkey(k)[1])
+    msg, aux = bytes(range(32)), bytes(32)
+    expected = ssa.nonce_bip340(msg, odd, aux)
+    negated = keys.prvkey_negate(odd)
+
+    scratch: list[memoryview] = []
+    real = keys.prvkey_negate
+
+    def spy(prvkey: Any, *, into: Any = None) -> None:
+        assert into is not None, "a bytes of the negated key was made"
+        real(prvkey, into=into)
+        assert bytes(into) == negated
+        scratch.append(memoryview(into))
+
+    monkeypatch.setattr(keys, "prvkey_negate", spy)
+    held = ffi.new("unsigned char[32]", odd.to_bytes(32, "big"))
+    assert ssa.nonce_bip340(msg, held, aux) == expected
+    assert len(scratch) == 1
+    assert bytes(scratch[0]) == bytes(32)

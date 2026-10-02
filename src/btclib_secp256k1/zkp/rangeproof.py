@@ -53,7 +53,7 @@ from typing import Any
 
 from btclib_secp256k1 import BytesLike, CData
 from btclib_secp256k1._scalar import in_range, octets, scalar
-from btclib_secp256k1._secret import take
+from btclib_secp256k1._secret import take, wipe
 
 from . import context, generator
 
@@ -224,31 +224,40 @@ def rewind(
     min_value = ffi.new("uint64_t *")
     max_value = ffi.new("uint64_t *")
 
-    ok = lib.secp256k1_rangeproof_rewind(
-        ctx,
-        blind_out,
-        value_out,
-        message_out,
-        outlen,
-        nonce_bytes,
-        min_value,
-        max_value,
-        commit,
-        proof_bytes,
-        len(proof_bytes),
-        extra_bytes or ffi.NULL,
-        len(extra_bytes),
-        gen,
-    )
-    if not ok:
-        raise ValueError("proof does not verify, or rewind failed")
-    return (
-        take(blind_out),
-        int(value_out[0]),
-        ffi.unpack(message_out, int(outlen[0])),
-        int(min_value[0]),
-        int(max_value[0]),
-    )
+    try:
+        ok = lib.secp256k1_rangeproof_rewind(
+            ctx,
+            blind_out,
+            value_out,
+            message_out,
+            outlen,
+            nonce_bytes,
+            min_value,
+            max_value,
+            commit,
+            proof_bytes,
+            len(proof_bytes),
+            extra_bytes or ffi.NULL,
+            len(extra_bytes),
+            gen,
+        )
+        if not ok:
+            raise ValueError("proof does not verify, or rewind failed")
+        return (
+            take(blind_out),
+            int(value_out[0]),
+            ffi.unpack(message_out, int(outlen[0])),
+            int(min_value[0]),
+            int(max_value[0]),
+        )
+    finally:
+        # the library writes the message before it can still refuse, and
+        # the message can be secret (Elements keeps the asset blinding
+        # factor there): all three are wiped on every path, `blind_out`
+        # again after `take`
+        wipe(blind_out)
+        wipe(value_out)
+        wipe(message_out)
 
 
 # more arguments than PLR0913 allows. `dsa.sign`'s own such comment has

@@ -263,8 +263,9 @@ exposed to, and what counters each.
   sensitive information in memory (CWE-316).** The buffers a secret
   passes through are overwritten before being dropped
   (`tests/secret_test.py`), and an `into` argument moves the last
-  un-zeroizable copy to memory the caller owns; what neither reaches is
-  stated in SECURITY.md's *Limitations of the binding layer*.
+  un-zeroizable copy to memory the caller owns; what neither reaches, the
+  bytes of the MuSig2 session randomness among it, is stated in
+  SECURITY.md's *Limitations of the binding layer*.
 - **Race condition (CWE-362).** `musig.SecretNonce` is read and cleared
   under a lock of its own, and `btclib_secp256k1.zkp`'s deferred context
   build is guarded the same way, so two threads racing either cannot

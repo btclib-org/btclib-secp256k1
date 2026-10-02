@@ -178,6 +178,23 @@ the wheels keep PEP 740 attestations only (issue btclib-org/.github#1506).
   btclib-org/.github#1527): *The review* says a local review of a named
   sha by a reviewer other than the author stands in for it.
 
+### `ssa.nonce_bip340` wipes the negated key it makes
+
+- **An odd-y key is negated into a buffer of the call's own, wiped after**
+  (closes #1080): a `bytes` of n - d was made before, which nothing could
+  overwrite, even for a key held in a caller's buffer.
+
+### `zkp.rangeproof.rewind` wipes what it recovers
+
+- **The message and value buffers are wiped on every path** (closes
+  #1082): both were dropped unwiped.
+
+### SECURITY.md lists the `bytes` of the MuSig2 session randomness
+
+- **`musig.nonce_gen` and `zkp.musig.nonce_gen` make it as a `bytes`**
+  (closes #1079): no call fills a buffer from the OS on every platform.
+  Passing `prvkey` keeps a copy of it from giving the nonce.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

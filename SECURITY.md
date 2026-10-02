@@ -177,7 +177,8 @@ These are known and inherent, not vulnerabilities:
     adaptor `zkp.musig.extract_adaptor` recovers, a blinding factor
     `zkp.generator.pedersen_blind_sum` or
     `zkp.generator.pedersen_blind_generator_blind_sum` answers, or the
-    one `zkp.rangeproof.rewind` recovers — is read out and the buffer
+    one `zkp.rangeproof.rewind` recovers and the message and value beside
+    it — is read out and the buffer
     zeroed before it is dropped. That is one copy taken back,
     not safety: the `bytes` handed to the caller holds the same secret
     and cannot be overwritten
@@ -212,8 +213,8 @@ These are known and inherent, not vulnerabilities:
     not**, each being one member of a returned tuple, where an argument
     could not say which: the tweak of `silentpayments.label`, the
     per-output tweak `silentpayments.scan_outputs` hands back, and the
-    blinding factor `zkp.rangeproof.rewind` recovers. All of them are
-    `bytes` and none can be zeroed, which is the limitation above and not
+    blinding factor, message and value `zkp.rangeproof.rewind` recovers.
+    None of them can be zeroed, which is the limitation above and not
     this narrowing of it.
     What the caller then does with the buffer is theirs: this does not
     wipe it for them, and a buffer they never overwrite is exactly the
@@ -233,10 +234,10 @@ These are known and inherent, not vulnerabilities:
 - the buffers whose zeroing is the caller's to ask for are
     `ssa.Signer`'s keypair and `musig.SecretNonce`'s secret nonce.
     Everything above is wiped inside the call that made it — read out and
-    zeroed in the one operation, or wiped in a `finally` where it is a
-    keypair; a signer holds its `secp256k1_keypair` across calls, which is
-    what it is for, and a `SecretNonce` holds a `secp256k1_musig_secnonce`
-    between `musig.nonce_gen` and `partial_sign` for the same reason.
+    zeroed in the one operation, or wiped in a `finally`; a signer holds
+    its `secp256k1_keypair` across calls, which is what it is for, and a
+    `SecretNonce` holds a `secp256k1_musig_secnonce` between
+    `musig.nonce_gen` and `partial_sign` for the same reason.
     `partial_sign` wipes it as the last thing it does with it, whatever
     that call answers; short of that, both wipe when told — `wipe`, or the
     `with` statement that calls it on the way out of the block. Either one
@@ -255,6 +256,18 @@ These are known and inherent, not vulnerabilities:
     the nonce computes rather than a step that stops them. Reading a
     nonce also takes it out of constant-time code, which is the limit
     above; this is the one that has the arithmetic to show for it
+- **the session randomness of `musig.nonce_gen` and `zkp.musig.nonce_gen`
+    passes through a `bytes`.** It is made with `secrets.token_bytes` and
+    copied into a cffi buffer, which is wiped; the `bytes` is freed
+    without being overwritten. Python has no call that fills a buffer from
+    the operating system on every platform this package ships for, so the
+    copy is not avoided. Without `prvkey`, libsecp256k1 derives the secret
+    nonce from that randomness and the other inputs alone, so a copy of
+    it gives the nonce even after `SecretNonce.wipe()`, and the private key
+    once the partial signature is published. With `prvkey` the randomness
+    is hashed and XORed with the key before it is used
+    (`secp256k1_nonce_function_musig`), and the copy alone gives nothing:
+    pass `prvkey`
 - a scalar passed as an `int` leaks its magnitude. A Python integer is a
     variable-length object, so serializing one — and any arithmetic that
     produced it — takes a time that depends on the value; the argument

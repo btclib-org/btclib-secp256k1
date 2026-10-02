@@ -18,6 +18,7 @@ library and zkp's own fixed vectors are exercised instead.
 
 from __future__ import annotations
 
+import contextlib
 import inspect
 import types
 from collections.abc import Iterator
@@ -52,6 +53,7 @@ class _FakeLib:
     """A pure-python stand-in for every call `rangeproof.py` reaches."""
 
     def __init__(self) -> None:
+        self.rewound: list[tuple[Any, Any, Any]] = []
         self.secp256k1_generator_h = _fake_ffi.new("secp256k1_generator *")
         _put(self.secp256k1_generator_h, bytes([0x0B]) + bytes(range(1, 33)))
 
@@ -120,12 +122,15 @@ class _FakeLib:
         _extra_commit_len: int,
         _gen: Any,
     ) -> int:
-        if not proof or proof[0] == FAIL or nonce[0] == FAIL:
-            return 0
+        # written before the refusal, so that a buffer left unwiped on
+        # either path shows
         _fake_ffi.buffer(blind_out, 32)[:] = bytes(range(32))
         value_out[0] = 42
         message = b"hello"
         _fake_ffi.buffer(message_out, r.MAX_MESSAGE_LEN)[: len(message)] = message
+        self.rewound.append((blind_out, value_out, message_out))
+        if not proof or proof[0] == FAIL or nonce[0] == FAIL:
+            return 0
         outlen[0] = len(message)
         min_value[0] = 0
         max_value[0] = 63
@@ -340,6 +345,22 @@ def test_rewind_fails() -> None:
     """A proof the fake reads as invalid makes `rewind` raise."""
     with pytest.raises(ValueError, match="rewind failed"):
         r.rewind(COMMIT, PROOF, bytes([FAIL]) * 32)
+
+
+@pytest.mark.parametrize("nonce_byte", [1, FAIL], ids=["recovered", "refused"])
+def test_rewind_wipes_the_buffers_it_handed_over(nonce_byte: int) -> None:
+    """The blind, value and message buffers are zero when `rewind` returns.
+
+    Whether it answers or raises: the library writes the message before
+    it can still refuse, and the message can be secret.
+    """
+    lib = zkp.context._bindings()[1]
+    with contextlib.suppress(ValueError):
+        r.rewind(COMMIT, PROOF, bytes([nonce_byte]) * 32)
+    ((blind_out, value_out, message_out),) = lib.rewound
+    assert bytes(_fake_ffi.buffer(blind_out)) == bytes(32)
+    assert bytes(_fake_ffi.buffer(value_out)) == bytes(8)
+    assert bytes(_fake_ffi.buffer(message_out)) == bytes(r.MAX_MESSAGE_LEN)
 
 
 def test_rewind_rejects_a_short_nonce() -> None:
