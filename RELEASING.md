@@ -528,8 +528,8 @@ Then:
    ```
 
    On a tag `Publish to TestPyPI` is `skipped`, its trigger being the
-   dispatch, and `public-api` is red on any cycle with breaking changes
-   in it, being the griffe step above run again. Every other job reads
+   dispatch, and `public-api` is red for a break `RELEASE_NOTES.md` does not
+   name, being the griffe step above run again. Every other job reads
    `success`, the ones behind `public-api` included: each of them opens
    its `if:` with `always()` and names the results it does require, so
    a red `public-api` costs the release nothing, and a `skipped` among
