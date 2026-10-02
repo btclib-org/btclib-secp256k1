@@ -89,12 +89,22 @@ on:
       version-suffix:
         description: >
           Appended to the version in pyproject.toml before anything is
-          built, by every build job. A release passes nothing and ships
-          the version the tree declares; the rehearsal passes a .dev
+          built, by every wheel build job. A release passes nothing and
+          ships the version the tree declares; the rehearsal passes a .dev
           suffix, which is how it reaches TestPyPI with a version that
           index has not already consumed.
         type: string
         default: ""
+      use-signed-dist:
+        description: >
+          Whether build-sdist leaves the sdist and its bill of materials
+          to the caller's build job, which uploads them as `sdist` and
+          `sbom`, and the jobs after it check that upload. Only
+          release.yml's call sets this: the sdist it publishes is the one
+          reusable-build.yml signed, and a second upload of either name
+          in the same run would collide with that job's.
+        type: boolean
+        default: false
       concurrency-suffix:
         description: >
           Appended to the concurrency group, and the release workflow is
@@ -691,6 +701,14 @@ jobs:
           name: dynamic-wheels-${{ matrix.os }}
           path: ./wheelhouse/*
 
+  # the sdist and its bill of materials, built with the steps
+  # btclib-org/.github's reusable-build.yml runs for a release. On a
+  # release, release.yml's build job calls that workflow, which builds,
+  # signs and uploads the two under the names this job's uploads carry, so
+  # under use-signed-dist every step here is skipped and the jobs after it
+  # read that upload. The job stays so that they keep one need. A
+  # rehearsal's version suffix is applied there too, which is why no step
+  # here applies it
   build-sdist:
     name: Build sdist
     if: >-
@@ -706,52 +724,51 @@ jobs:
     needs: changes
     steps:
       - name: Checkout code
+        if: ${{ !inputs.use-signed-dist }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
 
       - name: Set up Python
+        if: ${{ !inputs.use-signed-dist }}
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.15"
           allow-prereleases: true
 
       - name: Setup uv
+        if: ${{ !inputs.use-signed-dist }}
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-
-      # see build-cibuildwheel
-      - name: Make the version unique for TestPyPI (rehearsal only)
-        uses: ./.github/actions/dev-version # zizmor: ignore[self-repository]
-        if: inputs.version-suffix != ''
-        with:
-          suffix: ${{ inputs.version-suffix }}
 
       # what the build below and the normalizer after it both read.
       # hatchling's sdist writer honours this when it is set and falls
       # back to a fixed constant, 1580601600, when it is not -- so this
-      # step is what makes the published mtime the tagged commit's own
-      # date rather than that constant, section 12 of the organization
-      # standard asking every publisher for it regardless of what its own
-      # backend already does. The commit date, not the tag's: a
-      # lightweight tag has none of its own to prefer, and this job's
-      # checkout is the commit a release tags
+      # step is what makes the mtime the commit's own date rather than
+      # that constant, as reusable-build.yml's step does for the sdist a
+      # release publishes, section 12 of the organization standard asking
+      # every publisher for it regardless of what its own backend already
+      # does. The commit date, not the tag's: a lightweight tag has none
+      # of its own to prefer
       - name: Pin the build timestamp to the commit
+        if: ${{ !inputs.use-signed-dist }}
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
 
       # the build group and --locked: see build-cibuildwheel
       - name: Build source
+        if: ${{ !inputs.use-signed-dist }}
         run: uv run --locked --only-group build python -m build -s
 
       # insurance rather than the fix: the step above already leaves the
       # sdist's own mtime at SOURCE_DATE_EPOCH, and this rewrites it again
-      # so that the published value stays this repository's choice
+      # so that the value stays this repository's choice
       # regardless of what a future hatchling release does with the
       # variable. The script's own docstring has the measurement of what
       # else hatchling already writes the same way, untouched here.
       # --no-project, so this runs on the interpreter actions/setup-python
-      # already installed and touches nothing this job is about to publish
+      # already installed and touches nothing this job is about to upload
       - name: Make the sdist's determinism this tree's own
+        if: ${{ !inputs.use-signed-dist }}
         run: |
           uv run --no-project --python 3.15 \
             .github/scripts/normalize_sdist.py dist/
@@ -763,26 +780,29 @@ jobs:
       # reproducible for the reason the step above is: SOURCE_DATE_EPOCH
       # is its timestamp and the sdist's digest its serial number, so a
       # rebuild of a released tag writes this file too, and
-      # release.yml's `attest` job signs it beside the archive. Into a
-      # directory of its own and not dist/: the publish jobs download
-      # this job's artifact into a dist/ they hand to an index whole, and
-      # an index takes distribution files
+      # reusable-build.yml signs it beside the archive. Into a
+      # directory of its own and not dist/, as reusable-build.yml writes
+      # it: the publish jobs hand the dist/ they download to an index
+      # whole, and an index takes distribution files
       - name: Write the bill of materials
+        if: ${{ !inputs.use-signed-dist }}
         run: |
           uv run --no-project --python 3.15 \
             .github/scripts/generate_sbom.py --sdist-only dist/ sbom/
 
       - name: Upload the source distribution
+        if: ${{ !inputs.use-signed-dist }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sdist
           path: dist/*.tar.gz
 
       # an artifact of its own, for the reason the step that writes it
-      # gives: release.yml's `attest` and `github-release` jobs both hand
+      # gives: on a release, reusable-build.yml and github-release hand
       # every file in it to a signature or a release, the same way they
       # do the sdist's
       - name: Upload the bill of materials
+        if: ${{ !inputs.use-signed-dist }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom

@@ -2,20 +2,32 @@
 
 Releases are published by the `release` workflow, which reuses the
 `lint` gate and the whole `test` build and test pipeline, and then
-uploads what the latter produced. Where it uploads is not an input to
-choose at dispatch time: a `v*` tag publishes to PyPI, a manual run
-publishes to TestPyPI. Both go through
+uploads the wheels the latter built and the sdist its own `build` job
+built. Where it uploads is not an input to choose at dispatch time: a
+`v*` tag publishes to PyPI, a manual run publishes to TestPyPI. Both go
+through
 [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so no
 long-lived token exists anywhere, and both upload PEP 740 attestations.
-The `attest` job then signs one build provenance statement over the
-sdist and the bill of materials: the copy of the sdist the GitHub
-release attaches is the one the index's attestation says nothing about,
-and the document is served nowhere else at all.
+
+The sdist and the wheels are built apart, and their provenance differs:
+
+- **the sdist and the bill of materials** are built by
+  btclib-org/.github's `reusable-build.yml`, which the `build` job
+  calls. That workflow signs one build provenance statement over the
+  two, at SLSA Build L3, before either publish job waits for its
+  approval. The copy of the sdist the GitHub release attaches is the
+  one the index's attestation says nothing about, and the document is
+  served nowhere else at all
+- **the wheels** are built by `test.yml`'s own matrix, and that
+  statement does not cover them. Their provenance is the PEP 740
+  attestation the publish job uploads with each, signed by
+  `release.yml` itself, so they do not reach SLSA Build L3
 
 **A CycloneDX 1.6 bill of materials is attached**,
-`btclib_secp256k1-<version>.cdx.json`, written by
-`.github/scripts/generate_sbom.py` in `test.yml`'s `build-sdist` job. It
-describes the sdist: the archive and its SHA-256, the licence, the
+`btclib_secp256k1-<version>.cdx.json`, written in `reusable-build.yml`
+by btclib-org/.github's `generate_sbom.py`, which this tree keeps a
+byte-identical copy of. It describes the sdist: the archive and its
+SHA-256, the licence, the
 dependencies the metadata declares, and each vendored submodule at the
 commit its gitlink pins — which is what `Requires-Dist`, naming `cffi`
 alone, cannot state. The sdist and not the wheels, because the document
@@ -591,9 +603,10 @@ Then:
 1. check the GitHub release the workflow created once PyPI had accepted
    the upload — and check that it exists at all before reading anything
    in it: `github-release` was left `skipped` on 0.8.0, 0.8.0.1 and
-   0.8.0.2, despite `publish-pypi` and `attest` succeeding every time.
-   The cause is `attest`'s own `if: always() && (...)`, needed so it can
-   run past a skipped sibling — `publish-testpypi` is always skipped on a
+   0.8.0.2, despite `publish-pypi` and `release.yml`'s former `attest` job
+   succeeding every time. The cause was `attest`'s own `if: always()
+   && (...)`, needed so it could run past a skipped sibling —
+   `publish-testpypi` is always skipped on a
    real tag, `publish-pypi` on a dispatch. GitHub's needs-based skip is
    structural, not a property of which question a job's own `if` asks: a
    job with a skipped job anywhere in its ancestry is force-skipped
@@ -604,12 +617,13 @@ Then:
    needs.publish-pypi.result == 'success' && needs.attest.result ==
    'success'`, reasoning that asking only about direct needs would be
    enough, and 0.8.0.2 shipped with exactly that and was skipped all the
-   same — `attest`'s `always()` keeps attest itself from being skipped
-   when `publish-testpypi` is, but `github-release`, needing attest,
+   same — `attest`'s `always()` kept attest itself from being skipped
+   when `publish-testpypi` was, but `github-release`, needing attest,
    still sat behind that same skipped ancestor and was force-skipped in
-   turn. `github-release`'s `if` needs its own `always()` too: `if:
-   always() && needs.publish-pypi.result == 'success' &&
-   needs.attest.result == 'success'`. A release cut after this second fix
+   turn. `github-release`'s `if` needs its own `always()` too, and
+   carries it: `if: always() && needs.publish-pypi.result == 'success' &&
+   needs.build.result == 'success'`, `build` having taken `attest`'s
+   place. A release cut after this second fix
    should not need what follows here; keep it for a release that
    predates it, or for a failure of `github-release` itself rather than a
    skip, which `gh run rerun --failed` reaches directly — a skip, unlike
@@ -670,12 +684,13 @@ Then:
 
    ```shell
    repo=btclib-org/btclib-secp256k1
-   signer=btclib-org/.github/.github/workflows/reusable-attest.yml
+   workflows=btclib-org/.github/.github/workflows
+   signer=$workflows/reusable-build.yml@refs/heads/main
    tag=v$(uv version --short)
    dir=$(mktemp -d)
    gh release download "$tag" --repo "$repo" --dir "$dir"
    gh attestation verify "$dir/btclib_secp256k1-${tag#v}.tar.gz" \
-     --repo "$repo" --signer-workflow "$signer"
+     --repo "$repo" --signer-workflow "$signer" --source-ref "refs/tags/$tag"
    ```
 
    PEP 625 escapes the distribution's `-` to `_` in an sdist filename,
@@ -685,18 +700,20 @@ Then:
    `--signer-workflow` names the workflow that signed, and here it is
    required rather than a narrowing: the command refuses the release's
    genuine sdist without it. The signer is the organization's
-   `reusable-attest.yml`, the workflow the `attest` job calls, and not
+   `reusable-build.yml`, the workflow the `build` job calls, and not
    `release.yml`: an attestation made inside a called workflow names the
    callee, while `--repo` keeps naming this repository as the source.
    `publish-pypi` is `release.yml`'s own job, which is why the PEP 740
    provenance the rehearsal below checks names `release.yml` instead.
+   `--source-ref` names the tag, which is what keeps a rehearsal
+   dispatched from a branch from verifying as the release.
 
    Adding `--bundle "$dir/$tag.intoto.jsonl"`
    asks the same question of the statement downloaded beside the file
    rather than of the attestations API, which is the form for whoever
    mirrors the page instead of trusting it live.
 
-   One statement covers both subjects the `attest` job was given, so the
+   One statement covers both subjects `reusable-build.yml` signed, so the
    same command run over `"$dir"/*.cdx.json` verifies the bill of
    materials against it; the bundle is that statement and is not among
    its subjects
@@ -846,9 +863,9 @@ already built.
    under `/integrity/<project>/<version>/<filename>/provenance`, whose
    `attestation_bundles[].publisher` should name this repository and
    `release.yml`
-1. check the statement the `attest` job signed, which on this path has no
-   release to be attached to: it went to the attestations API all the
-   same, keyed by the digest of the file, so the sdist the run built is
+1. check the statement `reusable-build.yml` signed, which on this path
+   has no release to be attached to: it went to the attestations API all
+   the same, keyed by the digest of the file, so the sdist the run built is
    what asks for it. The run id is assigned rather than written into the
    `gh run download` line: inline it is a `<run` redirection, guarding
    only while the reader's directory holds no file called `run`, where
@@ -861,7 +878,8 @@ already built.
 
    ```shell
    repo=btclib-org/btclib-secp256k1 &&
-   signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&
+   workflows=btclib-org/.github/.github/workflows &&
+   signer=$workflows/reusable-build.yml@refs/heads/main &&
    dir=$(mktemp -d) &&
    gh run download "${run:?}" --repo "${repo:?}" \
      --name sdist --dir "${dir:?}" &&
@@ -878,19 +896,24 @@ already built.
    suffix the run patched in, which is the half of the generator a
    release never exercises.
 
-   This is the whole reason `attest` runs in a rehearsal at all: the
-   permissions and the API it needs are exercised here, where a failure
-   costs a dispatch, rather than for the first time on release day, where
-   it lands after PyPI has the files and the tag can no longer be moved
+   There is no `--source-ref` here: a rehearsal's source is the branch
+   it was dispatched from, not a tag.
+
+   `reusable-build.yml` signs a rehearsal's files too, before the
+   `testpypi` approval, so this check can run before anything is
+   approved. The permissions and the API it needs are exercised here,
+   where a failure costs a dispatch, rather than for the first time on
+   release day
 
 There is no version commit to revert, and nothing to clean up: the
 suffix only ever exists inside the run that built it.
 
 What the rehearsal covers is the OIDC exchange, the approval gate, the
 artifacts the publish job collects — sixty-three wheels and one sdist, at
-0.7.1 — the PEP 740 attestations, the Sigstore signature `attest` writes
-over the sdist and the bill of materials, and a real Warehouse accepting
-the metadata, which is more than `twine check --strict` can say. What it
+0.7.1 — the PEP 740 attestations, the Sigstore signature
+`reusable-build.yml` writes over the sdist and the bill of materials, and
+a real Warehouse accepting the metadata, which is more than `twine check
+--strict` can say. What it
 cannot cover is the trusted publisher on PyPI itself, a separate
 registration that can be wrong on its own, nor the deployment branch
 policy of the `pypi` environment, which the environment a rehearsal does
@@ -900,11 +923,11 @@ version comparison, the `RELEASE_NOTES.md` section, and the ancestry on
 
 ## Rebuild a release from its tag
 
-`build-sdist` in `test.yml` exports `SOURCE_DATE_EPOCH` from the commit
-date and normalizes the sdist, so a rebuild of a released tag is the
-same bytes as what was published — that job's own upload is what
-`publish-pypi` publishes, unchanged. A worktree and not `git checkout`,
-for the reason CLAUDE.md gives.
+`reusable-build.yml`, which `release.yml`'s `build` job calls, exports
+`SOURCE_DATE_EPOCH` from the commit date and normalizes the sdist, so a
+rebuild of a released tag is the same bytes as what was published — that
+workflow's own upload is what `publish-pypi` publishes, unchanged. A
+worktree and not `git checkout`, for the reason CLAUDE.md gives.
 
 The tag is the reader's, so it is a placeholder rather than a version
 spelled out, and it stands in a fence of its own. The block below guards
@@ -931,11 +954,14 @@ uv run --no-project --python "$python" \
 uv run --no-project --python "$python" \
   .github/scripts/generate_sbom.py --sdist-only dist/ sbom/ &&
 repo=btclib-org/btclib-secp256k1 &&
-signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&
+workflows=btclib-org/.github/.github/workflows &&
+signer=$workflows/reusable-build.yml@refs/heads/main &&
 gh attestation verify "dist/btclib_secp256k1-${tag#v}.tar.gz" \
-  --repo "${repo:?}" --signer-workflow "${signer:?}" &&
+  --repo "${repo:?}" --signer-workflow "${signer:?}" \
+  --source-ref "refs/tags/${tag:?}" &&
 gh attestation verify "sbom/btclib_secp256k1-${tag#v}.cdx.json" \
-  --repo "${repo:?}" --signer-workflow "${signer:?}"
+  --repo "${repo:?}" --signer-workflow "${signer:?}" \
+  --source-ref "refs/tags/${tag:?}"
 ```
 
 is the whole of it, `--locked` included for the same reason as before: a
@@ -962,14 +988,16 @@ leave out there.
 Through v0.8.0.9, a tag's `generate_sbom.py` refuses `--sdist-only` and
 describes the sdist alone anyway: drop the flag for those tags.
 
-`signer` is the workflow that signed the tag's attestation, which is
-`reusable-attest.yml` from v0.8.0.7 on, and for those tags
-`--signer-workflow` is required: without it the command refuses the
-release. A tag from v0.8.0 to v0.8.0.6 was signed by `release.yml`
-itself, and for one of those `signer` is
-`"$repo/.github/workflows/release.yml"`, the flag there only narrowing
-what passes. Each path verifies only the releases its own workflow
-signed.
+`signer` is the workflow that signed the tag's attestation,
+`reusable-build.yml`, and `--signer-workflow` is required: without it
+the command refuses the release. `--source-ref` names the tag, which is
+what stops a rehearsal dispatched from a branch from verifying as the
+release. A tag from v0.8.0.7 to v0.8.0.9 was signed by
+`reusable-attest.yml`, named the same way, with no `--source-ref`. A tag
+from v0.8.0 to v0.8.0.6 was signed by `release.yml` itself, and for one
+of those `signer` is `"$repo/.github/workflows/release.yml"`, the flag
+there only narrowing what passes. Each path verifies only the releases
+its own workflow signed.
 
 `python` is the interpreter the tag's own `.python-version` pins, its
 comment and blank lines dropped, and not the one `main` pins:

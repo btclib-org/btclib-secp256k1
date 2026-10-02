@@ -166,6 +166,12 @@ that records it (issue btclib-org/.github#1362).
 `release.yml` and `RELEASING.md` say that a red `public-api` means
 `RELEASE_NOTES.md` misses a name (issue btclib-org/.github#1517).
 
+### The sdist's attestation is signed by `reusable-build.yml`, at SLSA Build L3
+
+`release.yml` calls `reusable-build.yml` to build and sign the sdist and its
+SBOM, verified with that `--signer-workflow` and the tag as `--source-ref`;
+the wheels keep PEP 740 attestations only (issue btclib-org/.github#1506).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
