@@ -21,7 +21,7 @@ wheel". The two agree only where nothing in the build depends on
 static extension's debug map embedded the build directory's absolute
 path, constant across two builds sharing one directory and invisible to
 them for that reason. `copy_source_tree` below is what closes that gap:
-each build gets its own fresh copy of `HEAD`, extracted into a directory
+each build gets its own fresh clone of `HEAD`, made in a directory
 this script names, so the two builds' paths differ the way two
 developers' checkouts, or a checkout and a release rebuild, actually do.
 The two names differ in length as well as in content -- `a` and a much
@@ -104,10 +104,10 @@ points that build each twice and compare, `_DYNAMIC_ENV` and
 `cibuildwheel`'s, so neither is `--repaired` with a variable moved: the
 frontend, the repair and the platform tag are all the job's own.
 
-One member of a released wheel is outside every comparison here, its
-bill of materials under `.dist-info/sboms/`: `scripts/hatch_build.py`
-writes it only in a tree with a `.git`, and `copy_source_tree`'s
-extracts have none, so no build here carries it (#1094).
+The builds here are made in clones and not in `git archive` extracts
+because `scripts/hatch_build.py` writes the wheel's bill of materials,
+under `.dist-info/sboms/`, only in a tree with a `.git`. A release build
+runs in one, so the member is built and compared here like any other.
 
 Run it from a checkout with the submodule initialized, and with the
 commit under test the current `HEAD`:
@@ -150,12 +150,10 @@ narrow, the frontend building one wheel per run.
 from __future__ import annotations
 
 import contextlib
-import io
 import os
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 import zipfile
 from collections.abc import Callable, Iterator, Mapping
@@ -208,84 +206,85 @@ _METADATA_FIELDS = ("date_time", "external_attr", "compress_type")
 _COMPILED_SUFFIXES = (".so", ".pyd")
 
 
-def _extract_archive(source: Path, dest: Path) -> None:
-    """Extract `source`'s `HEAD` commit into the fresh directory `dest`.
-
-    `git archive` walks the tree the commit itself names, so what lands
-    in `dest` is exactly what that commit tracks -- nothing an earlier
-    build left in `source`, and nothing `.gitignore` excludes there
-    either, which a plain recursive file copy would have to filter for
-    itself instead of getting for free.
-
-    Args:
-        source: a git checkout, read at its current `HEAD`.
-        dest: a directory to extract into. It may already exist -- an
-            outer `git archive` leaves an empty directory at a gitlink's
-            own path, which is where `copy_source_tree` below points the
-            submodule's own extraction -- but is created if it does not.
+def _git(*args: str, cwd: Path | None = None) -> str:
+    """Run git with `args` in `cwd` and return its standard output.
 
     Raises:
-        subprocess.CalledProcessError: `git archive` itself failed.
+        subprocess.CalledProcessError: git exited non-zero.
     """
-    archived = subprocess.run(  # noqa: S603
-        [_GIT, "archive", "--format=tar", "HEAD"],
-        cwd=source,
+    done = subprocess.run(  # noqa: S603
+        [_GIT, *args],
+        cwd=cwd,
         check=True,
         stdout=subprocess.PIPE,
+        encoding="utf-8",
     )
-    dest.mkdir(parents=True, exist_ok=True)
-    with tarfile.open(fileobj=io.BytesIO(archived.stdout)) as archive:
-        # PEP 706's data filter is set on the TarFile rather than passed as
-        # extractall(filter="data"): that keyword is a TypeError on CPython
-        # 3.11.0 to 3.11.3, which requires-python admits, the feature arriving
-        # in 3.11.4. The sdist ships this script and
-        # tests/wheel_reproducibility_test.py, so the suite run from it
-        # reaches this line on those patches too. An assignment is one
-        # statement on every interpreter, where hasattr or sys.version_info is
-        # a branch no single interpreter takes both ways and .github/scripts
-        # is measured under the fail_under = 100 coverage floor. Setting
-        # nothing at all is the other shape and costs a different red: 3.12
-        # and 3.13 raise a DeprecationWarning where no filter is set, and
-        # pyproject.toml's filterwarnings = ["error"] makes that a failing
-        # test. getattr with a default is what the tarfile documentation gives
-        # for spanning versions with and without the feature, and is an
-        # expression rather than a branch for the same reason as above. Where
-        # data_filter is absent the fallback is fully_trusted: a member named
-        # ../x is extracted outside dest, which is CPython's own behaviour
-        # before the filter existed. What makes that acceptable is the archive
-        # -- `git archive HEAD` over this repository, from a checkout the
-        # caller is about to build -- and tests/wheel_reproducibility_test.py
-        # asserts it, no interpreter the local gate runs having a fallback to
-        # take. S202 reads the extractall call rather than the attribute set
-        # beside it, which is what the suppression on that line answers
-        archive.extraction_filter = getattr(
-            tarfile, "data_filter", (lambda member, _path: member)
-        )
-        archive.extractall(dest)  # noqa: S202
+    return done.stdout.strip()
 
 
 def copy_source_tree(root: Path, dest: Path) -> None:
-    """Copy `root`'s checked-out commit, submodule included, into `dest`.
+    """Clone `root`'s checked-out commit, `secp256k1` populated, into `dest`.
 
-    `root` itself is never read past its git history: everything `uv
-    build` needs comes out of two `git archive` calls, one for `root`
-    and one for the `secp256k1` submodule inside it, since a gitlink is a
-    commit reference rather than a tree and the outer archive does not
-    walk into it.
+    `dest` is detached at the commit `root` has checked out; neither an
+    uncommitted edit in `root` nor anything an earlier build left there
+    reaches it.
+
+    The submodule is cloned from `root`'s own copy of it, not from the
+    URL in `.gitmodules`: no network, and the commit the gitlink names
+    or a failure. `secp256k1-zkp` is left empty, as the wheels this
+    script builds do not compile it.
 
     Args:
         root: the checkout to copy, submodule included.
-        dest: where to copy `root`'s commit into. Meant to be fresh --
-            the caller names it, and this function never reuses one it
-            created itself -- but nothing here refuses an existing,
-            populated `dest`; it would just extract on top of whatever
-            is already there.
+        dest: where to clone into. It must not exist or must be empty,
+            which is `git clone`'s own rule.
 
     Raises:
-        subprocess.CalledProcessError: either `git archive` call failed.
+        subprocess.CalledProcessError: a git command failed.
     """
-    _extract_archive(root, dest)
-    _extract_archive(root / "secp256k1", dest / "secp256k1")
+    commit = _git("rev-parse", "HEAD", cwd=root)
+    _git("clone", "-q", "--no-checkout", str(root), str(dest))
+    _git("checkout", "-q", "--detach", commit, cwd=dest)
+    _git("config", "submodule.secp256k1.url", str(root / "secp256k1"), cwd=dest)
+    _git(
+        "-c",
+        "protocol.file.allow=always",
+        "submodule",
+        "update",
+        "-q",
+        "--init",
+        "--",
+        "secp256k1",
+        cwd=dest,
+    )
+
+
+def _require_sbom(wheel: Path) -> Path:
+    """Return `wheel` after checking that it carries a bill of materials.
+
+    A build that lost its `.git` writes no document and still agrees
+    with itself, so the member is required, and named in the log.
+
+    Args:
+        wheel: a wheel this script's build or repair just wrote.
+
+    Returns:
+        `wheel`.
+
+    Raises:
+        RuntimeError: no member of `wheel` is under `.dist-info/sboms/`.
+    """
+    with zipfile.ZipFile(wheel) as archive:
+        found = [
+            name
+            for name in archive.namelist()
+            if ".dist-info/sboms/" in name and not name.endswith("/")
+        ]
+    if not found:
+        msg = f"{wheel.name} carries no bill of materials under .dist-info/sboms/"
+        raise RuntimeError(msg)
+    print(f"{wheel.name} carries {', '.join(found)}")
+    return wheel
 
 
 def _one_wheel(out_dir: Path) -> Path:
@@ -302,13 +301,13 @@ def _one_wheel(out_dir: Path) -> Path:
             having built nothing, more than one being a stale wheel from
             an interrupted earlier run sharing the directory, since
             neither `uv build` nor `python -m build` removes what it did
-            not just write.
+            not just write; or the wheel carries no bill of materials.
     """
     wheels = sorted(out_dir.glob("*.whl"))
     if len(wheels) != 1:
         msg = f"expected exactly one wheel in {out_dir}, found {wheels}"
         raise RuntimeError(msg)
-    return wheels[0]
+    return _require_sbom(wheels[0])
 
 
 def build_wheel(source_dir: Path, out_dir: Path) -> Path:
@@ -367,7 +366,8 @@ def build_repaired_wheels(source_dir: Path, out_dir: Path) -> list[Path]:
         subprocess.CalledProcessError: `cibuildwheel` itself failed.
         RuntimeError: it exited zero having written no wheel, which
             `--allow-empty` and a `skip` covering every identifier would
-            both produce and neither is something to compare.
+            both produce and neither is something to compare; or one of
+            them carries no bill of materials.
     """
     subprocess.run(  # noqa: S603
         [_CIBUILDWHEEL, "--output-dir", str(out_dir), "."],
@@ -378,7 +378,7 @@ def build_repaired_wheels(source_dir: Path, out_dir: Path) -> list[Path]:
     if not wheels:
         msg = f"cibuildwheel left no wheel in {out_dir}"
         raise RuntimeError(msg)
-    return wheels
+    return [_require_sbom(wheel) for wheel in wheels]
 
 
 def build_dynamic_wheel(

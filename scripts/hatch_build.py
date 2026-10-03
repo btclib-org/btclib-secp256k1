@@ -197,9 +197,8 @@ class CustomBuildHook(BuildHookInterface[Any]):
 
         A tree with no `.git` gets none. The pins the document states are
         read from the gitlinks, which only a git checkout holds: a build
-        from the sdist, or from the `git archive` copies
-        `.github/scripts/check_wheel_reproducibility.py` builds from, has
-        the vendored sources and no record of which commit they are. Every
+        from the sdist has the vendored sources and no record of which
+        commit they are. Every
         wheel `test.yml`'s `check-dist` job inspects is built from a
         checkout, and `verify_wheel_contents.py` fails one without the
         document.
