@@ -109,6 +109,19 @@ def signed_custom(prvkey: Any, msg_bytes: Any, aux_rand32: Any) -> bytes:
         return signer.sign_custom(msg_bytes, aux_rand32)
 
 
+def chained(pubkey_bytes: Any, tweak: Any) -> bytes:
+    """Add a tweak through a `PubkeyTweakChain`, and serialize.
+
+    Args:
+        pubkey_bytes: the public key.
+        tweak: the tweak.
+
+    Returns:
+        The tweaked public key.
+    """
+    return keys.PubkeyTweakChain(pubkey_bytes).tweak_add(tweak)
+
+
 def created(prvkey: Any) -> bytes:
     """Derive a public key through the inner half, and serialize it.
 
@@ -272,6 +285,7 @@ CALLS: list[tuple[str, Callable[..., Any], tuple[Any, ...], dict[str, Any]]] = [
     ("keys.pubkey_negate", keys.pubkey_negate, (PUBKEY,), {}),
     ("keys.pubkey_tweak_add", keys.pubkey_tweak_add, (PUBKEY, TWEAK), {}),
     ("keys.pubkey_tweak_mul", keys.pubkey_tweak_mul, (PUBKEY, TWEAK), {}),
+    ("keys.PubkeyTweakChain", chained, (PUBKEY, TWEAK), {}),
     ("keys.pubkey_combine", keys.pubkey_combine, ([PUBKEY, PUBKEY_LONG],), {}),
     ("keys.reserialize", keys.reserialize, (PUBKEY,), {}),
     ("keys.pubkey_sum", keys.pubkey_sum, ([PUBKEY, PUBKEY_LONG],), {}),
@@ -408,11 +422,9 @@ MODULES = {
 # other side of that: it takes the object and no bytes at all, as do the
 # private halves listed here, whose sequences and structs hold those same
 # objects. The two tweaking private halves do take a tweak, and it is the
-# retyped one of `keys.pubkey_tweak_add` and `keys.pubkey_tweak_mul`
+# retyped one of `keys.pubkey_tweak_mul` and of `PubkeyTweakChain`
 # above, which pass theirs straight in: what they answer with is the
 # parsed key they mutated, and two calls of it are never equal.
-# `PubkeyTweakChain` is the same, calling `parse` on construction and
-# reaching `scalar` through `_pubkey_tweak_add_` on every `tweak_add`.
 # `ssa.Signer` is a class too and its private key does cross as a bare
 # pointer, but it is swept: the two entries above build one and sign
 # through it, which is every argument of the constructor and of both
@@ -427,7 +439,6 @@ NOT_SWEPT = {
     "dsa._normalize_",
     "keys.parse",
     "keys.serialize",
-    "keys.PubkeyTweakChain",
     "keys._pubkey_combine_",
     "keys._pubkey_cmp_",
     "keys._pubkey_negate_",
