@@ -239,11 +239,19 @@ exposed to, and what counters each.
   checks a bare pointer's declared length against what the caller
   supplied before the call is made, README.md's *What the boundary
   checks* section stating why this is the one check that cannot be left
-  to the caller. `tests/core_test.py`'s
-  `test_size_checks_refuse_both_sides` drives a short and a long
-  argument against every entry point that takes one, and
-  `tests/bytes_like_test.py` holds the same boundary to the three
-  buffer types it accepts.
+  to the caller. `tests/size_sweep_test.py` reads every call to
+  `_scalar.octets` with a size, `_scalar.scalar`, `_scalar.entropy` and
+  `_scalar.optional_entropy` out of the mainline modules' source, drives
+  the entry points of `tests/bytes_like_test.py`'s table and its own
+  `musig` table with each bytes argument replaced by a shorter and a
+  longer one and each scalar by an int outside [0, 2**256), and fails
+  unless each such call site is handed and refuses each of them, except
+  one that an earlier check of the same argument shields. A bytes
+  argument that accepts a wrong length fails it too, unless the test
+  names it as taking any. The `zkp` subpackage is not in that sweep,
+  since it exists only in the build made with `BTCLIB_LIBSECP256K1_ZKP`.
+  `tests/bytes_like_test.py` holds the entry points of its own table,
+  `musig`'s not among them, to the three buffer types they accept.
 - **Reachable assertion (CWE-617).** The vendored build's
   illegal-argument stub replaces libsecp256k1's abort()ing default, so a
   violated precondition is reported rather than crashing the process;

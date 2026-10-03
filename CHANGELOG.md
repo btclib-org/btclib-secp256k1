@@ -229,6 +229,12 @@ and `pickle` raise it naming why (closes #1081).
 `_take` calls; the signing test passed without the lock, libsecp256k1
 refusing a reused secnonce itself (closes #1083).
 
+### A sweep drives a wrong size at the sized call sites of the mainline modules
+
+`tests/size_sweep_test.py` reads the length checks out of the modules' source
+and fails unless each refuses a shorter and a longer argument, and a scalar
+an int outside its range; `zkp` is not swept (closes #1075).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
