@@ -493,10 +493,13 @@ def test_the_prevouts_summary_carries_no_secret() -> None:
     It holds the sum of the input public keys and the hash of the
     outpoint, so two recipients scanning one transaction build the same
     one -- which is why it is a separate function rather than an argument
-    of the scan.
+    of the scan. The one input key makes the sum that key, so the
+    expected octets are the outpoint and the key the test chose, neither
+    of which came out of the function under test.
     """
     assert sp_summary() == sp_summary()
     assert len(sp_summary()) == silentpayments.SUMMARY_SIZE
+    assert sp_summary() == SP_OUTPOINT + SP_INPUT_PUBKEY
 
 
 def test_a_label_is_a_point_and_round_trips_through_its_33_bytes() -> None:
@@ -641,6 +644,12 @@ def test_a_prevouts_summary_of_no_input_is_refused() -> None:
         silentpayments.prevouts_summary(SP_OUTPOINT)
 
 
+def test_a_prevouts_summary_checks_its_keys_before_its_outpoint() -> None:
+    """Without a key, a short outpoint is not what is reported."""
+    with pytest.raises(ValueError, match="at least one public key"):
+        silentpayments.prevouts_summary(bytes(35))
+
+
 def test_a_prevouts_summary_of_an_unparsable_taproot_key_is_refused() -> None:
     """An x that is not on the curve is not a taproot input key."""
     with pytest.raises(ValueError, match="invalid taproot public key"):
@@ -668,14 +677,82 @@ def test_scanning_refuses_an_unparsable_output() -> None:
         )
 
 
-def test_scanning_refuses_a_summary_of_the_wrong_length() -> None:
-    """The summary is opaque, so its length is all that can be checked."""
+# a point of order 199 on y**2 = x**3 + 4, which is no point of secp256k1:
+# x**3 + 7 is not a square modulo the field order, so no y completes this x
+# on the curve. test_the_twist_x_has_no_y_on_the_curve checks that
+TWIST_X = bytes.fromhex(
+    "87282779b69dde36393a9a337766ca13a0d9f43aba42ceef40da64895a4f8dd6"  # pragma: allowlist secret
+)
+
+
+def test_the_twist_x_has_no_y_on_the_curve() -> None:
+    """`TWIST_X` is refused as a public key for a reason checked here.
+
+    Euler's criterion on x**3 + 7, in plain integers: the independent
+    side of the refusals below.
+    """
+    p = 2**256 - 2**32 - 977
+    x = int.from_bytes(TWIST_X, "big")
+    assert pow(x**3 + 7, (p - 1) // 2, p) == p - 1
+
+
+@pytest.mark.parametrize("size", [0, 68, 70, 101])
+def test_scanning_refuses_a_summary_of_the_wrong_length(size: int) -> None:
+    """A summary is `SUMMARY_SIZE` octets, whatever the length of another form.
+
+    101 is the length of the raw struct earlier versions returned: it is
+    refused, not read.
+
+    Args:
+        size: the length of the summary handed in.
+    """
+    summary = (sp_summary() * 2)[:size]
     with pytest.raises(ValueError, match="prevouts summary must be"):
         silentpayments.scan_outputs(
-            [SP_INPUT_PUBKEY[1:]],
-            SP_SCAN_PRVKEY,
-            sp_summary()[:-1],
-            SP_SPEND_PUBKEY,
+            [SP_INPUT_PUBKEY[1:]], SP_SCAN_PRVKEY, summary, SP_SPEND_PUBKEY
+        )
+
+
+@pytest.mark.parametrize("prefix", [2, 3])
+@pytest.mark.parametrize(
+    "x",
+    [
+        TWIST_X,
+        (2**256 - 2**32 - 977).to_bytes(32, "big"),
+        (2**256 - 1).to_bytes(32, "big"),
+    ],
+    ids=["twist", "field-order", "all-ones"],
+)
+def test_scanning_refuses_a_summary_whose_point_is_not_on_the_curve(
+    prefix: int, x: bytes
+) -> None:
+    """The summary's point is parsed, and refused unless it is on the curve.
+
+    The scan key is invalid on purpose: the refusal of the summary comes
+    before the key is looked at, so that no summary reaches a scan key
+    without being a point of secp256k1.
+
+    Args:
+        prefix: 2 or 3, the two compressed prefixes.
+        x: an x coordinate with no y on the curve, or no field element.
+    """
+    summary = SP_OUTPOINT + bytes([prefix]) + x
+    with pytest.raises(ValueError, match="invalid prevouts summary public key"):
+        silentpayments.scan_outputs([SP_INPUT_PUBKEY[1:]], 0, summary, SP_SPEND_PUBKEY)
+
+
+@pytest.mark.parametrize("prefix", [0, 1, 4, 5, 6, 7, 255])
+def test_scanning_refuses_a_summary_with_a_bad_prefix(prefix: int) -> None:
+    """Only the compressed prefixes 2 and 3 introduce a point of a summary.
+
+    Args:
+        prefix: the octet in place of the compressed prefix, over an x
+            that is on the curve.
+    """
+    summary = sp_summary()[:36] + bytes([prefix]) + SP_INPUT_PUBKEY[1:]
+    with pytest.raises(ValueError, match="invalid prevouts summary public key"):
+        silentpayments.scan_outputs(
+            [SP_INPUT_PUBKEY[1:]], SP_SCAN_PRVKEY, summary, SP_SPEND_PUBKEY
         )
 
 

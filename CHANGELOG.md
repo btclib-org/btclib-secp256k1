@@ -323,6 +323,12 @@ setting section 11 of the standard states (issue btclib-org/.github#1540).
   #1087): it was the compiler launcher of every wheel cibuildwheel built
   on Linux and macOS.
 
+### `scan_outputs` parses its summary, so no unchecked point reaches the scan key
+
+`prevouts_summary` returns the outpoint and the compressed sum of the input
+keys, which `scan_outputs` parses; a point off the curve and a summary of an
+earlier version are refused. The octets were copied into the struct unparsed (GHSA-8h6f-34jj-7p6c).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

@@ -47,31 +47,28 @@ __all__ = [
 
 # the widths this module has to check, none of them a macro that
 # survives the preprocessing of the headers into cffi definitions. The
-# summary's is asked of the struct rather than written down, so that a
-# libsecp256k1 that changes it changes this too; the label's is the 33
-# bytes of a compressed point, which is its serialization and not the 68
-# of the object holding it.
+# label's is the 33 bytes of a compressed point, which is its
+# serialization and not the 68 of the object holding it. The summary's is
+# the 36 bytes of the smallest outpoint followed by the 33 of the sum of
+# the input keys, which is what `prevouts_summary` serializes: not the
+# size of libsecp256k1's own summary struct, whose layout is its own and
+# is never read or written from here.
 #
 # Public, where widths stated only to size a buffer are private, and the
 # question those answer is a different one: `xonly.py` states its own for
 # the buffer it unpacks, and nothing outside the module needs it. This
-# module answers a caller lengths of its own (#232). `SUMMARY_SIZE` is
-# the one that has to be public: it is `ffi.sizeof` of a struct, no BIP
-# writes it down, it moves when libsecp256k1 moves, and a caller holding
-# what `prevouts_summary` returned can learn how many octets that is
-# nowhere else -- its docstring shows the check. `LABEL_SIZE` is 33
-# because a label is a compressed point, so a caller could work it out
-# where it could not work the other out; what keeps it public is that it
-# has been since 0.8.0, and taking a released name private to tidy an
-# asymmetry is a break charged to a reader who never asked.
-# `keys._COMPRESSED_SIZE` is the same 33 and stays private: nothing there
-# checks a caller's argument against it, where two callers' arguments are
-# checked against this one -- `parse_label`'s octets and the labels
-# `_fill_label_cache` takes for `_scan_outputs_`. What `serialize_label`
-# does with it is not that: it unpacks the buffer this module declared,
-# which is exactly what `keys` does with its own
-SUMMARY_SIZE = ffi.sizeof("secp256k1_silentpayments_prevouts_summary")
+# module answers a caller lengths of its own (#232): a caller storing a
+# summary or a label checks its length against these, and both names have
+# been public since 0.8.0. `keys._COMPRESSED_SIZE` is the same 33 as the
+# label's and stays private: nothing there checks a caller's argument
+# against it, where two callers' arguments are checked against this one
+# -- `parse_label`'s octets and the labels `_fill_label_cache` takes for
+# `_scan_outputs_`. What `serialize_label` does with it is not that: it
+# unpacks the buffer this module declared, which is exactly what `keys`
+# does with its own
+_OUTPOINT_SIZE = 36
 LABEL_SIZE = 33
+SUMMARY_SIZE = _OUTPOINT_SIZE + keys._COMPRESSED_SIZE
 
 # the buffer `serialize_label` writes into, resolved here rather than at
 # every call: `ffi.new` of an f-string formats it and leaves cffi to
@@ -410,9 +407,9 @@ def _prevouts_summary_(
     the object rather than with the octets of it: see the package
     docstring for what the two underscores mean throughout. What it saves
     is a round trip of the summary itself -- `_scan_outputs_` takes this
-    object, where the public halves write those octets out of one struct
-    and back into another -- and, for a caller holding the input keys
-    parsed, their parse.
+    object, where the public halves serialize the sum of the keys and
+    parse it back -- and, for a caller holding the input keys parsed,
+    their parse.
 
     Args:
         outpoint_smallest36: the 36-byte serialization of the
@@ -436,7 +433,9 @@ def _prevouts_summary_(
     """
     if not taproot_pubkeys and not pubkeys:
         raise ValueError("at least one public key is required")
-    outpoint_smallest36 = octets(outpoint_smallest36, "smallest outpoint", 36)
+    outpoint_smallest36 = octets(
+        outpoint_smallest36, "smallest outpoint", _OUTPOINT_SIZE
+    )
 
     summary = ffi.new("secp256k1_silentpayments_prevouts_summary *")
     summarized = lib.secp256k1_silentpayments_recipient_prevouts_summary_create(
@@ -461,9 +460,9 @@ def prevouts_summary(
     """Summarize the inputs of a transaction, for scanning it.
 
     This is what the recipient's side needs of a transaction, and all of
-    it: the sum of its eligible input public keys and the hash of its
-    smallest outpoint, computed once and handed to `scan_outputs` for
-    every scan key that scans the transaction.
+    it: the sum of its eligible input public keys and its smallest
+    outpoint, computed once and handed to `scan_outputs` for every scan
+    key that scans the transaction.
 
     The keys are split the way BIP352 reads them: a taproot input
     contributes the even-y point of its 32-byte x-only key, any other
@@ -480,11 +479,11 @@ def prevouts_summary(
             or 65 bytes each.
 
     Returns:
-        The summary, as the bytes libsecp256k1 holds it in. They are
-        opaque, they are not a serialization -- what is inside is
-        libsecp256k1's own and portable across neither platforms nor
-        versions -- and the only thing to do with them is to hand them
-        to `scan_outputs` in the same process. They hold no secret.
+        The 36-byte smallest outpoint followed by the 33-byte compressed
+        sum of the eligible input public keys, a taproot key counting as
+        its even-y point. It is a serialization, portable across
+        platforms and versions, and holds no secret. `scan_outputs`
+        parses it, and refuses what is not one.
 
     Raises:
         ValueError: if no public key is given, if the outpoint is not 36
@@ -500,15 +499,25 @@ def prevouts_summary(
         >>> len(summary) == silentpayments.SUMMARY_SIZE
         True
     """
-    summary = _prevouts_summary_(
-        outpoint_smallest36,
-        [
-            xonly.parse(pubkey_bytes, "taproot public key")
-            for pubkey_bytes in taproot_pubkeys_bytes
-        ],
-        [keys.parse(pubkey_bytes) for pubkey_bytes in pubkeys_bytes],
-    )
-    return bytes(ffi.buffer(summary))
+    taproot_pubkeys = [
+        xonly.parse(pubkey_bytes, "taproot public key")
+        for pubkey_bytes in taproot_pubkeys_bytes
+    ]
+    pubkeys = [keys.parse(pubkey_bytes) for pubkey_bytes in pubkeys_bytes]
+    # the call that refuses every input BIP352 refuses, an empty list and a
+    # sum at infinity included; the sum below is what it adds, and so
+    # cannot fail
+    _prevouts_summary_(outpoint_smallest36, taproot_pubkeys, pubkeys)
+    # checked by the call above; this makes it bytes
+    outpoint_smallest36 = bytes(outpoint_smallest36)
+    pubkey_sum = keys._pubkey_combine_([
+        *pubkeys,
+        *(
+            keys.parse(b"\x02" + xonly.serialize(taproot_pubkey))
+            for taproot_pubkey in taproot_pubkeys
+        ),
+    ])
+    return outpoint_smallest36 + keys.serialize(pubkey_sum)
 
 
 def _scan_outputs_(
@@ -524,8 +533,7 @@ def _scan_outputs_(
     what the two underscores mean throughout. A wallet scanning every
     transaction of a block parses its own spend key once here, where the
     public half parses it once per transaction, and takes the summary
-    `_prevouts_summary_` built rather than octets to be written back into
-    a struct.
+    `_prevouts_summary_` built rather than octets to be parsed.
 
     What it answers is octets even so: an output's tweak is a secret this
     call takes back out of libsecp256k1's memory before returning, and
@@ -638,7 +646,9 @@ def scan_outputs(
         scan_prvkey: the recipient's scan private key, 32 bytes or an
             int below 2**256.
         summary_bytes: the summary of the transaction's inputs, as
-            `prevouts_summary` returned it.
+            `prevouts_summary` returned it: `SUMMARY_SIZE` bytes, parsed
+            here, so that bytes read from elsewhere are checked like any
+            other key.
         spend_pubkey_bytes: the recipient's unlabeled spend public key,
             33 or 65 bytes.
         labels: the recipient's label cache, mapping each 33-byte label
@@ -661,9 +671,10 @@ def scan_outputs(
         ValueError: if no output is given, if any of them is not a valid
             x-only public key, if the scan key is not 32 bytes, does not
             fit in them, or is not in [1, n-1], if the summary is not
-            the right length, if the spend public key is not a valid
-            point, if a label or a label tweak is the wrong length, or
-            if libsecp256k1 refuses the scan.
+            the right length or does not hold a valid public key, if
+            the spend public key is not a valid point, if a label or a
+            label tweak is the wrong length, or if libsecp256k1 refuses
+            the scan.
 
     Example:
         >>> from btclib_secp256k1 import keys, silentpayments
@@ -682,11 +693,16 @@ def scan_outputs(
         True
     """
     summary_bytes = octets(summary_bytes, "prevouts summary", SUMMARY_SIZE)
-    # the summary is opaque both ways: what came out of prevouts_summary
-    # is written straight back into a struct of the same size, there
-    # being no parser for it and nothing here that reads it
-    summary = ffi.new("secp256k1_silentpayments_prevouts_summary *")
-    ffi.buffer(summary)[:] = summary_bytes
+    # libsecp256k1's summary struct is never written from octets: its point
+    # is read without a curve check, and multiplied by the scan key. The
+    # struct is rebuilt by the call that parses the sum and hashes the
+    # outpoint with it
+    summary = _prevouts_summary_(
+        summary_bytes[:_OUTPOINT_SIZE],
+        pubkeys=[
+            keys.parse(summary_bytes[_OUTPOINT_SIZE:], "prevouts summary public key")
+        ],
+    )
 
     return _scan_outputs_(
         [

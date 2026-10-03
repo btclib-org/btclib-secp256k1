@@ -238,7 +238,7 @@ def summarized(outpoint_smallest36: Any) -> bytes:
         outpoint_smallest36: the 36-byte smallest outpoint.
 
     Returns:
-        The octets `prevouts_summary` answers with.
+        The octets of the struct `_prevouts_summary_` builds.
     """
     return bytes(
         ffi.buffer(
