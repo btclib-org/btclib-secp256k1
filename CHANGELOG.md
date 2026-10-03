@@ -34,6 +34,12 @@ release-notes length in the first place, and are still in
   every pull request lands with an approving review from somebody other than
   its author; the bypass is for emergencies** (issue btclib-org/.github#1362).
 
+### CI
+
+- **`sdist-rebuild.yml` passes `build-constraints.txt`** (closes
+  btclib-org/.github#1542): the rebuild resolves the build requirements
+  the release did. v0.8.0.10 is the first tag that carries the file.
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`

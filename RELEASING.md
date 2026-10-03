@@ -969,7 +969,8 @@ cd /tmp/btclib-secp256k1-rebuild &&
 python=$(grep -Ev '^[[:space:]]*(#|$)' .python-version) &&
 git submodule update --init --recursive &&
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) &&
-uv run --locked --only-group build python -m build -s &&
+PIP_CONSTRAINT=build-constraints.txt \
+  uv run --locked --only-group build python -m build -s &&
 uv run --no-project --python "$python" \
   .github/scripts/normalize_sdist.py dist/ &&
 uv run --no-project --python "$python" \
@@ -995,6 +996,9 @@ sdist on the releases page" step above: it can only pass if the file
 `gh attestation verify` hashes is the one the signed statement covers,
 where a digest compared against the index only says PyPI serves what it
 always served.
+
+A tag before v0.8.0.10 carries no `build-constraints.txt`: rebuild it
+without `PIP_CONSTRAINT`.
 
 The bill of materials is rebuilt with the archive and verified like it:
 its timestamp is `SOURCE_DATE_EPOCH` and its serial number is derived

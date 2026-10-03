@@ -61,6 +61,9 @@ jobs:
   # actions/setup-python install the interpreter the rebuilt tag's own
   # .python-version names, ahead of the callee's own Setup uv step, so
   # the rebuild runs on that tag's pin rather than on this branch's.
+  # build-constraints is the file release.yml's build job passes, read
+  # from the tag, so the rebuild resolves the build requirements the
+  # release did.
   # The signer the callee verifies against is btclib-org/.github's
   # reusable-build.yml, which release.yml's build job calls, or
   # reusable-attest.yml for a release made before it did; the callee's
@@ -75,3 +78,4 @@ jobs:
       sdist-builder: build-module
       submodules: recursive
       setup-python: true
+      build-constraints: build-constraints.txt
