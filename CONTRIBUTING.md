@@ -59,7 +59,9 @@ exactly them, so a red run there is a local run that was not done.
 **Every commit of a pull request carries a `Signed-off-by:` trailer
 naming its author**, which certifies the [Developer Certificate of
 Origin][dco]. `git commit -s` adds it, and `git rebase --signoff <base>`
-adds it to commits already made. [The standard's *Signatures*][s-sigs]
+adds it to commits already made. The `Sign-off` check is required, so a
+pull request whose commits lack the trailer cannot merge; its failure
+prints the command that adds it. [The standard's *Signatures*][s-sigs]
 says why a signature does not replace it, and which commits the
 `Sign-off` job skips.
 
@@ -384,7 +386,8 @@ checked out at all: `submodules-checked-out` asks that on every
 invocation, whatever the commit touches.
 
 The gates below decide every merge, together with `lint / Dependency
-review`, which has no command, and `wheel-reproducibility` decides a merge
+review`, which has no command, and `lint / Sign-off`, whose command
+*Running what CI runs* gives. `wheel-reproducibility` decides a merge
 that touches what its builds read, its command being among the sentinels
 further down. Each command below is close to the one its workflow runs —
 the second is what a contributor types, not what `test.yml` runs, and
@@ -1352,7 +1355,7 @@ by nothing, rather than from a `local` hook naming the tool by hand.
 `check` group through `uv run --locked`, so the version is `uv.lock`'s. A
 check discovered by CI after a push is a check in the wrong place.
 
-The aggregate of `test`, the `lint` workflow's jobs but `Sign-off`, the
+The aggregate of `test`, the `lint` workflow's jobs, the
 documentation build and the aggregate of `wheel-reproducibility` are the
 required checks, and `REPOSITORY.md` reads that rule back from the endpoint
 rather than restating it. `release` reuses the first three.
