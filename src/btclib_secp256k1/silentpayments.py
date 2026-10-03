@@ -553,6 +553,7 @@ def _scan_outputs_(
         it was paid to the unlabeled address.
 
     Raises:
+        TypeError: if `labels` is given and is not a mapping.
         ValueError: if no output is given, if the scan key is not 32
             bytes, does not fit in them, or is not in [1, n-1], if a
             label or a label tweak is the wrong length, if libsecp256k1
@@ -656,6 +657,7 @@ def scan_outputs(
         transaction pays this address nothing.
 
     Raises:
+        TypeError: if `labels` is given and is not a mapping.
         ValueError: if no output is given, if any of them is not a valid
             x-only public key, if the scan key is not 32 bytes, does not
             fit in them, or is not in [1, n-1], if the summary is not
@@ -698,9 +700,7 @@ def scan_outputs(
     )
 
 
-def _fill_label_cache(
-    labels: Mapping[bytes, BytesLike], cache: dict[bytes, CData]
-) -> None:
+def _fill_label_cache(labels: object, cache: dict[bytes, CData]) -> None:
     """Copy a label cache into the buffers the lookup will hand back.
 
     Every tweak is copied into memory this package owns before the scan
@@ -713,13 +713,18 @@ def _fill_label_cache(
     `_scan_outputs_`, which owns it and does.
 
     Args:
-        labels: the caller's mapping of 33-byte labels to 32-byte tweaks.
+        labels: the caller's mapping of 33-byte labels to 32-byte tweaks,
+            typed `object` because what is checked here is that it is one.
         cache: the dictionary to fill, keyed on the same labels.
 
     Raises:
-        TypeError: if a label or a tweak is not bytes.
+        TypeError: if `labels` is not a mapping, or a label or a tweak is
+            not bytes.
         ValueError: if a label is not 33 bytes, or a tweak not 32.
     """
+    if not isinstance(labels, Mapping):
+        msg = f"the labels must be a mapping, not {type(labels).__name__}"
+        raise TypeError(msg)
     for label_bytes, tweak_bytes in labels.items():
         cache[octets(label_bytes, "label", LABEL_SIZE)] = ffi.new(
             "unsigned char[32]", octets(tweak_bytes, "label tweak", 32)

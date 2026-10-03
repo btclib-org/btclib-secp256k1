@@ -873,3 +873,21 @@ def test_scanning_wipes_the_tweaks_it_had_when_a_later_label_is_refused(
 
     assert len(wiped) == 2, "the one output slot, and the tweak made before the refusal"
     assert all(zeroed(buffer) for buffer in wiped)
+
+
+def test_labels_that_are_not_a_mapping_are_a_type_error() -> None:
+    """A list of pairs is the likeliest wrong shape, and has no `.items()`.
+
+    The lookup raised `AttributeError: 'list' object has no attribute
+    'items'`; the argument is refused by name and type instead.
+    """
+    label, label_tweak = silentpayments.label(SP_SCAN_PRVKEY, 1)
+    for wrong in ([(label, label_tweak)], b"x", 7):
+        with pytest.raises(TypeError, match="labels must be a mapping, not"):
+            silentpayments.scan_outputs(
+                [SP_INPUT_PUBKEY[1:]],
+                SP_SCAN_PRVKEY,
+                sp_summary(),
+                SP_SPEND_PUBKEY,
+                labels=wrong,  # type: ignore[arg-type]
+            )
