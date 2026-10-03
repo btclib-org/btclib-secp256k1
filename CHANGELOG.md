@@ -40,6 +40,12 @@ release-notes length in the first place, and are still in
   btclib-org/.github#1542): the rebuild resolves the build requirements
   the release did. v0.8.0.10 is the first tag that carries the file.
 
+### `REPOSITORY.md` reads the review switch as the organization's
+
+- **It states only that this repository's variable store is empty**
+  (issue btclib-org/.github#1560). `CLAUDE_REVIEW_ENABLED` is the
+  organization's switch.
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`
