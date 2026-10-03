@@ -293,6 +293,12 @@ setting section 11 of the standard states (issue btclib-org/.github#1540).
   the ack of record is the bot's** (issue btclib-org/.github#452): *The
   review* no longer says the review is off.
 
+### `CONTRIBUTING.md`'s suite command exits 0 on a healthy tree
+
+- **The command carries `--cov-fail-under=0`, as `test.yml`'s coverage steps
+  do** (closes #1122). It exited 1 against the unflagged build, the
+  100% floor being reached only by the union of the builds.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
