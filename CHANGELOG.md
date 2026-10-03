@@ -264,6 +264,29 @@ setting section 11 of the standard states (issue btclib-org/.github#1540).
 `Signed-off-by:` trailer cannot merge, and `REPOSITORY.md` lists
 `lint / Sign-off` among the required checks (issue btclib-org/.github#1550).
 
+### The verification command takes `--source-ref` for every signer
+
+- **`SECURITY.md` and `RELEASING.md` say a release signed by
+  `reusable-attest.yml` takes the tag** (issue #1088) (issue
+  btclib-org/btclib#2447).
+
+### The sdist is checked against the build's digest before it is published
+
+- **The publish jobs, `github-release` and `test.yml`'s sdist jobs refuse an
+  sdist that is not the one `reusable-build.yml` printed the digest of**
+  (issue #1088) (issue btclib-org/btclib#2449). Wheels are not covered.
+
+### `CONTRIBUTING.md` lists the jobs that do not pass `--locked`
+
+- **The other files stop saying that every job does** (issue #1088) (issue
+  btclib-org/btclib#2440).
+
+### The weekly vendored-vectors check compares the vendored bytes
+
+- **`check_vendored_vectors.py` hashes each vendored file against the blob
+  `tests/README.md` records, and that blob against upstream's** (issue #1088)
+  (issue btclib-org/btclib#2439).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

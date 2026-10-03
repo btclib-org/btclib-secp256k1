@@ -124,12 +124,13 @@ names the callee as its signer, while `--repo` still names this
 repository as the source. The flag is required rather than a narrowing,
 the command refusing a genuine release without it, and `--source-ref` is
 what keeps a build of a branch from passing as the release. From 0.8.0.7
-to 0.8.0.9 the signer is `reusable-attest.yml`, named the same way
-without `--source-ref`. From 0.8.0 to 0.8.0.6 the signer is
-`release.yml` itself, so for those releases `signer` is
-`"$repo/.github/workflows/release.yml"`, and there the flag narrows what
-passes: without it an attestation from any workflow in this repository
-is accepted. No path verifies a release another signed. The PEP 740
+to 0.8.0.9 the signer is `reusable-attest.yml`, named the same way.
+From 0.8.0 to 0.8.0.6 the signer is `release.yml` itself, so for those
+releases `signer` is `"$repo/.github/workflows/release.yml"`, and there
+`--signer-workflow` narrows what passes: without it an attestation from
+any workflow in this repository is accepted. All three take
+`--source-ref "refs/tags/v${version:?}"`. No path verifies a release
+another signed. The PEP 740
 attestations on PyPI name `release.yml`, the job that uploads there
 being its own rather than a called workflow's.
 

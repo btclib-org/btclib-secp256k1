@@ -1014,7 +1014,7 @@ describes the sdist alone anyway: drop the flag for those tags.
 the command refuses the release. `--source-ref` names the tag, which is
 what stops a rehearsal dispatched from a branch from verifying as the
 release. A tag from v0.8.0.7 to v0.8.0.9 was signed by
-`reusable-attest.yml`, named the same way, with no `--source-ref`. A tag
+`reusable-attest.yml`, named the same way. A tag
 from v0.8.0 to v0.8.0.6 was signed by `release.yml` itself, and for one
 of those `signer` is `"$repo/.github/workflows/release.yml"`, the flag
 there only narrowing what passes. Each path verifies only the releases

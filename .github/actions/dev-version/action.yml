@@ -47,10 +47,9 @@ runs:
         grep -m1 '^version' pyproject.toml
         # uv.lock carries the project version, so the rewrite above
         # leaves the two disagreeing, and every uv command that passes
-        # --locked -- all of them, section 1 of the organization standard
-        # allowing no other flag -- then fails with "the lockfile needs
-        # to be updated". Re-locking here, rather than relaxing the
-        # build steps to --frozen, is btclib-org/.github#128's decision:
+        # --locked then fails with "the lockfile needs to be updated".
+        # Re-locking here, rather than relaxing the build steps to
+        # --frozen, is btclib-org/.github#128's decision:
         # the only entry this moves is the project's own, measured
         # against the tree as `git diff --stat uv.lock` answering one
         # line. It is also what makes the sdist coherent: that archive

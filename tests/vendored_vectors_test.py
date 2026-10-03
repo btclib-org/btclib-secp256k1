@@ -22,14 +22,21 @@ built here carries one entry of every shape the parser distinguishes, so
 a shape that stops being recognised moves a heading from one list to the
 other rather than going quiet.
 
+The byte half -- each vendored file hashed against the README, and the
+README's blob against upstream's tree -- is exercised at the end, with
+files written in a temporary directory and the trees API stubbed, and
+over the real README offline.
+
 The script is loaded by path, `.github/scripts` being no package, and
 once: `monkeypatch` undoes what each test does to it.
 """
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
+import re
 import runpy
 import sys
 from pathlib import Path
@@ -172,6 +179,21 @@ class _Run:
         """
         self.calls.append(args)
         return SimpleNamespace(stdout=self.stdout)
+
+
+def _no_mismatches(_readme_path: Path) -> tuple[list[str], list[str], int, int]:
+    """Stand in for `find_mismatches` where a test is about staleness.
+
+    The sample README names files that exist nowhere, so the real
+    comparison would report them missing.
+
+    Args:
+        _readme_path: the README, unread.
+
+    Returns:
+        Nothing mismatched, nothing skipped, nothing hashed or asked.
+    """
+    return [], [], 0, 0
 
 
 def _readme(tmp_path: Path) -> Path:
@@ -669,6 +691,7 @@ def test_a_dry_run_prints_the_finding_and_touches_no_issue(
         capsys: the captured streams.
     """
     reported: list[object] = []
+    monkeypatch.setattr(check, "find_mismatches", _no_mismatches)
     monkeypatch.setattr(
         check, "_latest_commit", lambda _repo, _path, _ref=None: (_TIP, "2026-02-03")
     )
@@ -703,6 +726,7 @@ def test_a_path_with_no_tip_is_printed_as_no_commit_rather_than_as_behind(
         tmp_path: where the sample README is written.
         capsys: the captured streams.
     """
+    monkeypatch.setattr(check, "find_mismatches", _no_mismatches)
     monkeypatch.setattr(check, "_latest_commit", lambda _repo, _path, _ref=None: None)
     monkeypatch.setattr(check, "report", lambda *_args: None)
     monkeypatch.setattr(
@@ -740,6 +764,7 @@ def test_a_pin_and_a_tip_alike_in_a_prefix_print_as_two_shas(
     assert _PINNED_ALIKE[:12] == _TIP_ALIKE[:12]
     readme = tmp_path / "README.md"
     readme.write_text(_README.replace(_PINNED, _PINNED_ALIKE), encoding="utf-8")
+    monkeypatch.setattr(check, "find_mismatches", _no_mismatches)
     monkeypatch.setattr(
         check,
         "_latest_commit",
@@ -782,6 +807,7 @@ def test_a_clean_run_says_so_and_still_reports(
         capsys: the captured streams.
     """
     reported: list[tuple[object, ...]] = []
+    monkeypatch.setattr(check, "find_mismatches", _no_mismatches)
     monkeypatch.setattr(
         check, "_latest_commit", lambda _repo, _path, _ref=None: (_PINNED, "2026-01-02")
     )
@@ -823,6 +849,10 @@ def test_the_entry_point_guard_runs_the_check_as___main__(
         tmp_path: where the sample README is written.
         capsys: the captured streams.
     """
+    # no blob line, so the byte comparison has nothing to hash and asks
+    # upstream nothing: the one canned answer below is the commit list
+    readme = tmp_path / "README.md"
+    readme.write_text(re.sub(r"(?m)^blob .*\n", "", _README), encoding="utf-8")
     monkeypatch.setattr(
         check.subprocess,
         "run",
@@ -840,7 +870,7 @@ def test_the_entry_point_guard_runs_the_check_as___main__(
         "argv",
         [
             "check_vendored_vectors.py",
-            str(_readme(tmp_path)),
+            str(readme),
             "Vendored vectors behind upstream",
             "--dry-run",
         ],
@@ -851,3 +881,477 @@ def test_the_entry_point_guard_runs_the_check_as___main__(
 
     assert raised.value.code == 0
     assert "Every checked pin is still at upstream's tip." in capsys.readouterr().out
+
+
+_ROOT = Path(__file__).parents[1]
+_COMMIT = "c0ffee0"
+_UPSTREAM_BLOB = "1" * 40
+
+
+def _blob_of(data: bytes) -> str:
+    """Return a git blob SHA-1, computed apart from the script's own.
+
+    Args:
+        data: the file's bytes.
+
+    Returns:
+        The SHA-1 of `blob <length>`, a NUL and the bytes.
+    """
+    header = b"blob %d\0" % len(data)
+    return hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
+
+
+class _Gh:
+    """A `subprocess.run` stand-in answering the `gh` calls of the byte half.
+
+    The trees API answers from `trees`, keyed on the repository and the
+    `<commit>:<directory>` the script asks for; the commits API from
+    `commits`; `gh issue list` finds the issue `open_issue` names, and
+    every other `gh issue` call answers nothing.
+    """
+
+    def __init__(self) -> None:
+        """Start with no tree, no commit and no open issue."""
+        self.trees: dict[tuple[str, str], dict[str, str]] = {}
+        self.commits: dict[tuple[str, str], tuple[str, str]] = {}
+        self.open_issue: int | None = None
+        self.fail_trees = False
+        self.calls: list[list[str]] = []
+
+    def __call__(self, argv: list[str], **_kwargs: Any) -> SimpleNamespace:
+        """Record the call and answer it as the `gh` sub-command would.
+
+        Args:
+            argv: the argument list the script built.
+            **_kwargs: whatever it passed beside it, unread here.
+
+        Returns:
+            A completed process carrying the canned stdout.
+
+        Raises:
+            CalledProcessError: for a trees call, once `fail_trees` is set.
+        """
+        self.calls.append(list(argv))
+        if argv[1] == "api":
+            url = argv[4].removeprefix("repos/")
+            if "/git/trees/" in url:
+                if self.fail_trees:
+                    raise check.subprocess.CalledProcessError(
+                        1, argv, stderr="HTTP 404\n"
+                    )
+                repo, _, tree = url.partition("/git/trees/")
+                items = [
+                    {"path": name, "sha": sha}
+                    for name, sha in self.trees[repo, tree].items()
+                ]
+                return SimpleNamespace(stdout=json.dumps({"tree": items}))
+            sha, date = self.commits[url.removesuffix("/commits"), argv[6][5:]]
+            commit = {"sha": sha, "commit": {"committer": {"date": date}}}
+            return SimpleNamespace(stdout=json.dumps([commit]))
+        if argv[2] == "list":
+            issues = [{"number": self.open_issue}] if self.open_issue else []
+            return SimpleNamespace(stdout=json.dumps(issues))
+        return SimpleNamespace(stdout="")
+
+
+@pytest.fixture
+def gh(monkeypatch: pytest.MonkeyPatch) -> _Gh:
+    """Replace `subprocess.run` with a `_Gh`.
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+
+    Returns:
+        The stand-in, for the test to load and to read back.
+    """
+    fake = _Gh()
+    monkeypatch.setattr(check.subprocess, "run", fake)
+    return fake
+
+
+def _block(heading: str, **fields: str) -> str:
+    """Return one README entry: a heading and its fenced block.
+
+    Args:
+        heading: the `###` heading.
+        **fields: the block's fields, in order.
+
+    Returns:
+        The entry, laid out as `tests/README.md` lays one out.
+    """
+    lines = "\n".join(f"{key}  {value}" for key, value in fields.items())
+    return f"### {heading}\n\n```text\n{lines}\n```\n"
+
+
+def _vendored(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    gh: _Gh,
+    *,
+    data: bytes = b"[1]\n",
+    **fields: str,
+) -> Path:
+    """Write `tests/f.json` and a README entry for it, and return the README.
+
+    The entry records the blob of `data`, as `blob` unless a field says
+    otherwise, and upstream's tree at the commit holds the same blob.
+
+    Args:
+        tmp_path: where the file and the README are written, and the
+            working directory the script's relative path is read from.
+        monkeypatch: the fixture the working directory is set through.
+        gh: the stand-in whose tree is loaded.
+        data: the file's bytes.
+        **fields: fields of the entry, overriding the defaults.
+
+    Returns:
+        The README's path.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "f.json").write_bytes(data)
+    recorded = {
+        "repo": "r",
+        "path": "up/f.json",
+        "commit": f"{_COMMIT}  2026-01-01",
+        "blob": _blob_of(data),
+        "behind": "0",
+    } | fields
+    gh.trees["r", f"{_COMMIT}:up"] = {"f.json": recorded.get("blob", "")}
+    readme = tmp_path / "README.md"
+    readme.write_text(_block("`tests/f.json`", **recorded), encoding="utf-8")
+    return readme
+
+
+def test_git_blob_is_what_git_hash_object_prints(tmp_path: Path) -> None:
+    r"""The empty blob and `hello\n` are the two every git user has seen.
+
+    Args:
+        tmp_path: where the two files are written.
+    """
+    empty = tmp_path / "empty"
+    empty.write_bytes(b"")
+    hello = tmp_path / "hello"
+    hello.write_bytes(b"hello\n")
+
+    assert check._git_blob(empty) == (
+        "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"  # pragma: allowlist secret
+    )
+    assert check._git_blob(hello) == (
+        "ce013625030ba8dba906f756967f9e9ca394464a"  # pragma: allowlist secret
+    )
+
+
+def test_a_file_matching_its_blob_and_upstream_s_is_clean(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Both comparisons pass, and both ran.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh)
+
+    assert check.find_mismatches(readme) == ([], [], 1, 1)
+    assert [call[4] for call in gh.calls] == [f"repos/r/git/trees/{_COMMIT}:up"]
+
+
+def test_a_tampered_file_is_a_mismatch_naming_it(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A byte changed here, with the README and upstream untouched, fails.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh)
+    (tmp_path / "tests" / "f.json").write_bytes(b"[2]\n")
+
+    (mismatch,) = check.find_mismatches(readme)[0]
+
+    assert mismatch.startswith("tests/f.json: its bytes hash to blob")
+    assert _blob_of(b"[2]\n") in mismatch
+    assert _blob_of(b"[1]\n") in mismatch
+
+
+def test_a_file_missing_from_the_tree_is_a_mismatch(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A README naming a file that is not there fails, rather than skipping.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh)
+    (tmp_path / "tests" / "f.json").unlink()
+
+    mismatches, _skipped, hashed, _asked = check.find_mismatches(readme)
+
+    assert mismatches == ["tests/f.json: the README names it and it is not here"]
+    assert hashed == 0
+
+
+def test_a_blob_that_is_not_upstream_s_at_the_commit_is_a_mismatch(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The file matches the README and the README is not what upstream holds.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh)
+    gh.trees["r", f"{_COMMIT}:up"] = {"f.json": _UPSTREAM_BLOB}
+
+    (mismatch,) = check.find_mismatches(readme)[0]
+
+    assert mismatch.startswith("tests/f.json: r at c0ffee0 holds up/f.json as blob")
+    assert _UPSTREAM_BLOB in mismatch
+
+
+def test_a_path_absent_at_the_commit_is_a_mismatch(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Upstream's tree holding no such name, only another, is a mismatch.
+
+    The blob it names is `None`.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh)
+    gh.trees["r", f"{_COMMIT}:up"] = {"other.json": _UPSTREAM_BLOB}
+
+    (mismatch,) = check.find_mismatches(readme)[0]
+
+    assert "as blob None" in mismatch
+
+
+def test_a_path_at_the_root_asks_for_the_commit_itself(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With no directory in the path the tree asked for is `<commit>`.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh, path="f.json")
+    gh.trees["r", _COMMIT] = {"f.json": _blob_of(b"[1]\n")}
+
+    assert check.find_mismatches(readme)[0] == []
+    assert gh.calls[-1][4] == f"repos/r/git/trees/{_COMMIT}"
+
+
+def test_ours_is_what_the_file_is_held_to_and_blob_what_upstream_is(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A file differing from upstream in whitespace is clean given `ours`.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _vendored(
+        tmp_path, monkeypatch, gh, blob=_UPSTREAM_BLOB, ours=_blob_of(b"[1]\n")
+    )
+
+    assert check.find_mismatches(readme)[0] == []
+
+    (tmp_path / "tests" / "f.json").write_bytes(b"[2]\n")
+    (mismatch,) = check.find_mismatches(readme)[0]
+
+    assert _blob_of(b"[1]\n") in mismatch
+
+
+def test_an_entry_with_ours_and_no_blob_asks_upstream_nothing(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A file with no upstream blob to name is hashed alone.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "f.txt").write_bytes(b"x\n")
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        _block(
+            "`f.txt`",
+            repo="r",
+            path="src",
+            commit="c0ffee0  2026-01-01",
+            ours=_blob_of(b"x\n"),
+        ),
+        encoding="utf-8",
+    )
+
+    assert check.find_mismatches(readme) == ([], [], 1, 0)
+    assert not gh.calls
+
+
+def test_an_entry_naming_a_file_with_no_blob_is_named_as_skipped(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Neither `blob` nor `ours` leaves nothing to compare, and says so.
+
+    A heading that is no one file's path, or an entry with no commit, is
+    not this comparison's to name: the staleness check lists those.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the README is written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    monkeypatch.chdir(tmp_path)
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        _block("`f.json`", repo="r", path="f.json", commit="c0ffee0  2026-01-01")
+        + _block("`dir/*.bin`", repo="r", path="d", commit="c0ffee0", blob="a")
+        + _block("not a path", repo="r", path="f.json", commit="c0ffee0", blob="a")
+        + _block("`g.json`", pulled="2026-01-01", blob="a"),
+        encoding="utf-8",
+    )
+
+    assert check.find_mismatches(readme) == (
+        [],
+        ["`f.json` (no blob or ours line)"],
+        0,
+        0,
+    )
+    assert not gh.calls
+
+
+def test_a_failed_upstream_call_is_a_mismatch_and_the_issue_is_still_dealt_with(
+    gh: _Gh,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A trees-API error names the file and does not skip `report`.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory and argv are set
+            through.
+        capsys: the captured streams.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh)
+    gh.commits["r", "up/f.json"] = ("new0000", "2026-01-01T00:00:00Z")
+    gh.fail_trees = True
+    monkeypatch.setattr(check.sys, "argv", ["prog", str(readme), "A title"])
+
+    assert check.main() == 1
+
+    out = capsys.readouterr().out
+    assert "MISMATCH: tests/f.json: asking r for up/f.json at c0ffee0 failed" in out
+    assert "HTTP 404" in out
+    assert [c[2] for c in gh.calls if c[1] == "issue"] == ["list", "create"]
+
+
+def test_main_exits_1_on_a_mismatch_and_still_reports_drift(
+    gh: _Gh,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A tampered file fails the run, after the issue has been dealt with.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory and argv are set
+            through.
+        capsys: the captured streams.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh)
+    (tmp_path / "tests" / "f.json").write_bytes(b"[2]\n")
+    gh.commits["r", "up/f.json"] = (_COMMIT, "2026-01-01T00:00:00Z")
+    gh.open_issue = 5
+    monkeypatch.setattr(check.sys, "argv", ["prog", str(readme), "A title"])
+
+    assert check.main() == 1
+
+    out = capsys.readouterr().out
+    assert "MISMATCH: tests/f.json: its bytes hash to blob" in out
+    assert "Hashed 1 files and asked upstream for 1 blobs: 1 mismatches." in out
+    assert [c[2] for c in gh.calls if c[1] == "issue"] == ["list", "close"]
+
+
+def test_main_exits_0_and_counts_what_it_compared(
+    gh: _Gh,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A clean run says how many files and blobs it read.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory and argv are set
+            through.
+        capsys: the captured streams.
+    """
+    readme = _vendored(tmp_path, monkeypatch, gh)
+    gh.commits["r", "up/f.json"] = (_COMMIT, "2026-01-01T00:00:00Z")
+    monkeypatch.setattr(
+        check.sys, "argv", ["prog", str(readme), "A title", "--dry-run"]
+    )
+
+    assert check.main() == 0
+
+    out = capsys.readouterr().out
+    assert "Hashed 1 files and asked upstream for 1 blobs: 0 mismatches." in out
+    assert "MISMATCH" not in out
+
+
+def test_every_vendored_file_the_readme_names_is_the_blob_it_records(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The local half of the weekly comparison, over the real README, offline.
+
+    The first assertion is what says the parse still finds the pins at
+    all, a parser that matched nothing passing every line after it.
+
+    Args:
+        monkeypatch: the fixture the working directory is set through.
+    """
+    monkeypatch.chdir(_ROOT)
+    pins, skipped = check._pins((_ROOT / "tests" / "README.md").read_text("utf-8"))
+
+    assert len(pins) > 5
+    assert skipped == []
+    wrong = [
+        pin.local for pin in pins if check._git_blob(Path(pin.local)) != pin.expected
+    ]
+    assert wrong == []
+
+
+def test_every_file_the_readme_names_is_marked_minus_text() -> None:
+    """A file the README hashes is checked out byte for byte.
+
+    Without `-text`, a checkout with `core.autocrlf=true` converts the
+    file and the hash above no longer holds. The lines are read from
+    `.gitattributes` rather than asked of git, which a copy of the tree
+    without a `.git` cannot answer.
+    """
+    pins, _skipped = check._pins((_ROOT / "tests" / "README.md").read_text("utf-8"))
+    marked = (_ROOT / ".gitattributes").read_text("utf-8").splitlines()
+
+    assert pins
+    assert [pin.local for pin in pins if f"{pin.local} -text" not in marked] == []

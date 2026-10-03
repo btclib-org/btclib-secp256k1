@@ -105,6 +105,14 @@ on:
           in the same run would collide with that job's.
         type: boolean
         default: false
+      digests:
+        description: >
+          The `digests` output of reusable-build.yml. Under
+          `use-signed-dist`, the jobs that download the sdist refuse it
+          unless it is the file that output names, so that what they
+          checked is what release.yml publishes. Ignored otherwise.
+        type: string
+        default: ""
       concurrency-suffix:
         description: >
           Appended to the concurrency group, and the release workflow is
@@ -885,6 +893,17 @@ jobs:
           name: sdist
           path: dist
 
+      # the check release.yml's publish jobs make: the sdist read below is
+      # the one the build job printed the digest of, and so the one published
+      - name: Check the sdist is the one the build job built
+        if: inputs.use-signed-dist
+        shell: bash
+        env:
+          DIGESTS: ${{ inputs.digests }}
+        run: |
+          sha256sum -b dist/*.tar.gz | sed 's/ \*dist\//  dist\//' \
+            | diff - <(printf '%s\n' "$DIGESTS" | grep -F '  dist/')
+
       # bash on every runner, Windows included: pip does not expand the
       # glob itself, and PowerShell does not expand it for a native
       # command either, so the default shell there would hand pip the
@@ -1027,6 +1046,17 @@ jobs:
 
       - name: Show distributions
         run: ls -l dist
+
+      # dist holds the wheels this workflow built beside the sdist, and
+      # the build job printed the digest of the sdist alone
+      - name: Check the sdist is the one the build job built
+        if: inputs.use-signed-dist
+        shell: bash
+        env:
+          DIGESTS: ${{ inputs.digests }}
+        run: |
+          sha256sum -b dist/*.tar.gz | sed 's/ \*dist\//  dist\//' \
+            | diff - <(printf '%s\n' "$DIGESTS" | grep -F '  dist/')
 
       # the three tools below come from the check group of
       # pyproject.toml, pinned by uv.lock, rather than from uvx, which

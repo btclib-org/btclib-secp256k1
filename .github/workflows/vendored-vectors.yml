@@ -7,8 +7,10 @@ name: vendored vectors
 # that procedure weekly instead, over every pin the script can check,
 # and opens or updates an issue on drift rather than fixing anything:
 # refreshing a vector file is a decision the script does not get to
-# make. Matches a sibling repository's own workflow of the same name,
-# script included.
+# make. It also hashes each vendored file and compares the blob with
+# the README's and with upstream's at the pinned commit; a mismatch
+# fails the run. Matches a sibling repository's own workflow of the
+# same name, script included.
 #
 # The `check` job is btclib-org/.github's reusable-vendored-vectors.yml,
 # called at @main so a fix there reaches this tree in one landing
