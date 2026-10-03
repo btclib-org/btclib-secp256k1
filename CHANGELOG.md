@@ -258,6 +258,12 @@ check that `vendored-vectors.yml` calls too, and `RELEASING.md` runs it on
 `REPOSITORY.md` reads `web_commit_signoff_required` back, the organization
 setting section 11 of the standard states (issue btclib-org/.github#1540).
 
+### The `Sign-off` check is required
+
+`CONTRIBUTING.md`'s shared half says a pull request whose commits lack the
+`Signed-off-by:` trailer cannot merge, and `REPOSITORY.md` lists
+`lint / Sign-off` among the required checks (issue btclib-org/.github#1550).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

@@ -76,6 +76,7 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 | `lint / Lint and type-check` | `lint.yml`, calling `reusable-lint.yml` |
 | `wheel-reproducibility: every job passed` | `wheel-reproducibility.yml`, aggregate over its jobs |
 | `lint / Dependency review` | `lint.yml`, calling `reusable-lint.yml` |
+| `lint / Sign-off` | `lint.yml`, calling `reusable-lint.yml` |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -120,7 +121,8 @@ whole body is a call to a `btclib-org/.github` reusable workflow, so the
 context joins the calling job's id to the called job's own name.
 `lint.yml`'s `lint` job calls `reusable-lint.yml`, whose own job is still
 named `Lint and type-check`, producing `lint / Lint and type-check`, and
-whose `Dependency review` job produces `lint / Dependency review`;
+whose `Dependency review` and `Sign-off` jobs produce
+`lint / Dependency review` and `lint / Sign-off`;
 `docs.yml`'s `docs` job calls `reusable-docs.yml` the same way, whose own
 job is still named `Build the documentation`, producing
 `docs / Build the documentation` (issue btclib-org/.github#35).
@@ -296,6 +298,8 @@ gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=true \
   -F 'checks[][context]=wheel-reproducibility: every job passed' \
   -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=lint / Dependency review' \
+  -F 'checks[][app_id]=15368' \
+  -F 'checks[][context]=lint / Sign-off' \
   -F 'checks[][app_id]=15368'
 ```
 
