@@ -336,6 +336,11 @@ setting section 11 of the standard states (issue btclib-org/.github#1540).
 `prevouts_summary` returns the outpoint and the compressed sum of the input
 keys, which `scan_outputs` parses; a point off the curve and a summary of an
 earlier version are refused. The octets were copied into the struct unparsed (GHSA-8h6f-34jj-7p6c).
+### The maintainer's bypass is for emergencies only
+
+- **Every pull request lands with an approving review from another owner**
+  (issue btclib-org/.github#1362): `CONTRIBUTING.md`, `REPOSITORY.md` and
+  `RELEASING.md` say so, and `--admin` is the emergency path.
 
 ## v0.8.0.9
 
