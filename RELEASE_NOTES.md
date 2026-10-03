@@ -5,7 +5,9 @@ release is in [CHANGELOG.md](./CHANGELOG.md); what follows is what a user
 has to act on and what a user gains, and it is what the GitHub release of
 a tag is generated from.
 
-## v0.8.0.10 (work in progress, not released yet)
+## v0.8.0.11 (work in progress, not released yet)
+
+## v0.8.0.10
 
 - **Verifying the sdist's attestation names a new signer and the tag.**
   `gh attestation verify` takes
@@ -13,7 +15,8 @@ a tag is generated from.
   and `--source-ref refs/tags/v<version>`; SECURITY.md names the signer of
   an earlier release. The attestation covers the sdist and its bill of
   materials, at SLSA Build L3; the wheels keep only their PEP 740
-  attestations on PyPI.
+  attestations on PyPI. The bundle beside the sdist is
+  `<tag>.intoto.jsonl`, not `<tag>.attestation.jsonl`.
 - **Breaking: `silentpayments.prevouts_summary` returns a serialization,
   and `scan_outputs` refuses the raw summary of earlier versions.** The
   summary is the 36-byte smallest outpoint followed by the 33-byte
@@ -21,6 +24,24 @@ a tag is generated from.
   `scan_outputs` parses the point and raises `ValueError` for one that is
   not on the curve (GHSA-8h6f-34jj-7p6c). A summary stored by an earlier
   version has to be made again with `prevouts_summary`.
+- **Breaking: `keys.prvkey_verify` answers `False` for octets of the wrong
+  length, and for an `int` that does not fit in 32 bytes.** It raised
+  `ValueError`; it raises only `TypeError` now, for a value of the wrong
+  type.
+- **Breaking: a `keyagg_cache`, `session` or `labels` of the wrong type
+  raises `TypeError`.** In `musig`, `zkp.musig` and
+  `silentpayments.scan_outputs` it raised `AttributeError`.
+- **Breaking: `copy.copy` of a `SecretNonce` raises `TypeError`.** It
+  returned a second object sharing the native secnonce and its lock with
+  the original.
+- **`into=` takes octets of any format**: an `array.array("b")`, a
+  `cast("c")` view or a ctypes array no longer fails the copy.
+- **Fewer copies of a secret outlive the call.** `ssa.nonce_bip340` wipes
+  the negated key it makes, and `zkp.rangeproof.rewind` wipes its message
+  and value buffers. SECURITY.md lists the copies that remain; for the
+  `bytes` of the MuSig2 session randomness, pass `prvkey` to `nonce_gen`.
+- **Each wheel on PyPI carries a CycloneDX bill of materials** under
+  `.dist-info/sboms/`, and libsecp256k1's MIT notice.
 
 ## v0.8.0.9
 
