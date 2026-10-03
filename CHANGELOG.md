@@ -287,6 +287,12 @@ setting section 11 of the standard states (issue btclib-org/.github#1540).
   `tests/README.md` records, and that blob against upstream's** (issue #1088)
   (issue btclib-org/btclib#2439).
 
+### `CONTRIBUTING.md` says whose the ack of record is
+
+- **The maintainer lands their own pull requests through the bypass, and
+  the ack of record is the bot's** (issue btclib-org/.github#452): *The
+  review* no longer says the review is off.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate
