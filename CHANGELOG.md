@@ -247,6 +247,12 @@ The ECDSA, recovery, ElligatorSwift, MuSig2 and Silent Payments entry
 points that parse a stranger's octets, and `ssa.verify`'s key and
 signature, have a target under `fuzz/` (closes #1085).
 
+### A secp256k1-zkp pin that fails zkp-pin does not publish
+
+`publish-testpypi` and `publish-pypi` need `zkp-pin.yml`, the delta-and-signer
+check that `vendored-vectors.yml` calls too, and `RELEASING.md` runs it on
+`main` before the fork is tagged (closes #1086).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

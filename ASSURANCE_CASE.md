@@ -168,9 +168,10 @@ tree, and `.pre-commit-config.yaml`'s `submodule-pin` and
 `submodules-checked-out` hooks refuse a commit whose pin or whose
 checkout disagrees with what README.md's *Versioning* section names.
 `vendored-vectors.yml`'s `pin` job verifies the mainline tag against a
-libsecp256k1 maintainer's signature, and its `zkp-pin` job verifies
-every commit in the fork's delta against a recognized signer, both on a
-schedule and on a pull request touching the pin.
+libsecp256k1 maintainer's signature, and its `zkp-pin` job (`zkp-pin.yml`)
+verifies every commit in the fork's delta against a recognized signer,
+both on a schedule and on a pull request touching the pin. `release.yml`
+runs `zkp-pin.yml` too, and no publish job starts before it passes.
 
 **Files.** This package opens no file a caller names: what a dynamic
 build reads is its own installed directory, globbing for the shared
