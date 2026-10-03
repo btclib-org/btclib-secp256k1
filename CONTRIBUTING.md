@@ -398,8 +398,11 @@ from somewhere else on purpose:
 - `pypi-install.yml` installs the published package with `pip`.
 - `uv run --no-project` runs a script on a bare interpreter and installs
   nothing from the lock.
-- A build resolves `[build-system] requires` in an isolated environment,
-  within the ranges `pyproject.toml` states and not from the lock.
+- `deps-latest.yml`'s `uv build`, `suite-sdist`'s `pip install` and the
+  editable build `uv sync` makes resolve `[build-system] requires` from
+  the index, within the ranges `pyproject.toml` states. Every build that
+  ships, and `wheel-reproducibility`'s rebuilds, take them from
+  `build-constraints.txt`, which is exported from the lock.
 - `cibuildwheel` installs its `test-requires`, which `pyproject.toml`
   pins exactly, from the index.
 
@@ -834,7 +837,8 @@ command at all, for the reason below, and nothing requires its result.
 - `Build dynamic wheel on <os>`
 
   ```shell
-  BTCLIB_LIBSECP256K1_DYNAMIC=true uv build --wheel
+  PIP_CONSTRAINT=build-constraints.txt BTCLIB_LIBSECP256K1_DYNAMIC=true \
+      uv run --locked --only-group build python -m build -w
   ```
 
   on macOS the job exports a deployment target first — 11.0, or 10.13
@@ -881,7 +885,8 @@ command at all, for the reason below, and nothing requires its result.
 
   ```shell
   export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
-  uv run --locked --only-group build python -m build -s
+  PIP_CONSTRAINT=build-constraints.txt \
+      uv run --locked --only-group build python -m build -s
   uv run --no-project --python 3.15 \
       .github/scripts/normalize_sdist.py dist/
   uv run --no-project --python 3.15 \

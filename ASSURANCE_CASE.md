@@ -322,8 +322,12 @@ exposed to, and what counters each.
   states how the vendored submodules are pinned and verified. `uv.lock`
   pins every dependency, and CONTRIBUTING.md's *The environment and the
   gates* states that every job installing from it passes `--locked`, and
-  lists the jobs that install from elsewhere, the isolated build
-  environments among them. Every third-party action is pinned to a
-  commit sha, the organization's own reusable workflows excepted;
+  lists the jobs that install from elsewhere. Every build that ships
+  takes its build requirements from `build-constraints.txt`, exported
+  from `uv.lock` with hashes: the wheels, and the sdist `test.yml` and
+  `release.yml` build (the latter through `btclib-org/.github`'s
+  `reusable-build.yml`, btclib-org/.github#1539). Every third-party
+  action is pinned to a commit sha, the organization's own reusable
+  workflows excepted;
   `actionlint`, `zizmor` and `detect-secrets` run as hooks in
   `.pre-commit-config.yaml`.

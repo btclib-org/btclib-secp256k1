@@ -163,10 +163,14 @@ requires = [
     # subscript in scripts/hatch_build.py raises TypeError at class
     # definition; 1.32.4 takes that parameter back, and an isolated
     # build resolving it produces the sdist and a wheel that imports.
-    # uv.lock cannot pin a build requirement: every PEP 517 isolated
-    # build resolves `requires` fresh, outside the lock. 1.32.3 is not
-    # yanked, so it is excluded by name rather than left to 1.32.4
-    # being the newest release a resolver finds
+    # 1.32.3 is not yanked, so it is excluded by name rather than left
+    # to 1.32.4 being the newest release a resolver finds
+    #
+    # An isolated build resolves `requires` from the index. The wheel
+    # builds of test.yml and [tool.cibuildwheel] pass build-constraints.txt
+    # to the build, which pins what the `build-requires` dependency group
+    # of uv.lock resolves; `requires` is that group's text, and a build
+    # without the constraints still resolves it fresh
     "hatchling>=1.29,<2,!=1.32.3",
     # the same floors as the runtime dependency above, and for the same
     # reason: the build runs the cdef through the very cffi it resolves.
@@ -481,6 +485,19 @@ check = [
     # organization standard asks that a hook building the project use a
     # backend [build-system] admits
     "hatchling>=1.29,<2,!=1.32.3",
+]
+# [build-system]'s `requires`, copied, so that uv.lock resolves it and
+# build-constraints.txt can carry the result with hashes.
+# tests/hook_pins_test.py fails where the two lists part. Outside
+# `dev`: nothing in the project environment imports these
+build-requires = [
+    "hatchling>=1.29,<2,!=1.32.3",
+    'cffi>=1.14.1,<3; python_version<"3.13"',
+    'cffi>=1.17,<3; python_version=="3.13"',
+    'cffi>=2.0,<3; python_version>="3.14"',
+    'setuptools>=66.1.0,<85; python_version>="3.12"',
+    "cmake>=3.22,<5",
+    'typing_extensions>=4.4.0,<5; python_version<"3.12"',
 ]
 # mutation testing, which asks what coverage cannot: a line the suite
 # executes is not a line the suite checks. Its own group and not part of
@@ -1123,7 +1140,21 @@ fail_under = 100
 # (btclib-org/btclib-secp256k1#1032)
 test-requires = ["pytest==9.1.1", "pytest-cov==7.1.0", "pathspec==1.1.1"]
 test-command = "pytest --no-cov {project}/tests/"
-build-frontend = "build"
+# uv, and not `build`, for the one variable below: UV_BUILD_CONSTRAINT binds
+# the requirements of the project being built and no other install,
+# where pip's PIP_CONSTRAINT also binds the tools cibuildwheel installs
+# for itself, which it pins on its own
+build-frontend = "uv"
+# build-constraints.txt holds [build-system]'s `requires` and what they
+# pull in, each at the version and with the hashes uv.lock resolves
+# for the `build-requires` group; a build that resolved `requires` from
+# the index would take whatever it held that day. A hash that does not
+# match fails the build. The path is relative to the directory the build
+# runs in, which is the project's root, /project in a Linux container.
+# build-verbosity = 2 is `uv build -v`, which logs the version each
+# requirement was selected at
+environment = { UV_BUILD_CONSTRAINT = "build-constraints.txt" }
+build-verbosity = 2
 archs = "auto64"
 # PyPy wheels are opt-in since cibuildwheel 3.0
 enable = ["pypy"]
@@ -1132,42 +1163,6 @@ enable = ["pypy"]
 # recommended on PyPy, which pip falls back to; a static pp3 wheel
 # would take precedence over it and perform worse
 skip = "pp*-win*"
-
-# One C compilation per job instead of one per wheel, without giving up
-# the clean CMake tree every build gets.
-#
-# What that costs today is measured rather than assumed: in run
-# 31942556787 the wheel jobs were 59.5 of the workflow's 81.8
-# runner-minutes, and each of them compiles the whole vendored
-# libsecp256k1 once per wheel it builds -- a wheel per interpreter
-# `requires-python`, `enable` and `skip` leave standing for that job's
-# platform, and one such set per image on Linux, manylinux and
-# musllinux being built separately. `cibuildwheel
-# --print-build-identifiers --platform linux` names them for one
-# platform. scripts/cffi_build.py deletes the CMake directory before
-# every build, deliberately, a stale CMake cache being a configuration
-# nobody asked for; ccache does not have that failure mode, hashing the
-# preprocessed source and the compiler flags rather than trusting a
-# directory to describe itself. So the delete stays and ccache is what
-# stops the compiler repeating that work.
-#
-# CMake initializes CMAKE_C_COMPILER_LAUNCHER from the environment
-# variable of the same name, so no build script changes. The value is a
-# command substitution and not the literal `ccache` because cibuildwheel
-# evaluates these in a shell and CMake reads an empty launcher as none:
-# an image where the install below did not work then builds exactly as
-# it did before. That is the whole of the fallback, and it is why
-# before-all may end in `|| true` without hiding anything -- the
-# alternative is a merge gate that goes red when a package index is
-# having a bad morning.
-#
-# Where the cache goes is ccache's own default, and nothing here sets
-# it: on Linux every interpreter of one image builds inside one
-# container, on macOS inside one job, so the default location is already
-# shared by exactly the builds that repeat each other. Nothing persists
-# across runs and nothing is meant to -- the redundancy being removed is
-# inside a single job, and a cache key that has to know what invalidates
-# a C build is a second way to be wrong for a saving already had
 
 [tool.cibuildwheel.linux]
 # the environment a released static Linux wheel is compiled in, named
@@ -1196,22 +1191,6 @@ manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64@sha256:52e4da6e93
 musllinux-x86_64-image = "quay.io/pypa/musllinux_1_2_x86_64@sha256:f130bd3e3aebb39abcdec28a89f987f0d31b52d74bac5852318303698e9a5033"
 musllinux-aarch64-image = "quay.io/pypa/musllinux_1_2_aarch64@sha256:1fa8dcacab5e13769abb36028f98bd2c0a1af4dbde492505f774d7f0ce01e87f"
 
-# the musllinux images are Alpine and the manylinux ones RHEL-derived,
-# where ccache is in EPEL rather than in the base repository and the
-# image itself ships no ccache at all -- so the chain is longer than a
-# package name, and it ends in a passthrough for the reason above
-before-all = '''
-command -v ccache \
-  || apk add ccache \
-  || dnf install -y ccache \
-  || { dnf install -y epel-release && dnf install -y ccache; } \
-  || yum install -y ccache \
-  || { printf '#!/bin/sh\nexec "$@"\n' > /usr/local/bin/ccache \
-       && chmod +x /usr/local/bin/ccache \
-       && echo "no ccache here: the launcher is a passthrough"; }
-ccache --version || true
-'''
-environment = { CMAKE_C_COMPILER_LAUNCHER = "ccache" }
 # how SOURCE_DATE_EPOCH reaches the Linux build, and the only way it
 # can: the compile and the auditwheel repair after it both run inside a
 # container, which inherits none of the runner's environment. auditwheel
@@ -1224,22 +1203,9 @@ environment = { CMAKE_C_COMPILER_LAUNCHER = "ccache" }
 # the host and read the exported variable directly; cibuildwheel applies
 # environment-pass on Linux alone
 environment-pass = ["SOURCE_DATE_EPOCH"]
-
-[tool.cibuildwheel.macos]
-# the runner image ships ccache; asking first is what keeps this from
-# costing a brew round trip there, and the install is what makes it true
-# of a laptop as well
-before-all = '''
-command -v ccache \
-  || brew install ccache \
-  || { printf '#!/bin/sh\nexec "$@"\n' > /usr/local/bin/ccache \
-       && chmod +x /usr/local/bin/ccache \
-       && echo "no ccache here: the launcher is a passthrough"; }
-ccache --version || true
-'''
-environment = { CMAKE_C_COMPILER_LAUNCHER = "ccache" }
-
-# Windows is deliberately not here, and it is 18.9 of those 59.5
-# runner-minutes: the compiler is MSVC, whose support in ccache is
-# recent and partial, and sccache is a second tool to install and pin
-# for a saving nothing has measured on that platform yet
+# the uv in these images is older than `[tool.uv] required-version`, and
+# a uv that reads that file refuses to build or to make the test
+# environment; nothing else in `[tool.uv]` concerns either. A platform's
+# `environment` replaces the global one, so the constraint is written
+# again here
+environment = { UV_BUILD_CONSTRAINT = "build-constraints.txt", UV_NO_CONFIG = "1" }

@@ -175,6 +175,10 @@ _CIBUILDWHEEL = shutil.which("cibuildwheel") or "cibuildwheel"
 _AUDITWHEEL = shutil.which("auditwheel") or "auditwheel"
 _DELOCATE = shutil.which("delocate-wheel") or "delocate-wheel"
 _ROOT = Path(__file__).resolve().parents[2]
+# the file test.yml's wheel builds pass as build constraints, read from
+# the copy being built: a rebuild without it would resolve the build
+# requirements from the index and no longer rebuild what ships
+_CONSTRAINTS = "build-constraints.txt"
 
 # the environment each of the two `python -m build` paths runs under,
 # held here rather than left to the caller: an entry point named for a
@@ -314,7 +318,9 @@ def build_wheel(source_dir: Path, out_dir: Path) -> Path:
     """Build `source_dir`'s wheel into `out_dir`, and return its path.
 
     Args:
-        source_dir: the checkout, or copy of one, to build from. `uv
+        source_dir: the checkout, or copy of one, to build from. Its
+            `build-constraints.txt` constrains the build requirements,
+            as `UV_BUILD_CONSTRAINT`. `uv
             build` runs with this as its working directory, which is
             what makes the path this build embeds, if it embeds one at
             all, the path a caller chose rather than one every build
@@ -335,6 +341,7 @@ def build_wheel(source_dir: Path, out_dir: Path) -> Path:
     subprocess.run(  # noqa: S603
         [_UV, "build", "--wheel", "--out-dir", str(out_dir)],
         cwd=source_dir,
+        env={**os.environ, "UV_BUILD_CONSTRAINT": str(source_dir / _CONSTRAINTS)},
         check=True,
     )
     return _one_wheel(out_dir)
@@ -395,7 +402,8 @@ def build_dynamic_wheel(
 
     Args:
         source_dir: the copy of the checkout to build from, and the
-            working directory of the build.
+            working directory of the build. Its `build-constraints.txt`
+            constrains the build requirements, as `PIP_CONSTRAINT`.
         out_dir: where the wheel should be written. Each call gets its
             own, for the reason `build_wheel` gives.
         build_env: what to add to this process's environment for the
@@ -414,7 +422,11 @@ def build_dynamic_wheel(
     subprocess.run(  # noqa: S603
         [sys.executable, "-m", "build", "--wheel", "--outdir", str(out_dir)],
         cwd=source_dir,
-        env={**os.environ, **build_env},
+        env={
+            **os.environ,
+            "PIP_CONSTRAINT": str(source_dir / _CONSTRAINTS),
+            **build_env,
+        },
         check=True,
     )
     return _one_wheel(out_dir)

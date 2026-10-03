@@ -43,15 +43,17 @@ dependency to its floor is not that one. The mode is read from the lock
 and not from `UV_RESOLUTION`, the lock being what those two tests
 compare against.
 
-Two environments carry `[build-system]`'s `requires` rather than a pin.
+Three places carry `[build-system]`'s `requires` rather than a pin.
 `check-sdist`'s `additional_dependencies` is those requirements verbatim,
 and pre-commit builds a hook's environment once and keeps it, so a copy
 left behind is not noticed by its hook until that environment is rebuilt
 (btclib-org/btclib-secp256k1#945). The `pyroma` hook has no environment of
 its own: it runs out of a dependency group, which its `entry` names, and
-that group holds the `hatchling` one of the requirements.
-`test_check_sdist_installs_what_build_system_requires` and
-`test_pyroma_installs_the_backend_build_system_declares` compare each
+that group holds the `hatchling` one of the requirements. The
+`build-requires` dependency group is a copy so that `uv.lock` resolves
+them. `test_check_sdist_installs_what_build_system_requires`,
+`test_pyroma_installs_the_backend_build_system_declares` and
+`test_the_build_requires_group_is_build_system_requires` compare each
 copy with `pyproject.toml`, the hook found by its `id`.
 
 The cell that tests a built wheel carries pins rather than a copy, and
@@ -968,6 +970,43 @@ def test_pyroma_installs_the_backend_build_system_declares() -> None:
         f"the {_PYROMA_GROUP} group's hatchling is not pyproject.toml's"
         f" [build-system] hatchling: it {drift}"
     )
+
+
+def test_the_build_requires_group_is_build_system_requires() -> None:
+    """`build-requires` is what uv.lock resolves for the wheel builds.
+
+    build-constraints.txt is exported from that group, so a requirement
+    that `[build-system]` has and the group lacks is a requirement the
+    constraints do not pin.
+    """
+    group = _group(_PYPROJECT, "build-requires")
+    drift = _drift(_BUILD_REQUIRES, group)
+
+    assert group, "no build-requires group read from pyproject.toml"
+    assert not drift, (
+        f"the build-requires group is not pyproject.toml's [build-system] requires: it {drift}"
+    )
+
+
+def test_build_constraints_pin_every_requirement_with_hashes() -> None:
+    """Each requirement `[build-system]` names is pinned, and hashed.
+
+    The pre-commit hook rewrites the file from uv.lock; this fails the
+    file being emptied or exported without hashes.
+    """
+    text = (_ROOT / "build-constraints.txt").read_text(encoding="utf-8")
+    entries = re.split(r"\n(?=[A-Za-z0-9_.-]+==)", text)
+    pinned = {
+        entry.split("==", 1)[0].lower().replace("_", "-"): entry
+        for entry in entries
+        if "==" in entry.split("\n", 1)[0]
+    }
+    for item in _BUILD_REQUIRES:
+        requirement = _read(item)
+        assert requirement is not None
+        name = requirement.name.lower().replace("_", "-")
+        assert name in pinned, f"build-constraints.txt does not pin {name}"
+        assert "--hash=sha256:" in pinned[name], f"{name} is pinned without hashes"
 
 
 def test_the_pyroma_hook_runs_the_locked_tool_and_writes_no_lock() -> None:
