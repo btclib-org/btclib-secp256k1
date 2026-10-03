@@ -20,9 +20,11 @@ zeroing is asked for rather than done.
 
 from __future__ import annotations
 
+import copy
 import gc
 import hashlib
 import inspect
+import pickle
 from collections.abc import Callable
 
 import pytest
@@ -372,6 +374,17 @@ def test_a_wiped_secret_nonce_refuses_to_sign() -> None:
     secnonces[0].wipe()
     with pytest.raises(ValueError, match="wiped or already spent"):
         secnonces[0].partial_sign(PRVKEYS[0], cache, session)
+
+
+@pytest.mark.parametrize("duplicate", [copy.copy, copy.deepcopy, pickle.dumps])
+def test_a_secret_nonce_cannot_be_duplicated(
+    duplicate: Callable[[object], object],
+) -> None:
+    """A second handle to one secnonce would defeat `SecretNonce`'s take."""
+    cache, secnonces, session = two_of_two_session()
+    with pytest.raises(TypeError, match="no copy, no pickle"):
+        duplicate(secnonces[0])
+    assert secnonces[0].partial_sign(PRVKEYS[0], cache, session)
 
 
 def test_wipe_overwrites_the_secret_nonce() -> None:
