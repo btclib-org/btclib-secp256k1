@@ -407,24 +407,26 @@ The gates below decide every merge, together with `lint / Dependency
 review`, which has no command, and `lint / Sign-off`, whose command
 *Running what CI runs* gives. `wheel-reproducibility` decides a merge
 that touches what its builds read, its command being among the sentinels
-further down. Each command below is close to the one its workflow runs —
-the second is what a contributor types, not what `test.yml` runs, and
-coverage is the one flag between the two:
+further down. Each command below is close to the one its workflow runs.
+The second is `test.yml`'s `Run the suite against a static build` step,
+which also sets `COVERAGE_FILE`:
 
 ```shell
 uv run --locked --only-group lint pre-commit run --all-files \
     --show-diff-on-failure
-uv run --locked --no-default-groups --group test pytest
+uv run --locked --no-default-groups --group test pytest \
+    --cov-fail-under=0
 uv run --locked --no-default-groups --group docs \
     sphinx-build -n -W -b html docs/source docs/build/html
 ```
 
 Coverage is measured in branch mode, `--cov` sitting in `addopts` so
 nothing has to be typed after `pytest` to see it. The `fail_under`
-ratchet in `pyproject.toml` gates at 100%, but the plain command above no
-longer reaches it on its own: `btclib_secp256k1.zkp.musig` (#607 onward)
-is opt-in behind `BTCLIB_LIBSECP256K1_ZKP` by decision (#603), and
-without the flag nothing calls into it. The module is imported all the
+ratchet in `pyproject.toml` gates at 100%, and the command above is not
+asked to reach it, so it exits with the tests' own verdict.
+`btclib_secp256k1.zkp.musig` (#607 onward) is opt-in behind
+`BTCLIB_LIBSECP256K1_ZKP` by decision (#603), and without the flag
+nothing calls into it. The module is imported all the
 same — `tests/all_test.py`'s census and `tests/secret_test.py`'s walk
 both descend into the subpackage, and the documentation build imports
 it for its own `:members:` — so what a run against an unflagged build
@@ -434,9 +436,9 @@ drives it: a test that does carries
 a run against an unflagged build skips it. Nothing in it can be
 *called* there either: every entry point reads `ffi`, `lib` or `ctx`
 inside the call rather than at module scope, and that read is what
-raises `btclib_secp256k1.zkp`'s `ImportError` naming the flag. This
-command reports short of 100% against an unflagged build, which is what
-`uv sync --locked` installs —
+raises `btclib_secp256k1.zkp`'s `ImportError` naming the flag. Against
+an unflagged build, which is what `uv sync --locked` installs, the command
+reports short of 100%, and without `--cov-fail-under=0` it exits 1 —
 that shortfall is not the module alone: `[tool.coverage.run]` names
 `tests` in `source` too, so `tests/zkp_musig_test.py` and
 `tests/zkp_musig_vectors_test.py` are measured the same way, and each
@@ -449,22 +451,22 @@ the installed extension and not the command, which sets no flag:
 `importorskip` names the compiled module, and a venv holds it exactly
 when the extension in it was built with `BTCLIB_LIBSECP256K1_ZKP`. The
 coverage sequence below ends on such a build, so this command run in that
-venv executes the `zkp` tests and can pass the ratchet with the tree
-unchanged: a reading of 100% there says the environment moved, not that
-the shortfall closed. `uv sync --locked` leaves that build installed, and
+venv executes the `zkp` tests, and a reading of 100% there says the
+environment moved, not that the shortfall closed. `uv sync --locked` leaves
+that build installed, and
 `uv sync --locked --reinstall-package btclib-secp256k1 --no-cache` puts
-an unflagged one back. The command carries neither flag itself, being the
+an unflagged one back. The command carries neither of these itself, being the
 one a contributor repeats, where each repeat would compile the extension
 again.
 `test.yml`
 runs this same command against three builds: once per linkage, plus
 once more against the flagged build restricted to the tests marked
 `zkp` — `-m zkp`, a selection rather than the whole suite, the same
-restriction this paragraph goes on to call out below — each carrying
-its own `--cov-fail-under=0`, and gates the union of the three at 100%
-after `combine`; "Measure coverage, gated at 100%" below is the
-sequence that reproduces that union, and its own 100.00% is CI's real
-number, for whoever builds the extension to check it locally. A run
+restriction this paragraph goes on to call out below — and gates the
+union of the three at 100% after `combine`; "Measure coverage, gated at
+100%" below is the sequence that reproduces that union, and its own
+100.00% is CI's real number, for whoever builds the extension to check
+it locally. A run
 that asks for less than the full suite even at that — a path leaving
 part of `tests` out, `-k`, `-m`, `--deselect`, `--ignore`,
 `--ignore-glob` or `--lf` — reports its coverage and is gated at
