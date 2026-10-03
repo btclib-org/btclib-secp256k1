@@ -47,12 +47,15 @@ reading `0.7.1rc1` fails there, rather than burning `0.7.1rc1` on PyPI.
 The same job checks that `uv.lock` carries the version the tree declares,
 that `RELEASE_NOTES.md` and `CHANGELOG.md` each carry a section headed by
 the tag alone and not empty, and that the tagged commit is on `main`.
-Two jobs of this tree's own check the vendored pins beside it:
+Jobs of this tree's own check the vendored pins beside it:
 `submodule-pin-release`, that the libsecp256k1 release named in
-`README.md` is the commit the submodule is pinned to, and `zkp-pin-tag`,
+`README.md` is the commit the submodule is pinned to, `zkp-pin-tag`,
 that the fork carries the tag of the `secp256k1-zkp` pin the steps below
-push. `publish-pypi` starts only once all three have passed, which is
-before the point of no return.
+push, and `zkp-pin`, that the pin's delta past
+`BlockstreamResearch/secp256k1-zkp`'s master is no larger than the job
+allows and is signed by a signer it names. `publish-testpypi` and
+`publish-pypi` start only once the checks that apply to them have
+passed, which is before the point of no return.
 
 **Every `gh` call here names the repository**, rather than leaving `gh`
 to resolve its `{owner}/{repo}` placeholder against whatever checkout the
@@ -380,7 +383,25 @@ Then:
    update, not a workflow of this repository, and say nothing about the
    tree
 1. tag the `secp256k1-zkp` pin in `fametrano/secp256k1-zkp`, signed, as
-   `btclib-secp256k1-v<version>`, before the release tag:
+   `btclib-secp256k1-v<version>`, before the release tag. The tag signs
+   whatever commit the gitlink holds, and GitHub serves any commit of the
+   fork network through the fork's URL, so first run the check
+   `release.yml` runs, on `main`, and tag only on a green run of the
+   commit about to be tagged:
+
+   ```shell
+   sha=$(git rev-parse origin/main) &&
+   gh workflow run zkp-pin.yml --repo btclib-org/btclib-secp256k1 --ref main &&
+   sleep 10 &&
+   run=$(gh run list --repo btclib-org/btclib-secp256k1 \
+     --workflow zkp-pin.yml --branch main --event workflow_dispatch \
+     --limit 1 --json databaseId,headSha \
+     --jq ".[] | select(.headSha == \"$sha\") | .databaseId") &&
+   gh run watch "${run:?}" --repo btclib-org/btclib-secp256k1 --exit-status
+   ```
+
+   An empty `run` stops the command: the dispatch has not registered
+   yet, or `main` moved. Run it again. Then the tag:
 
    ```shell
    sha=$(git rev-parse origin/main) &&

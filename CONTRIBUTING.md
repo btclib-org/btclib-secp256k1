@@ -1117,13 +1117,9 @@ but `links` run locally.
   ```
 
   the fingerprints are lifted out of the workflow rather than written
-  again here, a second list being one that drifts, and the `sed` range
-  is what keeps the lift to this job's own: `FINGERPRINTS` (plural) is
-  the `pin` job's env key alone, where `zkp-pin`'s own recipe further
-  down names a fingerprint under the singular `FINGERPRINT`, so stopping
-  at the block's own `run:` line excludes it rather than pulling it in
-  for a keyserver that cannot serve it. What the runner never has to
-  care about and a developer does is where the two writes land —
+  again here, a second list being one that drifts. The `zkp-pin` keys
+  come from the recipe below, not from a keyserver. What the runner never
+  has to care about and a developer does is where the two writes land —
   `--recv-keys` puts each of the pin job's own third-party public keys
   in whichever keyring it is pointed at, the default one unless
   `GNUPGHOME` says otherwise, and the `fetch --force` moves the tag
@@ -1151,14 +1147,12 @@ but `links` run locally.
   user IDs GnuPG needs before it accepts a key (#690); and the
   maintainer's own, from `https://github.com/<user>.gpg`, the only copy
   found for it. Both fingerprint/URL pairs are lifted from the two
-  import steps' own env blocks, keyed off `FINGERPRINT:` (singular),
-  which appears nowhere else in the file — `FINGERPRINTS:` (plural) is
-  the `pin` job's own env key and the last `zkp-pin` step's, excluded by
-  the same reasoning the `pin` recipe above gives for the opposite
-  direction:
+  import steps' own env blocks in `zkp-pin.yml`, keyed off
+  `FINGERPRINT:` (singular), which the last step's `FINGERPRINTS:`
+  (plural) does not match:
 
   ```shell
-  grep -A1 'FINGERPRINT:' .github/workflows/vendored-vectors.yml
+  grep -A1 'FINGERPRINT:' .github/workflows/zkp-pin.yml
   curl --fail --silent --show-error --location \
       --output andrew.gpg https://www.wpsoftware.net/andrew/andrew.gpg
   curl --fail --silent --show-error --location \

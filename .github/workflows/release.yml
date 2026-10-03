@@ -191,6 +191,21 @@ jobs:
             exit 1
           fi
 
+  # the pinned secp256k1-zkp commit is close to upstream's master and
+  # signed by a recognized signer: zkp-pin.yml, the check
+  # vendored-vectors.yml runs as a sentinel. A pull request that moves the
+  # gitlink to a commit of any fork of the network passes every required
+  # check (issue #1086), so the publish jobs wait for this one. Unlike
+  # zkp-pin-tag it runs on a rehearsal too, whose upload it also withholds.
+  # A publish job runs only where this job's result is `success`; a rerun
+  # of the failed job releases it
+  zkp-pin:
+    name: Check the pinned secp256k1-zkp commit
+    uses: ./.github/workflows/zkp-pin.yml # zizmor: ignore[self-repository]
+    with:
+      # see the lint job above
+      concurrency-suffix: "-release"
+
   # walks the public API of the release before this one against the one
   # being cut and reports what broke: a removed object, a changed
   # parameter kind or default, a narrowed type. It runs here rather than
@@ -347,6 +362,7 @@ jobs:
       && needs.macos.result == 'success' && needs.windows.result == 'success'
       && needs.submodule-pin-release.result == 'success'
       && needs.audit.result == 'success'
+      && needs.zkp-pin.result == 'success'
     needs:
       [
         public-api,
@@ -358,6 +374,7 @@ jobs:
         macos,
         windows,
         submodule-pin-release,
+        zkp-pin,
       ]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -406,6 +423,7 @@ jobs:
       && needs.submodule-pin-release.result == 'success'
       && needs.audit.result == 'success'
       && needs.zkp-pin-tag.result == 'success'
+      && needs.zkp-pin.result == 'success'
     needs:
       [
         public-api,
@@ -418,6 +436,7 @@ jobs:
         windows,
         submodule-pin-release,
         zkp-pin-tag,
+        zkp-pin,
       ]
     runs-on: ubuntu-latest
     timeout-minutes: 15
