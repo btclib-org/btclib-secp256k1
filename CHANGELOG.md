@@ -29,8 +29,7 @@ release-notes length in the first place, and are still in
   hand-moved pins. `librt` and `ast-serialize` moved with mypy.
 - **Every pull request lands with an approving review from somebody other
   than its author** (issue btclib-org/.github#1362): `CONTRIBUTING.md`,
-  `REPOSITORY.md` and `RELEASING.md` say so, and `--admin` is the emergency
-  path.
+  `REPOSITORY.md` and `RELEASING.md` say so; `--admin` is for emergencies.
 
 ## v0.8.0.10
 
