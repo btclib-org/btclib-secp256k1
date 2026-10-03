@@ -227,9 +227,10 @@ precisely so these stay true, and both must report zero findings.
   rehearsal dispatched on a branch shares a group with a push to that
   branch, and one cancels the other
 - the rehearsal path rewrites the version in `pyproject.toml`, and the
-  `dev-version` action that does it re-locks in the same step, so every
-  uv command here passes `--locked` with no exception, the build steps
-  after that action included; the action's own comment has the reasoning
+  `dev-version` action that does it re-locks in the same step, so a uv
+  command that installs from the lock passes `--locked`, the build steps
+  after that action included; `CONTRIBUTING.md` lists the exceptions, and
+  the action's own comment has the reasoning
 - the packaging tools come from the pinned `check` group, not from `uvx`,
   which would fetch whatever the index holds when the job runs
 - a hook that needs a tool carries it in `additional_dependencies`, with

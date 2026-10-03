@@ -23,6 +23,10 @@ verdict:
   bytes.
 - **reformatted** — same parsed JSON value, different whitespace.
 
+An `ours` line, where the file here is not upstream's bytes, gives the
+git blob SHA-1 of the file kept here. The weekly job holds the file to
+`ours`, or to `blob` where there is no `ours`.
+
 `pulled` is the date the file entered this repository, from
 `git log --follow --diff-filter=A`. `behind` counts upstream revisions
 of that path since the pin -- a staleness figure, not a defect: a
@@ -56,6 +60,14 @@ upstream is CRLF and this comparison still holds -- every csv here from
 being LF throughout: `.pre-commit-config.yaml`'s
 `mixed-line-ending` hook excludes `tests/bip3(40|24)_*.csv`, byte for
 byte against `bitcoin/bips` being the point.
+
+The weekly job runs this comparison for every entry whose heading is one
+file's path and which carries a `blob` or an `ours` line, and fails,
+naming the file, on a mismatch. It compares the file with `ours` (or
+`blob`) and the entry's `blob` with upstream's at `commit`, so a file
+edited here and a pin whose blob is not the one at its commit both fail.
+A new entry needs a `-text` line for its file in `.gitattributes`, and an
+`ours` line where the file is not upstream's bytes.
 
 ## bitcoin/bips
 
@@ -249,6 +261,7 @@ repo    rustyrussell/secp256k1-py
 path    tests/data/ecdsa_sig.json
 commit  ead56b92a8229e16941318d953c6444268beaa1a  2015-09-18
 blob    af16179725c10c409c7929ac0576161c1f5e72ad
+ours    9d3db82654b611b1c3ef5d4ccbd62d63bdf4ccf4
 pulled  2026-08-01
 behind  0 revisions; still the blob on master
 ```
@@ -265,6 +278,7 @@ repo    rustyrussell/secp256k1-py
 path    tests/data/ecdsa_custom_nonce_sig.json
 commit  3caf31d20c668cf54a1621e21b7f1d943f0db048  2016-03-30
 blob    e9d61e267f2e8fcd21c660aab17fe5de44cae0f0
+ours    b002bb6f0934dcdfe7b37b6c2aeafbd615bf85ca
 pulled  2026-08-01
 behind  0 revisions; still the blob on master
 ```

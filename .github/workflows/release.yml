@@ -317,6 +317,8 @@ jobs:
       version-suffix: ${{ needs.version-check.outputs.version-suffix }}
       # the sdist the jobs over there check is the one the build job signed
       use-signed-dist: true
+      # and refuses it unless its digest is the one the build job printed
+      digests: ${{ needs.build.outputs.digests }}
       # see the lint job above
       concurrency-suffix: "-release"
 
@@ -365,6 +367,7 @@ jobs:
       && needs.zkp-pin.result == 'success'
     needs:
       [
+        build,
         public-api,
         audit,
         test,
@@ -401,6 +404,18 @@ jobs:
       - name: Show distributions
         run: ls -l dist
 
+      # a job that ran after the build could have uploaded another artifact
+      # named `sdist`: the sdist published is the file the build job printed
+      # the digest of, or nothing. The wheels come from test.yml's own jobs,
+      # which print no digest
+      - name: Check the sdist is the one the build job built
+        shell: bash
+        env:
+          DIGESTS: ${{ needs.build.outputs.digests }}
+        run: |
+          sha256sum -b dist/*.tar.gz | sed 's/ \*dist\//  dist\//' \
+            | diff - <(printf '%s\n' "$DIGESTS" | grep -F '  dist/')
+
       # generates PEP 740 attestations by default
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
@@ -426,6 +441,7 @@ jobs:
       && needs.zkp-pin.result == 'success'
     needs:
       [
+        build,
         public-api,
         audit,
         test,
@@ -462,6 +478,18 @@ jobs:
 
       - name: Show distributions
         run: ls -l dist
+
+      # a job that ran after the build could have uploaded another artifact
+      # named `sdist`: the sdist published is the file the build job printed
+      # the digest of, or nothing. The wheels come from test.yml's own jobs,
+      # which print no digest
+      - name: Check the sdist is the one the build job built
+        shell: bash
+        env:
+          DIGESTS: ${{ needs.build.outputs.digests }}
+        run: |
+          sha256sum -b dist/*.tar.gz | sed 's/ \*dist\//  dist\//' \
+            | diff - <(printf '%s\n' "$DIGESTS" | grep -F '  dist/')
 
       # generates PEP 740 attestations by default
       - name: Publish to PyPI
@@ -502,6 +530,8 @@ jobs:
     uses: btclib-org/.github/.github/workflows/reusable-github-release.yml@main
     with:
       dist-artifact: sdist
+      # refuses the files unless their digests are the ones the build job printed
+      digests: ${{ needs.build.outputs.digests }}
 
   # the sentinel on what users can install, run at the one moment its answer
   # changes -- and a call rather than a workflow_run trigger, which zizmor

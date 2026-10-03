@@ -385,6 +385,25 @@ That gate fails outright where a submodule `.gitmodules` names is not
 checked out at all: `submodules-checked-out` asks that on every
 invocation, whatever the commit touches.
 
+Every job that installs from `uv.lock` passes `--locked`. These install
+from somewhere else on purpose:
+
+- `deps-latest.yml` runs `uv lock --upgrade`, to test the newest versions
+  the declared ranges admit.
+- The `dev-version` action runs `uv lock` after writing a rehearsal's
+  version suffix, and the lock keeps the versions it holds.
+- `test.yml`'s `suite-sdist` installs the sdist with `pip` and no lock, and
+  its `check-dist` installs a wheel with
+  `uv run --isolated --no-project --with`: both resolve its dependencies
+  from PyPI, as a user does.
+- `pypi-install.yml` installs the published package with `pip`.
+- `uv run --no-project` runs a script on a bare interpreter and installs
+  nothing from the lock.
+- A build resolves `[build-system] requires` in an isolated environment,
+  within the ranges `pyproject.toml` states and not from the lock.
+- `cibuildwheel` installs its `test-requires`, which `pyproject.toml`
+  pins exactly, from the index.
+
 The gates below decide every merge, together with `lint / Dependency
 review`, which has no command, and `lint / Sign-off`, whose command
 *Running what CI runs* gives. `wheel-reproducibility` decides a merge
@@ -1080,10 +1099,12 @@ but `links` run locally.
 
 - `vendored-vectors`, whose jobs ask unrelated questions and reproduce
   separately. `check` re-reads every pin in `tests/README.md`
-  against upstream, and `--dry-run` is what every trigger but the
-  schedule passes, through the `reusable-vendored-vectors.yml` it calls,
-  so that the run edits no tracking issue — which is what a run by hand
-  wants too:
+  against upstream, and hashes each vendored file against the blob
+  `tests/README.md` records for it: a mismatch fails the run and opens no
+  issue. `--dry-run`
+  is what every trigger but the schedule passes, through the
+  `reusable-vendored-vectors.yml` it calls, so that the run edits no
+  tracking issue — which is what a run by hand wants too:
 
   ```shell
   uv run --no-project python \

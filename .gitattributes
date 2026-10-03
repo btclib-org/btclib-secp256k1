@@ -46,3 +46,23 @@
 # path the tree does not hold matches nothing.
 CHANGELOG.md merge=union
 RELEASE_NOTES.md merge=union
+
+## This repository in particular
+# Everything above is the same file in every repository of the organization;
+# everything below is this one's, and the comparison stops at this heading.
+
+# The vendored files `tests/README.md` names are held to a git blob SHA-1
+# over their committed bytes, which `check_vendored_vectors.py` and its
+# test read straight off the disk. `-text` is what keeps a checkout with
+# `core.autocrlf=true` (Git for Windows' default) from converting them,
+# so those bytes are the ones on disk on every platform.
+tests/bip324_ellswift_decode_test_vectors.csv -text
+tests/bip324_packet_encoding_test_vectors.csv -text
+tests/bip327_key_agg_vectors.json -text
+tests/bip327_nonce_agg_vectors.json -text
+tests/bip327_sig_agg_vectors.json -text
+tests/bip327_sign_verify_vectors.json -text
+tests/bip340_test_vectors.csv -text
+tests/bip352_send_and_receive_test_vectors.json -text
+tests/ecdsa_custom_nonce_sig.json -text
+tests/ecdsa_sig.json -text
