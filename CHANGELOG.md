@@ -20,7 +20,9 @@ This file starts at v0.7.1.2. The releases before it were documented at
 release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.
 
-## v0.8.0.10 (work in progress, not released yet)
+## v0.8.0.11 (work in progress, not released yet)
+
+## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`
 
