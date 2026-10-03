@@ -22,6 +22,12 @@ release-notes length in the first place, and are still in
 
 ## v0.8.0.11 (work in progress, not released yet)
 
+### The lock resolves mypy 2.4.0 and hatchling 1.32.4
+
+- **The hook pins and `build-constraints.txt` follow `uv.lock`**
+  (closes #1133): `deps-latest` failed `tests/hook_pins_test.py` on two
+  hand-moved pins. `librt` and `ast-serialize` moved with mypy.
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`

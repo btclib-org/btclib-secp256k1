@@ -627,7 +627,7 @@ repos:
         files: ^src/btclib_secp256k1/.*\.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.1
+    rev: v2.4.0
     hooks:
       - id: mypy
         # matching a sibling repository's own mypy hook, which checks its
@@ -661,7 +661,7 @@ repos:
         additional_dependencies:
           - cffi==2.1.1
           - types-cffi==2.1.0.20260827
-          - hatchling==1.32.0
+          - hatchling==1.32.4
           - pytest==9.1.1
           # hyphenated as uv.lock spells it, hook_pins_test.py keying
           # the two on one name
