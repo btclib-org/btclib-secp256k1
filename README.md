@@ -1111,11 +1111,15 @@ and reads that eligibility off the keys the vector file itself publishes
 rather than off its scripts, for the same reason.
 
 Some things about it are worth knowing before it is used. The summary
-`prevouts_summary` returns is opaque and not a serialization: what is
-inside is libsecp256k1's own, portable across neither platforms nor
-versions, and the only thing to do with it is hand it to `scan_outputs`
-in the same process. And the label cache is a mapping the caller owns:
-libsecp256k1 recognizes a label by calling back to look it up, so a
+`prevouts_summary` returns is a serialization: the 36-byte smallest
+outpoint and the 33-byte compressed sum of the eligible input keys. It
+holds no secret and is portable across platforms and versions.
+`scan_outputs` parses it and rebuilds libsecp256k1's own summary through
+the call that hashes the outpoint with the sum, so a point that is not on
+the curve is refused before the scan key is used. A summary from elsewhere
+is checked for that and nothing more: that it is the sum of the
+transaction's inputs is taken on trust. And the label cache is a mapping the
+caller owns: libsecp256k1 recognizes a label by calling back to look it up, so a
 labeled output is found only if its label is in the mapping handed in --
 which is also why the keys of that mapping are `bytes` and only bytes,
 a `bytearray` and a `memoryview` not being hashable.

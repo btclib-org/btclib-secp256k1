@@ -36,9 +36,11 @@ from btclib_secp256k1 import (
     dsa,
     ecdh,
     ellswift,
+    ffi,
     hashes,
     keys,
     recovery,
+    silentpayments,
     ssa,
     xonly,
 )
@@ -294,6 +296,56 @@ def test_public_key_ordering() -> None:
     for i, first in enumerate(pubkeys):
         for second in pubkeys[i + 1 :]:
             assert (keys.pubkey_cmp(first, second) < 0) == (first < second)
+
+
+def test_the_prevouts_summary_is_parsed_back_into_the_struct_it_came_from() -> None:
+    """A summary rebuilds, byte for byte, the struct the inputs build.
+
+    One plain key, one taproot key, and both, over derived keys. The
+    sender side is the independent one: `create_outputs` is given the
+    private keys, and `scan_outputs` finds its outputs from the octets of
+    the summary alone, which it can do only if the sum and the hash
+    rebuilt from them are the ones the sender used.
+    """
+    values = list(derived(b"summary", 32))
+    for i, outpoint_seed in enumerate(values):
+        outpoint = outpoint_seed + bytes(4)
+        prvkey = values[i - 1]
+        taproot_prvkey = values[i - 2]
+        pubkey = keys.pubkey_from_prvkey(prvkey)
+        taproot_pubkey = xonly.from_prvkey(taproot_prvkey)[0]
+        for taproot_prvkeys, prvkeys, taproot_pubkeys, pubkeys in (
+            ([], [prvkey], [], [pubkey]),
+            ([taproot_prvkey], [], [taproot_pubkey], []),
+            ([taproot_prvkey], [prvkey], [taproot_pubkey], [pubkey]),
+        ):
+            summary = silentpayments.prevouts_summary(
+                outpoint, taproot_pubkeys, pubkeys
+            )
+            assert len(summary) == silentpayments.SUMMARY_SIZE
+            assert summary[:36] == outpoint
+            rebuilt = silentpayments._prevouts_summary_(
+                summary[:36], pubkeys=[keys.parse(summary[36:])]
+            )
+            original = silentpayments._prevouts_summary_(
+                outpoint,
+                [xonly.parse(pubkey) for pubkey in taproot_pubkeys],
+                [keys.parse(pubkey) for pubkey in pubkeys],
+            )
+            assert bytes(ffi.buffer(rebuilt)) == bytes(ffi.buffer(original))
+
+            scan_pubkey = keys.pubkey_from_prvkey(values[i - 3])
+            spend_pubkey = keys.pubkey_from_prvkey(values[i - 4])
+            outputs = silentpayments.create_outputs(
+                [(scan_pubkey, spend_pubkey)],
+                outpoint,
+                taproot_prvkeys=taproot_prvkeys,
+                prvkeys=prvkeys,
+            )
+            found = silentpayments.scan_outputs(
+                outputs, values[i - 3], summary, spend_pubkey
+            )
+            assert [output for output, _, _ in found] == outputs
 
 
 def test_tagged_hashing() -> None:

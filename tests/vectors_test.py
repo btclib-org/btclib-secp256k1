@@ -59,6 +59,7 @@ from btclib_secp256k1 import (
     dsa,
     ecdh,
     ellswift,
+    ffi,
     keys,
     musig,
     recovery,
@@ -721,6 +722,27 @@ def test_bip352_receiving_vector(case: dict[str, Any]) -> None:
 
         summary = silentpayments.prevouts_summary(
             outpoint, taproot_pubkeys_bytes=taproot_pubkeys, pubkeys_bytes=pubkeys
+        )
+        # the summary is the outpoint and the sum of the input keys, which
+        # the vector publishes as input_pub_key_sum
+        assert summary == outpoint + bytes.fromhex(expected["input_pub_key_sum"])
+        # parsing the summary rebuilds, byte for byte, the struct that
+        # the inputs build: this is why scanning from the octets finds
+        # what BIP352 publishes
+        assert bytes(
+            ffi.buffer(
+                silentpayments._prevouts_summary_(
+                    summary[:36], pubkeys=[keys.parse(summary[36:])]
+                )
+            )
+        ) == bytes(
+            ffi.buffer(
+                silentpayments._prevouts_summary_(
+                    outpoint,
+                    [xonly.parse(pubkey) for pubkey in taproot_pubkeys],
+                    [keys.parse(pubkey) for pubkey in pubkeys],
+                )
+            )
         )
         found = silentpayments.scan_outputs(
             [bytes.fromhex(output) for output in given["outputs"]],

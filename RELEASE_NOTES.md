@@ -14,6 +14,13 @@ a tag is generated from.
   an earlier release. The attestation covers the sdist and its bill of
   materials, at SLSA Build L3; the wheels keep only their PEP 740
   attestations on PyPI.
+- **Breaking: `silentpayments.prevouts_summary` returns a serialization,
+  and `scan_outputs` refuses the raw summary of earlier versions.** The
+  summary is the 36-byte smallest outpoint followed by the 33-byte
+  compressed sum of the eligible input keys, and `SUMMARY_SIZE` is 69.
+  `scan_outputs` parses the point and raises `ValueError` for one that is
+  not on the curve (GHSA-8h6f-34jj-7p6c). A summary stored by an earlier
+  version has to be made again with `prevouts_summary`.
 
 ## v0.8.0.9
 

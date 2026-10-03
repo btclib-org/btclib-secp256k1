@@ -269,8 +269,17 @@ EQUALITIES: list[tuple[str, Callable[[], Any], Callable[[], Any]]] = [
         ],
     ),
     (
+        # the struct rebuilt from the serialized summary is byte for byte
+        # the one built from the input key: the summary is that key and
+        # the outpoint, and nothing else
         "silentpayments._prevouts_summary_",
-        lambda: SP_SUMMARY,
+        lambda: bytes(
+            ffi.buffer(
+                silentpayments._prevouts_summary_(
+                    SP_SUMMARY[:36], pubkeys=[keys.parse(SP_SUMMARY[36:])]
+                )
+            )
+        ),
         lambda: bytes(
             ffi.buffer(
                 silentpayments._prevouts_summary_(

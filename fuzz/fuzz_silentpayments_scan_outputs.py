@@ -5,14 +5,14 @@
 """An atheris harness over `btclib_secp256k1.silentpayments.scan_outputs`.
 
 `scan_outputs` takes the outputs of a transaction, which a stranger
-chose, and the prevouts summary of its inputs, which `prevouts_summary`
-makes and nothing parses: its `SUMMARY_SIZE` octets are copied into a
-struct of the vendored library. The input is read as one flag octet, the
-scan private key, the summary, the spend public key, the outputs and a
-label with its tweak, each zero-padded. Bits 0 and 1 of the flag make
-the outputs 1 to 4 in number, bit 2 makes the spend public key 65 octets
-rather than 33, and bit 3 gives the call a label cache holding the label
-and the tweak the input ends with.
+chose, and the prevouts summary of its inputs, which may come from a
+stranger too: `SUMMARY_SIZE` octets, an outpoint and a compressed public
+key, refused unless the key is on the curve. The input is read as one
+flag octet, the scan private key, the summary, the spend public key, the
+outputs and a label with its tweak, each zero-padded. Bits 0 and 1 of
+the flag make the outputs 1 to 4 in number, bit 2 makes the spend public
+key 65 octets rather than 33, and bit 3 gives the call a label cache
+holding the label and the tweak the input ends with.
 
 `ValueError` is what `scan_outputs` answers an argument it refuses with,
 and is swallowed below; anything else propagates as the finding it is.
