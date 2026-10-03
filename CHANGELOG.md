@@ -27,6 +27,10 @@ release-notes length in the first place, and are still in
 - **The hook pins and `build-constraints.txt` follow `uv.lock`**
   (closes #1133): `deps-latest` failed `tests/hook_pins_test.py` on two
   hand-moved pins. `librt` and `ast-serialize` moved with mypy.
+- **Every pull request lands with an approving review from somebody other
+  than its author** (issue btclib-org/.github#1362): `CONTRIBUTING.md`,
+  `REPOSITORY.md` and `RELEASING.md` say so, and `--admin` is the emergency
+  path.
 
 ## v0.8.0.10
 

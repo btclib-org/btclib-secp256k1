@@ -313,7 +313,7 @@ Then:
 
    Then merge it into `main` with a green CI. It is an ordinary pull
    request against the only branch there is, and it lands the way every
-   other one here does: squash, pressed by auto-merge once an owner other
+   other one here does: squash, pressed by auto-merge once somebody other
    than its author has approved it and the checks are in, REPOSITORY.md's
    "Merge methods" and "Auto-merge" sections having the settings. The
    maintainer's `pull_request`-mode bypass is used only in an emergency.
@@ -322,7 +322,7 @@ Then:
    it moved from `always` to `pull_request` mode, so nothing reaches
    `main` outside a pull request GitHub itself merges.
 
-   Until an owner other than its author has approved it, `gh pr merge
+   Until somebody other than its author has approved it, `gh pr merge
    <n> --repo btclib-org/btclib-secp256k1 --squash` refuses this pull
    request — `the base branch policy prohibits the merge`, gh's own
    client-side mergeable check reading `REVIEW_REQUIRED` and declining

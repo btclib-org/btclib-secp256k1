@@ -382,9 +382,9 @@ pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off** — an administrator can bypass all of it, matching
 another repository in the organization now and for the same reason: the
 author cannot approve their own pull request, GitHub refusing
-self-approval, so the admin bypass is the way past the review when no
-other owner can give it. Every pull request lands with an approving
-review from an owner other than its author, and the bypass is used only
+self-approval, so the admin bypass is the way past the review when
+nobody else can give it. Every pull request lands with an approving
+review from somebody other than its author, and the bypass is used only
 in an emergency.
 
 ```shell
@@ -475,7 +475,7 @@ is what lets the first be bypassed without the second going with it.
 merging a pull request* and at no other time — so it answers the one
 thing the maintainer cannot give their own pull request, an approving
 review, and answers nothing further. The rule has no condition on use:
-every pull request lands with an approving review from an owner other
+every pull request lands with an approving review from somebody other
 than its author, and the maintainer uses the bypass only in an
 emergency. A direct push to `main` is refused for everyone, the holder
 included: outside a pull request there is no bypass to apply, and the
