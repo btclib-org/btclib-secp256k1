@@ -9,17 +9,19 @@ refuses is a start inside the domain the target already declines: a
 parser narrowed under one -- by a fix here, or by a bump of the vendored
 library -- would leave the sentinel starting from nothing, with no red
 anywhere. What is held here is that every seed is still accepted, and
-that the verification harness's seed still verifies, in milliseconds
+that `fuzz_ssa_verify_message`'s seeds still verify, in milliseconds
 and with no container built.
 
-No harness is imported. Each imports `atheris` at module level, which is
-pre-installed in ClusterFuzzLite's builder image and declared in no
-dependency group here, so what each harness's `fuzz_target` calls is
-restated in `_ACCEPTS` below, keyed by the harness's file name, and the
-first test is what keeps that restatement complete in both directions.
-The key and the signature `fuzz/fuzz_ssa_verify_message.py` fixes are
-read off its source with `ast` rather than restated, so the seed is
-checked against what the harness verifies with.
+Each harness imports `atheris` at module level, which is pre-installed
+in ClusterFuzzLite's builder image and declared in no dependency group
+here, so what each harness's `fuzz_target` calls is restated in
+`_ACCEPTS` below, keyed by the harness's file name, and the first test
+is what keeps that restatement complete in both directions. A harness
+that pads, cuts or splits its input does it in a function `arguments`,
+which `_split` loads under a stand-in for `atheris`, so `_ACCEPTS` reads
+the layout from the harness rather than restating it. The key and the signature
+`fuzz/fuzz_ssa_verify_message.py` fixes are read off its source with
+`ast`, so the seed is checked against what the harness verifies with.
 
 A crash the sentinel finds does not come here. Section 10 of the
 organization standard makes its regression an ordinary test naming the
@@ -31,12 +33,25 @@ from __future__ import annotations
 
 import ast
 import csv
+import importlib.util
+import sys
+import types
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from btclib_secp256k1 import dsa, hashes, keys, ssa, xonly
+from btclib_secp256k1 import (
+    dsa,
+    ellswift,
+    hashes,
+    keys,
+    musig,
+    recovery,
+    silentpayments,
+    ssa,
+    xonly,
+)
 
 _ROOT = Path(__file__).parents[1]
 _FUZZ = _ROOT / "fuzz"
@@ -68,6 +83,32 @@ def _hex_constants(harness: str) -> dict[str, bytes]:
     return constants
 
 
+def _split(harness: str) -> Callable[[bytes], tuple[object, ...]]:
+    """Return the `arguments` function of a harness, loaded without `atheris`.
+
+    The stand-in is in `sys.modules` for the import alone and removed
+    after it, so that nothing else sees it.
+    """
+    path = _FUZZ / f"{harness}.py"
+    spec = importlib.util.spec_from_file_location(harness, path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["atheris"] = types.ModuleType("atheris")
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        del sys.modules["atheris"]
+    arguments: Callable[[bytes], tuple[object, ...]] = module.arguments
+    return arguments
+
+
+def _calls(entry: Callable[..., object], harness: str) -> Callable[[bytes], object]:
+    """Return the call `harness` makes of `entry` for a given input."""
+    arguments = _split(harness)
+    return lambda data: entry(*arguments(data))
+
+
 _SCHNORR = _hex_constants("fuzz_ssa_verify_message")
 
 # what each harness's fuzz_target calls, keyed by the harness's file
@@ -80,6 +121,32 @@ _ACCEPTS: dict[str, Callable[[bytes], object]] = {
         msg, _SCHNORR["PUBKEY"], _SCHNORR["SIGNATURE"]
     ),
     "fuzz_tagged_sha256": lambda msg: hashes.tagged_sha256(b"BIP0340/challenge", msg),
+    "fuzz_dsa_parse_compact": _calls(dsa.parse_compact, "fuzz_dsa_parse_compact"),
+    "fuzz_dsa_verify": _calls(
+        lambda msg, pubkey, signature, normalize, compact: dsa.verify(
+            msg, pubkey, signature, normalize=normalize, compact=compact
+        ),
+        "fuzz_dsa_verify",
+    ),
+    "fuzz_ssa_verify": _calls(ssa.verify, "fuzz_ssa_verify"),
+    "fuzz_recovery_recover": _calls(recovery.recover, "fuzz_recovery_recover"),
+    "fuzz_ellswift_decode": _calls(ellswift.decode, "fuzz_ellswift_decode"),
+    "fuzz_ellswift_xdh": _calls(ellswift.xdh, "fuzz_ellswift_xdh"),
+    "fuzz_musig_pubnonce_parse": _calls(
+        musig.pubnonce_parse, "fuzz_musig_pubnonce_parse"
+    ),
+    "fuzz_musig_aggnonce_parse": _calls(
+        musig.aggnonce_parse, "fuzz_musig_aggnonce_parse"
+    ),
+    "fuzz_musig_partial_sig_parse": _calls(
+        musig.partial_sig_parse, "fuzz_musig_partial_sig_parse"
+    ),
+    "fuzz_silentpayments_parse_label": _calls(
+        silentpayments.parse_label, "fuzz_silentpayments_parse_label"
+    ),
+    "fuzz_silentpayments_scan_outputs": _calls(
+        silentpayments.scan_outputs, "fuzz_silentpayments_scan_outputs"
+    ),
 }
 
 _HARNESSES = tuple(sorted(path.stem for path in _FUZZ.glob("fuzz_*.py")))
