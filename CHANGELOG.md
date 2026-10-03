@@ -27,9 +27,12 @@ release-notes length in the first place, and are still in
 - **The hook pins and `build-constraints.txt` follow `uv.lock`**
   (closes #1133): `deps-latest` failed `tests/hook_pins_test.py` on two
   hand-moved pins. `librt` and `ast-serialize` moved with mypy.
-- **Every pull request lands with an approving review from somebody other
-  than its author** (issue btclib-org/.github#1362): `CONTRIBUTING.md`,
-  `REPOSITORY.md` and `RELEASING.md` say so; `--admin` is for emergencies.
+
+### The maintainer's bypass is for emergencies only
+
+- **`CONTRIBUTING.md`, `REPOSITORY.md`, `RELEASING.md` and `REVIEWING.md` say
+  every pull request lands with an approving review from somebody other than
+  its author; the bypass is for emergencies** (issue btclib-org/.github#1362).
 
 ## v0.8.0.10
 
@@ -339,11 +342,6 @@ setting section 11 of the standard states (issue btclib-org/.github#1540).
 `prevouts_summary` returns the outpoint and the compressed sum of the input
 keys, which `scan_outputs` parses; a point off the curve and a summary of an
 earlier version are refused. The octets were copied into the struct unparsed (GHSA-8h6f-34jj-7p6c).
-### The maintainer's bypass is for emergencies only
-
-- **Every pull request lands with an approving review from another owner**
-  (issue btclib-org/.github#1362): `CONTRIBUTING.md`, `REPOSITORY.md` and
-  `RELEASING.md` say so, and `--admin` is the emergency path.
 
 ## v0.8.0.9
 
