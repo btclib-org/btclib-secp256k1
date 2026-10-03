@@ -253,6 +253,11 @@ signature, have a target under `fuzz/` (closes #1085).
 check that `vendored-vectors.yml` calls too, and `RELEASING.md` runs it on
 `main` before the fork is tagged (closes #1086).
 
+### `REPOSITORY.md` reads back the web sign-off setting
+
+`REPOSITORY.md` reads `web_commit_signoff_required` back, the organization
+setting section 11 of the standard states (issue btclib-org/.github#1540).
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

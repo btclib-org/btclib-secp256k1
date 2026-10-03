@@ -732,6 +732,18 @@ gh api repos/btclib-org/btclib-secp256k1/actions/permissions \
 the standard has the reasons for both
 fields](https://github.com/btclib-org/.github#tokens-publishing-scanning).
 
+## Sign-off on web commits
+
+```shell
+gh api repos/btclib-org/btclib-secp256k1 --jq .web_commit_signoff_required
+# true
+gh api orgs/btclib-org --jq .web_commit_signoff_required
+# true
+```
+
+Set at the organization level, [for the reason section 11
+gives](https://github.com/btclib-org/.github/blob/main/README.md#signatures).
+
 ## Publishing
 
 Each environment requires a review, so an upload waits for a person. The
@@ -1095,16 +1107,16 @@ section that uses it.
 
 **A field the standard states no rule about, and no call above answers
 alongside one it does.** `allow_forking`, `allow_update_branch`,
-`has_discussions`, `has_downloads`, `is_template` and
-`web_commit_signoff_required` are in the repository document, in none of
-the `--jq` objects here, and named nowhere in the standard:
+`has_discussions`, `has_downloads` and `is_template` are in the
+repository document, in none of the `--jq` objects here, and named
+nowhere in the standard:
 
 ```shell
 std=$(mktemp)
 gh api repos/btclib-org/.github/contents/README.md \
   -H 'Accept: application/vnd.github.raw' > "$std"
 for f in allow_forking allow_update_branch has_discussions \
-         has_downloads is_template web_commit_signoff_required; do
+         has_downloads is_template; do
   printf '%-30s %s\n' "$f" "$(grep -c "$f" "$std")"
 done
 grep -c delete_branch_on_merge "$std"
