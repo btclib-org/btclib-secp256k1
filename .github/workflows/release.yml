@@ -277,6 +277,7 @@ jobs:
       setup-python: true
       sdist-only: true
       dist-artifact: sdist
+      build-constraints: build-constraints.txt
 
   # reuse the whole build/test pipeline: every wheel the release ships is
   # built and tested here, by the very matrices that run on a push, and

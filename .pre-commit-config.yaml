@@ -803,6 +803,20 @@ repos:
     rev: 0.12.19
     hooks:
       - id: uv-lock
+      # build-constraints.txt is what the wheel builds pass as build
+      # constraints: the `build-requires` group of uv.lock, with the
+      # hashes the lock holds. The hook rewrites it when the lock or
+      # the group moves, and a build that finds it stale is a build
+      # whose backend is not the one uv.lock resolved
+      - id: uv-export
+        name: build-constraints.txt matches the build-requires group
+        files: ^(uv\.lock|pyproject\.toml|build-constraints\.txt)$
+        args:
+          - --frozen
+          - --quiet
+          - --only-group=build-requires
+          - --no-emit-project
+          - --output-file=build-constraints.txt
 
   # check-sdist below trusts `git ls-files --recurse-submodules`, and
   # that flag drops the gitlink of a submodule this repository has

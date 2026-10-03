@@ -299,6 +299,30 @@ setting section 11 of the standard states (issue btclib-org/.github#1540).
   do** (closes #1122). It exited 1 against the unflagged build, the
   100% floor being reached only by the union of the builds.
 
+### Builds pin their build requirements with hashes
+
+- **`build-constraints.txt` pins `[build-system]`'s requirements** (closes
+  #1087): `uv-export` writes it from the `build-requires` group of
+  `uv.lock`, and every build that ships takes it, a hash mismatch failing it.
+
+### The sdist and the rebuilds take the constraints too
+
+- **`release.yml`'s sdist** (btclib-org/.github#1539) **and
+  `wheel-reproducibility`'s rebuilds** (issue #1087) read it;
+  `deps-latest.yml` does not.
+
+### `[tool.cibuildwheel]` builds with the `uv` frontend
+
+- **`UV_BUILD_CONSTRAINT` binds only the project's build requirements**
+  (issue #1087): `PIP_CONSTRAINT` would also bind cibuildwheel's own tools.
+  `UV_NO_CONFIG` keeps `required-version` from stopping the uv of a Linux image.
+
+### The wheels are built without `ccache`
+
+- **`ccache` came unpinned from `apk`, `dnf`, `yum` or `brew`** (issue
+  #1087): it was the compiler launcher of every wheel cibuildwheel built
+  on Linux and macOS.
+
 ## v0.8.0.9
 
 ### CPython 3.15 is the pinned interpreter, on its release candidate

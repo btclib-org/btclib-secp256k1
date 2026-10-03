@@ -529,7 +529,9 @@ jobs:
       # belongs in a pull request that runs the matrix rather than in a
       # push that did not touch it. --only-group omits the project, so
       # this installs no extension of its own; the build frontend
-      # cibuildwheel then runs per interpreter comes from the same group.
+      # cibuildwheel then runs per interpreter is uv, which
+      # [tool.cibuildwheel]'s `build-frontend` names and this group does
+      # not install.
       # --locked, here as in the check-dist job: the dev-version step
       # above rewrites the version in pyproject.toml on the rehearsal
       # path and re-locks in the same step, so the lock agrees with the
@@ -607,6 +609,10 @@ jobs:
       # identically under PowerShell today; the hazard is the same one
       # that step's comment names for the next edit that is not
       # (issue btclib-org/btclib#1148)
+      #
+      # the build requirements come from build-constraints.txt through
+      # [tool.cibuildwheel]'s `environment`, which reaches the container
+      # of a Linux build as well as this job's own environment
       - name: Build wheels
         shell: bash
         run: uv run --locked --only-group build cibuildwheel
@@ -688,8 +694,18 @@ jobs:
       - name: Pin the build timestamp to the commit
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
 
-      # the build group and --locked: see build-cibuildwheel
+      # the build group and --locked: see build-cibuildwheel.
+      # PIP_CONSTRAINT pins the requirements of the isolated build, the
+      # hatchling and cffi that decide the wheel, to the versions and
+      # hashes of build-constraints.txt: without it the build resolves
+      # [build-system]'s ranges from the index on the day it runs. It
+      # is set on the build step alone, so nothing else pip or uv
+      # installs reads it; the path is relative to the workspace, where
+      # the step runs. [tool.cibuildwheel] does the same for
+      # build-cibuildwheel with UV_BUILD_CONSTRAINT, its reason there
       - name: Build wheel
+        env:
+          PIP_CONSTRAINT: build-constraints.txt
         run: BTCLIB_LIBSECP256K1_DYNAMIC=true uv run --locked --only-group build python -m build -w
 
       # auditwheel and delocate decide the platform tag this wheel ends up
@@ -762,9 +778,12 @@ jobs:
         if: ${{ !inputs.use-signed-dist }}
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
 
-      # the build group and --locked: see build-cibuildwheel
+      # the build group and --locked: see build-cibuildwheel, and
+      # build-dynamic for PIP_CONSTRAINT
       - name: Build source
         if: ${{ !inputs.use-signed-dist }}
+        env:
+          PIP_CONSTRAINT: build-constraints.txt
         run: uv run --locked --only-group build python -m build -s
 
       # insurance rather than the fix: the step above already leaves the
@@ -995,7 +1014,11 @@ jobs:
       # this used to install with it is a setuptools-era requirement:
       # hatchling writes the wheel itself, and nothing here invokes that
       # package
+      #
+      # PIP_CONSTRAINT: see build-dynamic
       - name: Build Windows wheel
+        env:
+          PIP_CONSTRAINT: build-constraints.txt
         run: |
           BTCLIB_LIBSECP256K1_CROSS_COMPILE=true CFFI_PLATFORM=Windows \
             uv run --locked --only-group build python -m build -w

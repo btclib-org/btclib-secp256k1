@@ -332,6 +332,28 @@ def test_build_wheel_returns_the_one_wheel_uv_left(
     assert wheel == tmp_path / "out" / _WHEEL
 
 
+def test_build_wheel_constrains_the_build_requirements(
+    check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`uv build` reads the copy's constraints, as the shipped build does."""
+    seen: dict[str, Any] = {}
+    write = fake_run_writing({_WHEEL: [("pkg/a.py", b"x")]})
+
+    def spy(args: list[str], **kwargs: Any) -> None:
+        seen["env"] = kwargs["env"]
+        write(args, **kwargs)
+
+    monkeypatch.setattr(check.subprocess, "run", spy)
+    monkeypatch.setenv("A_VARIABLE_THE_BUILD_INHERITS", "kept")
+
+    check.build_wheel(tmp_path / "source", tmp_path / "out")
+
+    assert seen["env"]["UV_BUILD_CONSTRAINT"] == str(
+        tmp_path / "source" / "build-constraints.txt"
+    )
+    assert seen["env"]["A_VARIABLE_THE_BUILD_INHERITS"] == "kept"
+
+
 def test_build_wheel_refuses_an_empty_out_dir(
     check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -481,6 +503,9 @@ def test_build_dynamic_wheel_carries_the_linkage_its_environment_names(
     assert seen["env"]["BTCLIB_LIBSECP256K1_CROSS_COMPILE"] == "true"
     assert seen["env"]["CFFI_PLATFORM"] == "Windows"
     assert seen["env"]["A_VARIABLE_THE_BUILD_INHERITS"] == "kept"
+    assert seen["env"]["PIP_CONSTRAINT"] == str(
+        tmp_path / "source" / "build-constraints.txt"
+    )
 
 
 def test_repair_wheel_runs_delocate_on_macos(

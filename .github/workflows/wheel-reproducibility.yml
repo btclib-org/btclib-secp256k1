@@ -232,7 +232,9 @@ jobs:
           # what the builds read, one alternative per entry the header
           # names: scripts/ for the build backend and the extension's
           # own sources; pyproject.toml for the version and
-          # cibuildwheel's configuration; secp256k1 for the vendored
+          # cibuildwheel's configuration; build-constraints.txt for the
+          # build requirements, which a lock bump moves without
+          # touching pyproject.toml; secp256k1 for the vendored
           # library, whose gitlink the file list names like any other
           # path; the script the steps run, so a change to it is
           # measured on its own pull request; and this file, for the
@@ -240,7 +242,7 @@ jobs:
           # test.yml's prose-pattern gives: yamllint reads a pattern with
           # no space in it as one unbreakable word
           BUILD_PATHS: |-
-            ^(scripts/.*|pyproject\.toml|secp256k1|\.github/scripts/check_wheel_reproducibility\.py|\.github/workflows/wheel-reproducibility\.yml)$
+            ^(scripts/.*|pyproject\.toml|build-constraints\.txt|secp256k1|\.github/scripts/check_wheel_reproducibility\.py|\.github/workflows/wheel-reproducibility\.yml)$
         run: |
           # only a pull request has a base to be a diff against, so the
           # schedule and a dispatch build everything
