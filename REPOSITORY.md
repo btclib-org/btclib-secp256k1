@@ -380,11 +380,12 @@ checks the table above names, one approving review with
 `dismiss_stale_reviews`, linear history, no force
 pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off** — an administrator can bypass all of it, matching
-another repository in the organization now and for the same reason: a
-solo-maintainer repository cannot satisfy "one approving review" from the
-author, GitHub refusing self-approval, so the review is a stop rather than
-a speed bump, and the admin bypass is the only way past it without a
-second maintainer to add.
+another repository in the organization now and for the same reason: the
+author cannot approve their own pull request, GitHub refusing
+self-approval, so the admin bypass is the way past the review when
+nobody else can give it. Every pull request lands with an approving
+review from somebody other than its author, and the bypass is used only
+in an emergency.
 
 ```shell
 gh api -X DELETE \
@@ -464,18 +465,21 @@ line ends in the placeholder and a paste made before it is filled in has
 nothing for its `>` to open — section 9 of the organization standard is
 where that rule is.
 
-The split is the point. The review is the rule a solo maintainer cannot
-satisfy, GitHub refusing a self-approval; the integrity rules are the
-ones nobody should be able to. One ruleset each is what lets the first
-be bypassed without the second going with it.
+The split is the point. The review is the rule an author cannot satisfy
+for their own pull request, GitHub refusing a self-approval; the
+integrity rules are the ones nobody should be able to. One ruleset each
+is what lets the first be bypassed without the second going with it.
 
 **What the bypass is for is the review, and nothing else.** It is set to
 `pull_request` mode, which excuses its holder from the rule *while
 merging a pull request* and at no other time — so it answers the one
-thing a solo-maintainer repository cannot produce, an approving review
-from somebody else, and answers nothing further. A direct push to `main`
-is refused for everyone, the holder included: outside a pull request
-there is no bypass to apply, and the rule says changes come through one.
+thing the maintainer cannot give their own pull request, an approving
+review, and answers nothing further. The rule has no condition on use:
+every pull request lands with an approving review from somebody other
+than its author, and the maintainer uses the bypass only in an
+emergency. A direct push to `main` is refused for everyone, the holder
+included: outside a pull request there is no bypass to apply, and the
+rule says changes come through one.
 
 The ruleset also names `squash` as the only merge method it will accept,
 so that constraint is stated where the rule is and not only in the
@@ -499,7 +503,7 @@ which makes GitHub's web-flow key as good as the maintainer's.
 still carries `required_pull_request_reviews`, and what clears it for
 the maintainer is `enforce_admins` being `false` together with holding
 `admin`; the ruleset bypass alone would not be enough. Turning
-`enforce_admins` on would deadlock every solo merge instead, the classic
+`enforce_admins` on would remove the emergency path instead, the classic
 review requirement having no bypass list to be named in.
 
 **Every landing is a pull request GitHub merges**, which retires the

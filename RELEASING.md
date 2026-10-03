@@ -63,7 +63,7 @@ shell stands in; REPOSITORY.md's opening has the reason at length. A
 release is carried out from a checkout of this repository, so the
 placeholder would answer correctly for whoever follows the steps top to
 bottom, and what it does not survive is a step copied out and run
-somewhere else — the merge call under "Cutting a release" is a `PUT`. A
+somewhere else — the merge call under "Cutting a release" is a `gh pr merge`. A
 block making several calls names the repository once, in `repo`; a call
 standing alone in prose names it in full; a block making one call does
 either, `repo` being what keeps a path too long for the margin off the
@@ -313,30 +313,30 @@ Then:
 
    Then merge it into `main` with a green CI. It is an ordinary pull
    request against the only branch there is, and it lands the way every
-   other one here does: squash, pressed by auto-merge once the review and
-   the checks are in — the same button and the same `pull_request`-mode
-   bypass every other pull request lands through, REPOSITORY.md's "Merge
-   methods" and "Auto-merge" sections having the ruleset that grants it.
+   other one here does: squash, pressed by auto-merge once somebody other
+   than its author has approved it and the checks are in, REPOSITORY.md's
+   "Merge methods" and "Auto-merge" sections having the settings. The
+   maintainer's `pull_request`-mode bypass is used only in an emergency.
    A direct push, fast-forwarded from the command line, is refused for
    everyone now, this pull request included: the bypass that once allowed
    it moved from `always` to `pull_request` mode, so nothing reaches
    `main` outside a pull request GitHub itself merges.
 
-   `gh pr merge <n> --repo btclib-org/btclib-secp256k1 --squash` alone
-   still refuses this pull request — `the base branch policy prohibits
-   the merge`, gh's own client-side mergeable check reading
-   `REVIEW_REQUIRED` and declining before it asks the server at all.
-   `--auto` is the wrong answer to that message: it waits for the same
-   approving review that a solo-maintainer repository cannot produce, so
-   it never fires. `--admin` is gh's own suggestion, asking for the pair
-   REPOSITORY.md's "Branch protection" names — `enforce_admins` `false`
-   together with holding `admin` — and `gh api -X PUT
+   Until somebody other than its author has approved it, `gh pr merge
+   <n> --repo btclib-org/btclib-secp256k1 --squash` refuses this pull
+   request — `the base branch policy prohibits the merge`, gh's own
+   client-side mergeable check reading `REVIEW_REQUIRED` and declining
+   before it asks the server at all. Once the approval is in, that
+   command, pinned with `--match-head-commit`, or `--auto` lands it.
+
+   In an emergency, `--admin` lifts gh's refusal and lands it without
+   the approval; `gh api -X PUT
    repos/btclib-org/btclib-secp256k1/pulls/<n>/merge -f
-   merge_method=squash` asks the same question of the endpoint directly,
-   bypassing gh's client-side check rather than satisfying it: this is
-   the one measured, on 0.8.0.4 (#288), which carried no approving
-   review — only comments — and landed through the direct call after the
-   plain `gh pr merge` refused it locally.
+   merge_method=squash` asks the endpoint directly. Both ask for the pair
+   REPOSITORY.md's "Branch protection" names — `enforce_admins` `false`
+   together with holding `admin`. The direct call is the one measured, on
+   0.8.0.4 (#288), which carried no approving review — only comments —
+   and landed after the plain `gh pr merge` refused it locally.
 
    The button used to be the wrong landing on this pull request in
    particular: it is the release commit that gets tagged, and

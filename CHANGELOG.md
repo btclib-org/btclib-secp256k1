@@ -28,6 +28,12 @@ release-notes length in the first place, and are still in
   (closes #1133): `deps-latest` failed `tests/hook_pins_test.py` on two
   hand-moved pins. `librt` and `ast-serialize` moved with mypy.
 
+### The maintainer's bypass is for emergencies only
+
+- **`CONTRIBUTING.md`, `REPOSITORY.md`, `RELEASING.md` and `REVIEWING.md` say
+  every pull request lands with an approving review from somebody other than
+  its author; the bypass is for emergencies** (issue btclib-org/.github#1362).
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`
