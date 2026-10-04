@@ -769,6 +769,14 @@ Then:
    repository can make, tracked at btclib-org/.github#26, so a red run
    with no build attempted at all is that rule missing rather than a
    build failing
+1. review the bestpractices.dev answers. Refresh the saved answers with
+   `btclib-org/.github`'s `.github/scripts/bestpractices.py`, and run its
+   `--stale` and `--differ` to find what to read (section 10 of its
+   `README.md`). Read <https://www.bestpractices.dev/projects/14814>
+   against the release and update every answer it changed: the release
+   notes and the vulnerabilities it fixed, the signed tag and assets, the
+   attestation names. Then refresh the saved answers again. An advisory
+   this repository publishes is owed the same review
 1. open the next version: bump `pyproject.toml` to a fourth number over
     what was just published — `0.7.1.1` after `0.7.1` — and run `uv
     lock`, through a pull request like any other. It is a placeholder,
