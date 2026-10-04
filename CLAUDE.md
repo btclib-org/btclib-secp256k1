@@ -173,8 +173,7 @@ constraints. Do not use Fable unless instructed.
   is `uv run --locked --only-group lint pre-commit run markdownlint-cli2
   --files CHANGELOG.md`, which exits `1` with `files were modified by
   this hook` where the fixer repaired something — that exit is the
-  fixer working, not a failure. It is also the repair for what the
-  `merge=union` driver does to `CHANGELOG.md`
+  fixer working, not a failure
 - **`pre-commit`'s own log names the sdist hook `check sdist`, with a
   space, though `.pre-commit-config.yaml`'s `id:` is `check-sdist`.** A
   `grep -c check-sdist` over a run's log answers `0` on a run where the

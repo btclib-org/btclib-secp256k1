@@ -46,6 +46,12 @@ release-notes length in the first place, and are still in
   (issue btclib-org/.github#1560). `CLAUDE_REVIEW_ENABLED` is the
   organization's switch.
 
+### The forms set a type, and the history files lose `merge=union`
+
+- **The forms set `type:` and no kind label** (issue btclib-org/.github#1584).
+  `.gitattributes` loses `merge=union` (issue btclib-org/.github#1582); a
+  release reviews the bestpractices.dev answers (issue btclib-org/.github#1589).
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`

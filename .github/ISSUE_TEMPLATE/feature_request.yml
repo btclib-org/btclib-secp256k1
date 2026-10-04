@@ -1,7 +1,7 @@
 ---
 name: Feature request
 description: Wrap something libsecp256k1 or secp256k1-zkp offers, or change how it is wrapped
-labels: [enhancement]
+type: Feature
 
 body:
   - type: markdown
