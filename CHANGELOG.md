@@ -52,6 +52,12 @@ release-notes length in the first place, and are still in
   `.gitattributes` loses `merge=union` (issue btclib-org/.github#1582); a
   release reviews the bestpractices.dev answers (issue btclib-org/.github#1589).
 
+### The post-release install refreshes the index
+
+- **RELEASING.md installs with `--refresh-package btclib-secp256k1`**,
+  as uv can answer from a cached index and miss a version just published
+  (issue btclib-org/.github#1595).
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`

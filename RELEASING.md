@@ -582,6 +582,7 @@ Then:
    ```shell
    version=$(uv version --short)
    uv run --isolated --no-project --with "btclib-secp256k1==$version" \
+     --refresh-package btclib-secp256k1 \
      python -c "
    from btclib_secp256k1 import ssa
    msg = bytes(32)
@@ -593,6 +594,8 @@ Then:
 
    The version comes from the tree as at the tagging step above, so what
    this installs is the release that was just published.
+   `--refresh-package` makes uv read the index again rather than its
+   cache, which can miss a version just published.
 
    BIP340 vector 0, the same check `pypi-install` makes below. Then check
    the attestations, the two checks the rehearsal makes and for the same
