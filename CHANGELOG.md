@@ -58,6 +58,12 @@ release-notes length in the first place, and are still in
   as uv can answer from a cached index and miss a version just published
   (issue btclib-org/.github#1595).
 
+### `--admin` waits for no required check
+
+- **`CONTRIBUTING.md`'s emergency paragraph says `--admin` skips the
+  required checks too** (issue btclib-org/.github#1597):
+  `REVIEWING.md`'s "hold the merge" excepts it.
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`
