@@ -64,6 +64,12 @@ release-notes length in the first place, and are still in
   required checks too** (issue btclib-org/.github#1597):
   `REVIEWING.md`'s "hold the merge" excepts it.
 
+### `check-changelog` refuses an entry added to an older release
+
+- **A `###` heading under a release older than the newest, absent from
+  the file at the merge base with `origin/main`, is refused**
+  (issue btclib-org/.github#1614).
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`
