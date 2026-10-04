@@ -294,9 +294,9 @@ def _require_cibuildwheel() -> None:
     """Skip the test running this unless a cibuildwheel that can answer is here.
 
     One that can answer is one at `_CIBW_FLOOR` or newer: an older release
-    prints no free-threaded identifier for `[tool.cibuildwheel]`'s
-    configuration, so its answer is "none" whatever the gate builds, which
-    reads as a gate that runs no free-threaded interpreter. Where there is
+    does not know the free-threaded interpreter the pull request's
+    `CIBW_BUILD` names, so it keeps none for that selection, which reads
+    as a gate that builds no free-threaded wheel. Where there is
     none at all, or only an older one, the test is skipped rather than
     answered from this file's text, which is the read that cannot see it.
     """

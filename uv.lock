@@ -444,7 +444,7 @@ dev = [
     { name = "build", specifier = ">=1.6.1" },
     { name = "check-wheel-contents", specifier = ">=0.6.3" },
     { name = "cibuildwheel", specifier = ">=2.23.4" },
-    { name = "cibuildwheel", specifier = ">=3.1.0" },
+    { name = "cibuildwheel", specifier = ">=4.2.0" },
     { name = "cosmic-ray", specifier = ">=8.7.0" },
     { name = "delocate", specifier = ">=0.13.0" },
     { name = "furo", specifier = ">=2025.12.19" },
@@ -477,7 +477,7 @@ lint = [
 ]
 mutation = [{ name = "cosmic-ray", specifier = ">=8.7.0" }]
 test = [
-    { name = "cibuildwheel", specifier = ">=3.1.0" },
+    { name = "cibuildwheel", specifier = ">=4.2.0" },
     { name = "pathspec", specifier = ">=1.1.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
