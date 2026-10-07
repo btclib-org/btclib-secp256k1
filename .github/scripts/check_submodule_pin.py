@@ -9,9 +9,8 @@ upstream, over the network, and refuses to publish when the answer is
 no. That is the last gate before publication and it stays. What this is,
 is the same question asked of every commit instead of every release, so
 that a submodule bump and the prose about it cannot disagree for the
-length of a cycle -- which is the window in which CHANGELOG.md,
-RELEASE_NOTES.md and README.md are written about the version nobody has
-confirmed.
+length of a cycle -- which is the window in which README.md names a
+version nobody has confirmed.
 
 Offline is what makes it a hook rather than a workflow step. The tag is
 resolved in the vendored clone, whose refs are already on the machine, so
@@ -328,8 +327,7 @@ def _check_release_pin(readme: str) -> int:
         print(
             f"README.md names {named} ({tagged}), and the submodule is"
             f" pinned to {pinned}. The submodule moves in a change of"
-            " its own, with the version named in README.md and"
-            " RELEASE_NOTES.md moved with it",
+            " its own, with the version named in README.md moved with it",
             file=sys.stderr,
         )
         return 1

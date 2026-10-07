@@ -16,6 +16,10 @@ Every change of a release, in full: what changed, why, and what it cost.
 what a user has to act on; this file is the record behind them, and is
 where a claim in those notes can be checked.
 
+A release's own pull request writes the release's section, from the
+squash subjects since the previous tag, and no other pull request adds
+an entry.
+
 This file starts at v0.7.1.2. The releases before it were documented at
 release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.

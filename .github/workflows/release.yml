@@ -84,15 +84,16 @@ jobs:
   # day to surface.
   #
   # The checkout, the lock check, the ancestry check, the version
-  # comparison, the retitling check and the rehearsal suffix are
-  # btclib-org/.github's: reusable-version-check.yml, called at @main so
-  # a fix there reaches this tree in one landing (section 10 of its
-  # README.md). tag-requires-day is false, the one non-default caller in
-  # the family: 0.8.0.7 tracks libsecp256k1's own release rather than a
-  # calendar date, and the shared check would refuse every release this
-  # tree can cut otherwise. submodule-pin-release, below, is this tree's
-  # own job, kept out of the called workflow for the reason its own
-  # header gives (btclib-org/.github#35)
+  # comparison, the release-notes check on RELEASE_NOTES.md and
+  # CHANGELOG.md and the rehearsal suffix are btclib-org/.github's:
+  # reusable-version-check.yml, called at @main so a fix there reaches
+  # this tree in one landing (section 10 of its README.md).
+  # tag-requires-day is false, the one non-default caller in the family:
+  # 0.8.0.7 tracks libsecp256k1's own release rather than a calendar
+  # date, and the shared check would refuse every release this tree can
+  # cut otherwise. submodule-pin-release, below, is this tree's own job,
+  # kept out of the called workflow for the reason its own header gives
+  # (btclib-org/.github#35)
   version-check:
     uses: btclib-org/.github/.github/workflows/reusable-version-check.yml@main
     with:
@@ -212,9 +213,9 @@ jobs:
   # as a merge gate -- btclib-org/.github#326's own decision -- because
   # before 1.0 the surface breaks deliberately and often, and a gate
   # reporting every such break on every pull request has nothing to say
-  # about which ones are allowed. Here the answer arrives while
-  # RELEASE_NOTES.md is already being written, so a break with no entry
-  # is refused at the moment somebody is already writing entries.
+  # about which ones are allowed. Here the notes are already written
+  # when it runs, so a break with no entry in RELEASE_NOTES.md shows red
+  # and blocks nothing.
   #
   # The checkout, the previous-tag resolution and the griffe walk are
   # btclib-org/.github's: reusable-public-api.yml, called at @main so a

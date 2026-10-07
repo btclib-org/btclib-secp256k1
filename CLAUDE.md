@@ -151,9 +151,8 @@ constraints. Do not use Fable unless instructed.
   finds `[tool.check-wheel-contents]` by searching the working directory
   and its parents, and run from elsewhere it reports the codes that
   table ignores
-- **A new `CHANGELOG.md` entry takes its own `###` at the end of the open
-  section**; the older theme headings there stay as landed
-  (btclib-org/.github#586)
+- **A pull request adds no `CHANGELOG.md` entry**: `CONTRIBUTING.md`'s
+  *Pull requests*.
 - **`wheel-reproducibility.yml`'s `across-images` job compares two
   kinds of pair, and holds only one of them to the whole archive.**
   `rebuild`'s wheels are a plain `uv build` on the runner, so each
