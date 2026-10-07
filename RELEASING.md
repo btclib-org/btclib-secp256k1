@@ -222,47 +222,36 @@ Then:
    that release's own `RELEASE_NOTES.md` already named one by one, and
    is the positive control that says the command is reading the package
    rather than finding nothing (#291)
-1. close the release notes. `CHANGELOG.md` and `RELEASE_NOTES.md` are
-   written as each change lands, not here, so what is left is to read
-   the open section of both against `git log`, drop the `(work in
-   progress, not released yet)` from each heading, and renumber them
-   if the version bump above renumbered it. `version-check` refuses a tag
-   whose section in either file is missing, empty, or still carrying
-   anything after the version in its heading, so a forgotten retitle
-   stops the release before the matrix builds anything. Dropping those
-   five words is the whole of what that check asks, and it asks it of
-   both files: it is the step this one exists to be, not a formality
-   downstream of it. If the vendored libsecp256k1 moved, update the
+1. write the release's sections. No other pull request adds an entry to
+   `CHANGELOG.md` or `RELEASE_NOTES.md`, so this one writes both. Put
+   `## v<version>`, the tag's own heading, above the previous release in
+   each. The changelog's section is written from the squash subjects
+   since the previous tag, grouped and shortened:
+
+   ```shell
+   tag=v<previous version>
+   ```
+
+   ```shell
+   git log "${tag:?}"..HEAD --format=%s
+   ```
+
+   The previous version takes a fence of its own with nothing under it
+   to reach: written into the range, `v<previous version>..HEAD` is a
+   `<previous` redirection that creates a file named `..HEAD` wherever
+   the reader's directory holds a file called `previous`. `${tag:?}`
+   answers the other paste, the second fence alone, where the value is
+   merely unset: unguarded it asks for `..HEAD`, which is empty.
+
+   The release notes take what a user has to act on, which includes
+   every line the griffe check above printed. Fold any `(work in
+   progress, not released yet)` section into the release's section and
+   delete its heading. `version-check` refuses a tag whose section in
+   either file is missing, empty, or carrying anything after the version
+   in its heading. If the vendored libsecp256k1 moved, update the
    version named at the top of `README.md` too (`grep -n 'wraps
-   libsecp256k1' README.md` finds the line without a search through
-   the prose).
-
-   In the same pull request, start the next version's section in both
-   files, above the one just closed: headed `## v<version> (work in
-   progress, not released yet)` with the fourth number the step that
-   opens the next version will declare, and nothing under it yet. What
-   lands next then has somewhere to be written down as it lands, which
-   is the whole of closing the release notes at the end of the cycle —
-   with one branch and no long-lived release pull request to hold a
-   body, it is also the whole of what giving the pull request its title
-   and body reads the cycle off. Starting it in a pull request of its own
-   after this one, ahead of anything else landing, is the rejected
-   alternative: until that pull request lands the topmost section of
-   each file is the release's, so a branch landing in between files its
-   entry under a release it is not in, and nothing reports it, the
-   release commit having touched only the heading. `version-check` reads
-   the section headed by the tag alone, so a heading above it is nothing
-   it sees, and it is not what the release publishes: the notes are
-   lifted from the section whose heading is the tag's own.
-
-   This step's own action is not what this file calls "open the next
-   version" below — the two names differ because the two actions do.
-   0.8.0.6's release pull request (#843) did only this one and stopped,
-   leaving `main` still declaring `0.8.0.6` in `pyproject.toml` past the
-   tag, the `pypi` approval and every check after it, until a separate
-   pull request caught the gap. This file reused one phrase for both
-   steps until that prompted splitting it into the two names used here
-   (#845)
+   libsecp256k1' README.md` finds the line without a search through the
+   prose)
 1. give the pull request its title and its body before merging it, not
    after. The title is the version; the body says what the release is —
    what moved, what did not, and which of the two a user would notice.
@@ -273,19 +262,14 @@ Then:
    not have to discover at the button belongs there too.
 
    What the cycle actually contained is not this pull request's diff,
-   which is a version bump and the headings the previous step closed and
-   opened: it is everything merged since the last tag. Read it off the
-   log rather than off the branch, and against the sections of
-   `CHANGELOG.md` and `RELEASE_NOTES.md` which closing the release notes
-   above has just closed, and which are where each change was described
-   as it landed.
+   which is a version bump and the release's sections of
+   `CHANGELOG.md` and `RELEASE_NOTES.md`: it is everything merged since
+   the last tag. Read it off the log rather than off the branch, and
+   against the sections the previous step wrote.
 
-   The previous version takes a fence of its own with nothing under it
-   to reach, the way the run id does below: written into the range,
-   `v<previous version>..main` is a `<previous` redirection that creates
-   a file named `..main` wherever the reader's directory holds a file
-   called `previous`. `${tag:?}` answers the other paste, the second
-   fence alone, where the value is merely unset: unguarded it asks for
+   The previous version is fenced apart from the range, and `${tag:?}`
+   guards the second paste, for the reasons the step writing the
+   release's sections gives. Unguarded, an unset `tag` asks for
    `..main`, which is `HEAD..main` and empty on a release branch up to
    date with `main`, and an empty log reads as a cycle that contained
    nothing.
@@ -794,14 +778,11 @@ Then:
     upload PyPI refuses for a version it already carries. A fourth
     number below the published one would be worse than no bump at all:
     `0.7.0.1` sorts *under* `0.7.1`, so nothing would ever resolve it,
-    and `version-check` accepts it, being digits and dots. The sections
-    for it in `CHANGELOG.md` and in `RELEASE_NOTES.md` are already
-    there, closing the release notes above having started them in the
-    release's own pull request — this step is the one this file means
-    by "open the next version," and it is owed only after the tag, the
+    and `version-check` accepts it, being digits and dots. It starts no
+    section in `CHANGELOG.md` or `RELEASE_NOTES.md`: the next release's
+    pull request writes its own. It is owed only after the tag, the
     `pypi` approval and every check above it, in its own pull request
-    and never inside the release's. What stays here is the version, which
-    cannot move earlier with them: `version-check` compares the tag
+    and never inside the release's: `version-check` compares the tag
     against what `pyproject.toml` declares, so a tree already bumped
     would offer it the placeholder instead of the version being released
 
@@ -817,6 +798,10 @@ own could not be: a trusted publisher is registered for a workflow
 The rehearsal is what the release machinery itself is tested with, when
 the workflow, the packaging metadata or the build matrix changed. A
 release that only bumps versions and notes does not need one.
+
+A release that breaks the public API is rehearsed from the release pull
+request's branch, after its notes are written, so that `public-api`
+reads the release's own section.
 
 A trusted publisher can only be registered by an owner of the project,
 so a name an unrelated project already holds on an index cannot be

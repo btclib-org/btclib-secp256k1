@@ -60,9 +60,8 @@ prefix nothing matches any more fails rather than sitting there.
 
 `CHANGELOG.md` and `RELEASE_NOTES.md` are out of scope, for the reasons
 `tests/citations_test.py` gives for exempting them from its own sweep: a
-released section is that release's own account of itself, and the open
-section is where the record of a name as it used to be survives a rename
-here.
+released section is that release's own account of itself, and is where
+the record of a name as it used to be survives a rename.
 
 A `.py` file is read for its comments and its module, class and function
 docstrings, not for the rest of its text: `scripts/cffi_build.py` and
