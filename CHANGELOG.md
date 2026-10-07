@@ -70,6 +70,12 @@ release-notes length in the first place, and are still in
   the file at the merge base with `origin/main`, is refused**
   (issue btclib-org/.github#1614).
 
+### The `test` group's floor for `cibuildwheel` is 4.2.0
+
+- **`cibuildwheel>=4.2.0`** (closes #1141): `deps-oldest` failed because
+  3.1.0 does not know `cp315t`, the interpreter `test.yml` selects on a
+  pull request, and keeps no free-threaded identifier.
+
 ## v0.8.0.10
 
 ### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`

@@ -78,7 +78,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
     # test.yml's build-cibuildwheel job builds and runs the suite against
-    # a cp315t wheel on every trigger, a pull request included, and
+    # a free-threaded wheel on every trigger, a pull request included, and
     # tests/interpreters_test.py holds the biconditional between this
     # classifier and the interpreters the jobs the merge gate waits on
     # run. The extension leaves that interpreter's GIL disabled at import
@@ -421,16 +421,17 @@ ignore = ["W003", "W009"]
 # a collection error fails every cell of the matrix
 # (btclib-org/btclib-secp256k1#655)
 # cibuildwheel is no test tool either: tests/interpreters_test.py runs
-# `--print-build-identifiers` for the free-threaded identifiers
-# [tool.cibuildwheel] builds, which no file of this tree spells. The floor
-# is the oldest release whose `cibuildwheel --print-build-identifiers
-# --platform linux` lists one for that configuration. Where cibuildwheel
-# is absent or older the test reads a skip, not an error -- in the wheel
-# test and the sdist test, whose environments carry only what their own
-# lists name -- and it reads the floor out of this entry rather than
-# restating it
+# its `--print-build-identifiers` to read the free-threaded identifiers
+# [tool.cibuildwheel] builds, which no file of this tree spells. It reads
+# them as configured, and under the CIBW_BUILD that test.yml sets on a
+# pull request. The floor is the oldest release that knows the
+# free-threaded interpreter test.yml's CIBW_BUILD names: an older one
+# drops it from the selection. Where cibuildwheel is absent or older the
+# test reads a skip, not an error -- in the wheel test and the sdist
+# test, whose environments carry only what their own lists name -- and it
+# reads the floor out of this entry rather than restating it
 test = [
-    "cibuildwheel>=3.1.0",
+    "cibuildwheel>=4.2.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-randomly>=5.0.0",
