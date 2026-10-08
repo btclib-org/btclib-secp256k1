@@ -252,6 +252,33 @@ Then:
    version named at the top of `README.md` too (`grep -n 'wraps
    libsecp256k1' README.md` finds the line without a search through the
    prose)
+1. run each dependent's suite with this release in place of its PyPI
+   version, whether or not the notes declare a break. Section 12 of the
+   [organization standard](https://github.com/btclib-org/.github#12-releasing)
+   has the rule. The dependents of `btclib-secp256k1` are `btclib`,
+   `btclib-benchmarks`, `btclib-ecc`, `btclib-node` and
+   `btclib-wallet`. Re-derive them with the loop in that section
+   before each release rather than carry this list.
+
+   From a throwaway checkout of each dependent's default branch, with the
+   sha of the release pull request's head for `<sha>`, before it merges:
+
+   ```shell
+   ref=git+https://github.com/btclib-org/btclib-secp256k1@<sha>
+   ```
+
+   ```shell
+   uv run --locked --no-default-groups --group test \
+     --with "btclib-secp256k1 @ ${ref:?}" \
+     python -m pytest --no-cov
+   ```
+
+   It is `python -m pytest`, not `pytest`: that script is the environment's
+   own and imports the locked version. `--no-cov` because the question is
+   pass or fail, not the dependent's coverage floor.
+
+   A dependent that fails gets its fix ready first. The release is tagged,
+   then the dependent releases with its floor raised to it.
 1. give the pull request its title and its body before merging it, not
    after. The title is the version; the body says what the release is —
    what moved, what did not, and which of the two a user would notice.
@@ -495,6 +522,20 @@ Then:
    permission, granted on the calling job (#281) -- confirmed with a
    `workflow_dispatch` rehearsal on the fix branch before retagging,
    scheduling dozens of jobs where the unfixed commit scheduled none
+1. read the tag's signature back from the API, now that it is pushed. The
+   local `git tag -v` above read the local tag; this reads what the
+   forge holds. It answers `true`: an unsigned annotated tag answers
+   `false`, and a lightweight tag answers 404 at the second call:
+
+   ```shell
+   tag=v$(uv version --short) &&
+   tagsha=$(gh api \
+     repos/btclib-org/btclib-secp256k1/git/refs/tags/"${tag:?}" \
+     --jq '.object.sha') &&
+   gh api repos/btclib-org/btclib-secp256k1/git/tags/"${tagsha:?}" \
+     --jq '.verification.verified'
+   ```
+
 1. approve the `pypi` deployment when the run pauses for review. Up to
    here nothing is public and the tag can still be deleted; the upload
    that follows is the point of no return — the upload, and not the
