@@ -514,16 +514,10 @@ description closes the issue, and `delete_branch_on_merge` takes the
 head branch a second later.
 
 **A third ruleset, `tag-integrity`, targets tags rather than `main`.**
-`release.yml` publishes to PyPI on `push: tags: ["v*"]`, and until this
-ruleset existed that tag was the one unattested link in an otherwise
-fully-signed chain: every commit reaching `main` carries a verified
-signature, but nothing stopped an annotated, unsigned tag from being
-the one that triggered a release. RELEASING.md's tagging step already
-produces a signed tag (`git tag -s`); `tag-integrity` enforces the same
-thing at the repository-settings level — `target: tag`,
-`refs/tags/v*`, `required_signatures`, **no bypass actor at all**, the
-same "on every push, not at review time" shape as `main-integrity`, for
-the same reason. It carries no `deletion` or `non_fast_forward` rule:
+`release.yml` publishes to PyPI on `push: tags: ["v*"]`. The ruleset is
+`target: tag`, `refs/tags/v*`, `required_signatures`, **no bypass actor
+at all**, the same "on every push, not at review time" shape as
+`main-integrity`. It carries no `deletion` or `non_fast_forward` rule:
 RELEASING.md's own recovery path deletes and re-tags a release that
 failed before the PyPI upload, and either rule would block that.
 
@@ -531,6 +525,16 @@ failed before the PyPI upload, and either rule would block that.
 gh api --jq '{name, target, conditions, rules: [.rules[].type],
               bypass: .bypass_actors}' \
   repos/btclib-org/btclib-secp256k1/rulesets/<id>
+```
+
+A `v*` tag push that brings an unsigned commit is refused. A tag on a
+commit already on `main` is accepted whether it is signed, unsigned or
+lightweight, so the rule does not make a release tag signed
+(btclib-org/.github#1635). That rests on `git tag -s` in the release
+steps and on reading the signature back:
+
+```shell
+gh api repos/<owner>/<repo>/git/tags/<sha> --jq .verification
 ```
 
 ## Head branches after a merge
