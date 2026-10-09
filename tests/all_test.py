@@ -64,6 +64,7 @@ from btclib_secp256k1 import (
     zkp,
 )
 from btclib_secp256k1.zkp import context as zkp_context
+from btclib_secp256k1.zkp import ecdsa_adaptor as zkp_ecdsa_adaptor
 from btclib_secp256k1.zkp import ecdsa_s2c as zkp_ecdsa_s2c
 from btclib_secp256k1.zkp import generator as zkp_generator
 from btclib_secp256k1.zkp import musig as zkp_musig
@@ -112,6 +113,7 @@ def library_modules() -> list[ModuleType]:
         xonly,
         zkp,
         zkp_context,
+        zkp_ecdsa_adaptor,
         zkp_ecdsa_s2c,
         zkp_generator,
         zkp_musig,
