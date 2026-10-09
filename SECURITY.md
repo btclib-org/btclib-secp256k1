@@ -175,7 +175,8 @@ These are known and inherent, not vulnerabilities:
     secret, the coordinates of the point `ecdh.shared_point` answers, the
     `secp256k1_keypair` a BIP340 signature is made with, the
     nonce `dsa.nonce_rfc6979` and `ssa.nonce_bip340` answer with, the
-    adaptor `zkp.musig.extract_adaptor` recovers, a blinding factor
+    adaptor `zkp.musig.extract_adaptor` recovers, the decryption key
+    `zkp.ecdsa_adaptor.recover` recovers, a blinding factor
     `zkp.generator.pedersen_blind_sum` or
     `zkp.generator.pedersen_blind_generator_blind_sum` answers, or the
     one `zkp.rangeproof.rewind` recovers and the message and value beside
@@ -209,7 +210,7 @@ These are known and inherent, not vulnerabilities:
     `keys.prvkey_tweak_mul`, `xonly.prvkey_tweak_add`,
     `ecdh.shared_secret`, `ecdh.shared_point`, `ellswift.xdh`,
     `dsa.nonce_rfc6979`, `ssa.nonce_bip340`, `zkp.musig.extract_adaptor`,
-    `zkp.generator.pedersen_blind_sum` and
+    `zkp.ecdsa_adaptor.recover`, `zkp.generator.pedersen_blind_sum` and
     `zkp.generator.pedersen_blind_generator_blind_sum`. **Some secrets do
     not**, each being one member of a returned tuple, where an argument
     could not say which: the tweak of `silentpayments.label`, the

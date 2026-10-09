@@ -401,7 +401,8 @@ def test_every_function_that_takes_a_secret_out_offers_into() -> None:
 
     The walk descends into `zkp` the same way it descends into the
     primary package: the secret adaptor `zkp.musig.extract_adaptor`
-    recovers and the blinding factors `zkp.generator.pedersen_blind_sum`
+    recovers, the decryption key `zkp.ecdsa_adaptor.recover` recovers
+    and the blinding factors `zkp.generator.pedersen_blind_sum`
     and `zkp.generator.pedersen_blind_generator_blind_sum` answer are
     each read out through `take`, so each is a producer this test
     already reaches without a module-specific case; `zkp.rangeproof
@@ -465,7 +466,8 @@ def test_every_function_that_takes_a_secret_out_offers_into() -> None:
 def test_the_two_spellings_of_a_producer_agree() -> None:
     """Each entry point answers through `into` what it answers as bytes.
 
-    `zkp.musig.extract_adaptor`, `zkp.generator.pedersen_blind_sum` and
+    `zkp.musig.extract_adaptor`, `zkp.ecdsa_adaptor.recover`,
+    `zkp.generator.pedersen_blind_sum` and
     `zkp.generator.pedersen_blind_generator_blind_sum` offer `into` too,
     and are not in `calls` below: this build carries no
     `BTCLIB_LIBSECP256K1_ZKP`, and their own test files check the same
