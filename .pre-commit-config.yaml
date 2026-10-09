@@ -10,7 +10,8 @@
 ci:
   # a bot committing to a branch is at odds with the rest of this setup,
   # where the workflow token cannot write and every action is pinned to
-  # a commit SHA: a failing hook has to be fixed by its author
+  # a commit SHA: a failing hook is fixed by hand, by its author or by
+  # an owner where CONTRIBUTING.md says so
   autofix_prs: false
   # no autoupdate_branch, as dependabot declares no target-branch: the
   # default is the default branch, which is the only branch a change
