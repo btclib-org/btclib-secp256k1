@@ -586,19 +586,20 @@ Then:
    ```
 
    On a tag `Publish to TestPyPI` is `skipped`, its trigger being the
-   dispatch. So are `lint / Dependency review` and `lint / Sign-off`,
-   which run only on a `pull_request`: the tagged commit had both checks
-   on its own pull request. `public-api` is red for a break
-   `RELEASE_NOTES.md` does not name, being the griffe step above run
-   again. Every other job reads `success`, the ones behind `public-api`
-   included: each of them opens its `if:` with `always()` and names the
-   results it does require, so a red `public-api` costs the release
-   nothing, and a `skipped` among them is a defect in `release.yml`
-   rather than a red to look past. A rehearsal is the mirror image:
-   `Publish to PyPI` is skipped, and with it whatever is guarded on its
-   success. `documented` and `Check that the fork tags the pinned
-   secp256k1-zkp commit` are skipped on their own account, their guard
-   being the push, and the two `lint` jobs are skipped as on a tag.
+   dispatch. So are `Run the lint workflow / lint / Dependency review`
+   and `Run the lint workflow / lint / Sign-off`, which run only on a
+   `pull_request`: the tagged commit had both checks on its own pull
+   request. `public-api` is red for a break `RELEASE_NOTES.md` does not
+   name, being the griffe step above run again. Every other job reads
+   `success`, the ones behind `public-api` included: each of them opens
+   its `if:` with `always()` and names the results it does require, so a
+   red `public-api` costs the release nothing, and a `skipped` among them
+   is a defect in `release.yml` rather than a red to look past. A
+   rehearsal is the mirror image: `Publish to PyPI` is skipped, and with
+   it whatever is guarded on its success. `documented` and `Check that
+   the fork tags the pinned secp256k1-zkp commit` are skipped on their
+   own account, their guard being the push, and the two `lint` jobs are
+   skipped as on a tag.
    `gh run rerun --failed` does not reach a skipped job -- that flag
    reruns `failure`, and a skip is neither a failure nor within its blast
    radius -- so what recovers one is doing by hand what it would have
