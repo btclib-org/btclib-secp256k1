@@ -586,19 +586,23 @@ Then:
    ```
 
    On a tag `Publish to TestPyPI` is `skipped`, its trigger being the
-   dispatch, and `public-api` is red for a break `RELEASE_NOTES.md` does not
-   name, being the griffe step above run again. Every other job reads
-   `success`, the ones behind `public-api` included: each of them opens
-   its `if:` with `always()` and names the results it does require, so
-   a red `public-api` costs the release nothing, and a `skipped` among
-   them is a defect in `release.yml` rather than a red to look past. A
-   rehearsal is the mirror image, `Publish to PyPI` skipped and with it
-   whatever is guarded on its success, and `documented` skipped on its
-   own account, its guard being the push. `gh run rerun --failed` does not
-   reach a skipped job -- that flag reruns `failure`, and a skip is
-   neither a failure nor within its blast radius -- so what recovers one
-   is doing by hand what it would have done, the way the GitHub release
-   step below shows for that job
+   dispatch. So are `lint / Dependency review` and `lint / Sign-off`,
+   which run only on a `pull_request`: the tagged commit had both checks
+   on its own pull request. `public-api` is red for a break
+   `RELEASE_NOTES.md` does not name, being the griffe step above run
+   again. Every other job reads `success`, the ones behind `public-api`
+   included: each of them opens its `if:` with `always()` and names the
+   results it does require, so a red `public-api` costs the release
+   nothing, and a `skipped` among them is a defect in `release.yml`
+   rather than a red to look past. A rehearsal is the mirror image:
+   `Publish to PyPI` is skipped, and with it whatever is guarded on its
+   success. `documented` and `Check that the fork tags the pinned
+   secp256k1-zkp commit` are skipped on their own account, their guard
+   being the push, and the two `lint` jobs are skipped as on a tag.
+   `gh run rerun --failed` does not reach a skipped job -- that flag
+   reruns `failure`, and a skip is neither a failure nor within its blast
+   radius -- so what recovers one is doing by hand what it would have
+   done, the way the GitHub release step below shows for that job
 1. check that what was published installs, in an environment of its own
    rather than one that may already hold it, and run something with it —
    installing being weaker than working where a compiled extension is
