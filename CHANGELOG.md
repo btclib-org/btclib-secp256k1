@@ -24,13 +24,61 @@ This file starts at v0.7.1.2. The releases before it were documented at
 release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.
 
-## v0.8.0.11 (work in progress, not released yet)
+## v0.8.0.11
+
+### `zkp.ecdsa_adaptor` wraps the ECDSA adaptor signature module
+
+- **`encrypt`, `verify`, `decrypt` and `recover`** (closes #1156); `encrypt`
+  verifies its own result by default and takes a keyword-only `aux_rand32`.
+  Like the other zkp modules it needs `BTCLIB_LIBSECP256K1_ZKP=true`.
 
 ### The lock resolves mypy 2.4.0 and hatchling 1.32.4
 
 - **The hook pins and `build-constraints.txt` follow `uv.lock`**
   (closes #1133): `deps-latest` failed `tests/hook_pins_test.py` on two
   hand-moved pins. `librt` and `ast-serialize` moved with mypy.
+
+### The lock moves ruff and trove-classifiers together with their export
+
+- **ruff 0.16.9 and trove-classifiers 2026.9.21.13** (#1153): `uv.lock`
+  and `build-constraints.txt` are written together, Dependabot's pull
+  request having left the old trove-classifiers in the lock.
+
+### multidict, the clusterfuzzlite group and the hook revisions move
+
+- **multidict 6.9.1, the clusterfuzzlite group's two updates and the
+  pre-commit hook revisions.** (#1145, #1150, #1143)
+
+### A Dependabot `uv` pull request is completed by an owner
+
+- **`CONTRIBUTING.md` says an owner commits the `uv-export` hook's output
+  before such a pull request lands** (closes #1158).
+
+### The changelog is written at release time
+
+- **`CONTRIBUTING.md`, `REVIEWING.md`, the issue forms and `RELEASING.md`
+  follow the organization standard** (issue btclib-org/.github#1623);
+  `CLAUDE.md` points to `CONTRIBUTING.md` (issue btclib-org/.github#1630).
+
+### The author resolves a review thread once answered
+
+- **`CONTRIBUTING.md` and `REVIEWING.md` say so** (issue
+  btclib-org/.github#1620, issue btclib-org/.github#1634).
+
+### `RELEASING.md` runs the dependents' suites before the tag
+
+- **It also reads the tag back from the API** (issue
+  btclib-org/.github#1647, issue btclib-org/.github#1660).
+
+### `tag-integrity` refuses an unsigned commit, not an unsigned tag
+
+- **`REPOSITORY.md` says what the rule refuses** (issue
+  btclib-org/.github#1635).
+
+### The unquoted-placeholder comment is rewrapped
+
+- **`.pre-commit-config.yaml`'s comment is rewrapped at the block's
+  width** (closes #1147).
 
 ### The maintainer's bypass is for emergencies only
 

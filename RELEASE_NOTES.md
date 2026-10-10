@@ -5,7 +5,13 @@ release is in [CHANGELOG.md](./CHANGELOG.md); what follows is what a user
 has to act on and what a user gains, and it is what the GitHub release of
 a tag is generated from.
 
-## v0.8.0.11 (work in progress, not released yet)
+## v0.8.0.11
+
+- **`zkp.ecdsa_adaptor` wraps libsecp256k1-zkp's ECDSA adaptor
+  signatures**: `encrypt`, `verify`, `decrypt` and `recover`. Like the
+  other `zkp` modules it needs the extension built with
+  `BTCLIB_LIBSECP256K1_ZKP=true`, which no published wheel carries.
+  `encrypt` verifies its own result unless `verify=False`.
 
 ## v0.8.0.10
 
