@@ -80,6 +80,9 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 
 <!-- markdownlint-enable MD013 -->
 
+A merge through the maintainer's bypass waits for none of these
+checks, as `CONTRIBUTING.md`'s *Landing it* says.
+
 `codeql: every job passed` is not among them, and its absence is a
 decision rather than an impossibility: `codeql.yml` runs on a pull
 request and produces that aggregate, so naming it here is a patch to this
@@ -382,10 +385,10 @@ pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off** — an administrator can bypass all of it, matching
 another repository in the organization now and for the same reason: the
 author cannot approve their own pull request, GitHub refusing
-self-approval, so the admin bypass is the way past the review when
-nobody else can give it. Every pull request lands with an approving
-review from somebody other than its author, and the bypass is used only
-in an emergency.
+self-approval, so the admin bypass is the way past the review.
+[`GOVERNANCE.md`](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md)'s
+*How a decision is made* says when the maintainer uses it, and
+`CONTRIBUTING.md`'s *Landing it* gives the commands.
 
 ```shell
 gh api -X DELETE \
@@ -472,14 +475,12 @@ is what lets the first be bypassed without the second going with it.
 
 **What the bypass is for is the review, and nothing else.** It is set to
 `pull_request` mode, which excuses its holder from the rule *while
-merging a pull request* and at no other time — so it answers the one
-thing the maintainer cannot give their own pull request, an approving
-review, and answers nothing further. The rule has no condition on use:
-every pull request lands with an approving review from somebody other
-than its author, and the maintainer uses the bypass only in an
-emergency. A direct push to `main` is refused for everyone, the holder
-included: outside a pull request there is no bypass to apply, and the
-rule says changes come through one.
+merging a pull request* and at no other time — so it answers a missing
+approving review, and answers nothing further. The rule has no
+condition on use: `GOVERNANCE.md`'s *How a decision is made* says when
+the maintainer uses the bypass. A direct push to `main` is refused for
+everyone, the holder included: outside a pull request there is no
+bypass to apply, and the rule says changes come through one.
 
 The ruleset also names `squash` as the only merge method it will accept,
 so that constraint is stated where the rule is and not only in the
@@ -503,8 +504,9 @@ which makes GitHub's web-flow key as good as the maintainer's.
 still carries `required_pull_request_reviews`, and what clears it for
 the maintainer is `enforce_admins` being `false` together with holding
 `admin`; the ruleset bypass alone would not be enough. Turning
-`enforce_admins` on would remove the emergency path instead, the classic
-review requirement having no bypass list to be named in.
+`enforce_admins` on would remove the maintainer's merge without an
+approval instead, the classic review requirement having no bypass list
+to be named in.
 
 **Every landing is a pull request GitHub merges**, which retires the
 question this section used to answer at length: whether the object

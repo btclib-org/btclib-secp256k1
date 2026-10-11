@@ -58,18 +58,17 @@ allows and is signed by a signer it names. `publish-testpypi` and
 passed, which is before the point of no return.
 
 **Every `gh` call here names the repository**, rather than leaving `gh`
-to resolve its `{owner}/{repo}` placeholder against whatever checkout the
-shell stands in; REPOSITORY.md's opening has the reason at length. A
+to resolve its `{owner}/{repo}` placeholder against whatever checkout
+the shell stands in; REPOSITORY.md's opening has the reason at length. A
 release is carried out from a checkout of this repository, so the
 placeholder would answer correctly for whoever follows the steps top to
 bottom, and what it does not survive is a step copied out and run
-somewhere else — the merge call under "Cutting a release" is a `gh pr merge`. A
-block making several calls names the repository once, in `repo`; a call
-standing alone in prose names it in full; a block making one call does
-either, `repo` being what keeps a path too long for the margin off the
-call itself; and a command named without the run or the pull request it
-acts on is being referred to rather than called. That no placeholder is
-left is checkable:
+somewhere else. A block making several calls names the repository once,
+in `repo`; a call standing alone in prose names it in full; a block
+making one call does either, `repo` being what keeps a path too long for
+the margin off the call itself; and a command named without the run or
+the pull request it acts on is being referred to rather than called.
+That no placeholder is left is checkable:
 
 ```shell
 grep -n 'repos/{owner}/{repo}' RELEASING.md
@@ -324,30 +323,31 @@ Then:
 
    Then merge it into `main` with a green CI. It is an ordinary pull
    request against the only branch there is, and it lands the way every
-   other one here does: squash, pressed by auto-merge once somebody other
-   than its author has approved it and the checks are in, REPOSITORY.md's
-   "Merge methods" and "Auto-merge" sections having the settings. The
-   maintainer's `pull_request`-mode bypass is used only in an emergency.
+   other one here does: squashed, by a command `CONTRIBUTING.md`'s
+   *Landing it* gives. REPOSITORY.md's "Merge methods" and "Auto-merge"
+   have the settings.
+   [`GOVERNANCE.md`](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md)'s
+   *How a decision is made* says when the maintainer lands it through
+   the `pull_request`-mode bypass.
    A direct push, fast-forwarded from the command line, is refused for
    everyone now, this pull request included: the bypass that once allowed
    it moved from `always` to `pull_request` mode, so nothing reaches
    `main` outside a pull request GitHub itself merges.
 
-   Until somebody other than its author has approved it, `gh pr merge
-   <n> --repo btclib-org/btclib-secp256k1 --squash` refuses this pull
-   request — `the base branch policy prohibits the merge`, gh's own
-   client-side mergeable check reading `REVIEW_REQUIRED` and declining
-   before it asks the server at all. Once the approval is in, that
-   command, pinned with `--match-head-commit`, or `--auto` lands it.
+   Besides the commands `CONTRIBUTING.md`'s *Landing it* gives, this
+   asks the endpoint directly, its `sha` refusing a moved head as
+   `--match-head-commit` does:
 
-   In an emergency, `--admin` lifts gh's refusal and lands it without
-   the approval; `gh api -X PUT
-   repos/btclib-org/btclib-secp256k1/pulls/<n>/merge -f
-   merge_method=squash` asks the endpoint directly. Both ask for the pair
-   REPOSITORY.md's "Branch protection" names — `enforce_admins` `false`
-   together with holding `admin`. The direct call is the one measured, on
-   0.8.0.4 (#288), which carried no approving review — only comments —
-   and landed after the plain `gh pr merge` refused it locally.
+   ```shell
+   gh api -X PUT repos/btclib-org/btclib-secp256k1/pulls/<n>/merge \
+     -f merge_method=squash -f sha=<the head the checks ran on>
+   ```
+
+   It and `--admin` ask for the pair REPOSITORY.md's "Branch protection"
+   names — `enforce_admins` `false` together with holding `admin`. The
+   direct call is the one measured, on 0.8.0.4 (#288), which carried no
+   approving review — only comments — and landed after the plain `gh pr
+   merge` refused it locally.
 
    The button used to be the wrong landing on this pull request in
    particular: it is the release commit that gets tagged, and
