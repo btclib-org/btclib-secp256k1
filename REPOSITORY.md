@@ -477,10 +477,11 @@ is what lets the first be bypassed without the second going with it.
 `pull_request` mode, which excuses its holder from the rule *while
 merging a pull request* and at no other time — so it answers a missing
 approving review, and answers nothing further. The rule has no
-condition on use: `GOVERNANCE.md`'s *How a decision is made* says when
-the maintainer uses the bypass. A direct push to `main` is refused for
-everyone, the holder included: outside a pull request there is no
-bypass to apply, and the rule says changes come through one.
+condition on use: btclib-org/.github's `GOVERNANCE.md`, *How a decision
+is made*, says when the maintainer uses the bypass. A direct push to
+`main` is refused for everyone, the holder included: outside a pull
+request there is no bypass to apply, and the rule says changes come
+through one.
 
 The ruleset also names `squash` as the only merge method it will accept,
 so that constraint is stated where the rule is and not only in the
