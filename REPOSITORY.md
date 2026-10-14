@@ -287,11 +287,11 @@ pull request.
 **PATCH the sub-endpoint, never PUT the whole protection object**: a
 partial PUT drops the reviews and the rest. And `-F`,
 not `-f`, for `strict` — `gh api`'s `-f` sends every value as a string,
-and GitHub refuses `"true"` where a boolean is declared:
+and GitHub refuses `"false"` where a boolean is declared:
 
 ```shell
 sub=branches/main/protection/required_status_checks
-gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=true \
+gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=false \
   -F 'checks[][context]=test: every job passed' \
   -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=docs / Build the documentation' \
@@ -378,8 +378,8 @@ gh api repos/btclib-org/btclib-secp256k1 --jq '.default_branch'
 # main
 ```
 
-Its protection is all read from the endpoint above: `strict` with the
-checks the table above names, one approving review with
+Its protection is all read from the endpoint above: the checks the table
+above names, with `strict` **off**, one approving review with
 `dismiss_stale_reviews`, linear history, no force
 pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off** — an administrator can bypass all of it, matching
@@ -416,6 +416,17 @@ Classic protection's own copy of the signature rule is off, the
 `main-integrity` ruleset below being what requires signatures on `main`:
 [the standard states that value for every
 repository](https://github.com/btclib-org/.github#branch-protection-and-rulesets).
+
+`strict` off means a pull request need not be up to date with `main` to
+merge; [section 11 of the organization's
+standard](https://github.com/btclib-org/.github#branch-protection-and-rulesets)
+has the ground. Read back on 2026-10-13:
+
+```shell
+sub=branches/main/protection/required_status_checks
+gh api "repos/btclib-org/btclib-secp256k1/$sub" --jq .strict
+# false
+```
 
 Protection reaches `main` and no other branch. That is a consequence of
 the branching model — `main` is the trunk, and every other branch is a
