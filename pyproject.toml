@@ -428,8 +428,8 @@ ignore = ["W003", "W009"]
 # free-threaded interpreter test.yml's CIBW_BUILD names: an older one
 # drops it from the selection. Where cibuildwheel is absent or older the
 # test reads a skip, not an error -- in the wheel test and the sdist
-# test, whose environments carry only what their own lists name -- and it
-# reads the floor out of this entry rather than restating it
+# test, neither of whose lists names it -- and it reads the floor out of
+# this entry rather than restating it
 test = [
     "cibuildwheel>=4.2.0",
     "pytest>=9.1.1",
