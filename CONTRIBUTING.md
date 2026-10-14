@@ -1398,6 +1398,7 @@ introduced and a red check nobody can act on from a branch is noise.
 | `test` | pull request, push | the wheels, the sdist, one suite cell |
 | `lint`, `docs` | pull request, push | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
+| `api-break` | pull request | — |
 | `vendored-vectors` | weekly, a pull request touching what it reads | — |
 | `codeql` | pull request, push to main, weekly | the two scanned languages |
 | `scorecard` | push to main, weekly | — |
@@ -1474,6 +1475,9 @@ Every workflow here takes `workflow_dispatch`, the gates included, except
 the only way to ask about a branch at all. Both of the jobs
 `claude-review.yml` calls into read the pull request or the comment that
 triggered them, so a manual run would start with nothing to read.
+`api-break` takes it too, and a manual run there reads no pull request: the
+called job runs on a `pull_request` event alone, so a dispatch checks only
+that the caller is well formed.
 `scorecard`'s triggers are its action's rather than this organization's:
 `ossf/scorecard-action`'s own README names
 push and schedule on the default branch as what it supports, and calls
