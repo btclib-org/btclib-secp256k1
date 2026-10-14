@@ -1043,6 +1043,29 @@ norecursedirs = ["secp256k1", "secp256k1-zkp"]
 # path left to select on. Anywhere but last is safe, and --durations=8
 # after it is what keeps it that way -- section 7 of the organization
 # standard names both flags in the addopts it gives
+#
+# no `-n auto --dist worksteal`, measured on CI (ubuntu-latest, 4 cores,
+# the static build, whole suite, medians of five alternating runs, all
+# green): 17.6s serial against 12.2s under the pool with coverage, and
+# 15.4s against 9.9s without it (three runs), each the time pytest prints
+# on its last line. The pool is faster and is not adopted yet, for what
+# adopting it needs first:
+# - `-m zkp -n auto` stops at collection, one test drawing its
+#   parametrize id from `secrets` (btclib-org/btclib-secp256k1#1175);
+# - `[tool.cibuildwheel]`'s `test-requires` would need pytest-xdist
+#   too, since addopts would carry `-n` and the wheel run could not turn
+#   it off without the plugin;
+# - the union of the three runs under xdist is not yet shown to reach 100.
+# The figures come from these commands, run in one CI job with pytest-xdist
+# declared in the test group rather than passed with --with: five pairs as
+# below and three pairs with --no-cov added. The command that re-derives
+# them, the two forms alternating, is
+#     uv run --locked --no-default-groups --group test \
+#         --with pytest-xdist pytest --cov-fail-under=0 -n 0
+#     uv run --locked --no-default-groups --group test \
+#         --with pytest-xdist pytest --cov-fail-under=0 \
+#         -n auto --dist worksteal
+# and the time to compare is the one on pytest's last line
 addopts = "-ra --strict-markers --strict-config --cov --durations=8"
 # --strict-markers is what this registers against: an unregistered
 # @pytest.mark.zkp would otherwise fail collection with no clue beyond
