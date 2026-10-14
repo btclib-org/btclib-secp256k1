@@ -436,6 +436,9 @@ test = [
     "pytest-cov>=7.1.0",
     "pytest-randomly>=5.0.0",
     "pathspec>=1.1.1",
+    # tests/secret_free_test.py, copied from btclib-org/.github, imports
+    # `override`, which `typing` has from 3.12
+    'typing_extensions>=4.4.0,<5; python_version<"3.12"',
 ]
 # the mypy hook of .pre-commit-config.yaml declares what the checked
 # files import, because it runs in its own isolated environment; running

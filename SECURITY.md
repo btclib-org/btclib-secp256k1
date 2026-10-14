@@ -69,6 +69,9 @@ affecting how these bindings drive it:
 - the build: which optional modules are compiled in, and the commit each
     vendored submodule is pinned to
 - the distributions published to PyPI and their provenance
+- an exception, a repr or a log line that prints a secret, which the
+    standard's [*A refusal carries no secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret)
+    forbids
 
 ## Security review
 
