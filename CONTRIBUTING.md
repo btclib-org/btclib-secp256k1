@@ -1369,10 +1369,12 @@ and the `lint` workflow runs that very file, so what CI enforces is what
 the local gate enforces. Never add a check that exists only in a
 workflow, and never leave a hook weaker locally than on a runner: a hook
 that needs a tool the developer may not have carries it in
-`additional_dependencies`, which is why `actionlint` ships `shellcheck-py`;
-`zizmor` reaches the same end from its own repository at a pinned `rev`,
-which pre-commit.ci moves where an `additional_dependencies` pin is moved
-by nothing, rather than from a `local` hook naming the tool by hand.
+`additional_dependencies`, as `typos` does, or takes it from its own
+repository: `actionlint-shellcheck` is the fork's id that installs
+shellcheck beside actionlint, and `zizmor` reaches the same end at a
+pinned `rev`, which pre-commit.ci moves where an `additional_dependencies`
+pin is moved by nothing, rather than from a `local` hook naming the tool by
+hand.
 `pyroma` is a `local` hook that names no version at all: it runs out of the
 `check` group through `uv run --locked`, so the version is `uv.lock`'s. A
 check discovered by CI after a push is a check in the wrong place.

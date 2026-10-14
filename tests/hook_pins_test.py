@@ -25,10 +25,10 @@ That procedure is about a hand-moved pin rather than about mypy, so every
 `additional_dependencies` pin in the file is read here and asserted
 against the lock wherever the lock resolves its package
 (btclib-org/btclib-secp256k1#779). Where it does not, the pin is the only
-declaration there is and nothing can disagree with it: `uv.lock` resolves
-neither `shellcheck-py` nor `typos`, each being a tool installed for one
-hook and declared by no dependency group, and a pin absent from the lock
-is left alone rather than failed. The mypy block keeps the stronger
+declaration there is and nothing can disagree with it: `uv.lock` does not
+resolve `typos`, a tool installed for one hook and declared by no
+dependency group, and a pin absent from the lock is left alone rather
+than failed. The mypy block keeps the stronger
 reading of the two, `test_every_mypy_pin_is_one_the_lock_resolves` below
 requiring each of its pins to be in the lock at all: they are what the
 checked files import, and the project installs those.
@@ -102,7 +102,7 @@ _PYPROJECT: dict[str, Any] = tomllib.loads(
 
 # the mypy hook's block, from its repo line to the next hook's: what
 # `test_every_mypy_pin_is_one_the_lock_resolves` reads is that hook's and
-# not another's, `shellcheck-py` being pinned one hook over
+# not another's, `typos` being pinned in another hook's block
 _MYPY_BLOCK = re.compile(
     r"^  - repo: https://github\.com/pre-commit/mirrors-mypy\n(.*?)(?=^  - repo: )",
     re.MULTILINE | re.DOTALL,

@@ -13,3 +13,14 @@
 self-hosted-runner:
   labels:
     - windows-11-vs2026-arm
+
+# kjanat/actionlint turns its cache policies on by default. The review
+# workflow calls a reusable workflow from an issue_comment trigger without
+# a `cache-mode`, which cache-call-unrestricted reports. The callee has no
+# cache step, so the finding is silenced for that one file.
+# btclib-org/.github#1717 replaced this file there with `cache-mode: none`
+# on that job. This tree takes that change in a pull request of its own.
+paths:
+  .github/workflows/claude-review.yml:
+    ignore:
+      - 'reusable workflow call ".+" has no explicit cache access limit'
