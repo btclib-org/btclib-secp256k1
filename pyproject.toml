@@ -1050,11 +1050,12 @@ norecursedirs = ["secp256k1", "secp256k1-zkp"]
 # 15.4s against 9.9s without it (three runs), each the time pytest prints
 # on its last line. The pool is faster and is not adopted yet, for what
 # adopting it needs first:
-# - `-m zkp -n auto` stops at collection, one test drawing its
-#   parametrize id from `secrets` (btclib-org/btclib-secp256k1#1175);
-# - `[tool.cibuildwheel]`'s `test-requires` would need pytest-xdist
-#   too, since addopts would carry `-n` and the wheel run could not turn
-#   it off without the plugin;
+# - `-m zkp -n auto` must collect the same tests in every worker, which
+#   is what btclib-org/btclib-secp256k1#1175 asks for: a parametrize id
+#   drawn from `secrets` makes the workers collect different tests;
+# - `[tool.cibuildwheel]` would need pytest-xdist in `test-requires`,
+#   or an `-o addopts=` override in `test-command`, since pytest
+#   refuses the `-n` that addopts would carry where the plugin is absent;
 # - the union of the three runs under xdist is not yet shown to reach 100.
 # The figures come from these commands, run in one CI job with pytest-xdist
 # declared in the test group rather than passed with --with: five pairs as
