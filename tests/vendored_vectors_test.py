@@ -1355,3 +1355,126 @@ def test_every_file_the_readme_names_is_marked_minus_text() -> None:
 
     assert pins
     assert [pin.local for pin in pins if f"{pin.local} -text" not in marked] == []
+
+
+def _failing_gh(
+    monkeypatch: pytest.MonkeyPatch, stderrs: list[str]
+) -> tuple[list[list[str]], list[int]]:
+    """Make `gh` fail with each of `stderrs` in turn, then answer `[]`.
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` and `time.sleep` are
+            replaced through.
+        stderrs: what each failing call prints, in order.
+
+    Returns:
+        The argv of every call and the seconds slept between them.
+    """
+    calls: list[list[str]] = []
+    slept: list[int] = []
+
+    def run(argv: list[str], **_kwargs: Any) -> SimpleNamespace:
+        calls.append(argv)
+        if len(calls) <= len(stderrs):
+            raise check.subprocess.CalledProcessError(
+                1, argv, stderr=stderrs[len(calls) - 1]
+            )
+        return SimpleNamespace(stdout="[]")
+
+    monkeypatch.setattr(check.subprocess, "run", run)
+    monkeypatch.setattr(check.time, "sleep", slept.append)
+    return calls, slept
+
+
+@pytest.mark.parametrize(
+    "stderr",
+    [
+        "gh: Not Found (HTTP 404)\n",
+        "gh: API rate limit exceeded for user ID 1. (HTTP 403)\n",
+        "gh: You have exceeded a secondary rate limit (HTTP 403)\n",
+    ],
+)
+def test_a_failed_gh_call_prints_its_stderr_and_is_not_retried_unless_a_server_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    stderr: str,
+) -> None:
+    """A 404 and both rate limits are final: gh's words reach stderr.
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+        capsys: the captured streams.
+        stderr: what the failing call prints.
+    """
+    calls, slept = _failing_gh(monkeypatch, [stderr])
+
+    with pytest.raises(check.subprocess.CalledProcessError):
+        check._latest_commit("r", "p")
+
+    assert stderr.strip() in capsys.readouterr().err
+    assert len(calls) == 1
+    assert slept == []
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda: check._upstream_blob("r", "d/p", "c0ffee0"),
+        lambda: check._open_issue_number("A title"),
+    ],
+    ids=["trees", "issue-list"],
+)
+def test_every_gh_call_that_captures_prints_its_stderr(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    call: Any,
+) -> None:
+    """The trees call and the issue lookup go through the same helper.
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+        capsys: the captured streams.
+        call: the function under test, with its arguments bound.
+    """
+    stderr = "gh: Not Found (HTTP 404)"
+    _failing_gh(monkeypatch, [stderr])
+
+    with pytest.raises(check.subprocess.CalledProcessError):
+        call()
+
+    assert stderr in capsys.readouterr().err
+
+
+def test_a_server_error_is_retried_and_the_retry_answers(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A 5xx is waited out, and each failure is printed.
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+        capsys: the captured streams.
+    """
+    stderr = "gh: Bad Gateway (HTTP 502)\n"
+    calls, slept = _failing_gh(monkeypatch, [stderr, stderr])
+
+    assert check._latest_commit("r", "p") is None
+
+    assert len(calls) == 3
+    assert slept == [5, 10]
+    assert capsys.readouterr().err.count(stderr.strip()) == 2
+
+
+def test_a_server_error_that_persists_is_raised_after_the_last_attempt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Three attempts in all, and then the error is the caller's.
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+    """
+    calls, _ = _failing_gh(monkeypatch, ["gh: Bad Gateway (HTTP 502)\n"] * 4)
+
+    with pytest.raises(check.subprocess.CalledProcessError):
+        check._latest_commit("r", "p")
+
+    assert len(calls) == 3
