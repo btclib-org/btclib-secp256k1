@@ -12,17 +12,12 @@ every planted case has to fail.
 
 from __future__ import annotations
 
-import sys
 from typing import TYPE_CHECKING
 
 import pytest
+from typing_extensions import override
 
 from .secret_free import assert_secret_free, chained
-
-if sys.version_info >= (3, 12):
-    from typing import override
-else:
-    from typing_extensions import override
 
 if TYPE_CHECKING:
     from collections.abc import Callable

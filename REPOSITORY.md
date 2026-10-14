@@ -700,6 +700,8 @@ SARIF as code scanning alerts. `vendored-vectors.yml` takes `issues:
 write` on the job that calls the workflow opening the drift issue, and
 that workflow's header says why it takes a step the other sentinels
 deliberately do not.
+`api-break.yml` holds `pull-requests: write` on its one calling job, for the
+label the called workflow sets; it is read-only on a fork's pull request.
 
 One elevation per job is the shape to keep — the job that writes
 releases holds no OIDC token, and the job that signs writes no release.
@@ -719,8 +721,6 @@ on its one calling job, where only the first is a write of that job's:
 the action the called workflow runs mints a GitHub OIDC token during
 its own startup whatever the Anthropic credential is, and without it
 the run dies before reaching authentication at all.
-`api-break.yml` holds `pull-requests: write` on its one calling job, for the
-label the called workflow sets; it is read-only on a fork's pull request.
 
 What the call above cannot say is whether either value is this
 repository's own or the organization's, no endpoint reporting an

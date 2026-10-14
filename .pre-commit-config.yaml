@@ -645,8 +645,7 @@ repos:
         # in strict mode an unresolved import is an error, and mypy runs
         # in its own isolated environment: what the checked files import
         # has to be declared here.
-        # Pinned, for the reason spelled out on the shellcheck-py pin
-        # below and with more at stake: unpinned, pre-commit resolves
+        # Pinned: unpinned, pre-commit resolves
         # these once, when it builds the hook environment, and then keeps
         # that environment, so the versions are whatever the index held
         # the day the environment was built — months ago on a developer's
@@ -737,7 +736,10 @@ repos:
   #
   # The test data of a signing library is private keys by the hundred,
   # published upstream and vendored here to be compared against. Nothing
-  # is excluded from the scan — an exclusion would make those files blind
+  # is excluded from the scan but a `rev:` line holding a 40-hex sha, by
+  # the line filter in .secrets.baseline: a frozen hook rev trips the
+  # hex detector, and a pragma on it is lost on every weekly bump. Any
+  # other exclusion would make those files blind
   # for good, and the difference is not theoretical: an AWS key planted in
   # one of them was not seen while they were excluded, and is seen now.
   #
@@ -746,8 +748,8 @@ repos:
   #
   # - the tree runs every plugin, the two entropy detectors included. Those
   #   are the ones worth having where the free plan gives no generic secret
-  #   scanning at all, and outside the vendored data they cost 38 findings,
-  #   reviewed once: 37 hex constants written inline in two test files, and
+  #   scanning at all, and outside the vendored data they cost findings,
+  #   reviewed once: hex constants written inline in test files, and
   #   a CMake flag the base64 detector reads as a secret;
   # - the vendored vector data runs the same plugins with the entropy pair
   #   off. Those files are 64-character hex and nothing else, so with the

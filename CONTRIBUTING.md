@@ -505,7 +505,9 @@ before opening the pull request.
 Two hooks are regenerated rather than fixed when they fail. The test data
 is private keys, so `detect-secrets` would report all of it; the known
 findings are recorded as reviewed rather than excluded, in two baselines
-that differ only in whether the entropy detectors run. Adding a hex
+that differ only in whether the entropy detectors run. The one exception
+is a line filter in `.secrets.baseline` for a `rev:` line holding a
+40-hex sha, which a frozen hook revision would otherwise trip. Adding a hex
 constant to a test module, or a vector to a file under `tests/` matching
 `*.csv` or `*.json`, fails the corresponding hook until its baseline is
 regenerated.
@@ -515,12 +517,13 @@ detectors on. `--slim` omits `line_number` and `generated_at`, so the
 file stops changing when a flagged line moves; the scan is fresh rather
 than `--baseline`, which writes the full form whatever it read —
 `--slim` reaches `format_for_output` only on the branch that prints to
-stdout — so the exclusion is spelled out rather than read back from the
-baseline's own filter:
+stdout — so the file exclusion and the `rev:` line filter are spelled out
+rather than read back from the baseline's own filters:
 
 ```shell
 uvx --from detect-secrets detect-secrets scan --slim \
     --exclude-files '^(\.secrets\..*baseline|tests/.*\.(csv|json))$' \
+    --exclude-lines '^\s*rev: "?[0-9a-f]{40}"?(\s|$)' \
     > .secrets.baseline
 ```
 
@@ -1475,9 +1478,6 @@ Every workflow here takes `workflow_dispatch`, the gates included, except
 the only way to ask about a branch at all. Both of the jobs
 `claude-review.yml` calls into read the pull request or the comment that
 triggered them, so a manual run would start with nothing to read.
-`api-break` takes it too, and a manual run there reads no pull request: the
-called job runs on a `pull_request` event alone, so a dispatch checks only
-that the caller is well formed.
 `scorecard`'s triggers are its action's rather than this organization's:
 `ossf/scorecard-action`'s own README names
 push and schedule on the default branch as what it supports, and calls
