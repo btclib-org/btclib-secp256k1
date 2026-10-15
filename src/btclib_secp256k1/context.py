@@ -156,9 +156,10 @@ def _checked(call: Callable[..., int], *args: object) -> int:
     """Make a libsecp256k1 call, and raise what it reports during it.
 
     For a call whose return code does not say that libsecp256k1 refused
-    an object: `secp256k1_ec_pubkey_combine` and `secp256k1_ecdh` report
-    a `secp256k1_pubkey` they cannot read through the illegal callback,
-    then go on computing with it and can return 1. Reading the callback
+    an object: `secp256k1_ec_pubkey_combine`, `secp256k1_ec_pubkey_sort`
+    and `secp256k1_ecdh` report a `secp256k1_pubkey` they cannot read
+    through the illegal callback, then go on computing with it and can
+    return 1. Reading the callback
     rather than the return code is also right where libsecp256k1 returns
     0 for it.
 

@@ -10,8 +10,8 @@ here. That `check` itself reports, clears and attributes per thread;
 that a wrapper handed an object libsecp256k1 cannot read answers
 *something* -- its own exception where a return code allowed one, and
 otherwise a value that means nothing -- while leaving the reason on the
-thread for a `check` that follows; and that the sums and the ECDH raise
-the reason instead, leaving the thread as they found it.
+thread for a `check` that follows; and that the sums, the sort and the
+ECDH raise the reason instead, leaving the thread as they found it.
 
 The second part is the contract a caller has to know, so each of its
 shapes is driven rather than described: a raise whose message is the
@@ -234,10 +234,12 @@ def _generator() -> CData:
 
 # the wrappers that read the illegal callback themselves, each handed a
 # `secp256k1_pubkey` nothing has written to or a NULL pointer, and the
-# message libsecp256k1 reports for it. The sums take the first beside
-# the generator: libsecp256k1 adds the unreadable key in anyway and
-# answers a point. A NULL pointer makes `secp256k1_ecdh` return 0, which
-# alone would read as a refused private key
+# message libsecp256k1 reports for it. The sums and the sort take the
+# first beside the generator: libsecp256k1 goes on with the unreadable
+# key and answers a point or an ordering. The sort reads no key of a
+# list of one, so that case is driven alone. A NULL pointer makes
+# `secp256k1_ecdh` return 0, which alone would read as a refused private
+# key
 _UNREADABLE = "illegal argument: !secp256k1_fe_is_zero"
 _RAISING_WRAPPERS: dict[str, tuple[Callable[[], object], str]] = {
     "ecdh._shared_secret_ of NULL": (
@@ -256,6 +258,18 @@ _RAISING_WRAPPERS: dict[str, tuple[Callable[[], object], str]] = {
         lambda: keys._pubkey_combine_([_refused("secp256k1_pubkey"), _generator()]),
         _UNREADABLE,
     ),
+    "keys._pubkey_sort_": (
+        lambda: keys._pubkey_sort_([_refused("secp256k1_pubkey"), _generator()]),
+        _UNREADABLE,
+    ),
+    "keys._pubkey_sort_ of one": (
+        lambda: keys._pubkey_sort_([_refused("secp256k1_pubkey")]),
+        _UNREADABLE,
+    ),
+    "keys._pubkey_sort_ of NULL": (
+        lambda: keys._pubkey_sort_([_generator(), ffi.NULL]),
+        r"illegal argument: pubkeys\[i\] != NULL",
+    ),
     "keys._pubkey_sum_": (
         lambda: keys._pubkey_sum_([_refused("secp256k1_pubkey"), _generator()]),
         _UNREADABLE,
@@ -269,12 +283,13 @@ _RAISING_WRAPPERS: dict[str, tuple[Callable[[], object], str]] = {
 
 @pytest.mark.parametrize("name", sorted(_RAISING_WRAPPERS))
 def test_an_unreadable_key_raises_libsecp256k1s_reason(name: str) -> None:
-    """The sums and the ECDH raise the reason, and leave the thread clean.
+    """The sums, sort and ECDH raise the reason, and leave the thread clean.
 
     Each of these calls goes on computing with a key it cannot read, so
-    the answer it would return looks like any other: a point, or 32
-    bytes. The raise is what tells the caller, and the `check` after it
-    returning shows the message was not also left on the thread.
+    the answer it would return looks like any other: a point, an
+    ordering or 32 bytes. The raise is what tells the caller, and the
+    `check` after it returning shows the message was not also left on
+    the thread.
     """
     call, message = _RAISING_WRAPPERS[name]
     with pytest.raises(ValueError, match=message):
@@ -443,10 +458,6 @@ _REFUSING_WRAPPERS: dict[str, tuple[Callable[[], object], str]] = {
     "keys._pubkey_negate_": (
         lambda: keys._pubkey_negate_(_refused("secp256k1_pubkey")),
         "public key negation failed",
-    ),
-    "keys._pubkey_sort_": (
-        lambda: keys._pubkey_sort_([ffi.NULL, ffi.NULL]),
-        "public key sorting failed",
     ),
     "musig.pubnonce_serialize": (
         lambda: musig.pubnonce_serialize(_refused("secp256k1_musig_pubnonce")),
