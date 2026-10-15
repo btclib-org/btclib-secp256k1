@@ -30,18 +30,16 @@ libsecp256k1 cannot use answers whatever that call answers: its own
 exception where a return code allowed one, and otherwise a `False` or an
 ordering that mean nothing. `context.check` immediately after the call
 is what says so, and the public entry point above is the one with no
-such case, having parsed the octets itself. The README's *Parsing the
-key once* names the private halves that read the callback and raise
-what it reports. The trailing one says
-which kind of
-private, `_verify_` taking a parsed key where `_parse_der` is an
-ordinary helper. `foo` is `_foo_` with a parse in front of it, a
+such case, having parsed the octets itself. The trailing one says
+which kind of private, `_verify_` taking a parsed key where `_parse_der`
+is an ordinary helper. `foo` is `_foo_` with a parse in front of it, a
 serialize behind it, or both, which is the equality
 `tests/parsed_keys_test.py` holds every pair to; what the private half
 saves is what composing two public ones pays between them, a
 serialization of a point that was already in hand and a parse of what
 was just serialized -- and for a compressed key that parse is a field
-square root.
+square root. The README's *Parsing the key once* names the private
+halves that read the callback and raise what it reports.
 """
 
 from typing import TYPE_CHECKING, Any

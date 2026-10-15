@@ -57,12 +57,13 @@ def _record_illegal(message: CData, data: CData) -> None:  # noqa: ARG001
 
 # libsecp256k1 reports a violated precondition (an illegal argument, an
 # object in an invalid state) through the illegal callback, and most
-# calls then return 0; `_checked` below names the ones that do not. Its
-# abort()ing default is replaced, in the vendored build, by a
-# stub that does nothing: that keeps an illegal argument from taking the
-# hosting process down, but leaves the caller with a bare return code and
-# no reason for it. On the shared context the callback instead records what was
-# reported, so that check() can raise it. The reference to the cffi
+# calls then return 0; some do not, and `_checked` below is for the ones
+# whose result a caller would then trust. The callback's abort()ing
+# default is replaced, in the vendored build, by a stub that does
+# nothing: that keeps an illegal argument from taking the hosting
+# process down, but leaves the caller with a bare return code and no
+# reason for it. On the shared context the callback instead records what
+# was reported, so that check() can raise it. The reference to the cffi
 # callback has to outlive the context, hence the module level name.
 #
 # An internal error is different news: it means the library itself
