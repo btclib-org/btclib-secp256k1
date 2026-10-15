@@ -299,11 +299,16 @@ exposed to, and what counters each.
   section 7's *A refusal carries no secret* in
   [btclib-org/.github](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret),
   and `tests/secret_free/__init__.py`'s `assert_secret_free` is its test.
-  `tests/secret_free_test.py`, which tests the helper, calls it, as do
+  `tests/secret_free_test.py` tests the helper.
+  `tests/secret_free_refusals_test.py` and `tests/zkp_secret_free_test.py`
+  feed a secret, in the wrong ways their tables list, to each parameter
+  that takes a private key, a tweak, a nonce, a blinding factor, a
+  decryption key or an adaptor secret, and pass each refusal to
+  `assert_secret_free`. They also pass it some refusals a good secret
+  reaches, and some of a secret put where a public value belongs.
   `tests/secret_free_reprs_test.py` and
-  `tests/zkp_secret_free_reprs_test.py`, which read the repr and str of
-  each class that holds a secret: no test of a refusal here does yet
-  (btclib-org/btclib-secp256k1#1177).
+  `tests/zkp_secret_free_reprs_test.py` pass it the repr and str of each
+  class that holds a secret.
 - **Race condition (CWE-362).** `musig.SecretNonce` is read and cleared
   under a lock of its own, and `btclib_secp256k1.zkp`'s deferred context
   build is guarded the same way, so two threads racing either cannot
