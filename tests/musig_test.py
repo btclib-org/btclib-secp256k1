@@ -26,13 +26,18 @@ import hashlib
 import inspect
 import pickle
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 
-from btclib_secp256k1 import ffi, keys, lib, musig, ssa
+from btclib_secp256k1 import _secret, ffi, keys, lib, musig, ssa
 from btclib_secp256k1.context import check, ctx
 
+from .secret_free import assert_secret_free
+
 PRVKEYS = [(1).to_bytes(32, "big"), (2).to_bytes(32, "big")]
+# fixed, as the helper asks: a wrong private key, valid with overwhelming odds
+WRONG = hashlib.sha256(b"btclib_secp256k1 musig wrong key").digest()
 PUBKEYS = [keys.pubkey_from_prvkey(prvkey) for prvkey in PRVKEYS]
 MSG = hashlib.sha256(b"btclib_secp256k1 musig").digest()
 TWEAK = hashlib.sha256(b"btclib_secp256k1 musig tweak").digest()
@@ -322,48 +327,91 @@ def test_partial_sig_verify_answers_false_for_a_wrong_signature() -> None:
     )
 
 
-def test_partial_sign_refuses_a_mismatched_private_key() -> None:
+def test_partial_sign_refuses_a_mismatched_private_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A secnonce signs only for the keypair `nonce_gen` built it for.
 
-    libsecp256k1 checks the match through an ARG_CHECK and reports a
-    bare 0 for it, which is conflated here with every other reason
-    `partial_sign` can fail -- the module docstring's own point about a
-    wrapper unable to tell them apart. What is asserted is that it is
-    refused, and that the secret nonce is spent regardless, as it is for
-    a signature that succeeds.
+    `partial_sign` compares the keypair's public key with the one the
+    `SecretNonce` holds and refuses before libsecp256k1 signs, so the
+    library's own ARG_CHECK on the match is never reached and
+    `context.check()` has nothing to report. What is asserted is that
+    refusal, that the secret nonce is spent regardless, as it is for a
+    signature that succeeds, and that the message names no key.
     """
     cache, secnonces, session = two_of_two_session()
-    with pytest.raises(ValueError, match="do not match this secret nonce"):
-        secnonces[0].partial_sign(PRVKEYS[1], cache, session)
+    held = secnonces[0]._secnonce
+    assert held is not None
+    built: list[Any] = []
+    real_keypair = _secret.keypair
+
+    def recording_keypair(*args: Any) -> Any:
+        built.append(real_keypair(*args))
+        return built[-1]
+
+    monkeypatch.setattr(musig, "keypair", recording_keypair)
+    with pytest.raises(ValueError, match="private key does not match") as excinfo:
+        secnonces[0].partial_sign(WRONG, cache, session)
     assert secnonce_memory(secnonces[0]) == b""
-    # the mismatch is an ARG_CHECK, so it recorded an illegal argument on
-    # this thread that nothing here read: drained so it is not raised by
-    # a later, unrelated call to context.check(), as its own docstring
-    # asks of a caller reaching an ARG_CHECK through anything but `lib`
-    with pytest.raises(ValueError, match="secp256k1_fe_equal"):
-        check()
-    check()  # and now the thread is clean
+    # the native buffer, which the line above cannot see
+    assert not any(bytes(ffi.buffer(held)))
+    # the keypair holds the private key, and is overwritten as well
+    assert len(built) == 1
+    assert not any(bytes(ffi.buffer(built[0])))
+    assert_secret_free(excinfo.value, [WRONG, str(int.from_bytes(WRONG, "big"))])
+    check()  # silent: the library was not asked
+    with pytest.raises(ValueError, match="wiped or already spent"):
+        secnonces[0].partial_sign(PRVKEYS[0], cache, session)
+
+
+@pytest.mark.parametrize("zeroed", ["cache", "session"])
+def test_partial_sign_refuses_a_cache_or_session_libsecp256k1_cannot_read(
+    zeroed: str,
+) -> None:
+    """The library refusing the call is still a `ValueError`, nonce wiped.
+
+    Zeroed memory is a key aggregation cache or a session without its
+    magic, which libsecp256k1 reports through an ARG_CHECK and a bare 0:
+    the one refusal left for it to make once the key is checked here.
+    """
+    cache, secnonces, session = two_of_two_session()
+    native = secnonces[0]._secnonce
+    assert native is not None
+    held = cache._cache_() if zeroed == "cache" else session._session_()
+    ffi.buffer(held)[:] = bytes(len(ffi.buffer(held)))
+    with pytest.raises(ValueError, match="do not match this secret nonce"):
+        secnonces[0].partial_sign(PRVKEYS[0], cache, session)
+    assert secnonce_memory(secnonces[0]) == b""
+    # the native buffer, which the line above cannot see
+    assert not any(bytes(ffi.buffer(native)))
+    with pytest.raises(ValueError, match="_magic"):
+        check()  # the ARG_CHECK this recorded, drained
+    check()
 
 
 def test_partial_sign_wipes_the_secret_nonce_even_when_keypair_raises() -> None:
     """A private key `keypair` refuses spends the nonce just the same.
 
-    `keypair(prvkey)` is the one fallible step of `partial_sign` that
-    runs before libsecp256k1 ever sees the secret nonce -- an ordinary,
+    `keypair(prvkey)` is a fallible step of `partial_sign` that runs
+    before libsecp256k1 ever sees the secret nonce -- an ordinary,
     documented failure, a caller's malformed or out-of-range private key
     -- and the class docstring's guarantee does not carve out an
     exception for it: "whatever the outcome... the secret nonce this
     holds does not survive the call." What is asserted is that same
-    triple as the mismatch test above, for a refusal that happens before
-    the C call rather than inside it: the exception, the zeroed memory,
+    triple as the mismatch test above, for a key refused while the
+    keypair is built: the exception, the zeroed memory,
     and a `SecretNonce` that refuses to sign again rather than being
     retried with a corrected key -- which is the nonce reuse this class
     exists to refuse in the first place.
     """
     cache, secnonces, session = two_of_two_session()
+    held = secnonces[0]._secnonce
+    assert held is not None
     with pytest.raises(ValueError, match="private key"):
         secnonces[0].partial_sign(0, cache, session)
     assert secnonce_memory(secnonces[0]) == b""
+    # the native buffer, which the line above cannot see
+    assert not any(bytes(ffi.buffer(held)))
     with pytest.raises(ValueError, match="wiped or already spent"):
         secnonces[0].partial_sign(PRVKEYS[0], cache, session)
 
