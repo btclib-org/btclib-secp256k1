@@ -130,10 +130,8 @@ _UNMEASURED_AFTER_MERGE = tuple(
 # asking a question about the pull request rather than measuring the
 # commit a merge lands. What the closed event cancels there is a verdict
 # on a pull request that has stopped taking changes, so cancelling it
-# loses nothing and is what the closed type is taken for (#591).
-# api-break.yml is the same: its label is about the pull request, and the
-# closed event only supersedes a run nobody will read
-_ANSWERS_ABOUT_THE_PULL_REQUEST = ("claude-review.yml", "api-break.yml")
+# loses nothing and is what the closed type is taken for (#591)
+_ANSWERS_ABOUT_THE_PULL_REQUEST = ("claude-review.yml",)
 
 
 def test_each_trigger_shape_was_read() -> None:

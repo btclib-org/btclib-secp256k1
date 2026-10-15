@@ -16,9 +16,11 @@ on:
   pull_request:
     # the types claude-review.yml and links.yml give, for their reasons:
     # ready_for_review so a pull request marked ready gets the run the
-    # callee withheld while it was a draft, closed so a merge or a close
-    # lands in the pull request's own concurrency group and supersedes a
-    # run nobody will read. The callee declines a closed event itself.
+    # callee withheld while it was a draft, closed so a close without a
+    # merge lands in the pull request's own concurrency group and
+    # supersedes a run nobody will read. A merge does not cancel the run
+    # in flight, for the reasons the concurrency group below gives. The
+    # callee declines a closed event itself.
     types: [opened, reopened, synchronize, ready_for_review, closed]
   # the way to run it on a branch with no pull request. The callee runs
   # its job on a pull_request event alone, so a dispatch only shows the
@@ -31,10 +33,13 @@ permissions:
 
 # named literally rather than through github.workflow, as everywhere else
 # here, and keyed on the pull request's own number so the closed event
-# lands in the group of the run it supersedes
+# lands in the group of the run it supersedes. A merged pull request's
+# closed run does not cancel the run in flight, for the reasons links.yml
+# gives beside its own group: nothing here runs on the commit a merge
+# creates, and the run in flight is what sets the label
 concurrency:
   group: api-break-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
 
 jobs:
   # `pull-requests: write` is what setting the label takes, and
