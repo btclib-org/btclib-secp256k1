@@ -1132,7 +1132,9 @@ it would do the opposite -- a python call per 64-byte block, in the
 innermost loop of every hash the library computes -- so what it is for is
 unreachable through these bindings and what it would be is a way to make
 them slow. It remains available through `lib` for a caller who has a C
-function pointer to give it.
+function pointer to give it. The function that pointer names processes
+secrets such as secret keys, so it must run in constant time with
+respect to its input and must not keep or log it.
 
 MuSig2 is wrapped, in `musig`. What its two-round protocol needs is a
 session whose secret nonce cannot be reused, and that is a property of
