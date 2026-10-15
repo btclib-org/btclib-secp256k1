@@ -114,6 +114,10 @@ jobs:
   # repository holds, which is what zizmor's secrets-inherit audit
   # flags, and there is exactly one secret to pass.
   claude-review:
+    # the callee has no cache step, and `none` keeps it so: a run started
+    # by a comment gets no cache access, which is what actionlint's
+    # cache-call-unrestricted asks for
+    cache-mode: none
     permissions:
       contents: read
       pull-requests: write # posting the review, and the reply to a mention
