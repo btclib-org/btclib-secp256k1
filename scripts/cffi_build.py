@@ -309,6 +309,116 @@ def _cmake_build_type(env: Mapping[str, str]) -> str:
     return env.get("CMAKE_BUILD_TYPE", "Release")
 
 
+def _hardening_options(
+    system: str, machine: str, cross: bool
+) -> tuple[list[str], list[str]]:
+    """Return the compile and link flags that harden the native code.
+
+    The same flags go to the vendored library CMake builds and to the
+    glue compiled beside it, so that the wheel carries the properties
+    `.github/scripts/verify_wheel_contents.py` reads back. What each
+    platform gets, and why the others do not:
+
+    - Linux: `-fstack-protector-strong`, `-D_FORTIFY_SOURCE=2`, and
+      `-fcf-protection=full` on x86_64 or `-mbranch-protection=standard`
+      on aarch64, linked with `-z relro -z now`. `-U` comes first
+      because a distribution's compiler may predefine the macro at
+      another level.
+    - macOS: `-fstack-protector-strong` and `-D_FORTIFY_SOURCE=2`. A
+      Mach-O file has no `relro`, `now` or marking to read back, and
+      Apple's compiler rejects `-mbranch-protection` for an x86_64
+      target.
+    - Windows, MSVC: `/GS` and `/guard:cf`, linked with `/GUARD:CF`.
+    - Windows, cross-compiled with mingw-w64: no compile flag, because
+      the stack protector would link a `libssp` DLL; the DLL is linked
+      for address space layout randomization, DEP and high entropy.
+
+    Args:
+        system: the platform being built for, as `platform.system()`
+            spells it.
+        machine: the architecture, as `platform.machine()` spells it.
+        cross: whether the build is the mingw-w64 cross-compilation.
+
+    Returns:
+        `(compile flags, link flags)`.
+    """
+    if system == "Windows":
+        if cross:
+            return [], ["-Wl,--dynamicbase", "-Wl,--nxcompat", "-Wl,--high-entropy-va"]
+        return ["/GS", "/guard:cf"], ["/GUARD:CF"]
+    cflags = ["-fstack-protector-strong", "-U_FORTIFY_SOURCE", "-D_FORTIFY_SOURCE=2"]
+    if system != "Linux":
+        return cflags, []
+    if machine.lower() in {"x86_64", "amd64"}:
+        cflags.append("-fcf-protection=full")
+    elif machine.lower() in {"aarch64", "arm64"}:
+        cflags.append("-mbranch-protection=standard")
+    return cflags, ["-Wl,-z,relro", "-Wl,-z,now"]
+
+
+def _link_command(  # noqa: PLR0913, PLR0917
+    ldshared: list[str],
+    hardening: list[str],
+    objects: list[str],
+    search: list[str],
+    libraries: list[str],
+    extra: list[str],
+    output: str,
+) -> list[str]:
+    """Compose the glue's link command.
+
+    The hardening flags come before `ldshared[1:]`, which holds the
+    caller's `LDFLAGS`, so that a caller's own flag follows them and wins.
+
+    Args:
+        ldshared: the linker and its flags, from `_customized_compile_link`.
+        hardening: the link flags `_hardening_options` returned.
+        objects: the object files to link.
+        search: the `-L` options.
+        libraries: the `-l` options.
+        extra: platform options that go after the libraries.
+        output: the file to write.
+
+    Returns:
+        The argv.
+    """
+    return [
+        ldshared[0],
+        *objects,
+        *hardening,
+        *ldshared[1:],
+        *search,
+        *libraries,
+        *extra,
+        "-o",
+        output,
+    ]
+
+
+def _hardened_environment(
+    env: Mapping[str, str], cflags: list[str], ldflags: list[str]
+) -> dict[str, str]:
+    """Return `env` with the hardening flags in front of `CFLAGS` and `LDFLAGS`.
+
+    CMake reads both variables once, on the first configure, as the
+    initial `CMAKE_C_FLAGS` and linker flags, which is how the flags
+    reach the vendored library without a cache entry that would hide
+    the caller's own.
+
+    Args:
+        env: the environment to extend.
+        cflags: the compile flags `_hardening_options` returned.
+        ldflags: the link flags it returned.
+
+    Returns:
+        A copy of `env`, the flags first and the caller's after them.
+    """
+    result = dict(env)
+    for name, flags in (("CFLAGS", cflags), ("LDFLAGS", ldflags)):
+        result[name] = " ".join([*flags, *([env[name]] if env.get(name) else [])])
+    return result
+
+
 # every subprocess call below drives the vendored CMake build with
 # argument lists assembled here: no shell, no untrusted input. The
 # executables (cmake, cc) are looked up on PATH, as a build from source
@@ -406,12 +516,16 @@ class FFIExtension:
         # setuptools/MSVC toolchain instead of the manual Unix one;
         # SECP256K1_STATIC selects the static-consumer declarations
         # in the header
+        hardening_compile, hardening_link = _hardening_options(
+            self.platform, platform.machine(), cross_compile
+        )
         ffi.set_source(
             self.name,
             ffi_header,
             library_dirs=[str(d) for d in self.library_dirs],
             libraries=self.libraries,
             define_macros=[("SECP256K1_STATIC", "1")],
+            extra_compile_args=hardening_compile,
             # link.exe's own TimeDateStamp for the PE it emits is the
             # moment that link ran, freshly generated on every
             # invocation regardless of what any input object or archive
@@ -430,7 +544,7 @@ class FFIExtension:
             # image's TimeDateStamp is link.exe's alone to set, never
             # copied from an input .obj or from the static
             # libsecp256k1.lib CMake produces, so extra_compile_args
-            # carries nothing here. The second candidate #510 named, the
+            # carries no /Brepro. The second candidate #510 named, the
             # CodeView debug directory's GUID, is not in play either
             # under the default build type: this link carries no /DEBUG
             # and emits no CodeView entry at all, on this extension or
@@ -443,7 +557,7 @@ class FFIExtension:
             # RelWithDebInfo or Debug puts /Zi into the vendored
             # library's objects, and what that does to this link's
             # output has not been measured
-            extra_link_args=["/Brepro"],
+            extra_link_args=["/Brepro", *hardening_link],
         )
         return [pathlib.Path(ffi.compile(tmpdir=str(build_dir)))]
 
@@ -568,8 +682,12 @@ class FFIExtension:
             sysconfig_ldshared,
             os.environ,
         )
+        hardening_compile, hardening_link = _hardening_options(
+            self.platform, platform.machine(), cross_compile
+        )
         compile_command = [
             *cc,
+            *hardening_compile,
             *cflags,
             *shlex.split(get_config_var("CCSHARED") or ""),
             f"-I{get_path('include')}",
@@ -580,16 +698,15 @@ class FFIExtension:
             "-o",
             str(o_filename),
         ]
-        link_command = [
-            ldshared[0],
-            str(o_filename),
-            *ldshared[1:],
-            *[f"-L{libs_dir}" for libs_dir in self.library_dirs],
-            *[f"-l{lib}" for lib in self.libraries],
-            *(["-Wl,-oso_prefix,."] if platform.system() == "Darwin" else []),
-            "-o",
+        link_command = _link_command(
+            ldshared,
+            hardening_link,
+            [str(o_filename)],
+            [f"-L{libs_dir}" for libs_dir in self.library_dirs],
+            [f"-l{lib}" for lib in self.libraries],
+            ["-Wl,-oso_prefix,."] if platform.system() == "Darwin" else [],
             str(so_filename),
-        ]
+        )
 
         subprocess.run(compile_command, cwd=build_dir, check=True)
         if platform.system() == "Darwin":
@@ -961,7 +1078,14 @@ class VendoredCMakeExtension(FFIExtension):
             # the toolchain file is the vendored one, upstream tested
             toolchain = self.wd / "cmake" / "x86_64-w64-mingw32.toolchain.cmake"
             configure.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain}")
-        subprocess.run(configure, check=True)
+        hardening_compile, hardening_link = _hardening_options(
+            self.platform, platform.machine(), cross_compile
+        )
+        subprocess.run(
+            configure,
+            check=True,
+            env=_hardened_environment(os.environ, hardening_compile, hardening_link),
+        )
         subprocess.run(
             ["cmake", "--build", str(self.cmake_dir), "--config", build_type],
             check=True,

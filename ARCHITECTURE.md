@@ -120,8 +120,11 @@ Windows wheel is instead cross-compiled on Linux with mingw-w64, through
 the vendored CMake toolchain file. `BTCLIB_LIBSECP256K1_ZKP=true` is the
 fourth, orthogonal choice: a second, static-only extension over
 `secp256k1-zkp`, built beside whichever of the three paths above the
-primary extension takes. `stubs/_btclib_secp256k1.pyi` is what lets
-strict mypy typecheck a module that exists only after a build.
+primary extension takes. Both the library and the extension are compiled
+with the hardening flags `_hardening_options` returns, and
+`.github/scripts/verify_wheel_contents.py` reads them back from every
+wheel. `stubs/_btclib_secp256k1.pyi` is what lets strict mypy typecheck a
+module that exists only after a build.
 `scripts/README.md` walks `scripts/cffi_build.py` and
 `scripts/hatch_build.py` in turn, the environment variables among them.
 

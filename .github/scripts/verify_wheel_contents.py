@@ -26,7 +26,7 @@ checks those codes name are about a *non-package* file at the top level,
 which for this project's dynamic wheel is not a mistake but the shared
 library.
 
-Three questions, and what answers them:
+The questions, and what answers them:
 
 **Which top-level artifact must be there.** A wheel's tag says whether it
 is static (an `infer_tag`ed `cpNN-...`, one compiled extension) or
@@ -49,6 +49,13 @@ that directory in the wheel has to be everything the checkout has under
 it -- source, `py.typed`, nothing more and nothing less -- which is
 `--package`'s own question, asked here by hand rather than through a
 flag that would also judge the sibling artifact.
+
+**Whether the compiled artifact is hardened.** The extension of a static
+wheel and the shared library of a dynamic one are read back for the
+properties `scripts/cffi_build.py` builds them with. They are read from
+the ELF, Mach-O or PE file itself, with no tool beyond the standard
+library, so the check runs on whichever runner holds the wheels. Which
+property each platform has to carry is `hardening_gaps` below.
 
 The sdist is not this script's subject. A sibling repository's own
 script checks it because `MANIFEST.in` there is an *include* list -- a
@@ -76,6 +83,8 @@ files this project actually publishes rather than a copy of them.
 
 from __future__ import annotations
 
+import re
+import struct
 import sys
 import zipfile
 from pathlib import Path
@@ -123,6 +132,307 @@ EXTENSION_SUFFIXES = (".so", ".pyd")
 # with more than one, which is the symlink chain's own name and not the
 # file CMake just built
 SHARED_LIBRARY_SUFFIXES = (".dll", ".dylib", ".so")
+
+
+# what the readers below look for. ELF: the program header and dynamic
+# section tags that mean "bind at load" and "relocations read-only", and
+# the GNU property bits CET and BTI are recorded in
+_PT_DYNAMIC = 2
+_PT_NOTE = 4
+_PT_GNU_PROPERTY = 0x6474E553
+_PT_GNU_RELRO = 0x6474E552
+_DT_BIND_NOW = 24
+_DT_FLAGS = 30
+_DT_FLAGS_1 = 0x6FFFFFFB
+_DF_BIND_NOW = 0x8
+_DF_1_NOW = 0x1
+_SHT_DYNSYM = 11
+_NT_GNU_PROPERTY_TYPE_0 = 5
+_GNU_PROPERTY_AARCH64_FEATURE_1_AND = 0xC0000000
+_GNU_PROPERTY_X86_FEATURE_1_AND = 0xC0000002
+_AARCH64_FEATURE_1_BTI = 0x1
+_X86_FEATURE_1_IBT = 0x1
+_X86_FEATURE_1_SHSTK = 0x2
+_EM_X86_64 = 62
+_EM_AARCH64 = 183
+# Mach-O: the load command that carries the symbol table, and the fat
+# header magic (big endian) that wraps one slice per architecture
+_LC_SYMTAB = 2
+_MACHO_MAGIC_64 = b"\xcf\xfa\xed\xfe"
+_FAT_MAGIC = b"\xca\xfe\xba\xbe"
+_MACHO_ARCHITECTURES = {0x01000007: "x86_64", 0x0100000C: "arm64"}
+# PE: DllCharacteristics bits, and the guard flags of the load
+# configuration directory
+_PE_HIGH_ENTROPY_VA = 0x0020
+_PE_DYNAMIC_BASE = 0x0040
+_PE_NX_COMPAT = 0x0100
+_PE_GUARD_CF = 0x4000
+_PE_GUARD_CF_INSTRUMENTED = 0x100
+_PE_GUARD_CF_FUNCTION_TABLE_PRESENT = 0x400
+# the PE32+ optional header magic, and where the 64-bit load configuration
+# directory keeps the security cookie, the guard flags and its own end
+_PE_OPTIONAL_MAGIC_64 = 0x20B
+_PE_SECURITY_COOKIE = 88
+_PE_GUARD_FLAGS = 144
+_PE_LOAD_CONFIG_SIZE = 148
+# a fortified libc function: `__memcpy_chk`, `___memcpy_chk` on macOS
+_FORTIFIED = re.compile(r"^_?__\w+_chk$")
+
+
+def _binds_now(tag: int, value: int) -> bool:
+    """Say whether one entry of an ELF dynamic section asks to bind at load."""
+    return (
+        tag == _DT_BIND_NOW
+        or (tag == _DT_FLAGS and value & _DF_BIND_NOW != 0)
+        or (tag == _DT_FLAGS_1 and value & _DF_1_NOW != 0)
+    )
+
+
+def _elf_imports(data: bytes, shoff: int, shentsize: int, shnum: int) -> set[str]:
+    """Return the names of the undefined dynamic symbols of an ELF file."""
+    imports = set()
+    for i in range(shnum):
+        _, kind, _, _, offset, size, link, _, _, entsize = struct.unpack_from(
+            "<IIQQQQIIQQ", data, shoff + i * shentsize
+        )
+        if kind != _SHT_DYNSYM:
+            continue
+        strtab = struct.unpack_from("<QQ", data, shoff + link * shentsize + 24)[0]
+        for index in range(size // entsize):
+            name, _, _, shndx = struct.unpack_from(
+                "<IBBH", data, offset + index * entsize
+            )
+            if shndx == 0 and name:
+                end = data.index(b"\0", strtab + name)
+                imports.add(data[strtab + name : end].decode("ascii", "replace"))
+    return imports
+
+
+def _elf_gaps(data: bytes, *, fortify: bool, marked: bool) -> list[str]:
+    """Return the hardening an ELF file lacks."""
+    if data[4:6] != b"\x02\x01":
+        return ["is not a 64-bit little-endian ELF file"]
+    machine = struct.unpack_from("<H", data, 18)[0]
+    phoff, shoff = struct.unpack_from("<QQ", data, 32)
+    phentsize, phnum = struct.unpack_from("<HH", data, 54)
+    shentsize, shnum = struct.unpack_from("<HH", data, 58)
+    segments = [
+        struct.unpack_from("<IIQQQQQQ", data, phoff + i * phentsize)
+        for i in range(phnum)
+    ]
+    gaps = []
+
+    if _PT_GNU_RELRO not in {segment[0] for segment in segments}:
+        gaps.append("has no read-only relocation segment (relro)")
+    if not any(
+        _binds_now(tag, value)
+        for kind, _, offset, _, _, filesz, _, _ in segments
+        if kind == _PT_DYNAMIC
+        for tag, value in struct.iter_unpack("<qQ", data[offset : offset + filesz])
+    ):
+        gaps.append("is not linked to bind at load (-z now)")
+
+    imports = _elf_imports(data, shoff, shentsize, shnum)
+    if "__stack_chk_fail" not in imports:
+        gaps.append("does not call __stack_chk_fail (-fstack-protector-strong)")
+    if fortify and not any(_FORTIFIED.match(name) for name in imports):
+        gaps.append("calls no fortified function (-D_FORTIFY_SOURCE)")
+
+    if marked:
+        features = _gnu_features(data, segments, machine)
+        cet = _X86_FEATURE_1_IBT | _X86_FEATURE_1_SHSTK
+        if machine == _EM_X86_64 and features & cet != cet:
+            gaps.append("is not marked for IBT and SHSTK (-fcf-protection=full)")
+        if machine == _EM_AARCH64 and features & _AARCH64_FEATURE_1_BTI == 0:
+            gaps.append("is not marked for BTI (-mbranch-protection)")
+    return gaps
+
+
+def _gnu_features(data: bytes, segments: list[tuple[int, ...]], machine: int) -> int:
+    """Return the CET or BTI bits of the GNU property notes, 0 if none."""
+    wanted = {
+        _EM_X86_64: _GNU_PROPERTY_X86_FEATURE_1_AND,
+        _EM_AARCH64: _GNU_PROPERTY_AARCH64_FEATURE_1_AND,
+    }.get(machine)
+    for segment in segments:
+        if segment[0] not in {_PT_NOTE, _PT_GNU_PROPERTY}:
+            continue
+        position, end = segment[2], segment[2] + segment[5]
+        # the segment's alignment, 4 or 8, aligns each note's descriptor
+        # and the next note (the ELF gABI); a property's own data is
+        # padded to 8
+        pad = 8 if segment[7] == 8 else 4
+        while position + 12 <= end:
+            namesz, descsz, kind = struct.unpack_from("<III", data, position)
+            body = position + (12 + namesz + pad - 1) // pad * pad
+            if kind == _NT_GNU_PROPERTY_TYPE_0:
+                cursor = body
+                while cursor + 8 <= body + descsz:
+                    ptype, datasz = struct.unpack_from("<II", data, cursor)
+                    if ptype == wanted and datasz >= 4:
+                        return int(struct.unpack_from("<I", data, cursor + 8)[0])
+                    cursor += 8 + (datasz + 7) // 8 * 8
+            position = body + (descsz + pad - 1) // pad * pad
+    return 0
+
+
+def _macho_slice_gaps(data: bytes, *, fortify: bool) -> list[str]:
+    """Return the hardening one Mach-O slice lacks."""
+    if data[:4] != _MACHO_MAGIC_64:
+        return ["is not a 64-bit little-endian Mach-O file"]
+    ncmds = struct.unpack_from("<I", data, 16)[0]
+    position = 32
+    imports = set()
+    for _ in range(ncmds):
+        command, size = struct.unpack_from("<II", data, position)
+        if command == _LC_SYMTAB:
+            symoff, nsyms, stroff, _ = struct.unpack_from("<IIII", data, position + 8)
+            for index in range(nsyms):
+                strx, kind = struct.unpack_from("<IB", data, symoff + index * 16)
+                # an external symbol with no section: an import
+                if kind & 0x0F == 0x01:
+                    end = data.index(b"\0", stroff + strx)
+                    imports.add(data[stroff + strx : end].decode("ascii", "replace"))
+        position += size
+    gaps = []
+    if "___stack_chk_fail" not in imports:
+        gaps.append("does not call ___stack_chk_fail (-fstack-protector-strong)")
+    if fortify and not any(_FORTIFIED.match(name) for name in imports):
+        gaps.append("calls no fortified function (-D_FORTIFY_SOURCE)")
+    return gaps
+
+
+def _macho_gaps(data: bytes, *, fortify: bool) -> list[str]:
+    """Return the hardening a Mach-O file, fat or thin, lacks."""
+    if data[:4] != _FAT_MAGIC:
+        return _macho_slice_gaps(data, fortify=fortify)
+    gaps = []
+    count = struct.unpack_from(">I", data, 4)[0]
+    for index in range(count):
+        cputype, _, offset, size = struct.unpack_from(">IIII", data, 8 + index * 20)
+        arch = _MACHO_ARCHITECTURES.get(cputype, hex(cputype))
+        gaps += [
+            f"in its {arch} slice {gap}"
+            for gap in _macho_slice_gaps(data[offset : offset + size], fortify=fortify)
+        ]
+    return gaps
+
+
+def _pe_load_config(data: bytes, pe: int) -> int | None:
+    """Return the file offset of a PE32+ load configuration, or None.
+
+    `pe` is the offset of the `PE` signature. The directory entry holds a
+    relative address, which a section of the file maps to an offset.
+    """
+    sections = struct.unpack_from("<H", data, pe + 6)[0]
+    optional_size = struct.unpack_from("<H", data, pe + 20)[0]
+    optional = pe + 24
+    rva, size = struct.unpack_from("<II", data, optional + 112 + 10 * 8)
+    if size < _PE_LOAD_CONFIG_SIZE:
+        return None
+    for i in range(sections):
+        _, vsize, vaddr, rawsize, rawptr = struct.unpack_from(
+            "<8sIIII", data, optional + optional_size + i * 40
+        )
+        if vaddr <= rva < vaddr + max(vsize, rawsize):
+            return int(rawptr + rva - vaddr)
+    return None
+
+
+def _pe_gaps(data: bytes, *, msvc: bool) -> list[str]:
+    """Return the hardening a PE file lacks.
+
+    `msvc` is whether the file is one MSVC linked: it adds control flow
+    guard and the security cookie to the address space layout
+    randomization and DEP that every PE needs.
+    """
+    pe = struct.unpack_from("<I", data, 0x3C)[0]
+    optional = pe + 24
+    plus = struct.unpack_from("<H", data, optional)[0] == _PE_OPTIONAL_MAGIC_64
+    characteristics = struct.unpack_from("<H", data, optional + 70)[0]
+    gaps = []
+    if characteristics & _PE_DYNAMIC_BASE == 0:
+        gaps.append("is not linked for address space layout randomization")
+    if characteristics & _PE_NX_COMPAT == 0:
+        gaps.append("is not marked DEP compatible")
+    if plus and characteristics & _PE_HIGH_ENTROPY_VA == 0:
+        gaps.append("is not marked for high entropy address space layout")
+    if not msvc:
+        return gaps
+    if characteristics & _PE_GUARD_CF == 0:
+        gaps.append("is not linked with control flow guard (/GUARD:CF)")
+
+    config = _pe_load_config(data, pe) if plus else None
+    if config is None:
+        gaps.append("has no load configuration with a security cookie and guard flags")
+        return gaps
+    if struct.unpack_from("<Q", data, config + _PE_SECURITY_COOKIE)[0] == 0:
+        gaps.append("has no security cookie (/GS)")
+    guard = struct.unpack_from("<I", data, config + _PE_GUARD_FLAGS)[0]
+    wanted = _PE_GUARD_CF_INSTRUMENTED | _PE_GUARD_CF_FUNCTION_TABLE_PRESENT
+    if guard & wanted != wanted:
+        gaps.append("has no control flow guard function table (/guard:cf)")
+    return gaps
+
+
+def hardening_gaps(
+    name: str, data: bytes, *, fortify: bool = True, marked: bool = True
+) -> list[str]:
+    """Return the hardening the compiled file `name` lacks, as phrases.
+
+    The properties each platform has to carry are listed in
+    `docs/source/package-content-policy.md`, under *What the compiled
+    file has to be built with*.
+
+    Args:
+        name: the member's name, the suffix of which says a PE from MSVC
+            from one from mingw-w64.
+        data: the member's bytes.
+        fortify: whether a fortified libc function has to be called,
+            which musl, with no such function, cannot do.
+        marked: whether an ELF file has to carry the CET or BTI marking,
+            which the linker writes only if every input does, the C
+            runtime's start files among them. `start_files_mark` says
+            which wheels have those.
+
+    Returns:
+        One phrase per property missing, empty for a hardened file.
+    """
+    try:
+        if data[:4] == b"\x7fELF":
+            return _elf_gaps(data, fortify=fortify, marked=marked)
+        if data[:4] in {_MACHO_MAGIC_64, _FAT_MAGIC}:
+            return _macho_gaps(data, fortify=fortify)
+        if data[:2] == b"MZ":
+            return _pe_gaps(data, msvc=name.endswith(".pyd"))
+    except (struct.error, ValueError):
+        # a header or table that runs past the end of the file
+        return ["is truncated or malformed"]
+    return ["is not an ELF, Mach-O or PE file"]
+
+
+def start_files_mark(wheel_name: str) -> bool:
+    """Say whether the C runtime a wheel was linked against marks CET or BTI.
+
+    The linker writes the marking into a file only if every input carries
+    it, and the start files of the image link in with the rest. Measured
+    on the `crti.o` of the images `pyproject.toml` pins, with
+    `llvm-readelf -n`: AlmaLinux 8's glibc 2.28 marks IBT and SHSTK on
+    x86_64 and nothing on aarch64; the musllinux images' musl marks
+    neither architecture. A file linked against them cannot carry what its
+    own objects do, and forcing the marking (`-z force-bti`) would claim
+    it for an `_init` that has no `bti` instruction. A pinned image that
+    does mark aarch64 is one more case here.
+
+    Args:
+        wheel_name: the wheel's file name, the platform tag of which
+            names the C runtime.
+
+    Returns:
+        Whether an ELF file in the wheel has to carry the marking.
+    """
+    tag = wheel_name[: -len(".whl")].rsplit("-", 1)[-1]
+    return "musllinux" not in tag and "aarch64" not in tag
 
 
 def wheel_kind(name: str) -> str:
@@ -211,6 +521,39 @@ def package_payload_complaints(members: set[str]) -> list[str]:
     return complaints
 
 
+def compiled_names(members: set[str]) -> list[str]:
+    """Return the members at the wheel's root that are compiled files.
+
+    These are the only ones the hardening check reads; a member of
+    another name at the root is refused by `toplevel_reason`.
+    """
+    return sorted(
+        name
+        for name in members
+        if "/" not in name
+        and name.endswith((*EXTENSION_SUFFIXES, *SHARED_LIBRARY_SUFFIXES))
+    )
+
+
+def hardening_complaints(wheel_name: str, compiled: dict[str, bytes]) -> list[str]:
+    """Return what the compiled files of the wheel `wheel_name` lack.
+
+    An empty file has its own complaint and is not read.
+    """
+    complaints = []
+    for name, data in compiled.items():
+        if data:
+            # musl has no fortified functions to call
+            gaps = hardening_gaps(
+                name,
+                data,
+                fortify="musllinux" not in wheel_name,
+                marked=start_files_mark(wheel_name),
+            )
+            complaints += [f"{name} {gap}" for gap in gaps]
+    return complaints
+
+
 def verify_wheel(wheel: Path) -> list[str]:
     """Return every complaint about the wheel at `wheel`."""
     kind = wheel_kind(wheel.name)
@@ -220,6 +563,7 @@ def verify_wheel(wheel: Path) -> list[str]:
     with zipfile.ZipFile(wheel) as archive:
         infos = [info for info in archive.infolist() if not info.filename.endswith("/")]
         sizes = {info.filename: info.file_size for info in infos}
+        compiled = {name: archive.read(name) for name in compiled_names(set(sizes))}
     members = set(sizes)
 
     complaints = []
@@ -267,6 +611,7 @@ def verify_wheel(wheel: Path) -> list[str]:
         for name in toplevel_members:
             if sizes[name] == 0:
                 complaints.append(f"{name} is present and empty")
+        complaints += hardening_complaints(wheel.name, compiled)
 
     return [f"{wheel.name}: {c}" for c in complaints]
 

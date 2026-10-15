@@ -9,10 +9,12 @@
 does in the setuptools `uv.lock` resolves, and `_cmake_build_type` reads
 `CMAKE_BUILD_TYPE` for the vendored library's build type;
 `_macos_architectures` and `_pin_architectures` aim the macOS compile and
-link at the wheel's architectures. All are pure
-functions of their arguments -- no `sysconfig`, no `os.environ`, no
-subprocess -- so what is checked here is the argv each one builds, never
-a compile (btclib-org/btclib-secp256k1#1019).
+link at the wheel's architectures. Beside them, `_hardening_options` says
+which flags harden the native code, `_hardened_environment` puts them in
+front of the caller's, and `_link_command` does the same for the glue's
+link. Each is a pure function of its arguments -- no `sysconfig`, no
+`os.environ`, no subprocess -- so what is checked here is the argv each
+one builds, never a compile (btclib-org/btclib-secp256k1#1019).
 
 None is read by importing `scripts/cffi_build.py`, for the reason
 `tests/module_flags_test.py`'s own docstring gives: the module's own top
@@ -74,6 +76,18 @@ pin_architectures = cast(
 cmake_build_type = cast(
     "Callable[[Mapping[str, str]], str]", _extracted("_cmake_build_type")
 )
+hardening_options = cast(
+    "Callable[[str, str, bool], tuple[list[str], list[str]]]",
+    _extracted("_hardening_options"),
+)
+link_command = cast(
+    "Callable[..., list[str]]",
+    _extracted("_link_command"),
+)
+hardened_environment = cast(
+    "Callable[[Mapping[str, str], list[str], list[str]], dict[str, str]]",
+    _extracted("_hardened_environment"),
+)
 
 
 def test_every_function_was_read() -> None:
@@ -88,6 +102,9 @@ def test_every_function_was_read() -> None:
     assert callable(cmake_build_type)
     assert callable(macos_architectures)
     assert callable(pin_architectures)
+    assert callable(hardening_options)
+    assert callable(hardened_environment)
+    assert callable(link_command)
 
 
 def test_nothing_set_leaves_every_value_untouched() -> None:
@@ -298,3 +315,106 @@ def test_universal2_keeps_both_architectures() -> None:
 def test_flags_without_an_arch_are_left_alone() -> None:
     """No `-arch` is added where the interpreter records none."""
     assert pin_architectures("-O2 -Wall", ["arm64"]) == "-O2 -Wall"
+
+
+_COMMON = ["-fstack-protector-strong", "-U_FORTIFY_SOURCE", "-D_FORTIFY_SOURCE=2"]
+
+
+@pytest.mark.parametrize(
+    "machine, branch",
+    [
+        ("x86_64", "-fcf-protection=full"),
+        ("AMD64", "-fcf-protection=full"),
+        ("aarch64", "-mbranch-protection=standard"),
+        ("arm64", "-mbranch-protection=standard"),
+    ],
+)
+def test_linux_gets_the_compile_flags_of_its_architecture(
+    machine: str, branch: str
+) -> None:
+    """Linux is compiled with all four flags and linked `relro` and `now`."""
+    assert hardening_options("Linux", machine, False) == (
+        [*_COMMON, branch],
+        ["-Wl,-z,relro", "-Wl,-z,now"],
+    )
+
+
+def test_linux_on_another_architecture_has_no_branch_protection() -> None:
+    """A machine neither flag names gets the others, not a flag it rejects."""
+    assert hardening_options("Linux", "riscv64", False) == (
+        _COMMON,
+        ["-Wl,-z,relro", "-Wl,-z,now"],
+    )
+
+
+@pytest.mark.parametrize("machine", ["arm64", "x86_64"])
+def test_macos_gets_no_branch_protection_and_no_linker_flag(machine: str) -> None:
+    """Mach-O has neither `relro` nor `now` nor a marking to read back."""
+    assert hardening_options("Darwin", machine, False) == (_COMMON, [])
+
+
+@pytest.mark.parametrize("machine", ["AMD64", "ARM64"])
+def test_msvc_gets_gs_and_control_flow_guard(machine: str) -> None:
+    """MSVC takes `/GS` and `/guard:cf` to compile and `/GUARD:CF` to link."""
+    assert hardening_options("Windows", machine, False) == (
+        ["/GS", "/guard:cf"],
+        ["/GUARD:CF"],
+    )
+
+
+def test_the_mingw_cross_compile_is_linked_for_aslr_and_dep_only() -> None:
+    """The stack protector would link a `libssp` DLL, so mingw gets none."""
+    assert hardening_options("Windows", "x86_64", True) == (
+        [],
+        ["-Wl,--dynamicbase", "-Wl,--nxcompat", "-Wl,--high-entropy-va"],
+    )
+
+
+def test_the_hardening_comes_before_the_callers_flags() -> None:
+    """A caller's own `CFLAGS` and `LDFLAGS` follow, so that they win."""
+    env = hardened_environment(
+        {"CFLAGS": "-fno-stack-protector", "LDFLAGS": "-Wl,-z,lazy", "HOME": "/h"},
+        ["-fstack-protector-strong"],
+        ["-Wl,-z,now"],
+    )
+    assert env == {
+        "CFLAGS": "-fstack-protector-strong -fno-stack-protector",
+        "LDFLAGS": "-Wl,-z,now -Wl,-z,lazy",
+        "HOME": "/h",
+    }
+
+
+def test_the_hardening_alone_is_the_whole_value_where_nothing_is_set() -> None:
+    """An empty variable adds no stray space, and `env` is not mutated."""
+    env = {"CFLAGS": ""}
+    assert hardened_environment(env, ["-a", "-b"], []) == {
+        "CFLAGS": "-a -b",
+        "LDFLAGS": "",
+    }
+    assert env == {"CFLAGS": ""}
+
+
+def test_the_link_hardening_precedes_the_callers_ldflags() -> None:
+    """The caller's `LDFLAGS`, in `ldshared[1:]`, follow the hardening."""
+    argv = link_command(
+        ["cc", "-shared", "-Wl,-z,lazy"],
+        ["-Wl,-z,relro", "-Wl,-z,now"],
+        ["x.o"],
+        ["-L/lib"],
+        ["-lsecp256k1"],
+        ["-Wl,-oso_prefix,."],
+        "x.so",
+    )
+    assert argv == [
+        "cc",
+        "x.o",
+        "-Wl,-z,relro",
+        "-Wl,-z,now",
+        "-shared",
+        "-Wl,-z,lazy",
+        "-L/lib",
+        "-lsecp256k1",
+        "-Wl,-oso_prefix,.",
+        "-o",
+        "x.so",
+    ]
