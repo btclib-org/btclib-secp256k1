@@ -155,8 +155,9 @@ proved.
 
 **This package and libsecp256k1 or secp256k1-zkp.** Past this boundary
 is C code this package does not own. A private half spelled `_foo_`
-does not read the illegal-argument callback, so what it answers for an
-object the library refuses is whatever that call itself answers —
+does not read the illegal-argument callback, except those the README's
+*Parsing the key once* names, so what it answers for an object the
+library refuses is whatever that call itself answers —
 `tests/callbacks_test.py` drives every shape that can take.
 `context.check()` is what reports a violated precondition, on the thread
 that triggered it. A flaw on the far side is reported upstream, as

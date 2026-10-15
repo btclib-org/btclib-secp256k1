@@ -405,17 +405,23 @@ these is past the boundary that proves things. The trailing one says
 which kind of private — `_verify_` takes a parsed key where `_parse_der`
 is an ordinary helper.
 
-**A private half does not read that callback**, and what it answers when
-libsecp256k1 refuses its object is therefore whatever the C call
+**Most private halves do not read that callback**, and what one answers
+when libsecp256k1 refuses its object is therefore whatever the C call
 answered: its own exception where a return code allowed one, and
-otherwise a value that means nothing — `False` from a verification, an
-ordering from a comparison, `None` from a sum, and, in `ecdh`, 32 bytes
-that are a shared secret with nobody. Nothing raises in those four.
+otherwise a value that means nothing — `False` from a verification, or
+an ordering from a comparison. Nothing raises in those two.
 `context.check()` immediately after the call is what says so, and
 proving the object once — `keys.parse` built it, or `keys.pubkey_verify`
 answered for the octets it came from — is what makes the question moot.
 The public half has no such case, having parsed its own octets, and that
 is the whole of what a caller gives up by reaching past it.
+
+**`keys._pubkey_sum_`, `keys._pubkey_combine_`, `ecdh._shared_secret_`
+and `ecdh._shared_point_` are the exception.** libsecp256k1 adds or
+multiplies a key it cannot read and answers what looks like a result, a
+point or 32 bytes. These four read the callback instead, and raise its
+message as `ValueError`, leaving nothing on the thread for
+`context.check()`.
 
 ```python
 >>> ecdsa_sig = dsa.sign(msg, prvkey)
@@ -1174,9 +1180,10 @@ A call made through `lib` directly -- which `musig`'s own functions are,
 underneath, and which a caller reaching past them is free to make too --
 has no argument validation in front of it, so libsecp256k1 is the only
 thing checking its preconditions: it reports a violated one through a
-callback of the context and returns 0, leaving nothing in the return
-value to say what happened. `context.check()` raises what was reported,
-the failed precondition verbatim, and is meant to follow such a call:
+callback of the context and, in most calls, returns 0, leaving nothing
+in the return value to say what happened. `context.check()` raises what
+was reported, the failed precondition verbatim, and is meant to follow
+such a call:
 
 ```python
 if not lib.secp256k1_musig_partial_sign(ctx, psig, secnonce, ...):

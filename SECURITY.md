@@ -50,15 +50,16 @@ affecting how these bindings drive it:
     news and are treated differently here. The illegal-argument one this
     project replaces with a do-nothing stub, so that a violated
     precondition does not `abort()` the hosting Python process; the
-    consequence is that nothing catches it on the caller's behalf,
+    consequence is that nothing catches it on the caller's behalf:
     `context.check()` reports what was recorded, and calling it is the
-    caller's to do. Code reaching the raw `lib` bindings directly is on
-    its own, and so is code calling a private `_foo_` half with a
-    libsecp256k1 object of its own — an object no argument check can
-    vouch for, where a refusal can reach the caller as a `False`, an
-    ordering, 32 bytes of ECDH or an ECDH point rather than as an
-    exception. The entry points taking octets are not in that position:
-    they parse what they are given. The error one keeps upstream's own
+    caller's to do. The private halves the README's *Parsing the key
+    once* names are the exception. Code reaching the raw `lib` bindings
+    directly is on its own, and so is code calling another private
+    `_foo_` half with a libsecp256k1 object of its own — an object no
+    argument check can vouch for, where a refusal can reach the caller
+    as a `False` or an ordering rather than as an exception. The entry
+    points taking octets are not in that position: they parse what they
+    are given. The error one keeps upstream's own
     behaviour — write the message to stderr and `abort()` — because it
     reports an internal error, a hardware failure, a miscompilation, a
     memory corruption or a bug in the library rather than a caller
