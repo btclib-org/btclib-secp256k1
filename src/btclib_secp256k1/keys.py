@@ -21,7 +21,7 @@ from . import BytesLike, CData, MutableBytesLike, ffi, lib
 from ._cdata import array
 from ._scalar import octets, scalar
 from ._secret import scalar_buffer, take, wipe
-from .context import ctx
+from .context import _checked, ctx
 
 __all__ = [
     "COMPRESSED",
@@ -628,10 +628,9 @@ def _pubkey_combine_(pubkeys: Sequence[CData]) -> CData:
         The libsecp256k1 public key object of the sum.
 
     Raises:
-        ValueError: if the sequence is empty, if the sum is the point at
-            infinity, which is no public key, or if any object is not a
-            public key libsecp256k1 will read. The last two are one
-            message, for the reason `_pubkey_sum_` gives.
+        ValueError: if the sequence is empty, if any object is not a
+            public key libsecp256k1 will read, or if the sum is the point
+            at infinity, which is no public key.
     """
     combined = _pubkey_sum_(pubkeys)
     if combined is None:
@@ -652,30 +651,28 @@ def _pubkey_sum_(pubkeys: Sequence[CData]) -> CData | None:
 
     Returns:
         The libsecp256k1 public key object of the sum, or None where that
-        sum is the point at infinity -- and None, too, where libsecp256k1
-        could not read one of the objects, the two being one answer here.
-        `context.check` immediately after the call is what separates
-        them: a key it refused is on the thread, and an infinity is not.
-        No caller reaching this through `pubkey_sum` or `pubkey_combine`
-        has the question, those parsing the octets they are given, so
-        what the conflation costs is paid only by a caller passing
-        objects of its own.
+        sum is the point at infinity.
 
     Raises:
-        ValueError: if the sequence is empty.
+        ValueError: if the sequence is empty, or if any object is not a
+            public key libsecp256k1 will read -- a NULL pointer, or a
+            `secp256k1_pubkey` nothing has written to -- the message then
+            being libsecp256k1's own, as `context.check` words it.
     """
     pubkeys = list(pubkeys)
     if not pubkeys:
         raise ValueError("at least one public key is required")
 
     combined = ffi.new("secp256k1_pubkey *")
-    # libsecp256k1 answers 0 both for a key it cannot read and for a sum
-    # that is the point at infinity, and reports the first through the
-    # illegal callback rather than in the return value: what tells the
-    # two apart is on the thread, which is what the Returns section
-    # above sends a caller to `context.check` for
-    summed = lib.secp256k1_ec_pubkey_combine(
-        ctx, combined, array("secp256k1_pubkey *[]", pubkeys), len(pubkeys)
+    # a key libsecp256k1 cannot read can still sum to a point and return
+    # 1, so the refusal is read from the illegal callback, and a 0 left
+    # after that is the point at infinity
+    summed = _checked(
+        lib.secp256k1_ec_pubkey_combine,
+        ctx,
+        combined,
+        array("secp256k1_pubkey *[]", pubkeys),
+        len(pubkeys),
     )
     return combined if summed else None
 
@@ -714,10 +711,7 @@ def pubkey_sum(
     `pubkey_combine` with the one sum that is no public key answered
     rather than refused. A caller doing arithmetic has that sum as a
     value -- `P + (-P)` is the identity and not a malformed argument --
-    and the two spellings are the same call. There is no key here that
-    libsecp256k1 could fail to read, `parse` below having proved every
-    one of them, so the None this answers is the infinity and nothing
-    else; `_pubkey_sum_` is where that is not true and says so.
+    and the two spellings are the same call.
 
     The infinity has no serialization, which is why it is None and not
     octets: a `secp256k1_pubkey` is a point of the curve and never the

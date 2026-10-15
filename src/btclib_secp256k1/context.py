@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import secrets
 import threading
+from collections.abc import Callable
 
 from . import CData, ffi, lib
 
@@ -55,11 +56,12 @@ def _record_illegal(message: CData, data: CData) -> None:  # noqa: ARG001
 
 
 # libsecp256k1 reports a violated precondition (an illegal argument, an
-# object in an invalid state) through the illegal callback, then returns
-# 0. Its abort()ing default is replaced, in the vendored build, by a
+# object in an invalid state) through the illegal callback, and most
+# calls then return 0; `_checked` below names the ones that do not. Its
+# abort()ing default is replaced, in the vendored build, by a
 # stub that does nothing: that keeps an illegal argument from taking the
-# hosting process down, but leaves the caller with a bare 0 and no reason
-# for it. On the shared context the callback instead records what was
+# hosting process down, but leaves the caller with a bare return code and
+# no reason for it. On the shared context the callback instead records what was
 # reported, so that check() can raise it. The reference to the cffi
 # callback has to outlive the context, hence the module level name.
 #
@@ -122,18 +124,20 @@ def check() -> None:
     check of the nonce that the first signature zeroed.
 
     It is for a call made through `lib` directly, as a MuSig2 session
-    is, and it is the caller's to make: no wrapper in this package calls
-    it, so what it reports is whatever was recorded last on this thread
-    by anything at all. Call it immediately after the call whose return
-    value you are explaining, and read nothing into a message from any
-    other one.
+    is, and it is the caller's to make: what it reports is whatever was
+    recorded last on this thread by anything at all. Call it immediately
+    after the call whose return value you are explaining, and read
+    nothing into a message from any other one.
 
     A wrapper is one of those others. Handed an object libsecp256k1
-    cannot read, a wrapper answers its own verdict -- `False` from a
-    verification, `None` from a sum, its own `ValueError` where a return
-    code let it raise -- and the reason is recorded here on the way past.
-    So a message on the thread may be a wrapper's rather than the
-    caller's, which is the whole of why this asks to be called at once.
+    cannot read, most wrappers answer their own verdict -- `False` from
+    a verification, an ordering from a comparison, their own exception
+    where a return code let them raise -- and the reason is recorded
+    here on the way past. So a message on the thread may be a wrapper's
+    rather than the caller's, which is the whole of why this asks to be
+    called at once. The README's *Parsing the key once* names the
+    wrappers that raise the reason themselves, through `_checked`, and
+    leave nothing here.
 
     What was recorded is cleared, so a second call reports nothing and
     a later one cannot inherit this call's message.
@@ -145,3 +149,37 @@ def check() -> None:
     _reported.illegal = None
     if illegal is not None:
         raise ValueError(f"libsecp256k1 illegal argument: {illegal}")
+
+
+def _checked(call: Callable[..., int], *args: object) -> int:
+    """Make a libsecp256k1 call, and raise what it reports during it.
+
+    For a call whose return code does not say that libsecp256k1 refused
+    an object: `secp256k1_ec_pubkey_combine` and `secp256k1_ecdh` report
+    a `secp256k1_pubkey` they cannot read through the illegal callback,
+    then go on computing with it and can return 1. Reading the callback
+    rather than the return code is also right where libsecp256k1 returns
+    0 for it.
+
+    What was recorded on the thread before the call is there again
+    afterwards, so a `check` the caller still owes is not answered here.
+
+    Args:
+        call: the libsecp256k1 function, from `lib`.
+        *args: its arguments.
+
+    Returns:
+        What the call returned.
+
+    Raises:
+        ValueError: if libsecp256k1 reported a violated precondition
+            during the call, with the message `check` raises.
+    """
+    earlier = _reported.illegal
+    _reported.illegal = None
+    try:
+        returned = call(*args)
+        check()
+    finally:
+        _reported.illegal = earlier
+    return returned

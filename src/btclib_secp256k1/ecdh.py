@@ -11,7 +11,7 @@ from typing import overload
 from . import BytesLike, CData, MutableBytesLike, ffi, keys, lib
 from ._scalar import scalar
 from ._secret import take, wipe
-from .context import ctx
+from .context import _checked, ctx
 
 __all__ = ["shared_point", "shared_secret"]
 
@@ -56,31 +56,29 @@ def _shared_secret_(
         point as `shared_secret` documents it -- or None where `into`
         was given and holds it.
 
-        **A key libsecp256k1 cannot read answers 32 bytes here too, and
-        they are a shared secret with nobody.** A `secp256k1_pubkey`
-        nothing has written to is reported through the illegal callback,
-        which this does not read, and the call succeeds: nothing raises
-        and nothing about the answer says it is worthless. That is the
-        one place in this package where an unusable object produces a
-        value a caller could take for a secret, and `context.check`
-        immediately after the call is the only thing that says
-        otherwise. `shared_secret` parses the octets it is given and so
-        has no such case; a caller holding a key of its own has it, and
-        proving that key once with `keys.pubkey_verify` is what removes
-        it.
-
     Raises:
         TypeError: if `into` is not a writable bytearray or memoryview
             of octets.
-        ValueError: if the private key is not 32 bytes, does not fit in
-            them, or is not a valid scalar.
+        ValueError: if the public key is not one libsecp256k1 will read
+            -- a NULL pointer, or a `secp256k1_pubkey` nothing has
+            written to -- the message then being libsecp256k1's own, as
+            `context.check` words it; or if the private key is not 32
+            bytes, does not fit in them, or is not a valid scalar.
     """
     prvkey_bytes = scalar(prvkey, "private key")
 
     output = ffi.new("char[32]")
     # a NULL hash function selects secp256k1_ecdh_hash_function_sha256,
     # which writes 32 bytes to output
-    computed = lib.secp256k1_ecdh(ctx, output, pubkey, prvkey_bytes, ffi.NULL, ffi.NULL)
+    try:
+        computed = _checked(
+            lib.secp256k1_ecdh, ctx, output, pubkey, prvkey_bytes, ffi.NULL, ffi.NULL
+        )
+    except ValueError:
+        # libsecp256k1 computes with a key it cannot read, and what it
+        # wrote here can depend on the private key
+        wipe(output)
+        raise
     if not computed:
         raise ValueError("invalid private key")
     return take(output, into=into)
@@ -187,29 +185,33 @@ def _shared_point_(
 
     Returns:
         The serialized shared point, as `shared_point` documents it --
-        or None where `into` was given and holds it. An object
-        libsecp256k1 cannot read answers octets here too, which are a
-        point shared with nobody: `_shared_secret_` says why, and it is
-        the same call.
+        or None where `into` was given and holds it.
 
     Raises:
         TypeError: if `into` is not a writable bytearray or memoryview
             of octets.
-        ValueError: if the private key is not 32 bytes, does not fit in
-            them, or is not a valid scalar, or if `into` is not the
-            length of the serialization.
+        ValueError: if the public key is not one libsecp256k1 will read,
+            as `_shared_secret_` says; if the private key is not 32
+            bytes, does not fit in them, or is not a valid scalar; or if
+            `into` is not the length of the serialization.
     """
     prvkey_bytes = scalar(prvkey, "private key")
 
     coordinates = ffi.new("unsigned char[64]")
-    computed = lib.secp256k1_ecdh(
-        ctx,
-        coordinates,
-        pubkey,
-        prvkey_bytes,
-        lib.btclib_secp256k1_ecdh_hash_function_xy,
-        ffi.NULL,
-    )
+    try:
+        computed = _checked(
+            lib.secp256k1_ecdh,
+            ctx,
+            coordinates,
+            pubkey,
+            prvkey_bytes,
+            lib.btclib_secp256k1_ecdh_hash_function_xy,
+            ffi.NULL,
+        )
+    except ValueError:
+        # what `_shared_secret_` wipes, and for its reason
+        wipe(coordinates)
+        raise
     if not computed:
         # libsecp256k1 multiplies by one in place of a scalar it refuses,
         # so what the hash function copied is the public key itself and

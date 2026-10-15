@@ -4,20 +4,20 @@
 
 """Tests of what libsecp256k1 reports through the context's illegal callback.
 
-No wrapper reads that callback, so what it records is `context.check`'s
-to raise and nobody else's. Two halves are tested here. That `check`
-itself reports, clears and attributes per thread; and that a wrapper
-handed an object libsecp256k1 cannot read answers *something* -- its own
-exception where a return code allowed one, and otherwise a value that
-means nothing -- while leaving the reason on the thread for a `check`
-that follows.
+What it records is `context.check`'s to raise, except for the
+wrappers that read it through `context._checked`. Three parts are tested
+here. That `check` itself reports, clears and attributes per thread;
+that a wrapper handed an object libsecp256k1 cannot read answers
+*something* -- its own exception where a return code allowed one, and
+otherwise a value that means nothing -- while leaving the reason on the
+thread for a `check` that follows; and that the sums and the ECDH raise
+the reason instead, leaving the thread as they found it.
 
-The second half is the contract a caller has to know, so each of its
+The second part is the contract a caller has to know, so each of its
 shapes is driven rather than described: a raise whose message is the
-wrapper's own, a `False` from a verification, an ordering from a
-comparison, and 32 bytes from an ECDH that succeeded with nobody. The
-public entry points are the counter-case, parsing their octets and so
-leaving the thread clean.
+wrapper's own, a `False` from a verification, and an ordering from a
+comparison. The public entry points are the counter-case, parsing their
+octets and so leaving the thread clean.
 
 One of those shapes is not an object the caller handed `lib` but an
 argument of a wrapper: the public key `recovery._sign_` compares against
@@ -40,6 +40,8 @@ from collections.abc import Callable
 import pytest
 
 from btclib_secp256k1 import (
+    CData,
+    _secret,
     context,
     dsa,
     ecdh,
@@ -213,43 +215,10 @@ def test_a_signature_libsecp256k1_cannot_read_has_no_low_r_to_read() -> None:
         context.check()
 
 
-def test_ecdh_with_an_unreadable_key_answers_a_secret_with_nobody() -> None:
-    """`ecdh._shared_secret_` answers 32 bytes, and they are worth nothing.
-
-    The gravest shape of the same contract, and the reason it is pinned
-    here: the call succeeds, the answer is the right length, and nothing
-    about it says the public key was one libsecp256k1 refused. Only the
-    thread says so.
-    """
-    secret = ecdh._shared_secret_(ffi.new("secp256k1_pubkey *"), 7)
-
-    assert isinstance(secret, bytes)
-    assert len(secret) == 32
-    with pytest.raises(ValueError, match="illegal argument"):
-        context.check()
-
-
-def test_ecdh_with_an_unreadable_key_answers_a_point_shared_with_nobody() -> None:
-    """`ecdh._shared_point_` is the same call, and answers the same way.
-
-    A serialization of the right length and nothing about it to say the
-    public key was refused: `secp256k1_ecdh` runs to the end on it, and
-    only the thread says otherwise.
-    """
-    point = ecdh._shared_point_(ffi.new("secp256k1_pubkey *"), 7)
-
-    assert isinstance(point, bytes)
-    assert len(point) == 33
-    with pytest.raises(ValueError, match="illegal argument"):
-        context.check()
-
-
 def test_comparison_of_unreadable_keys_is_an_ordering_like_any_other() -> None:
     """`keys._pubkey_cmp_` answers zero for two objects it could not read.
 
-    Which is what it answers for two keys that are equal. The sum has the
-    same shape and is checked with it: `_pubkey_sum_` answers None for the
-    point at infinity and None for a key libsecp256k1 refused.
+    Which is what it answers for two keys that are equal.
     """
     blank = ffi.new("secp256k1_pubkey *")
 
@@ -257,9 +226,122 @@ def test_comparison_of_unreadable_keys_is_an_ordering_like_any_other() -> None:
     with pytest.raises(ValueError, match="illegal argument"):
         context.check()
 
-    assert keys._pubkey_sum_([ffi.NULL]) is None
-    with pytest.raises(ValueError, match="illegal argument"):
+
+def _generator() -> CData:
+    """Return the generator, parsed."""
+    return keys.parse(keys.pubkey_from_prvkey(1))
+
+
+# the wrappers that read the illegal callback themselves, each handed a
+# `secp256k1_pubkey` nothing has written to or a NULL pointer, and the
+# message libsecp256k1 reports for it. The sums take the first beside
+# the generator: libsecp256k1 adds the unreadable key in anyway and
+# answers a point. A NULL pointer makes `secp256k1_ecdh` return 0, which
+# alone would read as a refused private key
+_UNREADABLE = "illegal argument: !secp256k1_fe_is_zero"
+_RAISING_WRAPPERS: dict[str, tuple[Callable[[], object], str]] = {
+    "ecdh._shared_secret_ of NULL": (
+        lambda: ecdh._shared_secret_(ffi.NULL, 7),
+        "illegal argument: point != NULL",
+    ),
+    "ecdh._shared_point_": (
+        lambda: ecdh._shared_point_(_refused("secp256k1_pubkey"), 7),
+        _UNREADABLE,
+    ),
+    "ecdh._shared_secret_": (
+        lambda: ecdh._shared_secret_(_refused("secp256k1_pubkey"), 7),
+        _UNREADABLE,
+    ),
+    "keys._pubkey_combine_": (
+        lambda: keys._pubkey_combine_([_refused("secp256k1_pubkey"), _generator()]),
+        _UNREADABLE,
+    ),
+    "keys._pubkey_sum_": (
+        lambda: keys._pubkey_sum_([_refused("secp256k1_pubkey"), _generator()]),
+        _UNREADABLE,
+    ),
+    "keys._pubkey_sum_ of NULL": (
+        lambda: keys._pubkey_sum_([_generator(), ffi.NULL]),
+        r"illegal argument: pubnonces\[i\] != NULL",
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_RAISING_WRAPPERS))
+def test_an_unreadable_key_raises_libsecp256k1s_reason(name: str) -> None:
+    """The sums and the ECDH raise the reason, and leave the thread clean.
+
+    Each of these calls goes on computing with a key it cannot read, so
+    the answer it would return looks like any other: a point, or 32
+    bytes. The raise is what tells the caller, and the `check` after it
+    returning shows the message was not also left on the thread.
+    """
+    call, message = _RAISING_WRAPPERS[name]
+    with pytest.raises(ValueError, match=message):
+        call()
+    context.check()
+
+
+@pytest.mark.parametrize(
+    "name, size", [("_shared_secret_", 32), ("_shared_point_", 64)]
+)
+def test_an_unreadable_key_leaves_no_ecdh_output_behind(
+    name: str, size: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The buffer libsecp256k1 wrote into is wiped before the raise.
+
+    The key here has a zero x, which libsecp256k1 refuses, and a y that
+    is not zero: what `secp256k1_ecdh` computes from it depends on the
+    private key, so it is wiped like any other secret. The real `wipe`
+    runs, and the buffer it was given is read back afterwards.
+    """
+    unreadable = ffi.new("secp256k1_pubkey *")
+    # the second half of the 64 octets holds y
+    unreadable.data[32] = 5
+    wiped: list[bytes] = []
+
+    def recording(buffer: CData) -> None:
+        wiped.append(bytes(ffi.buffer(buffer)))
+        _secret.wipe(buffer)
+        wiped.append(bytes(ffi.buffer(buffer)))
+
+    monkeypatch.setattr(ecdh, "wipe", recording)
+    with pytest.raises(ValueError, match=_UNREADABLE):
+        getattr(ecdh, name)(unreadable, 7)
+    before, after = wiped
+    assert before != bytes(size)
+    assert after == bytes(size)
+
+
+def test_checked_keeps_what_the_thread_already_held() -> None:
+    """A message recorded before the call is still there after it.
+
+    `context._checked` clears the record to see what the call reports,
+    and puts back what was there, so a `check` the caller still owes is
+    not answered by a wrapper in between.
+    """
+    assert not lib.secp256k1_ec_pubkey_parse(ctx, *NOWHERE_ARGS)
+    assert keys._pubkey_sum_([_generator(), _generator()]) is not None
+    with pytest.raises(ValueError, match="pubkey != NULL"):
         context.check()
+
+
+@pytest.mark.parametrize("returned", [0, 1])
+def test_checked_reads_the_report_and_not_the_return_code(returned: int) -> None:
+    """A report raises whatever the call returned.
+
+    libsecp256k1's own sum and ECDH return 1 for a key they cannot read;
+    a version that returns 0 for it must raise the same way. A stand-in
+    records the report as the callback would, and returns either code.
+    """
+
+    def reporting() -> int:
+        context._record_illegal(ffi.new("char[]", b"stand-in"), ffi.NULL)
+        return returned
+
+    with pytest.raises(ValueError, match="illegal argument: stand-in"):
+        context._checked(reporting)
+    context.check()
 
 
 def test_the_public_entry_points_leave_the_thread_clean() -> None:
