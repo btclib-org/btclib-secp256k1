@@ -523,11 +523,10 @@ jobs:
 
       # cibuildwheel from the build group of pyproject.toml, pinned by
       # uv.lock, rather than from `pip install -U`, which fetched whatever
-      # the index held that morning: what it decides — the interpreters,
-      # the manylinux images, the identifiers the skip in
-      # [tool.cibuildwheel] names — is this matrix, so a release of it
-      # belongs in a pull request that runs the matrix rather than in a
-      # push that did not touch it. --only-group omits the project, so
+      # the index held that morning: what it decides — the interpreters
+      # and the identifiers the skip in [tool.cibuildwheel] names — is
+      # this matrix, so a release of it belongs in a pull request rather
+      # than in a push that did not touch it. --only-group omits the project, so
       # this installs no extension of its own; the build frontend
       # cibuildwheel then runs per interpreter is uv, which
       # [tool.cibuildwheel]'s `build-frontend` names and this group does
