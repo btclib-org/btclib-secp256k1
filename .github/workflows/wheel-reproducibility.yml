@@ -508,7 +508,7 @@ jobs:
 
       # --only-group build, so the environment is cibuildwheel and the
       # tools it needs and no extension of this project's own; --locked,
-      # so the cibuildwheel deciding the images and the identifiers is
+      # so the cibuildwheel deciding the interpreters and the identifiers is
       # the one uv.lock pins rather than whatever the index holds. The
       # script finds cibuildwheel on the PATH this sets, which is why it
       # runs under uv run rather than under --no-project as rebuild's
