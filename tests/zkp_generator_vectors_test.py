@@ -102,12 +102,18 @@ def test_generate_blinded_differs_from_generate() -> None:
     assert g.generate_blinded(seed, blind) != g.generate(seed)
 
 
-@pytest.mark.parametrize("blind", [1, 2**255, secrets.token_bytes(32)])
+# "random" and not secrets.token_bytes(32) here: a value drawn at collection
+# gives each pytest-xdist worker its own parametrize id, and the workers then
+# collect different tests
+@pytest.mark.parametrize("blind", [1, 2**255, "random"])
 @pytest.mark.parametrize("value", [0, 42, 2**64 - 1])
 def test_pedersen_commit_round_trips_through_octets(
-    blind: bytes | int, value: int
+    blind: bytes | int | str, value: int
 ) -> None:
     """A commitment round-trips, `blind` given as an int or as bytes."""
+    if blind == "random":
+        blind = secrets.token_bytes(32)
+    assert not isinstance(blind, str)
     commit = g.pedersen_commit(blind, value)
     assert (
         g.pedersen_commitment_serialize(g.pedersen_commitment_parse(commit)) == commit
