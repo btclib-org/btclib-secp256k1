@@ -175,6 +175,11 @@ VEX = Path(".github") / "vex.toml"
 # without its justification or its detail is a claim nobody can check
 VEX_KEYS = frozenset({"id", "source", "component", "justification", "detail"})
 
+# the keys of an entry about a development group the release does not ship:
+# the group stands where the justification stood, and the document, which
+# lists shipped components only, leaves the entry out
+VEX_GROUP_KEYS = frozenset({"id", "source", "component", "group", "detail"})
+
 # CycloneDX 1.6's `impactAnalysisJustification`, the whole enumeration
 _JUSTIFICATIONS = (
     "code_not_present",
@@ -470,6 +475,31 @@ def vex_findings(repo_root: Path) -> list[dict[str, Any]]:
     return findings
 
 
+def check_group_finding(finding: dict[str, Any], references: dict[str, str]) -> None:
+    """Refuse a group entry that is not whole, or whose component ships.
+
+    :param finding: the `[[not_affected]]` table naming a `group`.
+    :param references: the `bom-ref` of each component the document carries,
+        by normalized name.
+    :raises SystemExit: where the entry is refused.
+    """
+    if set(finding) != VEX_GROUP_KEYS or not all(
+        isinstance(value, str) and value for value in finding.values()
+    ):
+        msg = (
+            f"{VEX}: a group entry needs exactly {sorted(VEX_GROUP_KEYS)}, "
+            f"got {finding!r}"
+        )
+        raise SystemExit(msg)
+    name = canonical_name(finding["component"])
+    if name in references:
+        msg = (
+            f"{VEX}: {finding['id']} names the group {finding['group']!r} "
+            f"and {name}, which this document carries"
+        )
+        raise SystemExit(msg)
+
+
 def vulnerabilities(
     repo_root: Path, components: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -483,7 +513,11 @@ def vulnerabilities(
     document has no `vulnerabilities` key at all: an empty array would say
     the tree looked and found nothing to report, which is a claim about the
     tree's process this script cannot check. A file with no entry is
-    refused, section 12 giving a tree with none no file.
+    refused, section 12 giving a tree with none no file. An entry with a
+    `group` is about a development group the release does not ship: it is
+    checked for its keys and left out, the document listing shipped
+    components only, and refused where its component is one the document
+    carries.
     """
     findings = vex_findings(repo_root)
 
@@ -499,6 +533,9 @@ def vulnerabilities(
             references[key] = str(entry["bom-ref"])
     result = []
     for finding in findings:
+        if "group" in finding:
+            check_group_finding(finding, references)
+            continue
         if set(finding) != VEX_KEYS or not all(
             isinstance(value, str) and value for value in finding.values()
         ):
