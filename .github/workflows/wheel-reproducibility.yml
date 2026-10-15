@@ -114,8 +114,9 @@ name: wheel-reproducibility
 # every other pull request from paying for a double build on every image:
 # it reads the pull request's own files, and the build jobs run only where
 # one of them is something the builds depend on -- the build scripts, the
-# version and the build backend's own configuration, the vendored library
-# this compiles, the script the steps run, the script the build backend
+# version and the build backend's own configuration, the lock and the
+# build requirements exported from it, the vendored library this
+# compiles, the script the steps run, the script the build backend
 # loads to write the wheel's bill of materials, and this workflow's own
 # matrix.
 #
@@ -234,19 +235,21 @@ jobs:
           # what the builds read, one alternative per entry the header
           # names: scripts/ for the build backend and the extension's
           # own sources; pyproject.toml for the version and
-          # cibuildwheel's configuration; build-constraints.txt for the
-          # build requirements, which a lock bump moves without
-          # touching pyproject.toml; secp256k1 for the vendored
-          # library, whose gitlink the file list names like any other
-          # path; the script the steps run, and generate_sbom.py, which
-          # the build backend loads to write the wheel's SBOM, so a
-          # change to either is measured on its own pull request; and
-          # this file, for the matrix and the steps. A literal block
-          # scalar, for the reason test.yml's prose-pattern gives:
-          # yamllint reads a pattern with no space in it as one
-          # unbreakable word
+          # cibuildwheel's configuration; uv.lock, which pins the
+          # cibuildwheel, auditwheel and delocate the jobs that run the
+          # `build` group use, and which a Dependabot bump moves alone;
+          # build-constraints.txt for the build requirements, which a
+          # lock bump moves without touching pyproject.toml; secp256k1
+          # for the vendored library, whose gitlink the file list names
+          # like any other path; the script the steps run, and
+          # generate_sbom.py, which the build backend loads to write the
+          # wheel's SBOM, so a change to either is measured on its own
+          # pull request; and this file, for the matrix and the steps.
+          # A literal block scalar, for the reason test.yml's
+          # prose-pattern gives: yamllint reads a pattern with no space
+          # in it as one unbreakable word
           BUILD_PATHS: |-
-            ^(scripts/.*|pyproject\.toml|build-constraints\.txt|secp256k1|\.github/scripts/check_wheel_reproducibility\.py|\.github/scripts/generate_sbom\.py|\.github/workflows/wheel-reproducibility\.yml)$
+            ^(scripts/.*|pyproject\.toml|uv\.lock|build-constraints\.txt|secp256k1|\.github/scripts/check_wheel_reproducibility\.py|\.github/scripts/generate_sbom\.py|\.github/workflows/wheel-reproducibility\.yml)$
         run: |
           # only a pull request has a base to be a diff against, so the
           # schedule and a dispatch build everything
