@@ -413,6 +413,10 @@ ignore = ["W003", "W009"]
 # and randomized, and tests/concurrency_test.py shares it across threads,
 # so an order that happens to work is an order this suite could not
 # distinguish from one that has to
+# coverage is declared although pytest-cov brings it: test.yml's and
+# deps-latest.yml's `coverage combine` and `coverage report` steps call
+# it directly, and so does CONTRIBUTING.md's `Measure coverage, gated at
+# 100%`. A command a workflow types is a dependency the group states
 # pathspec is no test tool: tests/sdist_exclude_test.py imports
 # .github/scripts/check_sdist_exclude.py at module scope, and that
 # script matches the sdist exclude list with pathspec, the library
@@ -432,6 +436,7 @@ ignore = ["W003", "W009"]
 # this entry rather than restating it
 test = [
     "cibuildwheel>=4.2.0",
+    "coverage>=7.16.2",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-randomly>=5.0.0",
@@ -1042,6 +1047,30 @@ norecursedirs = ["secp256k1", "secp256k1-zkp"]
 # path left to select on. Anywhere but last is safe, and --durations=8
 # after it is what keeps it that way -- section 7 of the organization
 # standard names both flags in the addopts it gives
+#
+# no `-n auto --dist worksteal`, measured on CI (ubuntu-latest, 4 cores,
+# the static build, whole suite, medians of five alternating runs, all
+# green): 17.6s serial against 12.2s under the pool with coverage, and
+# 15.4s against 9.9s without it (three runs), each the time pytest prints
+# on its last line. The pool is faster and is not adopted yet, for what
+# adopting it needs first:
+# - `-m zkp -n auto` must collect the same tests in every worker, which
+#   is what btclib-org/btclib-secp256k1#1175 asks for: a parametrize id
+#   drawn from `secrets` makes the workers collect different tests;
+# - `[tool.cibuildwheel]` would need pytest-xdist in `test-requires`,
+#   or an `-o addopts=` override in `test-command`, since pytest
+#   refuses the `-n` that addopts would carry where the plugin is absent;
+# - the union of the three runs under xdist is not yet shown to reach 100.
+# The figures come from these commands, run in one CI job with pytest-xdist
+# declared in the test group rather than passed with --with: five pairs as
+# below and three pairs with --no-cov added. The command that re-derives
+# them, the two forms alternating, is
+#     uv run --locked --no-default-groups --group test \
+#         --with pytest-xdist pytest --cov-fail-under=0 -n 0
+#     uv run --locked --no-default-groups --group test \
+#         --with pytest-xdist pytest --cov-fail-under=0 \
+#         -n auto --dist worksteal
+# and the time to compare is the one on pytest's last line
 addopts = "-ra --strict-markers --strict-config --cov --durations=8"
 # --strict-markers is what this registers against: an unregistered
 # @pytest.mark.zkp would otherwise fail collection with no clue beyond
@@ -1082,7 +1111,7 @@ omit = [".github/scripts/generate_sbom.py"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-# matching a sibling repository's own choice: with fail_under = 100
+# matching a sibling repository's own choice: with fail_under = 100.0
 # below, coverage special-cases the comparison so nothing short of an
 # exact 100.00% passes, and this is what makes the per-file table say
 # the same thing the exit code does, rather than rounding a shortfall
@@ -1121,7 +1150,7 @@ exclude_also = [
 # Report the union, gated at 100% step that this number gates --
 # section 8 of the organization standard, at "where an optional native
 # dependency splits the code"
-fail_under = 100
+fail_under = 100.0
 
 [tool.cibuildwheel]
 # pytest-cov beside pytest because addopts carries --cov, and an
