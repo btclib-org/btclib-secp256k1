@@ -401,9 +401,9 @@ The malformed half of the domain -- what the parsers refuse -- is
 declares as input validation this suite does not drive from a walk.
 
 Hand-rolled because of where the suite runs: `[tool.cibuildwheel]`'s
-`test-requires` is pytest and pytest-cov, and `test.yml`'s sdist job
-installs those two from pip with no lock, so a layer importing a package
-either joins every wheel cell's requirements or fails collection there.
+`test-requires` and `test.yml`'s sdist job install the package and what
+they name, with no lock, so a layer importing any other package either
+joins both lists or fails collection there.
 pytest-cov is there for what `--cov` in `addopts` costs -- an interpreter
 without the plugin refuses the flag before it collects anything -- and
 neither run measures anything with it, both passing `--no-cov`. What the

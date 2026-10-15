@@ -700,6 +700,8 @@ SARIF as code scanning alerts. `vendored-vectors.yml` takes `issues:
 write` on the job that calls the workflow opening the drift issue, and
 that workflow's header says why it takes a step the other sentinels
 deliberately do not.
+`api-break.yml` holds `pull-requests: write` on its one calling job, for the
+label the called workflow sets; it is read-only on a fork's pull request.
 
 One elevation per job is the shape to keep — the job that writes
 releases holds no OIDC token, and the job that signs writes no release.

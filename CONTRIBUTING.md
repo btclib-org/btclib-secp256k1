@@ -505,7 +505,9 @@ before opening the pull request.
 Two hooks are regenerated rather than fixed when they fail. The test data
 is private keys, so `detect-secrets` would report all of it; the known
 findings are recorded as reviewed rather than excluded, in two baselines
-that differ only in whether the entropy detectors run. Adding a hex
+that differ only in whether the entropy detectors run. The one exception
+is a line filter in `.secrets.baseline` for a `rev:` line holding a
+40-hex sha, which a frozen hook revision would otherwise trip. Adding a hex
 constant to a test module, or a vector to a file under `tests/` matching
 `*.csv` or `*.json`, fails the corresponding hook until its baseline is
 regenerated.
@@ -515,12 +517,13 @@ detectors on. `--slim` omits `line_number` and `generated_at`, so the
 file stops changing when a flagged line moves; the scan is fresh rather
 than `--baseline`, which writes the full form whatever it read —
 `--slim` reaches `format_for_output` only on the branch that prints to
-stdout — so the exclusion is spelled out rather than read back from the
-baseline's own filter:
+stdout — so the file exclusion and the `rev:` line filter are spelled out
+rather than read back from the baseline's own filters:
 
 ```shell
 uvx --from detect-secrets detect-secrets scan --slim \
     --exclude-files '^(\.secrets\..*baseline|tests/.*\.(csv|json))$' \
+    --exclude-lines '^\s*rev: "?[0-9a-f]{40}"?(\s|$)' \
     > .secrets.baseline
 ```
 
@@ -1369,10 +1372,12 @@ and the `lint` workflow runs that very file, so what CI enforces is what
 the local gate enforces. Never add a check that exists only in a
 workflow, and never leave a hook weaker locally than on a runner: a hook
 that needs a tool the developer may not have carries it in
-`additional_dependencies`, which is why `actionlint` ships `shellcheck-py`;
-`zizmor` reaches the same end from its own repository at a pinned `rev`,
-which pre-commit.ci moves where an `additional_dependencies` pin is moved
-by nothing, rather than from a `local` hook naming the tool by hand.
+`additional_dependencies`, as `typos` does, or takes it from its own
+repository: `actionlint-shellcheck` is the fork's id that installs
+shellcheck beside actionlint, and `zizmor` reaches the same end at a
+pinned `rev`, which pre-commit.ci moves where an `additional_dependencies`
+pin is moved by nothing, rather than from a `local` hook naming the tool by
+hand.
 `pyroma` is a `local` hook that names no version at all: it runs out of the
 `check` group through `uv run --locked`, so the version is `uv.lock`'s. A
 check discovered by CI after a push is a check in the wrong place.
@@ -1396,6 +1401,7 @@ introduced and a red check nobody can act on from a branch is noise.
 | `test` | pull request, push | the wheels, the sdist, one suite cell |
 | `lint`, `docs` | pull request, push | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
+| `api-break` | pull request | — |
 | `vendored-vectors` | weekly, a pull request touching what it reads | — |
 | `codeql` | pull request, push to main, weekly | the two scanned languages |
 | `scorecard` | push to main, weekly | — |

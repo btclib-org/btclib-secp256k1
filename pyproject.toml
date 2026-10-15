@@ -428,14 +428,17 @@ ignore = ["W003", "W009"]
 # free-threaded interpreter test.yml's CIBW_BUILD names: an older one
 # drops it from the selection. Where cibuildwheel is absent or older the
 # test reads a skip, not an error -- in the wheel test and the sdist
-# test, whose environments carry only what their own lists name -- and it
-# reads the floor out of this entry rather than restating it
+# test, neither of whose lists names it -- and it reads the floor out of
+# this entry rather than restating it
 test = [
     "cibuildwheel>=4.2.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-randomly>=5.0.0",
     "pathspec>=1.1.1",
+    # tests/secret_free_test.py, copied from btclib-org/.github, imports
+    # `override` from it
+    "typing_extensions>=4.4.0,<5",
 ]
 # the mypy hook of .pre-commit-config.yaml declares what the checked
 # files import, because it runs in its own isolated environment; running
@@ -1127,19 +1130,26 @@ fail_under = 100
 # the --no-cov below: section 8 of the organization standard names that
 # flag as one a job may pass beyond what pyproject.toml holds, and
 # coverage is measured once, on the gate's own cell.
-# pathspec for the reason the `test` group above gives, which is that
-# group's to state and not this one's to restate. What is this list's
-# own is that it is a second environment: cibuildwheel installs what is
-# named here and nothing of that group, so a dependency the suite needs
-# has to be declared twice to be there twice.
+# pathspec and typing_extensions for the reasons the `test` group above
+# gives, which are that group's to state and not this one's to
+# restate. What is this list's own is that it is a second environment:
+# cibuildwheel installs what is named here and nothing of that group, so
+# a dependency the suite needs has to be declared twice to be there
+# twice.
 #
 # Each is pinned to the version uv.lock resolves for it: unpinned, this
 # list installs whatever the index holds the day a wheel job runs, with
 # filterwarnings = error in force. tests/hook_pins_test.py fails where
 # an item carries no pin or a pin the lock does not resolve, so a lock
 # update moving one of these has to move this list with it
-# (btclib-org/btclib-secp256k1#1032)
-test-requires = ["pytest==9.1.1", "pytest-cov==7.1.0", "pathspec==1.1.1"]
+# (btclib-org/btclib-secp256k1#1032). A name is matched as spelled, so it
+# is written as uv.lock writes it
+test-requires = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "pathspec==1.1.1",
+    "typing-extensions==4.16.0",
+]
 test-command = "pytest --no-cov {project}/tests/"
 # uv, and not `build`, for the one variable below: UV_BUILD_CONSTRAINT binds
 # the requirements of the project being built and no other install,
