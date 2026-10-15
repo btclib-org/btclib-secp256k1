@@ -416,10 +416,11 @@ answered for the octets it came from — is what makes the question moot.
 The public half has no such case, having parsed its own octets, and that
 is the whole of what a caller gives up by reaching past it.
 
-**`keys._pubkey_sum_`, `keys._pubkey_combine_`, `ecdh._shared_secret_`
-and `ecdh._shared_point_` are the exception.** libsecp256k1 adds or
-multiplies a key it cannot read and answers what looks like a result, a
-point or 32 bytes. These four read the callback instead, and raise its
+**`keys._pubkey_sum_`, `keys._pubkey_combine_`, `keys._pubkey_sort_`,
+`ecdh._shared_secret_` and `ecdh._shared_point_` are the exception.**
+libsecp256k1 adds, multiplies or sorts a key it cannot read and answers
+what looks like a result, a point, 32 bytes or an ordering. These read
+the callback instead, and raise its
 message as `ValueError`, leaving nothing on the thread for
 `context.check()`.
 

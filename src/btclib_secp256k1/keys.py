@@ -908,10 +908,10 @@ def _pubkey_sort_(pubkeys: Sequence[CData]) -> list[CData]:
         The same objects that were passed in, in ascending order.
 
     Raises:
-        RuntimeError: if libsecp256k1 refuses an object -- one it cannot
-            read -- or fails to sort for any other reason, which no
-            valid key can make it do. `context.check` is what tells the
-            two apart.
+        ValueError: if any object is not a public key libsecp256k1 will
+            read -- a NULL pointer, or a `secp256k1_pubkey` nothing has
+            written to -- the message then being libsecp256k1's own, as
+            `context.check` words it.
     """
     pubkeys = list(pubkeys)
     # nothing to sort is not a call to make: the array of an empty
@@ -924,10 +924,14 @@ def _pubkey_sort_(pubkeys: Sequence[CData]) -> list[CData]:
     # the array holds borrowed pointers, and is what gets reordered: the
     # list above is what keeps the keys it points to alive
     pointers = array("secp256k1_pubkey *[]", pubkeys)
-    sorted_ = lib.secp256k1_ec_pubkey_sort(ctx, pointers, len(pubkeys))
-    if not sorted_:
-        msg = "public key sorting failed"
-        raise RuntimeError(msg)
+    # it compares a key it cannot read as 33 zero octets and returns 1,
+    # so the refusal is read from the illegal callback. It returns 0 only
+    # for a NULL array or element, which that callback reports first
+    _checked(lib.secp256k1_ec_pubkey_sort, ctx, pointers, len(pubkeys))
+    # the sort compares pairs, so a lone key is never read by it; the
+    # comparison of the key with itself is what reads it
+    if len(pubkeys) == 1:
+        _checked(lib.secp256k1_ec_pubkey_cmp, ctx, pubkeys[0], pubkeys[0])
     # what comes back are the caller's own objects, found by the address
     # each reordered pointer holds -- a cffi pointer hashes and compares
     # as that address. Handing back the array's own elements instead
@@ -956,8 +960,8 @@ def pubkey_sort(
 
     Raises:
         ValueError: if any key is not a valid point.
-        RuntimeError: if libsecp256k1 fails to sort or serialize, which
-            no valid input can make it do.
+        RuntimeError: if libsecp256k1 fails to serialize, which no valid
+            input can make it do.
     """
     return [
         serialize(pubkey, compressed)
