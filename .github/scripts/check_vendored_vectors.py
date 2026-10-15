@@ -95,6 +95,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -103,6 +104,39 @@ from pathlib import Path
 # a partial executable path relying on PATH's own search order rather
 # than naming what actually runs
 _GH = shutil.which("gh") or "gh"
+
+# gh's stderr for a server error. A secondary rate limit is not
+# retried: GitHub asks to wait as long as its retry-after header says,
+# which gh's stderr does not carry, or at least a minute.
+_TRANSIENT = re.compile(r"HTTP 5\d\d")
+_ATTEMPTS = 3
+
+
+def _gh_output(*args: str) -> str:
+    """Return the stdout of a `gh` call, printing gh's stderr where it fails.
+
+    A call failing with a server error is made `_ATTEMPTS` times at
+    most, waiting longer before each retry; the last error, or any
+    other, is raised.
+    """
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            return subprocess.run(  # noqa: S603
+                [_GH, *args],
+                capture_output=True,
+                check=True,
+                encoding="utf-8",
+            ).stdout
+        except subprocess.CalledProcessError as error:
+            print(
+                f"gh {' '.join(args)} failed: {error.stderr.strip()}", file=sys.stderr
+            )
+            if attempt == _ATTEMPTS or not _TRANSIENT.search(error.stderr):
+                raise
+            time.sleep(5 * attempt)
+
 
 # a vendored file's own ### heading, so a drift report -- and the
 # skipped-entry list -- can name the file rather than only its upstream
@@ -277,7 +311,6 @@ def _latest_commit(
     matches it without this function naming the branch.
     """
     args = [
-        _GH,
         "api",
         "--method",
         "GET",
@@ -289,13 +322,7 @@ def _latest_commit(
     ]
     if ref is not None:
         args.extend(("-f", f"sha={ref}"))
-    result = subprocess.run(  # noqa: S603
-        args,
-        capture_output=True,
-        check=True,
-        encoding="utf-8",
-    )
-    commits = json.loads(result.stdout)
+    commits = json.loads(_gh_output(*args))
     if not commits:
         return None
     commit = commits[0]
@@ -379,13 +406,8 @@ def _upstream_blob(repo: str, path: str, commit: str) -> str | None:
     """
     directory, _, name = path.rpartition("/")
     tree = f"{commit}:{directory}" if directory else commit
-    result = subprocess.run(  # noqa: S603
-        [_GH, "api", "--method", "GET", f"repos/{repo}/git/trees/{tree}"],
-        capture_output=True,
-        check=True,
-        encoding="utf-8",
-    )
-    for item in json.loads(result.stdout)["tree"]:
+    answer = _gh_output("api", "--method", "GET", f"repos/{repo}/git/trees/{tree}")
+    for item in json.loads(answer)["tree"]:
         if item["path"] == name:
             sha: str = item["sha"]
             return sha
@@ -467,9 +489,8 @@ def _issue_body(readme_path: Path, drifted: list[Drift], skipped: list[str]) -> 
 
 
 def _open_issue_number(title: str) -> str | None:
-    result = subprocess.run(  # noqa: S603
-        [
-            _GH,
+    issues = json.loads(
+        _gh_output(
             "issue",
             "list",
             "--state",
@@ -478,12 +499,8 @@ def _open_issue_number(title: str) -> str | None:
             f'"{title}" in:title',
             "--json",
             "number",
-        ],
-        capture_output=True,
-        check=True,
-        encoding="utf-8",
+        )
     )
-    issues = json.loads(result.stdout)
     return str(issues[0]["number"]) if issues else None
 
 
