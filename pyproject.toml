@@ -465,7 +465,8 @@ lint = [
 # moved by dependabot, a release of any of them arrives as a pull
 # request, instead of a break on a morning nothing here changed. A pull
 # request builds only part of the matrix (test.yml says which), so the
-# push to main builds the rest
+# push to main builds the rest on the images it runs, and a release on every
+# image
 build = [
     "build>=1.6.1",
     "cibuildwheel>=2.23.4",

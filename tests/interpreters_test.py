@@ -669,10 +669,10 @@ def test_a_pull_request_builds_a_free_threaded_interpreter_on_every_platform() -
     that breaks the free-threaded build, and the required check on a pull
     request builds the interpreters `CIBW_BUILD` keeps, not the ones
     `[tool.cibuildwheel]` configures: the biconditional above asks the
-    configuration, which a push to `main` and a release build whole, so a
-    selection that dropped the free-threaded pattern would leave it green
-    with the classifier still declared and nothing on a branch building
-    the wheel it stands for.
+    configuration, which a push to `main` builds whole on the images it
+    runs and a release on every image, so a selection that dropped the
+    free-threaded pattern would leave it green with the classifier still
+    declared and nothing on a branch building the wheel it stands for.
 
     What it asks for is a free-threaded identifier, not `cp314t`: a
     selection naming the next free-threaded interpreter in its place

@@ -95,6 +95,18 @@ _INCLUDE_ENTRY = re.compile(
     r"^          - platform: (?P<platform>\S+)\n            os: (?P<os>\S+)$",
     re.MULTILINE,
 )
+# a platform written as the matrix's own axes, which is how the
+# x86_64 macOS images are written: `exclude` removes only what the axes
+# make, and a pull request builds none of them
+_AXES = re.compile(
+    r"^        platform: \[(?P<platform>[^\]]+)\]\n"
+    r"        os: \[(?P<os>[^\]]+)\]$",
+    re.MULTILINE,
+)
+# the `exclude:` expression a matrix carries, as a folded scalar
+_EXCLUDE = re.compile(
+    r"^        exclude: >-\n(?P<expr>(?:^          \S.*\n)+)", re.MULTILINE
+)
 
 
 def _job_body(text: str, name: str) -> str:
@@ -117,10 +129,15 @@ def _os_list(body: str) -> tuple[str, ...]:
 
 
 def _images_by_platform(body: str) -> dict[str, list[str]]:
-    """Return the images a job body's `include:` names, keyed by platform."""
+    """Return the images a job body's `include:` rows and axes name.
+
+    The result is keyed by platform.
+    """
     images: dict[str, list[str]] = defaultdict(list)
     for entry in _INCLUDE_ENTRY.finditer(body):
         images[entry["platform"]].append(entry["os"])
+    for axes in _AXES.finditer(body):
+        images[axes["platform"]].extend(o.strip() for o in axes["os"].split(","))
     return images
 
 
@@ -291,3 +308,65 @@ def test_the_aggregate_reads_every_needs_job_result() -> None:
     """`NEEDS_RESULTS` reads `needs.<id>.result` for each id, in order."""
     expected = [f"{job_id} ${{{{ needs.{job_id}.result }}}}" for job_id in _needs()]
     assert _env_block("NEEDS_RESULTS") == expected
+
+
+def _exclusion(body: str) -> str:
+    """Return the `exclude:` expression of a job body, on one line."""
+    exclude = _EXCLUDE.search(body)
+    assert exclude, "no exclude: expression in this job"
+    return " ".join(exclude["expr"].split())
+
+
+# where each file's matrices drop the Intel image: test.yml on a pull request
+# and on a push to a branch (a release is a push of a tag, and a dispatch
+# is neither), the sentinel on a pull request, having no push trigger
+_GATE_SKIPS = (
+    "(github.event_name == 'pull_request' || github.event_name == 'push'"
+    " && github.ref_type == 'branch')"
+)
+_SENTINEL_SKIPS = "github.event_name == 'pull_request'"
+
+
+def test_no_x86_64_macos_image_runs_where_the_calendar_alone_asks() -> None:
+    """Each job listed below excludes its `-intel` image unless asked.
+
+    CONTRIBUTING.md's *What gates a merge, and what only reports* gives
+    the rule and its reason. A job that lists such an image without
+    excluding it would put it back on every pull request without a test
+    failing, and the branches swapped would run it there alone.
+    """
+    jobs = [
+        (_GATE, "build-cibuildwheel", "os", _GATE_SKIPS),
+        (_GATE, "build-dynamic", "os", _GATE_SKIPS),
+        (_SENTINEL, "rebuild", "platform", _SENTINEL_SKIPS),
+        (_SENTINEL, "repaired", "platform", _SENTINEL_SKIPS),
+        (_SENTINEL, "dynamic", "os", _SENTINEL_SKIPS),
+    ]
+    for text, name, key, skips in jobs:
+        body = _job_body(text, name)
+        listed = set(re.findall(r"macos-\d+-intel", body))
+        assert listed, f"{name} names no x86_64 macOS image"
+        # as include rows the image would escape the exclusion, which
+        # removes only what the axes make
+        rows = [e["os"] for e in _INCLUDE_ENTRY.finditer(body)]
+        assert not [r for r in rows if r.endswith("-intel")], (
+            f"{name} lists an -intel image as an include row"
+        )
+        value = "macos-x86-64" if key == "platform" else "macos-26-intel"
+        expr = _exclusion(body)
+        assert expr == (
+            f"${{{{ fromJSON({skips} && '[{{\"{key}\": \"{value}\"}}]' || '[]') }}}}"
+        ), f"{name} does not exclude {value} where it should: {expr}"
+
+
+def test_check_dist_asks_for_the_x86_64_macos_wheels_at_a_release() -> None:
+    """The step refuses a release or a dispatch that built no Intel wheel."""
+    body = _job_body(_GATE, "check-dist")
+    step = re.search(
+        r"- name: Check the x86_64 macOS wheels were built.*\n        if: (?P<cond>.*)\n",
+        body,
+    )
+    assert step, "check-dist has no step asking for the x86_64 macOS wheels"
+    assert step["cond"] == (
+        "${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}"
+    )

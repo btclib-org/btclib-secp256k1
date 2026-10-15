@@ -1347,7 +1347,7 @@ tree's prose:
   `python_version` is a minor version and it refuses a patch, so
   nothing it can be aimed at tells one patch from the next. What does is
   the suite the wheel jobs run under `cp311`, which a pull request
-  builds on every image
+  builds on every image but the x86_64 macOS one, built at a release
 - **the version is declared once,** in `pyproject.toml`, and
   `__version__` reads the installed metadata. Never bump it in an
   ordinary change: releases are cut by a maintainer following
@@ -1398,7 +1398,7 @@ introduced and a red check nobody can act on from a branch is noise.
 
 | workflow | when | what it varies |
 | --- | --- | --- |
-| `test` | pull request, push | the wheels, the sdist, one suite cell |
+| `test` | pull request, push | the wheels, those of x86_64 macOS at a release and a dispatch only, the sdist, one suite cell |
 | `lint`, `docs` | pull request, push | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
 | `api-break` | pull request | — |
@@ -1413,7 +1413,7 @@ introduced and a red check nobody can act on from a branch is noise.
 | `links` | weekly, a pull request touching its own configuration | — |
 | `mutation` | weekly | — |
 | `fuzz` | weekly | — |
-| `wheel-reproducibility` | weekly, pull request, building only where it touches what it builds | every wheel platform, on two images, built twice on each, and the repaired, dynamic and cross-compiled wheels, built twice on one image per platform |
+| `wheel-reproducibility` | weekly, pull request, building only where it touches what it builds | every wheel platform, on two images, built twice on each, and the repaired, dynamic and cross-compiled wheels, built twice on one image per platform; x86_64 macOS weekly and on a dispatch only |
 | `sdist-rebuild` | weekly, a pull request touching its own file | — |
 | `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
@@ -1447,14 +1447,14 @@ on every interpreter, the cell the gate already covers included. A matrix with
 the gate's cell cut out of it is one nobody can read the shape of, and
 whoever asked what ran would have to re-derive the hole from the gate.
 
-**Every image still builds wheels on every pull request**: `cibuildwheel`
-runs the suite against each wheel as it builds it, and the release publishes
-the artifacts of a run that built every one. What narrows on a branch is
-which interpreters per image — the oldest one and the free-threaded one
-rather than every interpreter, ubuntu included — because what a pull request
-asks of an image is whether this tree still builds there, and the toolchain,
-the CMake build of the vendored library and the cffi extension are what
-differ per image rather than per interpreter.
+**Every image but x86_64 macOS still builds wheels on every pull request**:
+`cibuildwheel` runs the suite against each wheel as it builds it, and the
+release publishes the artifacts of a run that built every one. What narrows
+on a branch is which interpreters per image — the oldest one and the
+free-threaded one rather than every interpreter, ubuntu included — because
+what a pull request asks of an image is whether this tree still builds
+there, and the toolchain, the CMake build of the vendored library and the
+cffi extension are what differ per image rather than per interpreter.
 
 The free-threaded one is kept for a reason of its own: `pyproject.toml`
 declares the `Free Threading` classifier on the ground that the gate refuses
@@ -1472,6 +1472,14 @@ the tree on every interpreter. What no run asks at all is the suite
 against the dynamic wheel as a package — the sentinels compile that
 linkage from the tree instead. `os-ubuntu.yml`'s header records both
 costs beside each other.
+
+**x86_64 macOS builds only at a release, on a dispatch and on the calendar**,
+never on a pull request or a push to `main`. `test` builds its wheels at a
+release and a dispatch, and `check-dist` fails those runs unless they are
+there; `wheel-reproducibility` builds its images weekly and on a dispatch.
+The reason is that its runner fails on network steps far more often than the
+others (#1191), and that GitHub Actions drops x86_64 macOS in August 2027,
+when the images leave every workflow.
 
 Every workflow here takes `workflow_dispatch`, the gates included, except
 `claude-review` and `scorecard`, and for the three platform workflows it is
