@@ -234,6 +234,63 @@ def _customized_compile_link(
     return shlex.split(cc), shlex.split(cflags), shlex.split(ldshared)
 
 
+def _macos_architectures(target: str) -> list[str]:
+    """Read the architectures a macOS platform tag builds for.
+
+    The tag is `sysconfig.get_platform()`, which follows the
+    `_PYTHON_HOST_PLATFORM` a cross-compiling `cibuildwheel` sets, so the
+    CMake archive and the glue are aimed at the same place by one source.
+
+    Args:
+        target: the platform tag, such as `macosx-11.0-arm64`.
+
+    Returns:
+        `["x86_64", "arm64"]` for `universal2`, else the one architecture
+        the tag ends in.
+    """
+    arch = target.rsplit("-", 1)[-1]
+    return ["x86_64", "arm64"] if arch == "universal2" else [arch]
+
+
+def _pin_architectures(flags: str, architectures: list[str]) -> str:
+    """Replace the `-arch` pairs of a compiler or linker command line.
+
+    A python.org universal2 interpreter records `-arch arm64 -arch x86_64`
+    in `CFLAGS` and `LDSHARED`. `sysconfig` replaces them by `ARCHFLAGS`
+    (`_osx_support._override_all_archs`), but its pattern needs a space
+    after a pair, so a pair ending the value survives. From 3.13 the
+    python.org values end in `-arch x86_64`, which an arm64 build keeps.
+    setuptools runs the same override again in `customize_compiler`,
+    which removes it; this glue does not, so the pairs are replaced here.
+
+    The pairs are replaced where the first stood. A command with none
+    gets none: the compiler's own default then applies, as it does for an
+    interpreter that records no `-arch`.
+
+    Args:
+        flags: a `CFLAGS` or `LDSHARED` value.
+        architectures: the architectures to build for.
+
+    Returns:
+        `flags` with its `-arch X` pairs replaced by `architectures`.
+    """
+    words = shlex.split(flags)
+    pinned: list[str] = []
+    seen = False
+    index = 0
+    while index < len(words):
+        if words[index] == "-arch" and index + 1 < len(words):
+            if not seen:
+                seen = True
+                for arch in architectures:
+                    pinned += ["-arch", arch]
+            index += 2
+        else:
+            pinned.append(words[index])
+            index += 1
+    return shlex.join(pinned)
+
+
 def _cmake_build_type(env: Mapping[str, str]) -> str:
     """Read the vendored library's CMake build type.
 
@@ -417,8 +474,15 @@ class FFIExtension:
         too, in `_customized_compile_link`: an `-arch` pair supplied that
         way has the same obligation to reach the link.
 
-        Nothing is filtered out of them: on macOS `sysconfig` has already
-        run the flags through `_osx_support`, which is what rewrites an
+        On macOS the `-arch` pairs of the interpreter's CFLAGS and LDSHARED
+        are first replaced by the architectures of `get_platform()`: a
+        pair ending the value survives `sysconfig`'s own `ARCHFLAGS`
+        override, and a universal2 interpreter building an arm64 wheel
+        would otherwise link a dual-arch extension against an arm64
+        archive (`_pin_architectures`).
+
+        Otherwise nothing is filtered out of them: on macOS `sysconfig` has
+        already run the flags through `_osx_support`, which is what rewrites an
         `-arch` the toolchain cannot build and an `-isysroot` pointing at
         an SDK that is not installed. Each is split rather than passed
         whole: unsplit, CCSHARED is a single argv element, an empty one
@@ -488,10 +552,20 @@ class FFIExtension:
             if platform.system() == "Darwin"
             else [f"-ffile-prefix-map={build_dir.resolve()}=."]
         )
+        sysconfig_cflags = get_config_var("CFLAGS") or ""
+        sysconfig_ldshared = get_config_var("LDSHARED")
+        if platform.system() == "Darwin":
+            # the interpreter's `-arch` pairs name the architectures it
+            # was built for, the wheel's tag the ones being built: they
+            # differ for a universal2 interpreter building an arm64 or an
+            # x86_64 wheel, and the library archive holds only the latter
+            archs = _macos_architectures(get_platform())
+            sysconfig_cflags = _pin_architectures(sysconfig_cflags, archs)
+            sysconfig_ldshared = _pin_architectures(sysconfig_ldshared, archs)
         cc, cflags, ldshared = _customized_compile_link(
             get_config_var("CC"),
-            get_config_var("CFLAGS") or "",
-            get_config_var("LDSHARED"),
+            sysconfig_cflags,
+            sysconfig_ldshared,
             os.environ,
         )
         compile_command = [
@@ -681,8 +755,8 @@ class VendoredCMakeExtension(FFIExtension):
         for x86-64 against an arm64 archive, leaving every secp256k1
         symbol unresolved at link time (LNK2001). The macOS counterparts
         are an x86-64 interpreter under Rosetta, and the universal2 one of
-        the python.org installer, which compiles for both architectures
-        and so needs both in the archive it links.
+        the python.org installer, which for a universal2 target compiles
+        for both architectures and so needs both in the archive it links.
 
         sysconfig.get_platform() is where setuptools reads its own target
         from, so deriving this from it keeps the two in agreement by
@@ -714,10 +788,8 @@ class VendoredCMakeExtension(FFIExtension):
             # architecture would be worse than building for the host
             return ["-A", arch] if arch else []
         if platform.system() == "Darwin":
-            arch = target.rsplit("-", 1)[-1]
-            if arch == "universal2":
-                arch = "x86_64;arm64"
-            return [f"-DCMAKE_OSX_ARCHITECTURES={arch}"]
+            archs = ";".join(_macos_architectures(target))
+            return [f"-DCMAKE_OSX_ARCHITECTURES={archs}"]
         return []
 
     def macos_deployment_target_options(self) -> list[str]:

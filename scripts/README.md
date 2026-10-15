@@ -213,8 +213,9 @@ by this file's own three paths:
   compile's flags and extends the link, `LDFLAGS` extends the link, and
   `CPPFLAGS` extends both. A `CFLAGS` set by a caller is therefore the
   whole of the compile's flags, `-arch` and optimization included. With
-  none of them set, the compile and the link read exactly what
-  `sysconfig` alone gives them, which is what
+  none of them set, the compile and the link read what `sysconfig`
+  gives them, on macOS with the `-arch` pairs replaced by the
+  architectures of `get_platform()`, which is what
   `wheel-reproducibility.yml` and the sdist-rebuild gate measure
   (btclib-org/btclib-secp256k1#1019)
 - `CMAKE_BUILD_TYPE` chooses the vendored library's CMake build type, on
