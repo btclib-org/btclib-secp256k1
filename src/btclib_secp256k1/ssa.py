@@ -194,8 +194,8 @@ def sign(
     Args:
         msg_bytes: the 32-byte message hash.
         prvkey: the private key, 32 bytes or an int below 2**256. The
-            signature is of its x-only public key, so the key is negated
-            first where its y is odd, as BIP340 prescribes.
+            signature is of its x-only public key, so libsecp256k1
+            negates the key where its y is odd, as BIP340 prescribes.
         aux_rand32: the 32 bytes of auxiliary randomness BIP340 defines,
             or None for fresh randomness. Never a shorter value: BIP340
             defines a 32-byte a, and padding a short one would make a
@@ -324,10 +324,11 @@ class Signer:
     records why that copy cannot be taken back.
 
     Args:
-        prvkey: the private key, 32 bytes or an int below 2**256. Every
-            signature is of its x-only public key, so the key is negated
-            first where its y is odd, as BIP340 prescribes -- once here,
-            rather than once per signature.
+        prvkey: the private key, 32 bytes or an int below 2**256. The
+            keypair holds it as given. Every signature is of its x-only
+            public key, so libsecp256k1 negates the key where its y is
+            odd, as BIP340 prescribes -- inside each signature, not once
+            here.
 
     Raises:
         ValueError: if the private key is not 32 bytes, does not fit in

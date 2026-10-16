@@ -269,8 +269,8 @@ def _from_keypair_(keypair_obj: CData, parity: CData = ffi.NULL) -> CData:
     Returns:
         The libsecp256k1 x-only public key object. The parity written
         through the pointer, where one is given, is of the point the
-        private key gives, the keypair being the negated key where that
-        y is odd.
+        private key gives, which the keypair holds as given: the
+        negation BIP340 prescribes is done when signing.
 
     Raises:
         RuntimeError: if libsecp256k1 will not read the object -- a NULL
@@ -305,8 +305,9 @@ def from_keypair(keypair_obj: CData) -> tuple[bytes, int]:
 
     Returns:
         The 32-byte x coordinate, and the parity of y -- 0 for even, 1 for
-        odd. The parity is of the point the private key gives, the
-        keypair being the negated key where that y is odd.
+        odd. The parity is of the point the private key gives, which the
+        keypair holds as given: the negation BIP340 prescribes is done when
+        signing.
 
     Raises:
         ValueError: if the object is not a keypair libsecp256k1 will read
