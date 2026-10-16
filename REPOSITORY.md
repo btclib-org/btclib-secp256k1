@@ -412,9 +412,11 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 # false
 ```
 
-Classic protection's own copy of the signature rule is off, the
-`main-integrity` ruleset below being what requires signatures on `main`:
-[the standard states that value for every
+Classic protection's own copy of the signature rule is off, as it is in
+every ruleset over `main`: `verified-signatures.yml` checks after each push
+that every commit pushed is `verified` on the forge, and a red run is read in
+the Actions tab. It is not a required check. [The standard states these values
+for every
 repository](https://github.com/btclib-org/.github#branch-protection-and-rulesets).
 
 `strict` off means a pull request need not be up to date with `main` to
@@ -461,13 +463,12 @@ gh api repos/btclib-org/btclib-secp256k1/rulesets --jq '.[].id' \
 
 `main-integrity` is what [section 11 of the organization
 standard](https://github.com/btclib-org/.github#11-github-settings)
-names — a verified signature, linear history, no force push, no branch
-deletion — with **no bypass actor at all**, which is what makes "on
-every commit, not at review time" true of an administrator too,
-`enforce_admins` above being off. `main-self-merge` is the pull request
-rule, and names the maintainer as one; the listing above answers each
-ruleset's id, and that id is what reads back the rule types and the
-bypass actors:
+names — linear history, no force push, no branch deletion — with **no
+bypass actor at all**, which is what makes "on every commit, not at review
+time" true of an administrator too, `enforce_admins` above being off.
+`main-self-merge` is the pull request rule, and names the maintainer as
+one; the listing above answers each ruleset's id, and that id is what
+reads back the rule types and the bypass actors:
 
 ```shell
 gh api --jq '{rules: [.rules[].type], bypass: [.bypass_actors[].actor_type]}' \
@@ -508,7 +509,7 @@ gh api --jq '{bypass: [.bypass_actors[].bypass_mode],
 The other mode, `always`, permits a direct push as well, and it is not
 used here. What it would buy is a landing that keeps the maintainer's
 own signature on the commit; what it costs is a `main` any local mistake
-can reach. The first half is worth nothing once the branch rule is read
+can reach. The first half is worth nothing once the signature check is read
 as asking for a valid signature rather than for a particular signer,
 which makes GitHub's web-flow key as good as the maintainer's.
 
@@ -607,7 +608,7 @@ commit messages the body — never the pull request's description, which
 **It is also how a pull request lands here**, auto-merge below being
 what presses it once the review and the checks are in. The commit that
 reaches `main` is therefore one GitHub composes and signs with its
-web-flow key, which is the valid signature the rule asks for.
+web-flow key, which is the valid signature the check asks for.
 
 The merge commit was refused by `main`'s required linear history already,
 so turning it off takes away a button that could not have worked. The
@@ -640,11 +641,11 @@ setting does something here precisely because the rule on `main` is what
 it is: the matrix is tens of jobs compiling C, and `test.yml`'s header
 measures what waiting for it costs.
 
-**Required signatures survive it**, measured rather than assumed,
+**A verified signature survives it**, measured rather than assumed,
 because GitHub composes the squash commit server-side and signs it with
 its own key exactly as a press of the button does. That the signer is
 GitHub rather than the author is not a trade this setting makes on its
-own: it is what any landing here carries, the rule asking for a valid
+own: it is what any landing here carries, the check asking for a valid
 signature and not for a particular signer. The check is worth making on
 whatever landed all the same:
 

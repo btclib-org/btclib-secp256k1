@@ -1393,6 +1393,8 @@ else reports: a sentinel opens no issue when it fails, `vendored-vectors`
 excepted for the reason the header of the workflow it calls gives,
 because each is expected to go red for something no pull request
 introduced and a red check nobody can act on from a branch is noise.
+`verified-signatures.yml` reports after each push to `main` whether every
+commit pushed is `verified`; [the standard's *Signatures*][s-sigs] has the rule.
 
 <!-- markdownlint-disable MD013 -->
 
@@ -1402,6 +1404,7 @@ introduced and a red check nobody can act on from a branch is noise.
 | `lint`, `docs` | pull request, push | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
 | `api-break` | pull request | — |
+| `verified-signatures` | push to main | — |
 | `vendored-vectors` | weekly, a pull request touching what it reads | — |
 | `codeql` | pull request, push to main, weekly | the two scanned languages |
 | `scorecard` | push to main, weekly | — |
