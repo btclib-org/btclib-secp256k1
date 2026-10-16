@@ -397,11 +397,11 @@ def test_the_keypair_is_checked_against_the_key_that_signed() -> None:
     """BIP340 negates an odd-y key, and the check follows it there.
 
     The failure this rules out is a check that passes for the wrong
-    reason: `_verified` reads the x-only key off the keypair, which is
-    the negated one where the point has odd y, and a signature verifies
-    against those 32 bytes whichever the parity was. Signing with keys of
-    both parities is what exercises the two sides, so both are asserted
-    to occur rather than assumed to.
+    reason: `_abort_unless_verified` reads the x-only key off the keypair,
+    which holds the key as given and answers its x whichever the parity
+    was, and a signature verifies against those 32 bytes. Signing with
+    keys of both parities is what exercises the two sides, so both are
+    asserted to occur rather than assumed to.
     """
     parities = set()
     for prvkey in range(1, 8):
