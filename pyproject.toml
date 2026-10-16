@@ -433,7 +433,9 @@ ignore = ["W003", "W009"]
 # drops it from the selection. Where cibuildwheel is absent or older the
 # test reads a skip, not an error -- in the wheel test and the sdist
 # test, neither of whose lists names it -- and it reads the floor out of
-# this entry rather than restating it
+# this entry rather than restating it. tests/cibuildwheel_images_test.py
+# reads cibuildwheel's pinned_docker_images.cfg, and skips its image tests
+# where cibuildwheel is absent
 test = [
     "cibuildwheel>=4.2.0",
     "coverage>=7.16.2",
@@ -1216,10 +1218,11 @@ skip = "pp*-win*"
 # naming them here means a cibuildwheel release cannot move the image
 # without a diff to this file.
 #
-# Nothing updates these: no ecosystem .github/dependabot.yml declares
-# reads a [tool.cibuildwheel] key, so the value moves by hand. What says the
-# time has come is a build failing on an interpreter the pinned image
-# does not carry.
+# Nothing updates these: no ecosystem that .github/dependabot.yml declares
+# reads a [tool.cibuildwheel] key, so the value moves by hand. Two things
+# say it is time: tests/cibuildwheel_images_test.py, which fails where a
+# digest below differs from that table, and a build failing on an
+# interpreter the pinned image does not carry.
 #
 # x86_64 and aarch64 are what archs = "auto64" above selects on the
 # Linux runners build-cibuildwheel names, and a PyPy identifier's
