@@ -665,8 +665,8 @@ def nonce_gen(
     Args:
         pubkey_bytes: the public key of the signer this nonce is for, 33
             or 65 bytes. The secnonce this answers can only sign for a
-            keypair matching it, which `SecretNonce.partial_sign` asks
-            libsecp256k1-zkp to check.
+            keypair matching it, which `SecretNonce.partial_sign` checks
+            before it asks libsecp256k1-zkp to sign.
         prvkey: this signer's private key, 32 bytes or an int below
             2**256, if already known. Optional, and folded into the
             nonce derivation to increase misuse-resistance where given;
@@ -825,8 +825,9 @@ class SecretNonce:
         secnonce: the libsecp256k1-zkp secret nonce object `nonce_gen` or
             `nonce_gen_counter` built.
         pubnonce: the matching public nonce object, already parsed.
-        pubkey: the signer's already-parsed public key, kept for
-            `partial_sign`'s own `verify`.
+        pubkey: the signer's already-parsed public key, which
+            `partial_sign` compares with the key it is given and keeps
+            for its own `verify`.
 
     Example:
         >>> from btclib_secp256k1 import keys
@@ -886,9 +887,11 @@ class SecretNonce:
                 wiped, if the private key is not 32 bytes, does not fit
                 in them, or is not in [1, n-1], or if it does not match
                 this secret nonce, or `keyagg_cache` or `session` do not.
-            RuntimeError: if `verify` asks and the partial signature does
-                not verify, which no input reaching this far can make
-                happen.
+            RuntimeError: if libsecp256k1-zkp fails to extract the public
+                key of the private key given, which a private key already
+                verified cannot make it do, or if `verify` asks and the
+                partial signature does not verify, which no input
+                reaching this far can make happen.
         """
         ffi, lib, ctx = context._bindings()
         # _take, not _held: it clears self._secnonce as the one
@@ -898,13 +901,23 @@ class SecretNonce:
         keypair_obj: CData | None = None
         partial_sig = ffi.new("secp256k1_musig_partial_sig *")
         try:
-            # `_keypair(...)` is inside the try on purpose: it is the one
-            # fallible step here that runs before libsecp256k1-zkp ever
-            # sees secnonce, and the class docstring's guarantee -- the
-            # secret nonce does not survive the call, whatever the
-            # outcome -- has to hold even when this raises before that
-            # call is made
+            # `_keypair(...)` and the key check are inside the try on
+            # purpose: they are the fallible steps here that run before
+            # libsecp256k1-zkp ever sees secnonce, and the class
+            # docstring's guarantee -- the secret nonce does not survive
+            # the call, whatever the outcome -- has to hold even when
+            # they raise before that call is made
             keypair_obj = _keypair(ffi, lib, ctx, prvkey)
+            # for the reason `btclib_secp256k1.musig`'s own `partial_sign`
+            # gives
+            signer = ffi.new("secp256k1_pubkey *")
+            if not lib.secp256k1_keypair_pub(ctx, signer, keypair_obj):
+                raise RuntimeError("public key extraction failed")
+            if _pubkey_serialize(ffi, lib, ctx, signer, True) != _pubkey_serialize(
+                ffi, lib, ctx, self._pubkey, True
+            ):
+                msg = "the private key does not match this secret nonce"
+                raise ValueError(msg)
             signed = lib.secp256k1_musig_partial_sign(
                 ctx,
                 partial_sig,
@@ -916,15 +929,13 @@ class SecretNonce:
         finally:
             # the keypair carries the private key, wiped unconditionally
             # for the reason `btclib_secp256k1.musig`'s own
-            # `partial_sign` gives; the secret nonce is spent regardless
+            # `partial_sign` gives; the secret nonce is spent regardless,
+            # a refusal before the C call included
             if keypair_obj is not None:
                 wipe(keypair_obj)
             wipe(secnonce)
         if not signed:
-            msg = (
-                "the private key, key aggregation cache or session do not"
-                " match this secret nonce"
-            )
+            msg = "the key aggregation cache or session do not match this secret nonce"
             raise ValueError(msg)
         if verify and not lib.secp256k1_musig_partial_sig_verify(
             ctx,
