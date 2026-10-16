@@ -5,6 +5,22 @@ release is in [CHANGELOG.md](./CHANGELOG.md); what follows is what a user
 has to act on and what a user gains, and it is what the GitHub release of
 a tag is generated from.
 
+## v0.8.0.12
+
+- **PyPy 3.12 wheels**, for manylinux x86_64 and aarch64 and macOS
+  x86_64 and arm64. The PyPy 3.11 wheels are built for PyPy 8.0
+  (`pypy311_pp80`); on PyPy 7.3, pip takes the `py3-none` wheel instead.
+- **`musig.SecretNonce.partial_sign` and its `zkp` twin check the key
+  first.** A private key that does not match the nonce raises
+  `ValueError` before libsecp256k1 is called, with a message of its own,
+  and leaves nothing for `context.check()`.
+- **Breaking for callers of the private halves:
+  `keys._pubkey_sum_`, `keys._pubkey_combine_`, `keys._pubkey_sort_`,
+  `ecdh._shared_secret_` and `ecdh._shared_point_` raise `ValueError` for
+  a key libsecp256k1 cannot read.** They could answer a result for one,
+  leaving the reason for `context.check()`. The public functions parse
+  their own keys first.
+
 ## v0.8.0.11
 
 - **`zkp.ecdsa_adaptor` wraps libsecp256k1-zkp's ECDSA adaptor
