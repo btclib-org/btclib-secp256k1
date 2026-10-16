@@ -1361,9 +1361,9 @@ is what its toolchain compiles the extension for, and not for the one of
 the host, which is what CMake would otherwise pick. The two differ
 whenever the interpreter is emulated, and on Windows arm64 that is the
 default case rather than an exotic one; the same holds for a universal2
-interpreter on macOS, which needs both architectures in the archive it
-links. The `win_arm64` wheels start at CPython 3.11, the first version
-with a Windows arm64 build.
+interpreter on macOS building a universal2 target, which needs both
+architectures in the archive it links. The `win_arm64` wheels start at
+CPython 3.11, the first version with a Windows arm64 build.
 The dynamic (ABI mode) Windows wheel is instead cross-compiled on Linux
 with mingw-w64, through the vendored CMake toolchain file, and is
 x86_64 only.

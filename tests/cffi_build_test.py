@@ -7,12 +7,14 @@
 `scripts/cffi_build.py`'s `_customized_compile_link` composes `CC`,
 `CFLAGS` and `LDSHARED` the way the Unix compiler's `configure_system`
 does in the setuptools `uv.lock` resolves, and `_cmake_build_type` reads
-`CMAKE_BUILD_TYPE` for the vendored library's build type. Both are pure
+`CMAKE_BUILD_TYPE` for the vendored library's build type;
+`_macos_architectures` and `_pin_architectures` aim the macOS compile and
+link at the wheel's architectures. All are pure
 functions of their arguments -- no `sysconfig`, no `os.environ`, no
 subprocess -- so what is checked here is the argv each one builds, never
 a compile (btclib-org/btclib-secp256k1#1019).
 
-Neither is read by importing `scripts/cffi_build.py`, for the reason
+None is read by importing `scripts/cffi_build.py`, for the reason
 `tests/module_flags_test.py`'s own docstring gives: the module's own top
 level constructs `Secp256k1CFFIExtension()`, whose `__init__` runs
 `clean()` and deletes the CMake build directory and any local build
@@ -63,12 +65,18 @@ customized_compile_link = cast(
     "Callable[[str, str, str, Mapping[str, str]], tuple[list[str], list[str], list[str]]]",
     _extracted("_customized_compile_link"),
 )
+macos_architectures = cast(
+    "Callable[[str], list[str]]", _extracted("_macos_architectures")
+)
+pin_architectures = cast(
+    "Callable[[str, list[str]], str]", _extracted("_pin_architectures")
+)
 cmake_build_type = cast(
     "Callable[[Mapping[str, str]], str]", _extracted("_cmake_build_type")
 )
 
 
-def test_both_functions_were_read() -> None:
+def test_every_function_was_read() -> None:
     """The positive control for `_extracted`: a rename answers here first.
 
     Without it, a `name` that stopped matching would leave every test
@@ -78,6 +86,8 @@ def test_both_functions_were_read() -> None:
     """
     assert callable(customized_compile_link)
     assert callable(cmake_build_type)
+    assert callable(macos_architectures)
+    assert callable(pin_architectures)
 
 
 def test_nothing_set_leaves_every_value_untouched() -> None:
@@ -239,3 +249,52 @@ def test_each_value_is_shlex_split() -> None:
 def test_cmake_build_type(env: dict[str, str], expected: str) -> None:
     """`CMAKE_BUILD_TYPE` overrides the default; `Release` is the default."""
     assert cmake_build_type(env) == expected
+
+
+@pytest.mark.parametrize(
+    "target, expected",
+    [
+        ("macosx-11.0-arm64", ["arm64"]),
+        ("macosx-10.13-x86_64", ["x86_64"]),
+        ("macosx-10.13-universal2", ["x86_64", "arm64"]),
+    ],
+)
+def test_macos_architectures(target: str, expected: list[str]) -> None:
+    """The tag's last field names the architectures, universal2 both."""
+    assert macos_architectures(target) == expected
+
+
+def test_a_universal2_interpreter_building_arm64_is_made_arm64_only() -> None:
+    """The `-arch` pairs of python.org's universal2 flags become one.
+
+    The fixtures are the values python.org's 3.13.16 universal2
+    interpreter reports with `ARCHFLAGS="-arch arm64"` set: the pair
+    ending each value survived the override, and an arm64 wheel built
+    with it had an extension whose x86_64 slice had no library in it
+    (btclib-org/btclib-secp256k1#1205).
+    """
+    cflags = (
+        "-fno-strict-overflow -Wsign-compare -Wunreachable-code -fno-common "
+        "-dynamic -DNDEBUG -g -O3 -Wall  -arch x86_64 -arch arm64"
+    )
+    ldshared = "clang -bundle -undefined dynamic_lookup  -arch x86_64 -arch arm64"
+    assert pin_architectures(cflags, ["arm64"]) == (
+        "-fno-strict-overflow -Wsign-compare -Wunreachable-code -fno-common "
+        "-dynamic -DNDEBUG -g -O3 -Wall -arch arm64"
+    )
+    assert (
+        pin_architectures(ldshared, ["arm64"])
+        == "clang -bundle -undefined dynamic_lookup -arch arm64"
+    )
+
+
+def test_universal2_keeps_both_architectures() -> None:
+    """A universal2 build gets both pairs, in the order of the tag."""
+    assert pin_architectures("-O3 -arch arm64 -g", ["x86_64", "arm64"]) == (
+        "-O3 -arch x86_64 -arch arm64 -g"
+    )
+
+
+def test_flags_without_an_arch_are_left_alone() -> None:
+    """No `-arch` is added where the interpreter records none."""
+    assert pin_architectures("-O2 -Wall", ["arm64"]) == "-O2 -Wall"
