@@ -24,6 +24,87 @@ This file starts at v0.7.1.2. The releases before it were documented at
 release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.
 
+## v0.8.0.12
+
+### The private halves raise for a key they cannot read
+
+- **`keys._pubkey_sum_`, `_pubkey_combine_`, `_pubkey_sort_` and the
+  `ecdh` halves raise `ValueError`** (closes #1195, #1198).
+
+### MuSig2 checks the key before signing
+
+- **`SecretNonce.partial_sign`, mainline and `zkp`, refuses a key that
+  does not match the nonce before the C call** (closes #1196).
+
+### cibuildwheel 4.3.0
+
+- **PyPy 3.12 wheels are built, and the PyPy 3.11 wheels are tagged
+  `pypy311_pp80`** (closes #1190). A test checks the image digests
+  (closes #1192).
+
+### The macOS glue
+
+- **It is built for the wheel's architecture only** (closes #1205).
+
+### `generate_sbom.py`
+
+- **It is btclib-org/.github's copy**, which leaves group VEX entries
+  out (closes #1210; #1169).
+
+### The docs
+
+- **README.md warns that a sha256 compression override sees secret
+  keys** (closes #1164); the docstrings say where the key is negated
+  (closes #1208).
+
+### A test for secret-free reprs
+
+- **A test checks that the repr and str of each secret-holding class
+  hold no secret** (closes #1200).
+
+### The test group
+
+- **It declares coverage** (closes #1173, closes #1174), and a Pedersen
+  test draws its blind inside the test (closes #1175).
+
+### Signatures on `main`
+
+- **`verified-signatures.yml` checks them** (issue btclib-org/.github#1738).
+
+### `wheel-reproducibility`
+
+- **It builds when a pull request moves `uv.lock` or `generate_sbom.py`**
+  (closes #1183, closes #1170).
+
+### The review call and actionlint
+
+- **`cache-mode: none`, and `actionlint.yaml` is gone** (closes #1181);
+  the actionlint fork, the api-break label and REVIEWING.md are ported (#1182).
+
+### `check_vendored_vectors.py`
+
+- **It prints a failed `gh` call's stderr and retries a server error**
+  (closes #1160).
+
+### Dependencies
+
+- **pydantic 2.14.0** (issue btclib-org/btclib#2685); the actions and
+  clusterfuzzlite groups and the hook revisions move (#1187, #1188, #1167).
+
+### REPOSITORY.md
+
+- **It records strict off on `main`** (issue btclib-org/.github#1712),
+  and cites GOVERNANCE.md by its repository (#1166).
+
+### The maintainer's bypass
+
+- **Everyday practice until the review bot posts under its own identity**
+  (issue btclib-org/.github#1695).
+
+### RELEASING.md
+
+- **It names the lint jobs a tag skips** (#1163).
+
 ## v0.8.0.11
 
 ### `zkp.ecdsa_adaptor` wraps the ECDSA adaptor signature module
