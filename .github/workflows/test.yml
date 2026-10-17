@@ -9,12 +9,17 @@ name: test
 # release. os-ubuntu.yml's header is the argument for the split; the numbers
 # behind it are here, next to the jobs they were measured on.
 #
-# **The wheel builds for all six images stay here**, and that is the line
+# **The wheel builds for every image stay here**, and that is the line
 # this file draws against the sentinels: the release publishes the
 # artifacts of this run, so a wheel not built here is a wheel not on PyPI.
 # They are not what stretched a run either -- the four macOS wheel jobs
 # finished at 24.6 minutes against the 23.5 of the ubuntu-latest build
 # beside them. Four macOS jobs queue; thirty-one contended.
+#
+# A pull request and a push to main build the wheels of every image but
+# one: the x86_64 macOS image, macos-26-intel, builds on a release and a
+# dispatch, and check-dist refuses those runs unless its wheels are there.
+# CONTRIBUTING.md's *What gates a merge, and what only reports* says why.
 #
 # macOS was where the wait first showed, and the split is a measurement
 # rather than a preference. Over six pull request runs of this workflow,
@@ -486,6 +491,14 @@ jobs:
           - macos-latest
           - windows-latest
           - windows-11-arm
+        # a pull request and a push to main build no x86_64 macOS wheel:
+        # see the header. github.event_name and github.ref_type are the
+        # caller's in a called workflow, and a release is a push of a tag,
+        # so it never excludes it
+        exclude: >-
+          ${{ fromJSON((github.event_name == 'pull_request'
+          || github.event_name == 'push' && github.ref_type == 'branch')
+          && '[{"os": "macos-26-intel"}]' || '[]') }}
 
     needs: changes
     steps:
@@ -552,18 +565,21 @@ jobs:
       # interpreters is asked nowhere -- os-ubuntu.yml's header carries
       # that trade and what answers the rest of the question instead.
       #
-      # A push to main, a release and a rehearsal all build everything --
-      # in a called workflow github.event_name is the caller's, which is
-      # never pull_request -- so the interpreters this does not reach on a
-      # branch are reached by the run that follows the merge, and the
-      # release publishes nothing this shortcut has touched
+      # A push to main builds every interpreter on the images it runs, and
+      # a release and a rehearsal build every interpreter on every image,
+      # macos-26-intel included -- in a called workflow github.event_name
+      # is the caller's, which is never pull_request -- so the
+      # interpreters this does not reach on a branch are reached by the
+      # run that follows the merge, and by the release on macos-26-intel,
+      # and the release publishes nothing this shortcut has touched
       #
       # cp311 is the floor requires-python declares, and building it is
       # what lets a pull request reach the standard library of the patch
       # release cibuildwheel pins that interpreter to on the macOS and
       # Windows images. A newer interpreter alone leaves that to the push
-      # to main, so a keyword absent from that patch passes a pull request
-      # and fails there -- #529 is that failure, on 3.10.11.
+      # to main, and to the release for the x86_64 macOS image, so a
+      # keyword absent from that patch passes a pull request and fails
+      # there -- #529 is that failure, on 3.10.11.
       #
       # cp315t is the free-threaded build of the interpreter
       # .python-version pins, and the second pattern selects it on every
@@ -642,6 +658,11 @@ jobs:
         # ubuntu-latest/macos-26-intel are x86_64,
         # ubuntu-24.04-arm/macos-latest are arm64
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-26-intel, macos-latest]
+        # see build-cibuildwheel
+        exclude: >-
+          ${{ fromJSON((github.event_name == 'pull_request'
+          || github.event_name == 'push' && github.ref_type == 'branch')
+          && '[{"os": "macos-26-intel"}]' || '[]') }}
 
     needs: changes
     steps:
@@ -1069,6 +1090,28 @@ jobs:
 
       - name: Show distributions
         run: ls -l dist
+
+      # the matrices above leave macos-26-intel out of a pull request and
+      # a push to main, and nowhere else. The release publishes what they
+      # built, and a cell that went missing from a run would read as a
+      # pass, so a release and a dispatch refuse a dist without both a
+      # static and a dynamic x86_64 macOS wheel. The guard reads no
+      # github.ref_type, unlike the exclusion: a misreading of it must
+      # not skip the check that would catch it. Only release.yml's call
+      # sets use-signed-dist. The dynamic wheel is universal2, and the
+      # deployment target 10.13 that build-dynamic sets on macos-26-intel
+      # alone tells it from the 11.0 one of macos-latest
+      - name: Check the x86_64 macOS wheels were built (release and dispatch)
+        if: ${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          static=(dist/*-cp3*-macosx_*_x86_64.whl)
+          dynamic=(dist/*-py3-none-macosx_10_13_universal2.whl)
+          if [ ${#static[@]} -eq 0 ] || [ ${#dynamic[@]} -eq 0 ]; then
+            echo "::error::dist lacks a static or a dynamic x86_64 macOS wheel"
+            exit 1
+          fi
 
       # dist holds the wheels this workflow built beside the sdist, and
       # the build job printed the digest of the sdist alone
