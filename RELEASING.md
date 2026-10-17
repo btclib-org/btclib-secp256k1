@@ -327,8 +327,8 @@ Then:
    *Landing it* gives. REPOSITORY.md's "Merge methods" and "Auto-merge"
    have the settings.
    [`GOVERNANCE.md`](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md)'s
-   *How a decision is made* says when the maintainer lands it through
-   the `pull_request`-mode bypass.
+   *How a decision is made* says when the maintainer adds the
+   `pull_request`-mode bypass back to land it without an approval.
    A direct push, fast-forwarded from the command line, is refused for
    everyone now, this pull request included: the bypass that once allowed
    it moved from `always` to `pull_request` mode, so nothing reaches
@@ -343,11 +343,11 @@ Then:
      -f merge_method=squash -f sha=<the head the checks ran on>
    ```
 
-   It and `--admin` ask for the pair REPOSITORY.md's "Branch protection"
-   names — `enforce_admins` `false` together with holding `admin`. The
-   direct call is the one measured, on 0.8.0.4 (#288), which carried no
-   approving review — only comments — and landed after the plain `gh pr
-   merge` refused it locally.
+   With the bypass added back, it and `--admin` ask for the pair
+   REPOSITORY.md's "Branch protection" names — `enforce_admins` `false`
+   together with holding `admin`. The direct call is the one measured, on
+   0.8.0.4 (#288), which carried no approving review — only comments —
+   and landed after the plain `gh pr merge` refused it locally.
 
    The button used to be the wrong landing on this pull request in
    particular: it is the release commit that gets tagged, and
