@@ -389,6 +389,11 @@ uv run --locked --no-default-groups --group docs \
     sphinx-build -n -W -b html docs/source docs/build/html
 ```
 
+The suite runs under pytest-xdist, `-n auto --dist worksteal` sitting in
+`addopts` beside `--cov`. `-n 0` runs it in the one process, and `-n 2`
+is the pool to ask for on a shared machine. `pyproject.toml`'s `addopts`
+comment says what every worker has to collect.
+
 Coverage is measured in branch mode, `--cov` sitting in `addopts` so
 nothing has to be typed after `pytest` to see it. The `fail_under`
 ratchet in `pyproject.toml` gates at 100%, and the command above is not

@@ -960,7 +960,8 @@ jobs:
       # pytest-cov beside pytest for the reason [tool.cibuildwheel]'s
       # test-requires names: addopts carries --cov, and an interpreter
       # without the plugin answers "unrecognized arguments: --cov" and
-      # collects nothing. pathspec and typing_extensions for the reasons
+      # collects nothing, and pytest-xdist for the same reason, addopts
+      # carrying -n. pathspec and typing_extensions for the reasons
       # pyproject.toml's `test` group gives, and named here because this
       # job installs the sdist into an interpreter of its own: neither
       # that group nor test-requires reaches it, so this is the third
@@ -969,7 +970,7 @@ jobs:
       - name: Install from sdist
         shell: bash
         run: |
-          python -m pip install -U pip pytest pytest-cov pathspec typing-extensions
+          python -m pip install -U pip pytest pytest-cov pytest-xdist pathspec typing-extensions
           python -m pip install --verbose dist/*.tar.gz
 
       # this job's matrix carries windows-latest and windows-11-arm, the

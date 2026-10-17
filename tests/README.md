@@ -404,9 +404,10 @@ Hand-rolled because of where the suite runs: `[tool.cibuildwheel]`'s
 `test-requires` and `test.yml`'s sdist job install the package and what
 they name, with no lock, so a layer importing any other package either
 joins both lists or fails collection there.
-pytest-cov is there for what `--cov` in `addopts` costs -- an interpreter
-without the plugin refuses the flag before it collects anything -- and
-neither run measures anything with it, both passing `--no-cov`. What the
+pytest-cov and pytest-xdist are there for what `--cov` and `-n` in
+`addopts` cost -- an interpreter without the plugin refuses the flag
+before it collects anything -- and neither run measures anything with
+`--cov`, both passing `--no-cov`. What the
 trade costs is the search: a fixed chain of `COUNT` inputs explores no
 further on request and shrinks nothing, where hypothesis's deep profile
 and shrinker do both. Bytes outside the described domain are the

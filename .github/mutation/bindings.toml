@@ -235,10 +235,13 @@ module-path = "src/btclib_secp256k1"
 # makes both the runtime and a timeout verdict irreproducible.
 # -q because the log is not a terminal.
 #
+# -n 0 against the -n auto addopts carries: -x needs a first test, and a
+# pool has none.
+#
 # --no-cov, against the --cov addopts carries: a mutant is reached by no
 # test on purpose, so the ratchet would fail every single run and report
 # every mutant as killed by the gate rather than by a test
-test-command = "python -m pytest -x -q -p no:randomly --no-cov"
+test-command = "python -m pytest -x -q -p no:randomly -n 0 --no-cov"
 
 # seconds of wall clock. What this guards is a mutant that turns a bound
 # into a loop with no exit, and nothing else. Wide rather than tight,

@@ -442,6 +442,7 @@ test = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pytest-randomly>=5.0.0",
+    "pytest-xdist>=3.8.0",
     "pathspec>=1.1.1",
     # tests/secret_free_test.py, copied from btclib-org/.github, imports
     # `override` from it
@@ -1051,30 +1052,29 @@ norecursedirs = ["secp256k1", "secp256k1-zkp"]
 # after it is what keeps it that way -- section 7 of the organization
 # standard names both flags in the addopts it gives
 #
-# no `-n auto --dist worksteal`, measured on CI (ubuntu-latest, 4 cores,
-# the static build, whole suite, medians of five alternating runs, all
-# green): 17.6s serial against 12.2s under the pool with coverage, and
-# 15.4s against 9.9s without it (three runs), each the time pytest prints
-# on its last line. The pool is faster and is not adopted yet, for what
-# adopting it needs first:
-# - `-m zkp -n auto` must collect the same tests in every worker, which
-#   is what btclib-org/btclib-secp256k1#1175 asks for: a parametrize id
-#   drawn from `secrets` makes the workers collect different tests;
-# - `[tool.cibuildwheel]` would need pytest-xdist in `test-requires`,
-#   or an `-o addopts=` override in `test-command`, since pytest
-#   refuses the `-n` that addopts would carry where the plugin is absent;
-# - the union of the three runs under xdist is not yet shown to reach 100.
-# The figures come from these commands, run in one CI job with pytest-xdist
-# declared in the test group rather than passed with --with: five pairs as
-# below and three pairs with --no-cov added. The command that re-derives
-# them, the two forms alternating, is
+# -n auto --dist worksteal runs the suite in a pool of workers, one per
+# core. The plugin is pytest-xdist: pytest refuses the -n where it is
+# absent, so every environment that runs the suite names it, the `test`
+# group, `[tool.cibuildwheel]`'s `test-requires` and the sdist job of
+# test.yml.
+#
+# Every worker has to collect the same test ids: a parametrize id drawn
+# from `secrets` makes the workers collect different tests, which is what
+# tests/zkp_generator_vectors_test.py avoids
+# (btclib-org/btclib-secp256k1#1175).
+#
+# Measured on CI (ubuntu-latest, 4 cores, the static
+# build, whole suite, medians of five alternating runs, all green): 17.6s
+# serial against 12.2s under the pool with coverage, and 15.4s against
+# 9.9s without it (three runs), each the time pytest prints on its last
+# line. The command that re-derives them, the two forms alternating, is
+# below, with --no-cov added to both for the second pair:
 #     uv run --locked --no-default-groups --group test \
-#         --with pytest-xdist pytest --cov-fail-under=0 -n 0
+#         pytest --cov-fail-under=0 -n 0
 #     uv run --locked --no-default-groups --group test \
-#         --with pytest-xdist pytest --cov-fail-under=0 \
-#         -n auto --dist worksteal
+#         pytest --cov-fail-under=0
 # and the time to compare is the one on pytest's last line
-addopts = "-ra --strict-markers --strict-config --cov --durations=8"
+addopts = "-ra --strict-markers --strict-config -n auto --dist worksteal --cov --durations=8"
 # --strict-markers is what this registers against: an unregistered
 # @pytest.mark.zkp would otherwise fail collection with no clue beyond
 # the name. Needs BTCLIB_LIBSECP256K1_ZKP=true, which is a build-time
@@ -1158,11 +1158,12 @@ fail_under = 100.0
 [tool.cibuildwheel]
 # pytest-cov beside pytest because addopts carries --cov, and an
 # interpreter without the plugin answers "unrecognized arguments: --cov"
-# and exits before it collects anything. What this run asks is whether
-# the wheel it just built passes, so it turns the measurement off with
-# the --no-cov below: section 8 of the organization standard names that
-# flag as one a job may pass beyond what pyproject.toml holds, and
-# coverage is measured once, on the gate's own cell.
+# and exits before it collects anything. pytest-xdist for the same reason,
+# addopts carrying -n. What this run asks is whether the wheel it just
+# built passes, so it turns the measurement off with the --no-cov below:
+# section 8 of the organization standard names that flag as one a job may
+# pass beyond what pyproject.toml holds, and coverage is measured once, on
+# the gate's own cell.
 # pathspec and typing_extensions for the reasons the `test` group above
 # gives, which are that group's to state and not this one's to
 # restate. What is this list's own is that it is a second environment:
@@ -1180,6 +1181,7 @@ fail_under = 100.0
 test-requires = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
+    "pytest-xdist==3.8.0",
     "pathspec==1.1.1",
     "typing-extensions==4.16.0",
 ]

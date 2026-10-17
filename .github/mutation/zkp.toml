@@ -42,7 +42,7 @@ module-path = "src/btclib_secp256k1/zkp"
 # The flags are bindings.toml's, for its reasons. The `zkp` files come first
 # in the argument list, so a mutant of `zkp` dies on an early test and not
 # after the rest of the suite
-test-command = "sh -c 'python -m pytest -x -q -p no:randomly --no-cov tests/zkp*_test.py tests/secret_test.py tests/examples_test.py'"
+test-command = "sh -c 'python -m pytest -x -q -p no:randomly -n 0 --no-cov tests/zkp*_test.py tests/secret_test.py tests/examples_test.py'"
 
 # seconds of wall clock, for the reason bindings.toml gives; what
 # `cosmic-ray baseline` times here is this command, which is shorter than
