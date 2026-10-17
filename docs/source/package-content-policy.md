@@ -4,9 +4,12 @@ A release publishes wheels of two kinds and one sdist. This page states
 what a wheel may hold, what it may never hold, and what has to be there;
 `.github/scripts/verify_wheel_contents.py` enforces every rule down to
 the last section, and `tests/wheel_contents_test.py` compares the two in
-both directions, so this page cannot state a rule the script does not
-have, and the script cannot grow a rule this page does not state. The
-prose around the lists is prose, and is checked by nobody.
+both directions for the member lists, so this page cannot state a member
+rule the script does not have, and the script cannot grow one this page
+does not state. The section on what the compiled file is built with is
+not compared with the script; the hardening tests in the same file test
+the script alone.
+The prose around the lists is prose, and is checked by nobody.
 
 `test.yml`'s `check-dist` job runs the script on every wheel it
 downloads from `build-cibuildwheel`, `build-dynamic` and `build-windows`
@@ -109,6 +112,29 @@ kind-appropriate top-level artifact, checked for size as well as
 presence: an artifact `scripts/cffi_build.py` failed to finish copying
 would still be a member of the archive, at zero bytes, and no other
 check here or in `check-wheel-contents` reads a member's size at all.
+
+## What the compiled file has to be built with
+
+The extension of a static wheel and the shared library of a dynamic one
+are read back for the hardening `scripts/cffi_build.py` builds them
+with, from the ELF, Mach-O or PE file itself. `hardening_gaps` names one
+phrase per property missing, and a wheel that lacks any is refused:
+
+- Linux, ELF: the stack protector (an import of `__stack_chk_fail`),
+  `_FORTIFY_SOURCE` (an import of a `__*_chk` function), an immediate
+  binding (`-z now`), a read-only relocation segment, and the CET marking
+  on x86_64. A musllinux wheel is not asked
+  for the fortified function, which musl does not have. The marking is
+  asked only of a wheel whose C runtime carries it, since the linker
+  writes it only if every input does: of an x86_64 glibc wheel, and of no
+  musllinux or aarch64 wheel
+- macOS, Mach-O, every architecture of a universal file: the stack
+  protector and `_FORTIFY_SOURCE`
+- Windows, `.pyd` from MSVC: address space layout randomization, DEP,
+  high entropy address space layout, control flow guard and the security
+  cookie. The cookie is in every image the C runtime links, so it shows
+  `/GS` only loosely
+- Windows, `.dll` from mingw-w64: the first three of those
 
 ## The sdist is not this policy's subject
 

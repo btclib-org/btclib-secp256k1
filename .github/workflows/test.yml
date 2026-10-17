@@ -1139,10 +1139,10 @@ jobs:
       # what check-wheel-contents cannot phrase without also refusing the
       # compiled artifact this project's wheels legitimately carry outside
       # any package tree: docs/source/package-content-policy.md has the
-      # three questions this answers and why check-wheel-contents --package
+      # questions this answers and why check-wheel-contents --package
       # is not one flag away from asking them here. --no-project, so it
       # runs on the interpreter uv already fetched and installs nothing
-      - name: Check what the wheels contain
+      - name: Check what the wheels contain and how they were built
         run: |
           uv run --no-project --python 3.15 \
             .github/scripts/verify_wheel_contents.py dist/*.whl

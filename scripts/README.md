@@ -197,10 +197,10 @@ off the target. `BTCLIB_LIBSECP256K1_ZKP` is orthogonal to both --
 whether the second extension is built at all, not which of the three
 paths builds it.
 
-None of the four above chooses a build's compiler, its flags or its
-optimization level -- CMake and the interpreter's own toolchain already
-answer that from `sysconfig`, and `compile_static_unix` composes `CC`,
-`CFLAGS` and `CCSHARED` from it. That question has its own variables
+None of the four above chooses a build's compiler or its optimization
+level -- CMake and the interpreter's own toolchain already answer that
+from `sysconfig`, and `compile_static_unix` composes `CC`, `CFLAGS` and
+`CCSHARED` from it. That question has its own variables
 instead, read where `customize_compiler` reads them rather than chosen
 by this file's own three paths:
 
@@ -212,16 +212,30 @@ by this file's own three paths:
   `LDSHARED` replace the interpreter's own, `CFLAGS` replaces the
   compile's flags and extends the link, `LDFLAGS` extends the link, and
   `CPPFLAGS` extends both. A `CFLAGS` set by a caller is therefore the
-  whole of the compile's flags, `-arch` and optimization included. With
+  whole of the compile's flags but the hardening flags below, `-arch`
+  and optimization included. With
   none of them set, the compile and the link read what `sysconfig`
   gives them, on macOS with the `-arch` pairs replaced by the
-  architectures of `get_platform()`, which is what
+  architectures of `get_platform()`, behind the hardening flags below,
+  which is what
   `wheel-reproducibility.yml` and the sdist-rebuild gate measure
   (btclib-org/btclib-secp256k1#1019)
 - `CMAKE_BUILD_TYPE` chooses the vendored library's CMake build type, on
   the configure and on the build's own `--config`, together so the two
   never disagree; `Release` where it is unset, which is what every
   published wheel builds
+
+The hardening flags are not a variable's to choose. `_hardening_options`
+returns them for the platform being built, and the vendored library and
+the glue both take them. The vendored library takes them through the
+`CFLAGS` and `LDFLAGS` of the CMake configure, and the Unix glue on its
+own compile and link; on both they come before a caller's own `CFLAGS`
+and `LDFLAGS`, so that a flag the caller sets after them wins. The MSVC
+glue takes them as `extra_compile_args` and `extra_link_args`, and
+setuptools' MSVC compiler reads neither variable, so no caller flag
+follows them there. The docstring of `_hardening_options` has what each
+platform gets, and `.github/scripts/verify_wheel_contents.py` reads the
+result back from every wheel `test.yml`'s `check-dist` job downloads.
 
 ## The benchmark is not here
 
