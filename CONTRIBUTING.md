@@ -844,7 +844,7 @@ command at all, for the reason below, and nothing requires its result.
   ```
 
   on macOS the job exports a deployment target first — 11.0, or 10.13
-  on x86_64, the floor cibuildwheel gives the static x86_64 wheels — and
+  on x86_64, as the comment on that step in `test.yml` explains — and
   reproducing it means exporting the same one:
 
   ```shell
@@ -1484,9 +1484,8 @@ costs beside each other.
 never on a pull request or a push to `main`. `test` builds its wheels at a
 release and a dispatch, and `check-dist` fails those runs unless they are
 there; `wheel-reproducibility` builds its images weekly and on a dispatch.
-The reason is that its runner fails on network steps far more often than the
-others (#1191), and that GitHub Actions drops x86_64 macOS in August 2027,
-when the images leave every workflow.
+Section 10 of the organization standard in `btclib-org/.github` has the
+reason and when it ends.
 
 Every workflow here takes `workflow_dispatch`, the gates included, except
 `claude-review` and `scorecard`, and for the three platform workflows it is

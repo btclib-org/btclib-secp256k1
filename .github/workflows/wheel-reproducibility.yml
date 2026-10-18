@@ -392,8 +392,8 @@ jobs:
       # without it the macOS version in the wheel's platform tag, and in
       # the extension's own minimum, is the runner's, so two images of
       # one platform tag the wheel apart (#992). The values are the ones
-      # cibuildwheel gives the static release wheels, which build-dynamic
-      # in test.yml exports too, and its comment has the reasoning
+      # build-dynamic in test.yml exports, and its comment has the
+      # reasoning
       - name: Set the macOS deployment target
         if: runner.os == 'macOS'
         env:

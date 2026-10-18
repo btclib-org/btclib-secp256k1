@@ -550,7 +550,7 @@ jobs:
       # tree this builds whichever path the run took, and the flag asserts
       # that agreement instead of skipping it (btclib-org/.github#128)
       #
-      # what a pull request has to answer about any of these images is
+      # what a pull request has to answer about each image it builds is
       # whether this tree still builds there, and that is answered by the
       # first wheel: the toolchain, the CMake build of the vendored
       # library and the cffi extension are what differ per platform, and
@@ -695,8 +695,8 @@ jobs:
       # (CMAKE_OSX_DEPLOYMENT_TARGET defaults to it), so the vendored
       # library is built for the floor its tag then claims. 11.0 is where
       # arm64 macOS starts; 10.13 is what cibuildwheel gives the static
-      # x86_64 wheels of CPython 3.12 and later, and the Xcode of the
-      # macOS 26 image still compiles for it
+      # x86_64 wheels of cp312 and cp313 (cp311 gets 10.9, the rest 10.15),
+      # and the Xcode of the macOS 26 image still compiles for it
       - name: Set the macOS deployment target
         if: runner.os == 'macOS'
         # the expression is a step env var rather than text spliced into
