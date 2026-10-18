@@ -136,8 +136,9 @@ name: wheel-reproducibility
 # macos-26-intel and macos-15-intel, build on the schedule and on a
 # dispatch only: a matrix excludes them when github.event_name is
 # pull_request, and across-images then finds no macos-x86-64 directory
-# rather than half of one. CONTRIBUTING.md's *What gates a merge, and what
-# only reports* says why.
+# rather than half of one. Section 10 of the organization standard in
+# btclib-org/.github says why, and CONTRIBUTING.md's *What gates a merge,
+# and what only reports* says how this tree applies it.
 
 on:
   schedule:

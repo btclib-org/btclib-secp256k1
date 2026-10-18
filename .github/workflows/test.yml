@@ -19,7 +19,9 @@ name: test
 # A pull request and a push to main build the wheels of every image but
 # one: the x86_64 macOS image, macos-26-intel, builds on a release and a
 # dispatch, and check-dist refuses those runs unless its wheels are there.
-# CONTRIBUTING.md's *What gates a merge, and what only reports* says why.
+# Section 10 of the organization standard in btclib-org/.github says why,
+# and CONTRIBUTING.md's *What gates a merge, and what only reports* says
+# how this tree applies it.
 #
 # macOS was where the wait first showed, and the split is a measurement
 # rather than a preference. Over six pull request runs of this workflow,
@@ -482,8 +484,8 @@ jobs:
         # of their own. The vendored library is built with CMake
         # everywhere, provisioned as a build requirement: no runner needs
         # a toolchain installed by hand.
-        # Actions drops x86_64 macOS in August 2027, after which no runner
-        # can build a macosx x86_64 wheel at all
+        # section 10 of the organization standard in btclib-org/.github
+        # says when the x86_64 macOS images leave
         os:
           - ubuntu-latest
           - ubuntu-24.04-arm
