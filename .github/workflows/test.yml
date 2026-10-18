@@ -697,8 +697,8 @@ jobs:
       # (CMAKE_OSX_DEPLOYMENT_TARGET defaults to it), so the vendored
       # library is built for the floor its tag then claims. 11.0 is where
       # arm64 macOS starts; 10.13 is what cibuildwheel gives the static
-      # x86_64 wheels of cp312 and cp313 (cp311 gets 10.9, the rest 10.15),
-      # and the Xcode of the macOS 26 image still compiles for it
+      # x86_64 wheels of cp312 and cp313, and the Xcode of the macOS 26
+      # image still compiles for it
       - name: Set the macOS deployment target
         if: runner.os == 'macOS'
         # the expression is a step env var rather than text spliced into
