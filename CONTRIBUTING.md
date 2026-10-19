@@ -843,7 +843,7 @@ command at all, for the reason below, and nothing requires its result.
       uv run --locked --only-group build python -m build -w
   ```
 
-  on macOS the job exports a deployment target first, 11.0 or 10.13 on
+  on macOS the job exports a deployment target first, 11.0, or 10.13 on
   x86_64, and reproducing it means exporting the same one:
 
   ```shell

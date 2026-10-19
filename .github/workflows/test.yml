@@ -484,7 +484,7 @@ jobs:
         # of their own. The vendored library is built with CMake
         # everywhere, provisioned as a build requirement: no runner needs
         # a toolchain installed by hand.
-        # section 10 of the organization standard in btclib-org/.github
+        # Section 10 of the organization standard in btclib-org/.github
         # says when the x86_64 macOS images leave
         os:
           - ubuntu-latest
