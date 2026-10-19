@@ -19,7 +19,7 @@ from typing import overload
 
 from . import BytesLike, CData, MutableBytesLike, ffi, lib
 from ._cdata import array
-from ._scalar import octets, scalar
+from ._scalar import octets, scalar, sequence
 from ._secret import scalar_buffer, take, wipe
 from .context import _checked, ctx
 
@@ -800,6 +800,10 @@ def pubkey_tweak_mul_sum(
         the point at infinity.
 
     Raises:
+        TypeError: if `tweaks` is a `str`, a cffi array of primitives or
+            a one-dimensional buffer of anything but byte-strings,
+            objects or structs (`bytes`, `bytearray`, `memoryview`,
+            `array.array`): one tweak, not a list of them.
         ValueError: if the two sequences are of different lengths, if
             the sequence of keys is empty, if any key is not a valid
             point, or if any tweak is not 32 bytes, does not fit in
@@ -822,6 +826,7 @@ def pubkey_tweak_mul_sum(
         >>> keys.pubkey_tweak_mul_sum([pubkey, negated], [3, 3]) is None
         True
     """
+    sequence(tweaks, "tweaks")
     if len(pubkeys_bytes) != len(tweaks):
         msg = (
             f"as many tweaks as public keys are required: "

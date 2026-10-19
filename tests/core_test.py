@@ -645,3 +645,81 @@ def test_a_signature_crosses_in_either_serialization() -> None:
     malleated = high_s[:32] + (order - s).to_bytes(32, "big")
     assert not dsa.verify(msg, pubkey, malleated, compact=True)
     assert dsa.verify(msg, pubkey, malleated, normalize=True, compact=True)
+
+
+@pytest.mark.parametrize(
+    "bare",
+    [
+        pytest.param(bytes(32), id="bytes"),
+        pytest.param(b"", id="empty bytes"),
+        pytest.param(bytearray(32), id="bytearray"),
+        pytest.param(memoryview(bytes(32)), id="memoryview"),
+        pytest.param("k" * 32, id="str"),
+        pytest.param(ffi.new("unsigned char[32]"), id="octets"),
+        pytest.param(ffi.new("uint32_t[8]"), id="wide items"),
+        pytest.param(array.array("B", bytes(32)), id="array.array"),
+        pytest.param(array.array("Q", [1, 2]), id="wide array.array"),
+        pytest.param((ctypes.c_void_p * 2)(1, 2), id="pointers"),
+        pytest.param((ctypes.c_wchar * 32)(), id="characters"),
+    ],
+)
+def test_a_bare_value_is_not_a_list(bare: object) -> None:
+    """Refuse what iterates as octets or characters where a list goes.
+
+    Each of these iterates as ints or characters, and a list of ints is
+    what the callers of `_scalar.sequence` take.
+    """
+    with pytest.raises(TypeError, match="the keys must be a sequence of values"):
+        _scalar.sequence(bare, "keys")
+
+
+def test_a_list_of_anything_else_is_a_list() -> None:
+    """Return the value unchanged for what is not a bare byte-string.
+
+    A list of byte-strings, of ints and of cffi arrays, a tuple, a range
+    and a cffi array of arrays each go through, being what a caller of
+    the lists passes, and so does a two-dimensional buffer, which is a
+    list of rows. So does a one-dimensional buffer whose items are
+    byte-strings, objects or structs, which a numpy vector of `S32` is:
+    here a ctypes array of structs holding 32 characters each.
+    """
+
+    class Key(ctypes.Structure):
+        _fields_ = [("octets", ctypes.c_char * 32)]  # type: ignore[mutable-override]
+
+    keys_array = (Key * 2)()
+    assert memoryview(keys_array).ndim == 1
+
+    nested = ffi.new("unsigned char[2][32]")
+    grid = memoryview(bytes(64)).cast("B", (2, 32))
+    for value in (
+        [],
+        [bytes(32)],
+        (1, 2),
+        range(3),
+        [nested[0]],
+        nested,
+        grid,
+        keys_array,
+    ):
+        assert _scalar.sequence(value, "keys") is value
+
+
+def test_a_refused_buffer_is_not_left_locked() -> None:
+    """Release the view the check took, so the caller can resize it.
+
+    A view still open when the exception is raised keeps a `bytearray`
+    from changing size for as long as the exception is alive, which
+    includes the handler of the caller that wants to wipe it.
+    """
+    secret = bytearray(32)
+    with pytest.raises(TypeError, match="the keys must be a sequence"):
+        _scalar.sequence(secret, "keys")
+    secret.append(1)
+    secret.clear()
+    assert not secret
+    try:
+        _scalar.sequence(secret, "keys")
+    except TypeError:
+        secret.append(1)
+    assert len(secret) == 1
