@@ -235,8 +235,8 @@ module-path = "src/btclib_secp256k1"
 # makes both the runtime and a timeout verdict irreproducible.
 # -q because the log is not a terminal.
 #
-# -n 0 against the -n auto addopts carries: -x needs a first test, and a
-# pool has none.
+# -n 0 against the -n auto addopts carries: a pool runs no test first, so -x
+# would no longer stop at a reproducible one.
 #
 # --no-cov, against the --cov addopts carries: a mutant is reached by no
 # test on purpose, so the ratchet would fail every single run and report

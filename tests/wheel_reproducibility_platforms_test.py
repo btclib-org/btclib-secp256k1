@@ -331,7 +331,7 @@ def test_no_x86_64_macos_image_runs_where_the_calendar_alone_asks() -> None:
     """Each job listed below excludes its `-intel` image unless asked.
 
     CONTRIBUTING.md's *What gates a merge, and what only reports* gives
-    the rule and its reason. A job that lists such an image without
+    the rule as this tree applies it. A job that lists such an image without
     excluding it would put it back on every pull request without a test
     failing, and the branches swapped would run it there alone.
     """
