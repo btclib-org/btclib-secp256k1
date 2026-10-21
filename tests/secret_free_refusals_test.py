@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""A refusal carries no secret: every entry point that takes one is fed it.
+"""A refusal carries no secret: each key, tweak and nonce parameter is fed one.
 
 This file tests the rule of section 7 of the btclib-org standard, *A
 refusal carries no secret*, for the refusals of secret inputs.
@@ -709,8 +709,9 @@ ORDER = {
 }
 
 #: The pairs where the secret, cut to the size of a public type, is one: any
-#: 32 octets below the order are a partial signature, and any 64 are a
-#: compact signature or an ElligatorSwift key.
+#: 32 octets below the order are a partial signature, any 64 whose two
+#: halves are below the order are a compact signature, and any 64 are an
+#: ElligatorSwift key.
 PARSES = {
     ("dsa.parse_compact", "64 bytes"),
     ("ellswift.decode", "64 bytes"),

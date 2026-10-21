@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""A refusal carries no secret: the zkp subpackage, fed every secret it takes.
+"""A refusal carries no secret: each zkp key, blind and nonce is fed one.
 
 `tests/secret_free_refusals_test.py` explains the tables and holds the
 mainline half. This file holds the same tables for the entry points that
