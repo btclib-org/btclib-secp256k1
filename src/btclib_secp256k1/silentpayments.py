@@ -566,10 +566,10 @@ def _scan_outputs_(
         TypeError: if `labels` is given and is not a mapping.
         ValueError: if no output is given, if the scan key is not 32
             bytes, does not fit in them, or is not in [1, n-1], if a
-            label or a label tweak is the wrong length, if libsecp256k1
-            refuses the scan, or if any object is not one it will read,
-            those last two being one message here -- `context.check` is
-            what tells them apart.
+            label or a label tweak is the wrong length, if a label tweak
+            is not in [1, n-1], if libsecp256k1 refuses the scan, or if
+            any object is not one it will read, those last two being one
+            message here -- `context.check` is what tells them apart.
     """
     if not tx_outputs:
         raise ValueError("at least one transaction output is required")
@@ -670,8 +670,8 @@ def scan_outputs(
             fit in them, or is not in [1, n-1], if the summary is not
             the right length or does not hold a valid public key, if
             the spend public key is not a valid point, if a label or a
-            label tweak is the wrong length, or if libsecp256k1 refuses
-            the scan.
+            label tweak is the wrong length, if a label tweak is not in
+            [1, n-1], or if libsecp256k1 refuses the scan.
 
     Example:
         >>> from btclib_secp256k1 import keys, silentpayments
@@ -726,7 +726,12 @@ def _label_table(labels: object) -> CData:
     is done with it.
 
     Every entry is checked before the buffer is made, so that a refused
-    one leaves no tweak in memory to be taken back. When two keys of
+    one leaves no tweak in memory to be taken back. A tweak outside
+    [1, n-1] is refused because `silentpayments.label` never makes one,
+    so one in the cache means the cache is broken, and the scan would
+    answer a tweak that does not spend the output.
+    `secp256k1_ec_seckey_verify` decides, in constant time, the tweak being
+    a secret. When two keys of
     `labels` are the same octets the last wins, as in a `dict`.
 
     Args:
@@ -739,17 +744,19 @@ def _label_table(labels: object) -> CData:
     Raises:
         TypeError: if `labels` is not a mapping, or a label or a tweak is
             not bytes.
-        ValueError: if a label is not 33 bytes, or a tweak not 32.
+        ValueError: if a label is not 33 bytes, a tweak not 32, or a
+            tweak not in [1, n-1].
     """
     if not isinstance(labels, Mapping):
         msg = f"the labels must be a mapping, not {type(labels).__name__}"
         raise TypeError(msg)
-    entries = {
-        octets(label_bytes, "label", LABEL_SIZE): octets(
-            tweak_bytes, "label tweak", _TWEAK_SIZE
-        )
-        for label_bytes, tweak_bytes in labels.items()
-    }
+    entries: dict[bytes, bytes] = {}
+    for label_bytes, tweak_bytes in labels.items():
+        label_octets = octets(label_bytes, "label", LABEL_SIZE)
+        tweak_octets = octets(tweak_bytes, "label tweak", _TWEAK_SIZE)
+        if not lib.secp256k1_ec_seckey_verify(ctx, tweak_octets):
+            raise ValueError("the label tweak must be in [1, n-1]")
+        entries[label_octets] = tweak_octets
     ordered = sorted(entries.items())
     count_size = ffi.sizeof("size_t")
     labels_end = count_size + LABEL_SIZE * len(ordered)

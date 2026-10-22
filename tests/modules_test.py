@@ -773,6 +773,9 @@ def test_scanning_refuses_an_invalid_scan_key() -> None:
     [
         ({bytes(33): bytes(31)}, "label tweak must be 32 bytes"),
         ({bytes(32): bytes(32)}, "label must be 33 bytes"),
+        ({bytes(33): N.to_bytes(32)}, r"label tweak must be in \[1, n-1\]"),
+        ({bytes(33): bytes([0xFF] * 32)}, r"label tweak must be in \[1, n-1\]"),
+        ({bytes(33): bytes(32)}, r"label tweak must be in \[1, n-1\]"),
     ],
 )
 def test_scanning_refuses_a_malformed_label_cache(
@@ -1118,7 +1121,7 @@ def test_a_label_given_twice_keeps_its_last_tweak() -> None:
     class Twice(Mapping[Any, bytes]):
         @override
         def __getitem__(self, key: Any) -> bytes:
-            return b"\x01" * 32 if isinstance(key, bytearray) else bytes(32)
+            return b"\x02" * 32 if isinstance(key, bytearray) else b"\x01" * 32
 
         @override
         def __iter__(self) -> Iterator[Any]:
@@ -1132,7 +1135,7 @@ def test_a_label_given_twice_keeps_its_last_tweak() -> None:
 
     assert len(Twice()) == 2
     assert len(ffi.buffer(table)) == ffi.sizeof("size_t") + 33 + 32
-    assert table_lookup(table, bytes(33)) == b"\x01" * 32
+    assert table_lookup(table, bytes(33)) == b"\x02" * 32
 
 
 def test_labels_that_are_not_a_mapping_are_a_type_error() -> None:
