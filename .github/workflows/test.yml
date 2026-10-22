@@ -228,7 +228,7 @@ jobs:
       # reads it as one unbreakable word and its 100-column rule
       # (allow-non-breakable-words) does not fire on it
       prose-pattern: |-
-        ^(CHANGELOG|CLAUDE|CONTRIBUTING|RELEASE_NOTES|RELEASING|REPOSITORY|REVIEWING|SECURITY)\.md$|^\.github/[^/]*\.md$|^\.github/mutation/[^/]*\.toml$|^\.secrets\..*baseline$
+        ^(AGENTS|CHANGELOG|CONTRIBUTING|RELEASE_NOTES|RELEASING|REPOSITORY|REVIEWING|SECURITY)\.md$|^\.github/[^/]*\.md$|^\.github/mutation/[^/]*\.toml$|^\.secrets\..*baseline$
 
   # coverage is a property of the python wrapper layer, not of the
   # platform: measuring it once is enough, and the fail_under ratchet in
