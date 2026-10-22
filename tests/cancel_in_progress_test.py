@@ -63,9 +63,10 @@ _COMMENT = re.compile(r"^ *#.*\n", re.MULTILINE)
 _ON = re.compile(r"^on:\n", re.MULTILINE)
 _TOP_LEVEL = re.compile(r"^\S", re.MULTILINE)
 # a trigger key: two spaces of indent, a name, and nothing after the
-# colon. Every deeper line of a trigger's own body carries either more
-# indent or a value, so this matches the keys and only them
-_TRIGGER = re.compile(r"^  (?P<name>[\w-]+):$", re.MULTILINE)
+# colon but a comment (`issue_comment:` carries a zizmor ignore). Every
+# deeper line of a trigger's own body carries either more indent or a
+# value, so this matches the keys and only them
+_TRIGGER = re.compile(r"^  (?P<name>[\w-]+):(?: +#.*)?$", re.MULTILINE)
 # the pull request trigger's `types:` list, read for the one type whose
 # event is delivered after the head commit stopped being what a run
 # measures

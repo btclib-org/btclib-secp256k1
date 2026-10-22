@@ -811,26 +811,28 @@ Then:
    attestation names. Then refresh the saved answers again. An advisory
    this repository publishes is owed the same review
 1. open the next version: bump `pyproject.toml` to a fourth number over
-    what was just published — `0.7.1.1` after `0.7.1` — and run `uv
-    lock`, through a pull request like any other. It is a placeholder,
-    and the version-bump step renumbers it if the submodule
-    moves before the next release; what it buys is a tree that no longer
-    claims to be a version it is not. `__version__` reads installed
-    metadata, so a checkout a developer installed stops reporting itself
-    as the release, and a report from it is unambiguous. And pushing
-    `v0.7.1` a second time — the mistake a just-finished release invites
-    — then fails at `version-check` in a minute, the declared version
-    having moved, rather than building the whole matrix and dying at an
-    upload PyPI refuses for a version it already carries. A fourth
-    number below the published one would be worse than no bump at all:
-    `0.7.0.1` sorts *under* `0.7.1`, so nothing would ever resolve it,
-    and `version-check` accepts it, being digits and dots. It starts no
-    section in `CHANGELOG.md` or `RELEASE_NOTES.md`: the next release's
-    pull request writes its own. It is owed only after the tag, the
-    `pypi` approval and every check above it, in its own pull request
-    and never inside the release's: `version-check` compares the tag
-    against what `pyproject.toml` declares, so a tree already bumped
-    would offer it the placeholder instead of the version being released
+    what was just published — `0.7.1.1` after `0.7.1`, and `0.8.0.13`
+    after `0.8.0.12`, where the fourth number is raised and not a fifth
+    appended — and run `uv lock`, through a pull request like any other.
+    It is a placeholder, and the version-bump step renumbers it if the
+    submodule moves before the next release; what it buys is a tree that
+    no longer claims to be a version it is not. `__version__` reads
+    installed metadata, so a checkout a developer installed stops
+    reporting itself as the release, and a report from it is
+    unambiguous. And pushing `v0.7.1` a second time — the mistake a
+    just-finished release invites — then fails at `version-check` in a
+    minute, the declared version having moved, rather than building the
+    whole matrix and dying at an upload PyPI refuses for a version it
+    already carries. A fourth number below the published one would be
+    worse than no bump at all: `0.7.0.1` sorts *under* `0.7.1`, so
+    nothing would ever resolve it, and `version-check` accepts it, being
+    digits and dots. It starts no section in `CHANGELOG.md` or
+    `RELEASE_NOTES.md`: the next release's pull request writes its own.
+    It is owed only after the tag, the `pypi` approval and every check
+    above it, in its own pull request and never inside the release's:
+    `version-check` compares the tag against what `pyproject.toml`
+    declares, so a tree already bumped would offer it the placeholder
+    instead of the version being released
 
 ## Rehearsing on TestPyPI
 
