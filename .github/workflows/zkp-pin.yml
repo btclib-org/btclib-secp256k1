@@ -89,19 +89,16 @@ jobs:
   # independent copy, GitHub's own key store for the same account
   # (`gh api users/apoelstra/gpg_keys`); the two agree.
   #
-  # The maintainer's fingerprint is recorded for the opposite reason:
-  # #828's re-pin is his own, signed with his own key, so holding it is
-  # what lets this job pass on today's pin at all. Measured: unlike
-  # Poelstra's, it has no independent second source to cross-reference
-  # against -- keys.openpgp.org holds nothing for it at all (a fresh
-  # keyring's `gpg --recv-keys` answers "No data", not a stripped key the
-  # way Poelstra's does there), and the maintainer publishes no
-  # standalone key file the way `andrew.gpg` is. `https://github.com/
-  # fametrano.gpg` -- GitHub's own rendering of the account's key store,
-  # the same data `gh api users/fametrano/gpg_keys` serves as JSON -- is
-  # the only copy found, so this fingerprint is sourced from GitHub alone
-  # rather than cross-referenced against a second, independent site, the
-  # way every other fingerprint in this file is.
+  # The maintainer's fingerprint is recorded for the opposite reason: the
+  # pin is his own, signed with his signing subkey
+  # 49E52319B377848A737E2DBE2279DA8BC2694720 under the primary key
+  # FFCF3A68D8390BED5EFFEF7F35DCD4523E9E1B1E, so holding it is what lets
+  # this job pass on today's pin at all.
+  # `gh api users/fametrano/gpg_keys` lists this primary and subkey
+  # unrevoked, and `https://github.com/fametrano.gpg` serves the subkey
+  # under the primary. A second source agrees: keys.openpgp.org serves
+  # the same primary and subkey with its user ID. The import step below
+  # reads GitHub's copy.
   #
   # What this means for the next re-pin: FINGERPRINTS below is not a
   # standing maintainer roster, only a record of who is trusted to sign
@@ -159,16 +156,13 @@ jobs:
             exit 1
           fi
 
-      # keys.openpgp.org holds nothing at all for this fingerprint, and
-      # the maintainer publishes no standalone key file the way the step
-      # above imports Poelstra's from -- the block comment above has the
-      # measurement. `https://github.com/<user>.gpg` is GitHub's own
-      # rendering of the account's key store and the only copy this job
-      # has to import from
+      # `https://github.com/<user>.gpg` is GitHub's own rendering of the
+      # account's key store, which the block comment above compares with
+      # keys.openpgp.org
       - name: Import the maintainer's key
         env:
           # Ferdinando M. Ametrano
-          FINGERPRINT: B11512040C6E86D7B5E03DD14D71ED3A9A8EDFC5
+          FINGERPRINT: 49E52319B377848A737E2DBE2279DA8BC2694720
           KEY_URL: https://github.com/fametrano.gpg
         run: |
           curl --fail --silent --show-error --location \
@@ -261,7 +255,7 @@ jobs:
           # Andrew Poelstra, Ferdinando M. Ametrano
           FINGERPRINTS: >-
             90F9CA3C3EC97BE922DF955EC588D63CE41B97C1
-            B11512040C6E86D7B5E03DD14D71ED3A9A8EDFC5
+            49E52319B377848A737E2DBE2279DA8BC2694720
           PINNED: ${{ steps.pin.outputs.pinned }}
           DELTA: ${{ steps.delta.outputs.delta }}
         run: |

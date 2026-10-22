@@ -1176,9 +1176,10 @@ but `links` run locally.
   (issue #855): Andrew Poelstra's, from his own published bundle rather
   than from `keys.openpgp.org`, which serves this one stripped of the
   user IDs GnuPG needs before it accepts a key (#690); and the
-  maintainer's own, from `https://github.com/<user>.gpg`, the only copy
-  found for it. Both fingerprint/URL pairs are lifted from the two
-  import steps' own env blocks in `zkp-pin.yml`, keyed off
+  maintainer's own, from `https://github.com/<user>.gpg`, which
+  `keys.openpgp.org` also serves, user IDs included. Both
+  fingerprint/URL pairs are lifted from the two import steps' own env
+  blocks in `zkp-pin.yml`, keyed off
   `FINGERPRINT:` (singular), which the last step's `FINGERPRINTS:`
   (plural) does not match:
 
