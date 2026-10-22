@@ -1,7 +1,7 @@
 # Repository configuration
 
 Read this before changing a workflow, a branch rule or a repository
-setting; writing code does not need it. [CLAUDE.md](./CLAUDE.md) points here
+setting; writing code does not need it. [AGENTS.md](./AGENTS.md) points here
 rather than carrying it, so that a session fixing a wrapper does not hold
 it in context.
 
