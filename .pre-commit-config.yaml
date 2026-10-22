@@ -319,7 +319,7 @@ repos:
   # check-changelog runs ahead of markdownlint-cli2 below: that hook's
   # `--fix` repairs the very seam the third check exists to name.
   - repo: https://github.com/btclib-org/.github
-    rev: 9e89a1daa5e9cc59bd22bd8664eb20b621e15fc5
+    rev: 0e359a9b5ae51cf1e17b8f59a650b2f2b58e38e9
     hooks:
       - id: check-changelog
         args: [--grandfathered, "24"]
@@ -534,7 +534,7 @@ repos:
   # The rule selection (and what each family stands in for) is documented
   # there
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.0
+    rev: v0.17.1
     hooks:
       - id: ruff-check
         name: ruff (lint, in place fixes)
@@ -720,7 +720,7 @@ repos:
     # `uses: $/...`. The finding is declined per site, with an inline
     # `# zizmor: ignore[self-repository]` on each `uses: ./` line
     # (btclib-org/.github#1144).
-    rev: v1.30.1
+    rev: v1.31.1
     hooks:
       - id: zizmor
         name: zizmor (workflow security)
@@ -796,7 +796,7 @@ repos:
   # keeps a dependency added to pyproject.toml from reaching a branch
   # without the lock entry that pins it
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.13.0
+    rev: 0.13.1
     hooks:
       - id: uv-lock
       # build-constraints.txt is what the wheel builds pass as build
