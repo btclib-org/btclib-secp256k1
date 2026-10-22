@@ -669,7 +669,9 @@ def test_bip352_sending_vector(case: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("case", BIP352, ids=[case["comment"] for case in BIP352])
-def test_bip352_receiving_vector(case: dict[str, Any]) -> None:
+def test_bip352_receiving_vector(
+    case: dict[str, Any], scan_python_calls: list[int]
+) -> None:
     """Find the outputs BIP352 publishes as this recipient's, and their tweaks.
 
     The input public keys are the ones the sending half of the same
@@ -682,8 +684,14 @@ def test_bip352_receiving_vector(case: dict[str, Any]) -> None:
     recipient skips it, and here that is `prevouts_summary` refusing it
     rather than a scan that finds nothing.
 
+    No scan calls back into Python, the K_max case with its change label
+    included: libsecp256k1 asks the label lookup for a tweak twice for
+    each output it checks, and at each k it checks again from the first
+    output, so the calls grow with the square of the outputs.
+
     Args:
         case: one vector, both directions of it.
+        scan_python_calls: the count of Python calls inside each scan.
     """
     input_pub_keys = case["sending"][0]["expected"]["input_pub_keys"]
     for recv in case["receiving"]:
@@ -751,6 +759,7 @@ def test_bip352_receiving_vector(case: dict[str, Any]) -> None:
             spend_pubkey,
             labels=labels or None,
         )
+        assert scan_python_calls[-1] == 0
         # the K_max case publishes how many outputs are found rather than
         # which: 2324 outputs pay one scan key, and BIP352 stops at 2323
         if "outputs" not in expected:

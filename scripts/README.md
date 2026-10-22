@@ -133,6 +133,10 @@ the ABI-mode module finds it in the shared object. Its declaration is
 appended to the concatenated headers below, so the cdef and the static
 build's C both know it.
 
+The label lookup `silentpayments.scan_outputs` hands libsecp256k1 is
+attached and exported the same way as the ECDH hash function, so no
+Python runs per candidate label.
+
 **Derive the cdef.** The public headers are concatenated in dependency
 order — `#include` directives are stripped before preprocessing, so the
 order of the list is load-bearing — and run through `gcc -E` with

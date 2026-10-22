@@ -21,13 +21,20 @@ started in, so a run started from `tests/` finds no `fail_under`, no
 leaves a tree to point such a run at its configuration or to make it say
 it is ungated, and this file is the second of the two: such a run is
 refused (btclib-org/.github#443).
+
+The last thing here is the fixture `scan_python_calls`, shared by the tests
+of Silent Payments scanning. It is why this file imports the built package
+when pytest collects it.
 """
 
 import argparse
+import sys
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 import pytest
+
+from btclib_secp256k1 import lib, silentpayments
 
 # what section 8 of the organization standard counts as asking for less
 # than the suite, beside a path that leaves part of it out: `-k`, `-m`,
@@ -266,3 +273,49 @@ def pytest_configure(config: pytest.Config) -> None:
         config.getini("testpaths"),
         config.rootpath,
     )
+
+
+@pytest.fixture
+def scan_python_calls(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Count the Python functions that run inside each native scan.
+
+    `silentpayments.lib` is replaced by a proxy that wraps the call into
+    `secp256k1_silentpayments_recipient_scan_outputs` in a profile hook,
+    and a Python function called from there -- which is what a cffi
+    callback is -- counts. The Python around the call does not.
+
+    Args:
+        monkeypatch: the fixture the proxy is installed through.
+
+    Returns:
+        One count per native scan, in the order they ran.
+    """
+    counts: list[int] = []
+
+    class CountingLib:
+        def __getattr__(self, name: str) -> Any:
+            attribute = getattr(lib, name)
+            if name != "secp256k1_silentpayments_recipient_scan_outputs":
+                return attribute
+
+            def counted(*args: Any) -> Any:
+                calls = 0
+
+                def profile(  # pragma: no cover -- a profile hook is never traced
+                    _frame: object, event: str, _arg: object
+                ) -> None:
+                    nonlocal calls
+                    if event == "call":
+                        calls += 1
+
+                sys.setprofile(profile)
+                try:
+                    return attribute(*args)
+                finally:
+                    sys.setprofile(None)
+                    counts.append(calls)
+
+            return counted
+
+    monkeypatch.setattr(silentpayments, "lib", CountingLib())
+    return counts

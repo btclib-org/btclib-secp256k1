@@ -25,7 +25,8 @@ transaction output again at every transaction.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+import sys
+from collections.abc import Mapping, Sequence
 
 from . import BytesLike, CData, ffi, keys, lib, xonly
 from ._cdata import array
@@ -62,12 +63,13 @@ __all__ = [
 # been public since 0.8.0. `keys._COMPRESSED_SIZE` is the same 33 as the
 # label's and stays private: nothing there checks a caller's argument
 # against it, where two callers' arguments are checked against this one
-# -- `parse_label`'s octets and the labels `_fill_label_cache` takes for
+# -- `parse_label`'s octets and the labels `_label_table` takes for
 # `_scan_outputs_`. What `serialize_label` does with it is not that: it
 # unpacks the buffer this module declared, which is exactly what `keys`
 # does with its own
 _OUTPOINT_SIZE = 36
 LABEL_SIZE = 33
+_TWEAK_SIZE = 32
 SUMMARY_SIZE = _OUTPOINT_SIZE + keys._COMPRESSED_SIZE
 
 # the buffer `serialize_label` writes into, resolved here rather than at
@@ -581,27 +583,20 @@ def _scan_outputs_(
     ]
     n_found = ffi.new("uint32_t *")
 
-    # the cache is filled inside the try, not built before it: every
-    # entry carries a tweak and the next one can raise, so what wipes them
-    # has to already be in force while they are being made -- create_outputs
-    # builds its two key lists the same way and for the same reason. A
-    # `dict` filled entry by entry is what makes that reachable, where a
-    # comprehension would drop the ones already made along with the
-    # exception
-    cache: dict[bytes, CData] = {}
+    # the table is wiped in the finally once `_label_table` returns it:
+    # nothing can raise after it is allocated there, every entry having
+    # been checked first
+    table = None
     # a NULL lookup is how libsecp256k1 is told no label is in play, and
     # it is not the same as one that never matches: with it the scan skips
     # the label branch altogether. What decides it is `labels`, an empty
-    # mapping being a cache with nothing in it rather than the absence of
-    # one; the callback is held in a local because it has to outlive the
-    # call it is passed to
+    # mapping being a table with nothing in it rather than the absence of
+    # one. The table is held in a local so that the `finally` can wipe it
     lookup = ffi.NULL
     try:
         if labels is not None:
-            _fill_label_cache(labels, cache)
-            lookup = ffi.callback(
-                "secp256k1_silentpayments_label_lookup", _lookup(cache)
-            )
+            table = _label_table(labels)
+            lookup = lib.btclib_secp256k1_label_lookup_sorted
         scanned = lib.secp256k1_silentpayments_recipient_scan_outputs(
             ctx,
             array("secp256k1_silentpayments_found_output *[]", found_objs),
@@ -612,17 +607,19 @@ def _scan_outputs_(
             summary,
             spend_pubkey,
             lookup,
-            ffi.NULL,
+            ffi.NULL if table is None else table,
         )
         if not scanned:
             raise ValueError("silent payment scanning failed")
         return [_found_output(found) for found in found_objs[: n_found[0]]]
     finally:
         # every found output carries the tweak that spends it, and the
-        # cache the tweaks of the labels: both are secrets in memory this
+        # table the tweaks of the labels: both are secrets in memory this
         # package owns, and so both are taken back
-        for buffer in (*found_objs, *cache.values()):
+        for buffer in found_objs:
             wipe(buffer)
+        if table is not None:
+            wipe(table)
 
 
 def scan_outputs(
@@ -716,22 +713,28 @@ def scan_outputs(
     )
 
 
-def _fill_label_cache(labels: object, cache: dict[bytes, CData]) -> None:
-    """Copy a label cache into the buffers the lookup will hand back.
+def _label_table(labels: object) -> CData:
+    """Copy a label cache into the table the C lookup searches.
 
-    Every tweak is copied into memory this package owns before the scan
-    starts, rather than inside the callback: the pointer returned from
-    there has to stay valid until libsecp256k1 is done with it, and a
-    buffer made on the way out would be owned by nothing.
+    The table is one buffer: the number of labels as a `size_t`, then the
+    labels sorted as octets, 33 bytes each, then their tweaks in the same
+    order, 32 bytes each. `btclib_secp256k1_label_lookup_sorted`, in
+    `scripts/cffi_build.py`, binary-searches the labels for the 33 bytes
+    libsecp256k1 hands it and answers a pointer into the tweaks. The
+    tweaks are copied into memory this package owns before the scan
+    starts, so that the pointer returned stays valid until libsecp256k1
+    is done with it.
 
-    The dictionary is filled rather than returned, so that a tweak copied
-    before a later entry is refused is one the caller can still wipe: see
-    `_scan_outputs_`, which owns it and does.
+    Every entry is checked before the buffer is made, so that a refused
+    one leaves no tweak in memory to be taken back. When two keys of
+    `labels` are the same octets the last wins, as in a `dict`.
 
     Args:
         labels: the caller's mapping of 33-byte labels to 32-byte tweaks,
             typed `object` because what is checked here is that it is one.
-        cache: the dictionary to fill, keyed on the same labels.
+
+    Returns:
+        The table, which `_scan_outputs_` wipes.
 
     Raises:
         TypeError: if `labels` is not a mapping, or a label or a tweak is
@@ -741,33 +744,24 @@ def _fill_label_cache(labels: object, cache: dict[bytes, CData]) -> None:
     if not isinstance(labels, Mapping):
         msg = f"the labels must be a mapping, not {type(labels).__name__}"
         raise TypeError(msg)
-    for label_bytes, tweak_bytes in labels.items():
-        cache[octets(label_bytes, "label", LABEL_SIZE)] = ffi.new(
-            "unsigned char[32]", octets(tweak_bytes, "label tweak", 32)
+    entries = {
+        octets(label_bytes, "label", LABEL_SIZE): octets(
+            tweak_bytes, "label tweak", _TWEAK_SIZE
         )
-
-
-def _lookup(cache: dict[bytes, CData]) -> Callable[[CData, CData], CData]:
-    """Build the label lookup libsecp256k1 calls back into.
-
-    Args:
-        cache: the labels of `_fill_label_cache`, keyed on their 33 bytes.
-
-    Returns:
-        A function of the C signature libsecp256k1 declares. It cannot
-        raise -- a `dict.get` over keys already normalized -- which
-        matters because cffi has nowhere to put an exception raised
-        inside a callback: it prints the traceback and returns a default,
-        so a lookup that could raise would answer "no label" while
-        looking like it worked.
-    """
-
-    # label_context is unused: the signature above is libsecp256k1's own,
-    # and this is the whole of it
-    def lookup(label33: CData, label_context: CData) -> CData:  # noqa: ARG001
-        return cache.get(bytes(ffi.buffer(label33, LABEL_SIZE)), ffi.NULL)
-
-    return lookup
+        for label_bytes, tweak_bytes in labels.items()
+    }
+    ordered = sorted(entries.items())
+    count_size = ffi.sizeof("size_t")
+    labels_end = count_size + LABEL_SIZE * len(ordered)
+    table = ffi.new("unsigned char[]", labels_end + _TWEAK_SIZE * len(ordered))
+    memory = ffi.buffer(table)
+    memory[:count_size] = len(ordered).to_bytes(count_size, sys.byteorder)
+    for index, (label_bytes, tweak_bytes) in enumerate(ordered):
+        label_at = count_size + LABEL_SIZE * index
+        tweak_at = labels_end + _TWEAK_SIZE * index
+        memory[label_at : label_at + LABEL_SIZE] = label_bytes
+        memory[tweak_at : tweak_at + _TWEAK_SIZE] = tweak_bytes
+    return table
 
 
 def _found_output(found: CData) -> tuple[bytes, bytes, bytes | None]:

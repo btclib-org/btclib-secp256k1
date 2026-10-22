@@ -95,19 +95,12 @@ void secp256k1_default_error_callback_fn(const char* str, void* data) {
 }
 """
 
-# the hash function `ecdh.shared_point` hands `secp256k1_ecdh`: it copies
-# the two coordinates of the shared point out, where the default one
-# hashes them. It is C because a python callback would run in the middle
-# of the constant-time call, with the point in python objects.
-#
-# It is compiled into the library rather than into the extension because
-# a dynamic build compiles no C of its own: the shared object is where
-# the ABI-mode module finds it. It is defined the way
-# `secp256k1_ecdh_hash_function_sha256` is, a `const` function pointer the
-# library exports, and the export is spelled out because this file
-# includes no upstream header to take `SECP256K1_API` from: a mingw DLL
-# whose other symbols are `dllexport`ed exports nothing left unmarked
-ECDH_HASH_FUNCTION_XY = """
+# what this package's own C below shares: the headers it
+# includes and the export mark. The export is spelled out because this
+# file includes no upstream header to take `SECP256K1_API` from: a mingw
+# DLL whose other symbols are `dllexport`ed exports nothing left unmarked
+OWN_SOURCE_PREAMBLE = """
+#include <stddef.h>
 #include <string.h>
 
 #if defined(_WIN32) && defined(SECP256K1_DLL_EXPORT)
@@ -117,7 +110,19 @@ ECDH_HASH_FUNCTION_XY = """
 #else
 #    define BTCLIB_API
 #endif
+"""
 
+# the hash function `ecdh.shared_point` hands `secp256k1_ecdh`: it copies
+# the two coordinates of the shared point out, where the default one
+# hashes them. It is C because a python callback would run in the middle
+# of the constant-time call, with the point in python objects.
+#
+# It is compiled into the library rather than into the extension because
+# a dynamic build compiles no C of its own: the shared object is where
+# the ABI-mode module finds it. It is defined the way
+# `secp256k1_ecdh_hash_function_sha256` is, a `const` function pointer the
+# library exports
+ECDH_HASH_FUNCTION_XY = """
 typedef int (*btclib_secp256k1_ecdh_hash_function)(
     unsigned char *output,
     const unsigned char *x32,
@@ -150,11 +155,70 @@ extern const secp256k1_ecdh_hash_function
     btclib_secp256k1_ecdh_hash_function_xy;
 """
 
+# the label lookup `silentpayments.scan_outputs` hands
+# `secp256k1_silentpayments_recipient_scan_outputs`. libsecp256k1 calls it
+# twice for each output it checks, and at each k it checks again from
+# the first output, so the calls grow with the square of the outputs. It is C
+# because a python callback costs a crossing into the interpreter each
+# time.
+#
+# The context is the table `silentpayments._label_table` builds: the count
+# n as a `size_t`, then the n labels of 33 bytes sorted as octets, then
+# the n tweaks of 32 bytes in the same order. The label libsecp256k1
+# passes is the 33-byte compressed serialization, so the search compares
+# the same octets the table was sorted on. The tweak returned points into
+# the table, which outlives the call. It is exported the way
+# `ECDH_HASH_FUNCTION_XY` is, and for the same reason
+LABEL_LOOKUP_SORTED = """
+typedef const unsigned char *(*btclib_secp256k1_label_lookup)(
+    const unsigned char *label33,
+    const void *label_context
+);
+
+static const unsigned char *btclib_secp256k1_label_lookup_search(
+    const unsigned char *label33,
+    const void *label_context
+) {
+    const unsigned char *table = (const unsigned char *)label_context;
+    const unsigned char *labels = table + sizeof(size_t);
+    size_t n;
+    size_t low = 0;
+    size_t high;
+    memcpy(&n, table, sizeof(size_t));
+    high = n;
+    while (low < high) {
+        size_t middle = low + (high - low) / 2;
+        int order = memcmp(label33, labels + 33 * middle, 33);
+        if (order == 0) {
+            return labels + 33 * n + 32 * middle;
+        }
+        if (order < 0) {
+            high = middle;
+        } else {
+            low = middle + 1;
+        }
+    }
+    return NULL;
+}
+
+BTCLIB_API const btclib_secp256k1_label_lookup
+    btclib_secp256k1_label_lookup_sorted = btclib_secp256k1_label_lookup_search;
+"""
+
+# what the extension is told about it, as for
+# `ECDH_HASH_FUNCTION_XY_DECLARATION`, with the type
+# `secp256k1_silentpayments_label_lookup` from the same headers
+LABEL_LOOKUP_SORTED_DECLARATION = """
+extern const secp256k1_silentpayments_label_lookup
+    btclib_secp256k1_label_lookup_sorted;
+"""
+
 # add the callback stubs to the vendored library target, so that the
 # static archive and the shared object alike define the symbols that
 # SECP256K1_USE_EXTERNAL_DEFAULT_CALLBACKS leaves undefined, and with
 # them whatever C of its own an extension declares, which is
-# `ECDH_HASH_FUNCTION_XY` above for the one that declares any.
+# `OWN_SOURCE_PREAMBLE`, `ECDH_HASH_FUNCTION_XY` and `LABEL_LOOKUP_SORTED`
+# above for the one that declares any.
 #
 # CMake includes this file at the end of every project() call, when the
 # target does not exist yet: hence the deferred call, which runs at the
@@ -1155,8 +1219,10 @@ class VendoredCMakeExtension(FFIExtension):
 class Secp256k1CFFIExtension(VendoredCMakeExtension):
     """The vendored libsecp256k1, built with CMake and wrapped by cffi."""
 
-    own_source = ECDH_HASH_FUNCTION_XY
-    own_declarations = ECDH_HASH_FUNCTION_XY_DECLARATION
+    own_source = OWN_SOURCE_PREAMBLE + ECDH_HASH_FUNCTION_XY + LABEL_LOOKUP_SORTED
+    own_declarations = (
+        ECDH_HASH_FUNCTION_XY_DECLARATION + LABEL_LOOKUP_SORTED_DECLARATION
+    )
 
     def __init__(self) -> None:
         """Name the sources, the headers and where the build output goes."""
