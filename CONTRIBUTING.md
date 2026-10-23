@@ -266,6 +266,11 @@ Initialize submodules as *The environment and the gates* says. Initialized
 submodules make plain `git worktree remove` fail, so removal takes the
 `--force` path of *Worktrees* above, after its checks.
 
+`--reference` to the primary checkout's submodule modules is declined: it
+saves the clone but leaves the worktree's submodule without objects of its
+own, so a `git gc` in the primary checkout, or moving it, can break the
+worktree.
+
 ### Which repository an issue belongs to
 
 These are thin python bindings to
@@ -1537,3 +1542,19 @@ name. It has no local command either — the score is the action's, and
 the run finds arrives as code scanning alerts beside CodeQL's. Which
 repositories of the organization run it at all is section 10 of the
 standard, this one among them.
+
+### Traps
+
+- A hand-applied mutation of the same length can outlive its restore
+  through a `.pyc` whose mtime and size still match. Use
+  `PYTHONDONTWRITEBYTECODE=1`, with a passing baseline run before and a
+  control run after. cosmic-ray sets that variable itself (#229) but still
+  reads a stale `.pyc`.
+- `check-sdist` fails with "SDist does not match git" on an untracked file
+  that neither `.gitignore` nor the sdist `exclude` in `pyproject.toml`
+  covers. `docs/_build/` is one: `.gitignore` has `build/`, and
+  `git check-ignore -v docs/_build/x` prints nothing. Build the docs into
+  `docs/build/html` as above, and anything else outside the worktree.
+- `pre-commit`'s log names that hook `check sdist`, with a space, though
+  the `id:` is `check-sdist`. `grep -c check-sdist` over a passing run's
+  log answers `0`; grep the display name.
