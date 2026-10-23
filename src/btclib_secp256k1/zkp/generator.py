@@ -41,7 +41,7 @@ from collections.abc import Sequence
 from typing import Any, overload
 
 from btclib_secp256k1 import BytesLike, CData, MutableBytesLike
-from btclib_secp256k1._scalar import in_range, octets, scalar
+from btclib_secp256k1._scalar import in_range, octets, scalar, sequence
 from btclib_secp256k1._secret import take, wipe
 
 from . import context
@@ -324,8 +324,12 @@ def pedersen_blind_sum(
         The 32-byte sum -- or None where `into` was given and holds it.
 
     Raises:
-        TypeError: if `npositive` is not an int, or if `into` is not a
-            writable buffer of contiguous one-dimensional octets.
+        TypeError: if `blinds` is a `str`, a cffi array of primitives or
+            a one-dimensional buffer of anything but byte-strings,
+            objects or structs (`bytes`, `bytearray`, `memoryview`,
+            `array.array`): one blinding factor, not a list of them. Also
+            if `npositive` is not an int, or if `into` is not a writable
+            buffer of contiguous one-dimensional octets.
         ValueError: if one of `blinds` is not 32 bytes, does not fit in
             them, or is out of range -- named by its position in the
             sequence, `blinds[0]` being "blinding factor at index 0" --
@@ -335,6 +339,7 @@ def pedersen_blind_sum(
             which is a ~2**-127 event for a random one.
     """
     ffi, lib, ctx = context._bindings()
+    sequence(blinds, "blinds")
     npositive = in_range(npositive, "npositive", len(blinds))
     # each buffer holds a copy of one of the caller's own blinding
     # factors, and this package owns it: the `finally` takes that copy
@@ -476,9 +481,13 @@ def pedersen_blind_generator_blind_sum(
         None where `into` was given and holds it.
 
     Raises:
-        TypeError: if `n_inputs` is not an int, if one of `values` is
-            not an int, or if `into` is not a writable buffer of
-            contiguous one-dimensional octets.
+        TypeError: if `generator_blinds` or `blinding_factors` is a
+            `str`, a cffi array of primitives or a one-dimensional buffer
+            of anything but byte-strings, objects or structs (`bytes`,
+            `bytearray`, `memoryview`, `array.array`): one blinding
+            factor, not a list of them. Also if `n_inputs` is not an int,
+            if one of `values` is not an int, or if `into` is not a
+            writable buffer of contiguous one-dimensional octets.
         ValueError: if the three sequences are not the same length, if
             `n_inputs` is not in [0, len(values)), if one of `values` is
             a bool or does not fit in 8 bytes, if one of the blinding
@@ -490,6 +499,8 @@ def pedersen_blind_generator_blind_sum(
             which is a ~2**-127 event for random ones.
     """
     ffi, lib, ctx = context._bindings()
+    sequence(generator_blinds, "generator_blinds")
+    sequence(blinding_factors, "blinding_factors")
     n_total = len(values)
     if len(generator_blinds) != n_total or len(blinding_factors) != n_total:
         raise ValueError(

@@ -6,7 +6,9 @@
 
 from __future__ import annotations
 
+import re
 import secrets
+from typing import TypeVar
 
 from . import BytesLike, CData, ffi
 
@@ -15,6 +17,12 @@ from . import BytesLike, CData, ffi
 # the wrappers are: `_owned_octets` re-views a caller's 32 octets as this,
 # whatever they declared them
 _OCTETS_TYPE = ffi.typeof("unsigned char[32]")
+
+_T = TypeVar("_T")
+
+# the item formats of a one-dimensional buffer that is a list: a
+# byte-string (`32s`), an object (`O`) or a struct (`T{...}`)
+_LIST_ITEM = re.compile(r"\d*s|O|T\{.*\}", re.DOTALL)
 
 
 def octets(value: BytesLike, name: str, size: int | None = None) -> bytes:
@@ -291,6 +299,61 @@ def scalar(num: BytesLike | int | CData, name: str) -> bytes | CData:
     if not isinstance(num, (bytes, bytearray, memoryview)):
         return _owned_octets(num, name)
     return octets(num, name, 32)
+
+
+def sequence(value: _T, name: str) -> _T:
+    """Refuse one value where a list of values is wanted.
+
+    The lists of private keys, tweaks and blinding factors take ints, and
+    a `bytes` iterates as ints. A key of 32 octets given where the list
+    goes would be read as a list of 32 one-octet keys, and the call would
+    answer with the result for those keys, not an error.
+
+    What is refused is a `str`, a cffi array of primitives of any item
+    width, and any object that exports a one-dimensional buffer, unless
+    its items are byte-strings, objects or structs: `bytes`,
+    `bytearray`, `memoryview`, `array.array` and a numpy vector of
+    numbers are refused, and a numpy vector of `S32` or of objects is a
+    list. A list, a tuple, a cffi array of arrays and a two-dimensional
+    buffer pass too.
+
+    Args:
+        value: the argument, as the caller passed it.
+        name: what the list is, as the exception should call it.
+
+    Returns:
+        The value itself.
+
+    Raises:
+        TypeError: if the value is one of the types above.
+    """
+    kind = type(value).__name__
+    bare = isinstance(value, str)
+    # a list or a tuple, the usual case, exports no buffer and is no cdata
+    if not bare and not isinstance(value, (list, tuple)):
+        try:
+            # released at once: a view left open locks a `bytearray`
+            # against resizing for as long as the exception lives
+            with memoryview(value) as view:  # type: ignore[arg-type]
+                # the format is the item's struct code, optionally led by
+                # a byte-order mark: `B` is an octet, `32s` a string of 32
+                # and `O` an object
+                item = view.format.lstrip("@=<>!")
+                bare = view.ndim == 1 and not _LIST_ITEM.fullmatch(item)
+        except TypeError:
+            try:
+                ctype = ffi.typeof(value)
+            except TypeError:
+                return value
+            bare = ctype.kind == "array" and ctype.item.kind == "primitive"
+            kind = "cffi array"
+    if bare:
+        msg = (
+            f"the {name} must be a sequence of values, not a bare "
+            f"{kind}; one value goes in a list"
+        )
+        raise TypeError(msg)
+    return value
 
 
 def entropy(aux_rand32: BytesLike | None, name: str = "aux_rand32") -> bytes:

@@ -29,7 +29,7 @@ from collections.abc import Callable, Mapping, Sequence
 
 from . import BytesLike, CData, ffi, keys, lib, xonly
 from ._cdata import array
-from ._scalar import in_range, octets, scalar
+from ._scalar import in_range, octets, scalar, sequence
 from ._secret import keypair, scalar_buffer, take, wipe
 from .context import ctx
 
@@ -117,6 +117,10 @@ def _create_outputs_(
         per recipient, in the order the recipients were given.
 
     Raises:
+        TypeError: if `taproot_prvkeys` or `prvkeys` is a `str`, a cffi
+            array of primitives or a one-dimensional buffer of anything
+            but byte-strings, objects or structs (`bytes`, `bytearray`,
+            `memoryview`, `array.array`): one key, not a list of them.
         ValueError: if no recipient or no private key is given, if the
             outpoint is not 36 bytes, if any private key is not 32 bytes,
             does not fit in them, or is not in [1, n-1], if libsecp256k1
@@ -124,6 +128,8 @@ def _create_outputs_(
             read, those last two being one message here --
             `context.check` is what tells them apart.
     """
+    sequence(taproot_prvkeys, "taproot_prvkeys")
+    sequence(prvkeys, "prvkeys")
     if not recipients:
         raise ValueError("at least one recipient is required")
     if not taproot_prvkeys and not prvkeys:
@@ -203,6 +209,10 @@ def create_outputs(
         recipient, in the order the recipients were given.
 
     Raises:
+        TypeError: if `taproot_prvkeys` or `prvkeys` is a `str`, a cffi
+            array of primitives or a one-dimensional buffer of anything
+            but byte-strings, objects or structs (`bytes`, `bytearray`,
+            `memoryview`, `array.array`): one key, not a list of them.
         ValueError: if no recipient or no private key is given, if the
             outpoint is not 36 bytes, if any public key is not a valid
             point, if any private key is not 32 bytes, does not fit in

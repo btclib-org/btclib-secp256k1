@@ -14,11 +14,12 @@ against the tweaked x-only public key.
 
 from __future__ import annotations
 
+import array
 import hashlib
 
 import pytest
 
-from btclib_secp256k1 import dsa, keys, ssa, xonly
+from btclib_secp256k1 import dsa, ffi, keys, ssa, xonly
 
 # secp256k1 group order
 N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
@@ -920,3 +921,26 @@ def test_signature_verify_is_the_parse_with_nothing_kept() -> None:
 
     with pytest.raises(TypeError, match="DER signature"):
         dsa.signature_verify(11)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "bare",
+    [
+        pytest.param(bytes(32), id="bytes"),
+        pytest.param(bytearray(32), id="bytearray"),
+        pytest.param(memoryview(bytes(32)), id="memoryview"),
+        pytest.param("k" * 32, id="str"),
+        pytest.param(ffi.new("unsigned char[32]"), id="cffi array"),
+        pytest.param(array.array("B", bytes(32)), id="array.array"),
+    ],
+)
+def test_pubkey_tweak_mul_sum_refuses_a_bare_tweak(bare: object) -> None:
+    """A tweak given alone is refused, not read as 32 one-octet tweaks.
+
+    The keys are 32, as many as a bare 32-octet tweak has octets: the
+    case where the two lengths agree, so that the length guard is silent
+    and only the type can refuse.
+    """
+    pubkey = keys.pubkey_from_prvkey(7)
+    with pytest.raises(TypeError, match="the tweaks must be a sequence of values"):
+        keys.pubkey_tweak_mul_sum([pubkey] * 32, bare)  # type: ignore[arg-type]

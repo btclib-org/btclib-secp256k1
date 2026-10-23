@@ -43,6 +43,7 @@ exercised instead.
 
 from __future__ import annotations
 
+import array
 import types
 from collections.abc import Iterator
 from typing import Any
@@ -842,3 +843,42 @@ def test_pedersen_blind_generator_blind_sum_takes_caller_held_blinds(
     assert bytes(caller_ffi.buffer(held_generator_blind)) == generator_octets
     assert bytes(caller_ffi.buffer(held_blinding_factor)) == factor_octets
     assert corrected == bytes(range(32))
+
+
+BARE = [
+    pytest.param(bytes(32), id="bytes"),
+    pytest.param(bytearray(32), id="bytearray"),
+    pytest.param(memoryview(bytes(32)), id="memoryview"),
+    pytest.param("k" * 32, id="str"),
+    pytest.param(caller_ffi.new("unsigned char[32]"), id="cffi array"),
+    pytest.param(array.array("B", bytes(32)), id="array.array"),
+]
+
+
+@pytest.mark.parametrize("bare", BARE)
+def test_pedersen_blind_sum_refuses_a_bare_blind(bare: Any) -> None:
+    """A blinding factor given alone is not a list of 32 one-octet ones."""
+    with pytest.raises(TypeError, match="the blinds must be a sequence of values"):
+        g.pedersen_blind_sum(bare, 1)
+
+
+@pytest.mark.parametrize("which", ["generator_blinds", "blinding_factors"])
+@pytest.mark.parametrize("bare", BARE)
+def test_pedersen_blind_generator_blind_sum_refuses_a_bare_list(
+    which: str, bare: Any
+) -> None:
+    """Each of the two lists of blinding factors refuses a bare value.
+
+    The other lists are 32 long too: the case where the lengths agree, so
+    that the length guard is silent and only the type can refuse.
+    """
+    lists: dict[str, Any] = {
+        "values": [5] * 32,
+        "generator_blinds": [bytes(32)] * 32,
+        "blinding_factors": [bytes(32)] * 32,
+    }
+    lists[which] = bare
+    with pytest.raises(TypeError, match=f"the {which} must be a sequence of values"):
+        g.pedersen_blind_generator_blind_sum(
+            lists["values"], lists["generator_blinds"], lists["blinding_factors"], 16
+        )

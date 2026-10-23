@@ -17,6 +17,7 @@ another way.
 
 from __future__ import annotations
 
+import array
 import hashlib
 
 import pytest
@@ -968,3 +969,31 @@ def test_labels_that_are_not_a_mapping_are_a_type_error() -> None:
                 SP_SPEND_PUBKEY,
                 labels=wrong,  # type: ignore[arg-type]
             )
+
+
+@pytest.mark.parametrize("which", ["prvkeys", "taproot_prvkeys"])
+@pytest.mark.parametrize(
+    "bare",
+    [
+        pytest.param(SP_INPUT_PRVKEY, id="bytes"),
+        pytest.param(bytearray(SP_INPUT_PRVKEY), id="bytearray"),
+        pytest.param(memoryview(SP_INPUT_PRVKEY), id="memoryview"),
+        pytest.param("k" * 32, id="str"),
+        pytest.param(ffi.new("unsigned char[32]"), id="cffi array"),
+        pytest.param(array.array("B", bytes(32)), id="array.array"),
+        pytest.param(b"", id="empty bytes"),
+    ],
+)
+def test_silent_payment_creation_refuses_a_bare_key(which: str, bare: object) -> None:
+    """A key given alone is refused, not read as 32 one-octet keys.
+
+    The 32 octets of a key, passed where the list goes, are 32 keys
+    whose sum is below 8161, which no recipient can find the outputs of.
+    The empty one is refused as a type too, before it is read as no key.
+    """
+    with pytest.raises(TypeError, match=f"the {which} must be a sequence of values"):
+        silentpayments.create_outputs(
+            [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY)],
+            SP_OUTPOINT,
+            **{which: bare},  # type: ignore[arg-type]
+        )
