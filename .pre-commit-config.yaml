@@ -796,7 +796,7 @@ repos:
   # keeps a dependency added to pyproject.toml from reaching a branch
   # without the lock entry that pins it
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.13.1
+    rev: 0.13.5
     hooks:
       - id: uv-lock
       # build-constraints.txt is what the wheel builds pass as build
