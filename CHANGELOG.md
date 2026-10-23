@@ -24,6 +24,76 @@ This file starts at v0.7.1.2. The releases before it were documented at
 release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.
 
+## v0.8.0.13
+
+### One value where a list is wanted is refused
+
+- **The list parameters of `create_outputs`, `pubkey_tweak_mul_sum` and
+  the `pedersen_blind_*` sums raise `TypeError`** for a bare value
+  (closes #1228, closes #1229, closes #1231).
+
+### `silentpayments.scan_outputs`
+
+- **The label lookup is C built into the library**, and a label tweak
+  outside [1, n-1] raises `ValueError` (closes #1247, closes #1248).
+
+### The compiled wheels
+
+- **They are built with hardening flags, which `check-dist` reads back**
+  (closes #1194).
+
+### cibuildwheel 4.3.1
+
+- **The Linux image pins move with it** (closes #1233).
+
+### x86_64 macOS
+
+- **It does not build on a pull request or a push to `main`** (closes
+  #1201).
+
+### The secp256k1-zkp pin
+
+- **It moves to `335dc1d2`, and `zkp-pin.yml` trusts the maintainer's
+  current key** (#1251).
+
+### The suite
+
+- **It runs under pytest-xdist** (closes #1180).
+
+### Secret-free tests
+
+- **`assert_secret_free` checks the refusals of secret inputs** (closes
+  #1177), and takes the shared helper's grouped-secret check (issue
+  btclib-org/.github#1697).
+
+### Dependencies
+
+- **aiohttp, virtualenv, GitPython and the CA bundle** (closes #1235; issue
+  btclib-org/.github#1824, btclib-org/.github#1835; #1240); hooks, actions
+  and the clusterfuzzlite image (#1237, #1245, #1244).
+
+### The organization's shared files
+
+- **`CONTRIBUTING.md` takes the shared half** (issue
+  btclib-org/.github#1740); **`SECURITY.md` says a report easy to
+  rediscover is fixed as soon as possible** (issue btclib-org/.github#1771).
+
+### Repository guidance
+
+- **`AGENTS.md` replaces `CLAUDE.md`** (issue btclib-org/.github#1808,
+  #1239).
+
+### `RELEASING.md` and stale comments
+
+- **The next-version step has a four-part example** (closes #1224); stale
+  comments are corrected (closes #1225, closes #1213).
+
+### The hooks and workflows
+
+- **The pyroma hook builds no dependency from source** (issue
+  btclib-org/.github#1763); **`claude-review.yml` declines zizmor's
+  dangerous-triggers on `issue_comment`** (issue btclib-org/.github#1813).
+
 ## v0.8.0.12
 
 ### The private halves raise for a key they cannot read
