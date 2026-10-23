@@ -1232,10 +1232,10 @@ skip = "pp*-win*"
 # platform tag is `manylinux_x86_64` like a CPython one's, so it reads
 # the key below rather than the `pypy_x86_64` one cibuildwheel also
 # offers.
-manylinux-x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64@sha256:4131ddd7acb9c6c966af02fe7e71edc51e078c2d41f475966697676430bfa2ae"
-manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64@sha256:abd1230aa9e4058a74b89d27cd14ba18c0db036d7bfe6e6f219a29ea63c24eb6"
-musllinux-x86_64-image = "quay.io/pypa/musllinux_1_2_x86_64@sha256:dc96c1f69b8a6241bcc8175a8d89b1caf0dccf959ff111a2272c42747af38350"
-musllinux-aarch64-image = "quay.io/pypa/musllinux_1_2_aarch64@sha256:83a69fa8383ba5ac2d4f01597b791ebf93269c9748270b51b7a54fbba0dcdd39"
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64@sha256:b74a5b6f1705ecff17be8bd792589bef9b3b039766d12205720ecd2a9e919192"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64@sha256:0333f44c4eb759ec8f47b27bc9dc27b1c929932a267cf13ce0cff1a4b758cccb"
+musllinux-x86_64-image = "quay.io/pypa/musllinux_1_2_x86_64@sha256:767e9118e48b4b8de84d3262ba95a3bc5f6679a09247f0bf9e283445608f37c1"
+musllinux-aarch64-image = "quay.io/pypa/musllinux_1_2_aarch64@sha256:0a7b18a1fce3dcfb1a6dd2ac99f077b78fb0f3cec8a2fed65bb999823c6a8fa0"
 
 # how SOURCE_DATE_EPOCH reaches the Linux build, and the only way it
 # can: the compile and the auditwheel repair after it both run inside a
