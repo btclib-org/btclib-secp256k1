@@ -1376,17 +1376,6 @@ has that variable beside the ones choosing among the paths above, and
 says what `BTCLIB_LIBSECP256K1_ZKP=true` alongside one of them does:
 the build declines, this extension having no dynamic form.
 
-How to get the submodule, set up the development environment, run the
-suite, reproduce each CI job locally, and what a change is expected to
-satisfy are in
-[CONTRIBUTING.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/CONTRIBUTING.md);
-what a pull request is answered against is in
-[REVIEWING.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/REVIEWING.md).
-How the organization decides, and who holds which role, is its
-[GOVERNANCE.md](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md);
-what it intends to do, and what it deliberately does not, is its
-[ROADMAP.md](https://github.com/btclib-org/.github/blob/main/ROADMAP.md).
-
 ## Release process
 
 Releases are published to PyPI by the `release` GitHub workflow using
@@ -1419,6 +1408,24 @@ for, and
 is where this project's own boundary is timed against the others', one
 run kept whole rather than reduced to a single figure — an order of
 magnitude to read there, never a number to quote here.
+
+## Contributing
+
+Development is LLM-based: humans are welcome, as long as they are
+comfortable with agentic development ;-). A contribution must have been
+read and understood by the person who submits it.
+[`CONTRIBUTING.md`](./CONTRIBUTING.md#working-with-an-llm) has the rules.
+
+How to get the submodule, set up the development environment, run the
+suite, reproduce each CI job locally, and what a change is expected to
+satisfy are in
+[CONTRIBUTING.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/CONTRIBUTING.md);
+what a pull request is answered against is in
+[REVIEWING.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/REVIEWING.md).
+How the organization decides, and who holds which role, is its
+[GOVERNANCE.md](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md);
+what it intends to do, and what it deliberately does not, is its
+[ROADMAP.md](https://github.com/btclib-org/.github/blob/main/ROADMAP.md).
 
 ---
 

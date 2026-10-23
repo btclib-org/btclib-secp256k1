@@ -42,6 +42,8 @@ A claim about the build matrix is measurable too: `gh run view <id>
 - [ ] the `secp256k1` submodule is untouched, or moving it is what this
       pull request is about and the version named in `README.md` moved
       with it
+- [ ] I have read and understood every line of this change, and can
+      answer a review of it without the model
 
 ## Anything the reviewer should know
 
