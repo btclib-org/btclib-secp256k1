@@ -19,8 +19,11 @@ from __future__ import annotations
 
 import array
 import hashlib
+from collections.abc import Iterator, Mapping
+from typing import Any
 
 import pytest
+from typing_extensions import override
 
 from btclib_secp256k1 import (
     _secret,
@@ -29,6 +32,7 @@ from btclib_secp256k1 import (
     ellswift,
     ffi,
     keys,
+    lib,
     recovery,
     silentpayments,
     ssa,
@@ -770,6 +774,9 @@ def test_scanning_refuses_an_invalid_scan_key() -> None:
     [
         ({bytes(33): bytes(31)}, "label tweak must be 32 bytes"),
         ({bytes(32): bytes(32)}, "label must be 33 bytes"),
+        ({bytes(33): N.to_bytes(32)}, r"label tweak must be in \[1, n-1\]"),
+        ({bytes(33): bytes([0xFF] * 32)}, r"label tweak must be in \[1, n-1\]"),
+        ({bytes(33): bytes(32)}, r"label tweak must be in \[1, n-1\]"),
     ],
 )
 def test_scanning_refuses_a_malformed_label_cache(
@@ -886,12 +893,12 @@ def test_the_sender_wipes_the_keys_it_had_when_a_later_one_is_refused(
 def test_scanning_wipes_the_tweaks_and_the_label_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Every found output and every cached label tweak is taken back.
+    """Every found output and the label table are taken back.
 
     The found outputs are wiped whether libsecp256k1 wrote to them or
     not -- the array is as long as the outputs one and it says through
     `n_found` how much of it it used -- so the count is one per
-    transaction output plus one per label in the cache.
+    transaction output plus one for the label table.
 
     Args:
         monkeypatch: the fixture the spy is installed through.
@@ -911,25 +918,24 @@ def test_scanning_wipes_the_tweaks_and_the_label_cache(
     )
 
     assert len(found) == 2, "both outputs are this recipient's"
-    assert len(wiped) == len(outputs) + 1, "every found output slot, and the one label"
+    assert len(wiped) == len(outputs) + 1, (
+        "every found output slot, and the label table"
+    )
     assert all(zeroed(buffer) for buffer in wiped)
     # the tweaks reached the caller before the buffers were zeroed
     assert all(tweak != bytes(32) for _, tweak, _ in found)
 
 
-def test_scanning_wipes_the_tweaks_it_had_when_a_later_label_is_refused(
+def test_scanning_copies_no_tweak_when_a_label_is_refused(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A cache entry that cannot be made does not leave the ones before it.
+    """A tweak is not copied into the table before every entry is checked.
 
-    The recipient's side of
-    `test_the_sender_wipes_the_keys_it_had_when_a_later_one_is_refused`,
-    and the reason is the same one: the cache is filled inside the `try`,
-    so a tweak copied before the refusal is wiped on the way out rather
-    than dropped where it was. Built before the `try` -- or by a
-    comprehension, which drops what it had along with the exception --
-    this counted one buffer, the output slot, and the tweak was released
-    in the clear.
+    The table is made once the whole mapping has been read, so that a
+    refusal after a valid entry leaves nothing of this package's to take
+    back: the one buffer wiped is the output slot. Were the table made
+    first and filled entry by entry, the tweak copied before the refusal
+    would be released in the clear unless something wiped it.
 
     Args:
         monkeypatch: the fixture the spy is installed through.
@@ -944,13 +950,193 @@ def test_scanning_wipes_the_tweaks_it_had_when_a_later_label_is_refused(
             SP_SCAN_PRVKEY,
             summary,
             SP_SPEND_PUBKEY,
-            # insertion order is what the cache is filled in, so the
-            # refusal comes after the tweak that has to be taken back
             labels={label: label_tweak, bytes(silentpayments.LABEL_SIZE): bytes(31)},
         )
 
-    assert len(wiped) == 2, "the one output slot, and the tweak made before the refusal"
+    assert len(wiped) == 1, "the one output slot, and no table"
     assert all(zeroed(buffer) for buffer in wiped)
+
+
+def test_scanning_wipes_one_table_whatever_the_number_of_labels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The tweaks of any number of labels are one buffer, and it is wiped.
+
+    An empty mapping is a table too, with a count and nothing else, and is
+    wiped like the others.
+
+    Args:
+        monkeypatch: the fixture the spy is installed through.
+    """
+    summary = sp_summary()
+    for count in (0, 1, 5):
+        wiped = spy_on_wipe(monkeypatch)
+        labels = dict(silentpayments.label(SP_SCAN_PRVKEY, m) for m in range(count))
+
+        silentpayments.scan_outputs(
+            [SP_INPUT_PUBKEY[1:]], SP_SCAN_PRVKEY, summary, SP_SPEND_PUBKEY, labels
+        )
+
+        assert len(wiped) == 2, "the output slot, and the one table"
+        assert all(zeroed(buffer) for buffer in wiped)
+
+
+def test_the_label_lookup_runs_no_python(scan_python_calls: list[int]) -> None:
+    """Scanning with labels calls back into no Python, however many times.
+
+    libsecp256k1 asks for the tweak of a candidate label twice for each
+    output it checks, and at each k it checks again from the first output,
+    so a lookup in Python is one crossing into the interpreter for each.
+    The labeled output is found, so the lookup did run.
+
+    Args:
+        scan_python_calls: the count of Python calls, one per native scan.
+    """
+    label, label_tweak = silentpayments.label(SP_SCAN_PRVKEY, 1)
+    outputs = silentpayments.create_outputs(
+        [
+            (
+                SP_SCAN_PUBKEY,
+                silentpayments.labeled_spend_pubkey(SP_SPEND_PUBKEY, label),
+            ),
+            (SP_SCAN_PUBKEY, SP_SPEND_PUBKEY),
+        ],
+        SP_OUTPOINT,
+        prvkeys=[SP_INPUT_PRVKEY],
+    )
+
+    found = silentpayments.scan_outputs(
+        outputs, SP_SCAN_PRVKEY, sp_summary(), SP_SPEND_PUBKEY, {label: label_tweak}
+    )
+
+    assert [found_label for _, _, found_label in found] == [label, None]
+    assert scan_python_calls == [0]
+
+
+def test_the_count_of_python_calls_sees_a_python_lookup(
+    scan_python_calls: list[int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The control of the test above: a Python lookup is counted.
+
+    Without it a count of zero could be a spy that sees nothing. The
+    output does not match the unlabeled key, so libsecp256k1 asks the
+    lookup for its tweak, and the lookup answers no label: the scan finds
+    nothing, and the count is the number of times it asked.
+
+    Args:
+        scan_python_calls: the count of Python calls, one per native scan.
+        monkeypatch: the fixture the Python lookup is installed through.
+    """
+    label, label_tweak = silentpayments.label(SP_SCAN_PRVKEY, 1)
+    outputs = silentpayments.create_outputs(
+        [(SP_SCAN_PUBKEY, silentpayments.labeled_spend_pubkey(SP_SPEND_PUBKEY, label))],
+        SP_OUTPOINT,
+        prvkeys=[SP_INPUT_PRVKEY],
+    )
+
+    def lookup(_label33: object, _label_context: object) -> object:
+        return ffi.NULL
+
+    monkeypatch.setattr(
+        "btclib_secp256k1.silentpayments.lib.btclib_secp256k1_label_lookup_sorted",
+        ffi.callback("secp256k1_silentpayments_label_lookup", lookup),
+        raising=False,
+    )
+
+    found = silentpayments.scan_outputs(
+        outputs, SP_SCAN_PRVKEY, sp_summary(), SP_SPEND_PUBKEY, {label: label_tweak}
+    )
+
+    assert found == []
+    assert scan_python_calls[0] > 0
+
+
+def table_lookup(table: object, label: bytes) -> bytes | None:
+    """Ask the C lookup for a label's tweak, as libsecp256k1 does.
+
+    Args:
+        table: the table `silentpayments._label_table` built.
+        label: the 33 bytes of a candidate label.
+
+    Returns:
+        The 32-byte tweak, or None where the lookup answers NULL.
+    """
+    answer = lib.btclib_secp256k1_label_lookup_sorted(
+        ffi.new("unsigned char[]", label), table
+    )
+    return None if answer == ffi.NULL else bytes(ffi.buffer(answer, 32))
+
+
+def test_the_label_lookup_finds_every_label_and_only_those() -> None:
+    """Binary search over the sorted table answers each label and no other.
+
+    The labels are not points: the lookup compares 33 octets and nothing
+    else, as unsigned bytes -- hence second octets on both sides of 0x80,
+    which a signed comparison would order the other way. They are given
+    out of order, and every one has a neighbour that differs in its last
+    octet and is not in the table, as do the ends of the range. Each size
+    from one to nine covers an odd and an even search, and the ends. The
+    independent side is the Python `dict` the table is built from, which
+    says which label has which tweak.
+    """
+    for size in range(1, 10):
+        octets = [
+            bytes([2 + index % 2, (index * 53) % 256]) + bytes([index]) * 31
+            for index in range(size)
+        ]
+        labels = {octet: bytes([index + 1]) * 32 for index, octet in enumerate(octets)}
+        table = silentpayments._label_table(labels)
+
+        for octet, tweak in labels.items():
+            assert table_lookup(table, octet) == tweak
+            for neighbour in (octet[:32] + b"\x00", octet[:32] + b"\xff"):
+                assert (table_lookup(table, neighbour) is None) == (
+                    neighbour not in labels
+                )
+        below = bytes(33)
+        above = b"\xff" * 33
+        assert table_lookup(table, below) is None
+        assert table_lookup(table, above) is None
+
+
+def test_the_label_lookup_of_an_empty_table_finds_nothing() -> None:
+    """A table of no label is searched, and answers NULL.
+
+    The independent side is the empty Python `dict` it is built from.
+    """
+    table = silentpayments._label_table({})
+
+    assert table_lookup(table, bytes(33)) is None
+    assert bytes(ffi.buffer(table)) == bytes(ffi.sizeof("size_t"))
+
+
+def test_a_label_given_twice_keeps_its_last_tweak() -> None:
+    """Two keys that are the same 33 octets are one label, as in a `dict`.
+
+    A mapping other than a `dict` can yield a `bytes` and a `bytearray`
+    that are equal, and the table has the label once, with the tweak of
+    the entry that came last. The independent side is the Python `dict`,
+    which keeps the last of two equal keys.
+    """
+
+    class Twice(Mapping[Any, bytes]):
+        @override
+        def __getitem__(self, key: Any) -> bytes:
+            return b"\x02" * 32 if isinstance(key, bytearray) else b"\x01" * 32
+
+        @override
+        def __iter__(self) -> Iterator[Any]:
+            return iter([bytes(33), bytearray(33)])
+
+        @override
+        def __len__(self) -> int:
+            return 2
+
+    table = silentpayments._label_table(Twice())
+
+    assert len(Twice()) == 2
+    assert len(ffi.buffer(table)) == ffi.sizeof("size_t") + 33 + 32
+    assert table_lookup(table, bytes(33)) == b"\x02" * 32
 
 
 def test_labels_that_are_not_a_mapping_are_a_type_error() -> None:
