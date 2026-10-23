@@ -262,10 +262,9 @@ this heading.
 
 ### Worktrees with submodules
 
-Initialize submodules as described under *The environment and the gates*.
-After committing the task's changes, remove its worktree with
-`git worktree remove --force <path>`: plain removal refuses initialized
-submodules.
+Initialize submodules as *The environment and the gates* says. Initialized
+submodules make plain `git worktree remove` fail, so removal takes the
+`--force` path of *Worktrees* above, after its checks.
 
 ### Which repository an issue belongs to
 
