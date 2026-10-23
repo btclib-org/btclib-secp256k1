@@ -237,11 +237,39 @@ settings and why they are what they are.
 [roadmap]: https://github.com/btclib-org/.github/blob/main/ROADMAP.md
 [good-first]: https://github.com/search?q=org%3Abtclib-org+label%3A%22good+first+issue%22+is%3Aopen&type=issues
 
+## Worktrees
+
+Run `git fetch origin` in the primary checkout, then check that
+`git status --porcelain` is empty and `git branch --show-current` is
+`main`. Run `git pull --ff-only` only when both checks pass, then verify
+`git rev-parse HEAD origin/main` prints the same sha twice. Create a separate
+worktree for each task with
+`git worktree add <path> origin/main -b <branch>`. After committing,
+remove it with `git worktree remove <path>`. If initialized submodules
+make that fail,
+check for uncommitted, untracked, and ignored files in the worktree and
+its initialized submodules. Preserve anything needed before retrying with
+`git worktree remove --force <path>`; it can delete those files. Keep the
+primary checkout clean and on `main`; do not
+switch branches or stash there. Hooks can fix files in place, and the local
+`main` and `refs/stash` are shared by all worktrees.
+
 ## This repository in particular
 
 Everything above is the same file in every repository of the
 organization; everything below is this one's, and the comparison stops at
 this heading.
+
+### Worktrees with submodules
+
+Initialize submodules as *The environment and the gates* says. Initialized
+submodules make plain `git worktree remove` fail, so removal takes the
+`--force` path of *Worktrees* above, after its checks.
+
+`--reference` to the primary checkout's submodule modules is declined: it
+saves the clone but leaves the worktree's submodule without objects of its
+own, so a `git gc` in the primary checkout, or moving it, can break the
+worktree.
 
 ### Which repository an issue belongs to
 
@@ -1515,3 +1543,19 @@ name. It has no local command either — the score is the action's, and
 the run finds arrives as code scanning alerts beside CodeQL's. Which
 repositories of the organization run it at all is section 10 of the
 standard, this one among them.
+
+### Traps
+
+- A hand-applied mutation of the same length can outlive its restore
+  through a `.pyc` whose mtime and size still match. Use
+  `PYTHONDONTWRITEBYTECODE=1`, with a passing baseline run before and a
+  control run after. cosmic-ray sets that variable itself (#229) but still
+  reads a stale `.pyc`.
+- `check-sdist` fails with "SDist does not match git" on an untracked file
+  that neither `.gitignore` nor the sdist `exclude` in `pyproject.toml`
+  covers. `docs/_build/` is one: `.gitignore` has `build/`, and
+  `git check-ignore -v docs/_build/x` prints nothing. Build the docs into
+  `docs/build/html` as above, and anything else outside the worktree.
+- `pre-commit`'s log names that hook `check sdist`, with a space, though
+  the `id:` is `check-sdist`. `grep -c check-sdist` over a passing run's
+  log answers `0`; grep the display name.
