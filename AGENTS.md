@@ -9,8 +9,9 @@ and [ARCHITECTURE.md](./ARCHITECTURE.md) for design and build details,
 for security, [REPOSITORY.md](./REPOSITORY.md) for workflows and settings,
 and [RELEASING.md](./RELEASING.md) for releases.
 
-For concurrent tasks, use separate worktrees and keep the primary checkout
-clean and on `main`; see CONTRIBUTING.md for setup and cleanup.
+Keep the primary checkout clean and on `main`; use a separate worktree
+for each task, following the setup and cleanup commands in
+`CONTRIBUTING.md`.
 
 Choose the least capable model that reliably completes the task: a fast
 model for straightforward execution, a reasoning-focused model for
