@@ -5,6 +5,42 @@ release is in [CHANGELOG.md](./CHANGELOG.md); what follows is what a user
 has to act on and what a user gains, and it is what the GitHub release of
 a tag is generated from.
 
+## v0.8.0.13
+
+- **Breaking: a single key, tweak or blinding factor given where a list
+  goes raises `TypeError`.** A `bytes` or other octet buffer was read as a
+  list of one-octet values, and the call could answer with no error.
+  `silentpayments.create_outputs` (`prvkeys`, `taproot_prvkeys`),
+  `keys.pubkey_tweak_mul_sum` (`tweaks`),
+  `zkp.generator.pedersen_blind_sum` (`blinds`) and
+  `zkp.generator.pedersen_blind_generator_blind_sum` (`generator_blinds`,
+  `blinding_factors`) refuse a `bytes`, `bytearray`, `memoryview`,
+  `array.array`, a cffi array of primitives and a one-dimensional buffer of
+  anything but byte-strings, objects or structs. A list, a tuple and a
+  numpy vector of keys still pass. A ctypes `c_char_p` array of keys is
+  refused: pass a list.
+- **Breaking: `silentpayments.scan_outputs` raises `ValueError` for a
+  label tweak outside [1, n-1].** It answered a tweak that does not spend
+  the output it found. A cache of labels holding such a tweak, 0
+  included, is refused, and an entry wrong in both its label and its tweak
+  is refused for its label.
+- **Breaking for callers of the private halves: `_create_outputs_` and
+  `_scan_outputs_` break the same way.** `_create_outputs_` raises
+  `TypeError` for a bare `prvkeys` or `taproot_prvkeys`, and
+  `_scan_outputs_` raises `ValueError` for a label tweak outside [1, n-1].
+- **`silentpayments.scan_outputs` looks labels up in C.** It no longer
+  calls into Python for each label candidate.
+- **The compiled wheels are built with hardening flags**: a stack
+  protector and FORTIFY on Linux and macOS; on Linux, `-z relro -z now`
+  and `-fcf-protection=full` on x86_64 or `-mbranch-protection=standard`
+  on aarch64; `/GS` and CFG on MSVC; ASLR, DEP and high entropy for the
+  mingw-w64 DLL.
+- **The vendored `secp256k1-zkp` moves to `335dc1d2`**, upstream master
+  `0ac172fc` plus the commit exposing `secp256k1_borromean_verify`. It
+  concerns a build with `BTCLIB_LIBSECP256K1_ZKP=true`, which no published
+  wheel carries: `pedersen_commit` is constant time with the same outputs,
+  and the accepted public keys are the same.
+
 ## v0.8.0.12
 
 - **PyPy 3.12 wheels**, for manylinux x86_64 and aarch64 and macOS
