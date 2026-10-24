@@ -18,8 +18,8 @@ A badge that reports no state -- "we use ruff", "we use uv" -- reports a
 choice instead, and those are in CONTRIBUTING.md, beside the prose that
 says how the choice is enforced.
 -->
-[![PyPI version](https://img.shields.io/pypi/v/btclib-secp256k1.svg?logo=pypi)](https://pypi.python.org/pypi/btclib-secp256k1/)
-[![GitHub release](https://img.shields.io/github/v/release/btclib-org/btclib-secp256k1.svg)](https://github.com/btclib-org/btclib-secp256k1/releases)
+[![PyPI version](https://img.shields.io/pypi/v/btclib-secp256k1.svg?logo=pypi&color=blue)](https://pypi.python.org/pypi/btclib-secp256k1/)
+[![GitHub release](https://img.shields.io/github/v/release/btclib-org/btclib-secp256k1.svg?color=blue)](https://github.com/btclib-org/btclib-secp256k1/releases)
 [![development status](https://img.shields.io/pypi/status/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![license](https://img.shields.io/github/license/btclib-org/btclib-secp256k1.svg)](https://github.com/btclib-org/btclib-secp256k1/blob/main/LICENSE)
 [![downloads](https://static.pepy.tech/badge/btclib-secp256k1)](https://pepy.tech/projects/btclib-secp256k1)
