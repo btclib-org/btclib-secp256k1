@@ -1,14 +1,13 @@
 ---
 name: claude-review
 
-# Claude reading a pull request against REVIEWING.md, and answering a
-# comment naming @claude. The checkout, the credential guard, the
-# prompt, the review action, the verdict check and the mention job are
-# all btclib-org/.github's reusable-claude-review.yml, called at @main
-# so a fix there reaches this tree in one landing (issue
-# btclib-org/.github#35). What stays here is the trigger, the
-# concurrency group, the workflow-level permissions and this header,
-# none of which the callee holds.
+# Claude reading a pull request against REVIEWING.md, and answering a comment
+# naming @claude. The checkout, the credential guard, the prompt, the review
+# action, the verdict check and the mention job are all btclib-org/.github's
+# reusable-claude-review.yml, called at a tagged commit (section 10 of
+# btclib-org/.github's README.md). What stays here is the trigger, the
+# concurrency group, the workflow-level permissions and this header, none of
+# which the callee holds.
 #
 # It is one more job on every pull request, which is not free: the
 # concurrency ceiling belongs to the organization and is shared, so this
@@ -128,6 +127,6 @@ jobs:
       contents: read
       pull-requests: write # posting the review, and the reply to a mention
       id-token: write # the OIDC token the action mints at its own startup
-    uses: btclib-org/.github/.github/workflows/reusable-claude-review.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-claude-review.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
