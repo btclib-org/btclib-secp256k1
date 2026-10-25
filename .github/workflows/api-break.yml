@@ -3,12 +3,11 @@ name: api-break
 
 # The `api-break` label on a pull request that breaks the public API
 # (btclib-org/.github#1674). The walk, the comparison and the label are
-# btclib-org/.github's reusable-api-break.yml, called at @main so a fix
-# there reaches this tree in one landing (section 10 of its README.md).
-# What stays here is the trigger, the concurrency group, the permissions
-# and this header, none of which the callee holds. `package` is the one
-# input the callee has no default for, the same value release.yml passes
-# to reusable-public-api.yml.
+# btclib-org/.github's reusable-api-break.yml, called at a tagged commit
+# (section 10 of btclib-org/.github's README.md). What stays here is the
+# trigger, the concurrency group, the permissions and this header, none of which
+# the callee holds. `package` is the one input the callee has no default for,
+# the same value release.yml passes to reusable-public-api.yml.
 #
 # Advisory: the job gates nothing, and it is not a required check.
 
@@ -51,6 +50,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # the label; read-only on a fork
-    uses: btclib-org/.github/.github/workflows/reusable-api-break.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-api-break.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       package: btclib_secp256k1

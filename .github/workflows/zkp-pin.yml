@@ -125,14 +125,14 @@ jobs:
           # itself rather than by widening this checkout
           submodules: true
 
-      # Not keys.openpgp.org, which `vendored-vectors.yml`'s `pin` job fetches from: that
-      # server publishes a key's user IDs only where its owner has
-      # confirmed an address through it, and serves this one stripped of
-      # them. GnuPG skips a key carrying no user ID on import and exits 0
-      # having imported nothing, so a --recv-keys of this fingerprint
-      # there reports success over an empty keyring. The bundle Andrew
-      # Poelstra publishes carries the user IDs, and is the copy the
-      # block comment above cross-references this fingerprint against.
+      # Not keys.openpgp.org, which `vendored-vectors.yml`'s `pin` job fetches
+      # from: that server publishes a key's user IDs only where its owner has
+      # confirmed an address through it, and serves this one stripped of them.
+      # GnuPG skips a key carrying no user ID on import and exits 0 having
+      # imported nothing, so a --recv-keys of this fingerprint there reports
+      # success over an empty keyring. The bundle Andrew Poelstra publishes
+      # carries the user IDs, and is the copy the block comment above
+      # cross-references this fingerprint against.
       #
       # The source is a convenience and the assertion is the guard: this
       # step imports whatever that URL serves, and `gpg --list-keys` is

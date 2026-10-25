@@ -17,15 +17,15 @@
 # that is not there is not an error anywhere, it is a repository where
 # nothing is ever proposed.
 #
-# Weekly: deps-latest.yml upgrades everything and runs that
-# same matrix against it every Wednesday, off the critical path, so a
-# Thursday pull request is a diff whose result is already known, and a
-# smaller one is easier to read and to revert than a month of drift
-# arriving at once. That is what makes the extra machine time worth it
-# here too, tens of jobs compiling libsecp256k1 from source included.
-# Each still waits a week before proposing a release regardless: a
-# version yanked within days of publication would otherwise be a pull
-# request that opens, runs that matrix, and is then closed
+# Weekly: deps-latest.yml upgrades everything and runs that same matrix against
+# it every Wednesday, off the critical path, so a Thursday pull request is a
+# diff whose result is already known, and a smaller one is easier to read and to
+# revert than a month of drift arriving at once. That is what makes the extra
+# machine time worth it here too, tens of jobs compiling libsecp256k1 from
+# source included. Each still waits a week before proposing a release, bar
+# btclib-org/.github's tags, which the github-actions block excludes: a version
+# yanked within days of publication would otherwise be a pull request that
+# opens, runs that matrix, and is then closed
 version: 2
 updates:
   # what this buys is the exact pins: every action is pinned to a commit
@@ -41,6 +41,9 @@ updates:
         patterns: ["*"]
     cooldown:
       default-days: 7
+      # the exclude section 11 of btclib-org/.github's README.md gives for
+      # that repository's own tags, which the calls in .github/workflows pin
+      exclude: ["btclib-org/.github/*"]
 
   # uv.lock is committed, the coverage job installs from it, and the
   # dependency groups declare no version at all: what pytest, ruff and

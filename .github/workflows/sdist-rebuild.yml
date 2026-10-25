@@ -1,11 +1,11 @@
 ---
 name: sdist-rebuild
 
-# What the row asks: the latest release's tag, rebuilt the way
-# RELEASING.md's *Rebuild a release from its tag* rebuilds it. The
-# rebuild and the verification against the release's own attestation are
-# btclib-org/.github's reusable-sdist-rebuild.yml, called at @main so a
-# fix there reaches this tree in one landing (issue btclib-org/.github#35).
+# What the row asks: the latest release's tag, rebuilt the way RELEASING.md's
+# *Rebuild a release from its tag* rebuilds it. The rebuild and the verification
+# against the release's own attestation are btclib-org/.github's
+# reusable-sdist-rebuild.yml, called at a tagged commit (section 10 of
+# btclib-org/.github's README.md).
 #
 # The sdist alone: section 10 of btclib-org/.github's README.md makes
 # the row the sdist's, the compiled wheels being outside the property
@@ -73,7 +73,7 @@ jobs:
     permissions:
       contents: read
       attestations: read # what gh attestation verify reads
-    uses: btclib-org/.github/.github/workflows/reusable-sdist-rebuild.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-sdist-rebuild.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       sdist-builder: build-module
       submodules: recursive
