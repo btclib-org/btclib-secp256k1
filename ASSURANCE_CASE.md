@@ -343,6 +343,6 @@ exposed to, and what counters each.
   `release.yml` build (the latter through `btclib-org/.github`'s
   `reusable-build.yml`, btclib-org/.github#1539). Every third-party
   action is pinned to a commit sha, and so is every call of
-  btclib-org/.github's reusable workflows but `claude-review.yml`'s;
+  btclib-org/.github's reusable workflows;
   `actionlint`, `zizmor` and `detect-secrets` run as hooks in
   `.pre-commit-config.yaml`.
