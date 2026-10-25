@@ -157,14 +157,13 @@ jobs:
   # unless the job reading it names `changes` in its own `needs`, which
   # every job below already does.
   #
-  # The event handling, the pagination and the decision are
-  # btclib-org/.github's own, called at @main so a fix there reaches
-  # this tree in one landing (section 10 of its README.md); what
-  # stays here is which of this tree's own files are prose, in
+  # The event handling, the pagination and the decision are btclib-org/.github's
+  # own, called at a tagged commit (section 10 of btclib-org/.github's
+  # README.md); what stays here is which of this tree's own files are prose, in
   # `with:` below (issue btclib-org/.github#35)
   changes:
     name: Decide whether the matrix has anything to check
-    uses: btclib-org/.github/.github/workflows/reusable-changes.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-changes.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     # A job's permissions replace the workflow's map rather than adding
     # to it. This job held only pull-requests: read before the call --
     # it made no checkout of its own, so contents: read cost nothing to
@@ -221,12 +220,11 @@ jobs:
       # change to run everything is the cheap one, at the cost this
       # comment now records
       #
-      # a literal block scalar rather than a quoted one on the key's own
-      # line, for the reason .pre-commit-config.yaml's own
-      # local-link-prefix and no-downstream-name-in-package hooks give
-      # for their `entry:`: the pattern has no space in it, so yamllint
-      # reads it as one unbreakable word and its 100-column rule
-      # (allow-non-breakable-words) does not fire on it
+      # a literal block scalar rather than a quoted one on the key's own line,
+      # for the reason .pre-commit-config.yaml's own local-link-prefix and
+      # no-downstream-name-in-package hooks give for their `entry:`: the pattern
+      # has no space in it, so yamllint reads it as one unbreakable word and its
+      # line-length rule (allow-non-breakable-words) does not fire on it
       prose-pattern: |-
         ^(AGENTS|CHANGELOG|CONTRIBUTING|RELEASE_NOTES|RELEASING|REPOSITORY|REVIEWING|SECURITY)\.md$|^\.github/[^/]*\.md$|^\.github/mutation/[^/]*\.toml$|^\.secrets\..*baseline$
 

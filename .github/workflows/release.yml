@@ -83,19 +83,17 @@ jobs:
   # The rehearsal runs this too, so a mismatch cannot wait for release
   # day to surface.
   #
-  # The checkout, the lock check, the ancestry check, the version
-  # comparison, the release-notes check on RELEASE_NOTES.md and
-  # CHANGELOG.md and the rehearsal suffix are btclib-org/.github's:
-  # reusable-version-check.yml, called at @main so a fix there reaches
-  # this tree in one landing (section 10 of its README.md).
-  # tag-requires-day is false, the one non-default caller in the family:
-  # 0.8.0.7 tracks libsecp256k1's own release rather than a calendar
-  # date, and the shared check would refuse every release this tree can
-  # cut otherwise. submodule-pin-release, below, is this tree's own job,
-  # kept out of the called workflow for the reason its own header gives
-  # (btclib-org/.github#35)
+  # The checkout, the lock check, the ancestry check, the version comparison,
+  # the release-notes check on RELEASE_NOTES.md and CHANGELOG.md and the
+  # rehearsal suffix are btclib-org/.github's: reusable-version-check.yml,
+  # called at a tagged commit (section 10 of btclib-org/.github's README.md).
+  # tag-requires-day is false, the one non-default caller in the family: 0.8.0.7
+  # tracks libsecp256k1's own release rather than a calendar date, and the
+  # shared check would refuse every release this tree can cut otherwise.
+  # submodule-pin-release, below, is this tree's own job, kept out of the called
+  # workflow for the reason its own header gives (btclib-org/.github#35)
   version-check:
-    uses: btclib-org/.github/.github/workflows/reusable-version-check.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-version-check.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       tag-requires-day: false
 
@@ -218,37 +216,36 @@ jobs:
   # and blocks nothing.
   #
   # The checkout, the previous-tag resolution and the griffe walk are
-  # btclib-org/.github's: reusable-public-api.yml, called at @main so a
-  # fix there reaches this tree in one landing (section 10 of its
-  # README.md). package is the one input the family has no default for,
-  # the equality with the repository name being a coincidence of four
-  # trees and not a rule (btclib-org/.github#35)
+  # btclib-org/.github's: reusable-public-api.yml, called at a tagged commit
+  # (section 10 of btclib-org/.github's README.md). package is the one input the
+  # family has no default for, the equality with the repository name being a
+  # coincidence of four trees and not a rule (btclib-org/.github#35)
   public-api:
-    uses: btclib-org/.github/.github/workflows/reusable-public-api.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-public-api.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       package: btclib_secp256k1
 
   # `uv audit` over what the wheel declares, before anything is published:
-  # btclib-org/.github's reusable-audit.yml, called at @main so that the uv
-  # version, the flags and what it refuses are written once. An
-  # advisory or an unreachable service fails it, and the publish jobs
-  # below name it in `needs:` and in their `if:`, `always()` there being
-  # what would otherwise let them run past a red one. The callee asks only
-  # for the `contents: read` this workflow grants, as the calls above do.
-  # github-release does not name it: it runs only after publish-pypi
+  # btclib-org/.github's reusable-audit.yml, called at a tagged commit (section
+  # 10 of btclib-org/.github's README.md) so that the uv version, the flags and
+  # what it refuses are written once. An advisory or an unreachable service
+  # fails it, and the publish jobs below name it in `needs:` and in their `if:`,
+  # `always()` there being what would otherwise let them run past a red one. The
+  # callee asks only for the `contents: read` this workflow grants, as the calls
+  # above do. github-release does not name it: it runs only after publish-pypi
   # succeeds
   audit:
-    uses: btclib-org/.github/.github/workflows/reusable-audit.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-audit.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
 
-  # the sdist, the bill of materials and their signature:
-  # btclib-org/.github's reusable-build.yml, called at @main (section 10 of
-  # its README.md). It builds the sdist and the bill of materials, uploads
-  # them as `sdist` and `sbom`, and signs them before any publish job
-  # waits for its environment's approval, from a workflow this tree's own
-  # steps cannot alter (SLSA Build L3). It uploads the bundle as
-  # `attestation` for github-release. The wheels are not built here, so
-  # that statement does not cover them: test.yml's matrix builds them, and
-  # their provenance is the PEP 740 attestation the publish jobs upload.
+  # the sdist, the bill of materials and their signature: btclib-org/.github's
+  # reusable-build.yml, called at a tagged commit (section 10 of
+  # btclib-org/.github's README.md). It builds the sdist and the bill of
+  # materials, uploads them as `sdist` and `sbom`, and signs them before any
+  # publish job waits for its environment's approval, from a workflow this
+  # tree's own steps cannot alter (SLSA Build L3). It uploads the bundle as
+  # `attestation` for github-release. The wheels are not built here, so that
+  # statement does not cover them: test.yml's matrix builds them, and their
+  # provenance is the PEP 740 attestation the publish jobs upload.
   #
   # python is the interpreter .python-version pins: under setup-python the
   # callee's `uv run` reads that file with downloads off, and
@@ -270,7 +267,7 @@ jobs:
       contents: read
       id-token: write # the OIDC token the callee's attest job mints
       attestations: write # the build provenance attestation it writes
-    uses: btclib-org/.github/.github/workflows/reusable-build.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-build.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       python: "3.15"
       version-suffix: ${{ needs.version-check.outputs.version-suffix }}
@@ -497,27 +494,24 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
 
-  # only after PyPI has accepted the upload: a GitHub release announces
-  # what can already be installed, and the download url in pyproject.toml
-  # points at the page this creates.
-  # Both jobs above in `needs`, and not build alone: build runs in a
-  # rehearsal too, so naming it by itself would make this job cut a
-  # release from a dispatch, where publish-pypi is skipped and a skipped
-  # need is what keeps this to the tag. build earns its place in the list
-  # by producing the bundle attached here.
-  # `always()` is required here too. A job is skipped whatever its own
-  # condition asks where a job anywhere in its ancestry was skipped or
-  # failed, unless that condition starts with a status function, and
+  # only after PyPI has accepted the upload: a GitHub release announces what can
+  # already be installed, and the download url in pyproject.toml points at the
+  # page this creates. Both jobs above in `needs`, and not build alone: build
+  # runs in a rehearsal too, so naming it by itself would make this job cut a
+  # release from a dispatch, where publish-pypi is skipped and a skipped need is
+  # what keeps this to the tag. build earns its place in the list by producing
+  # the bundle attached here. `always()` is required here too. A job is skipped
+  # whatever its own condition asks where a job anywhere in its ancestry was
+  # skipped or failed, unless that condition starts with a status function, and
   # public-api, a need of publish-pypi, fails by design on a break
-  # RELEASE_NOTES.md does not name. v0.8.0 to v0.8.0.2 published and cut
-  # no GitHub release for want of it. RELEASING.md has that record, and the
-  # release by hand that recovers a skip, which `gh run rerun --failed`
-  # does not reach.
+  # RELEASE_NOTES.md does not name. v0.8.0 to v0.8.0.2 published and cut no
+  # GitHub release for want of it. RELEASING.md has that record, and the release
+  # by hand that recovers a skip, which `gh run rerun --failed` does not reach.
   # The checkout, the downloads and the release creation are
-  # btclib-org/.github's: reusable-github-release.yml, called at @main so
-  # a fix there reaches this tree in one landing (section 10 of its
-  # README.md). dist-artifact is sdist, the same value build above takes
-  # and for the same reason (issue btclib-org/.github#35)
+  # btclib-org/.github's: reusable-github-release.yml, called at a tagged commit
+  # (section 10 of btclib-org/.github's README.md). dist-artifact is sdist, the
+  # same value build above takes and for the same reason (issue
+  # btclib-org/.github#35)
   github-release:
     needs: [publish-pypi, build]
     if: >-
@@ -529,10 +523,11 @@ jobs:
     # starts (a startup_failure, measured in btclib-org/.github#912)
     permissions:
       contents: write # the one job that writes to the repository through its token
-    uses: btclib-org/.github/.github/workflows/reusable-github-release.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-github-release.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       dist-artifact: sdist
-      # refuses the files unless their digests are the ones the build job printed
+      # refuses the files unless their digests are the ones the build job
+      # printed
       digests: ${{ needs.build.outputs.digests }}
 
   # the sentinel on what users can install, run at the one moment its answer
@@ -574,15 +569,14 @@ jobs:
   # and the fix for a red run here is a build on their side, never a
   # moved tag.
   #
-  # The checkout, the wait script and its test are all
-  # btclib-org/.github's: reusable-documented.yml, called at @main so a
-  # fix there reaches this tree in one landing (section 10 of its
-  # README.md). readthedocs-slug is the one input the family has no
-  # default for, and it equals this repository's own name only by
+  # The checkout, the wait script and its test are all btclib-org/.github's:
+  # reusable-documented.yml, called at a tagged commit (section 10 of
+  # btclib-org/.github's README.md). readthedocs-slug is the one input the
+  # family has no default for, and it equals this repository's own name only by
   # coincidence (btclib-org/.github#35)
   documented:
     needs: version-check
     if: github.event_name == 'push'
-    uses: btclib-org/.github/.github/workflows/reusable-documented.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-documented.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       readthedocs-slug: btclib-secp256k1

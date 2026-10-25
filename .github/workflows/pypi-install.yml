@@ -118,13 +118,13 @@ jobs:
   # this wait, in more than one of these repositories
   #
   # The job itself -- the checkout, the uv setup and the script run -- is
-  # btclib-org/.github's reusable-wait-for-index.yml, called at @main so a
-  # fix there reaches this tree in one landing (btclib-org/.github#35).
-  # package is this workflow's own distribution name, read off the
-  # script's own argument rather than derived from the repository's;
-  # version is forwarded from this workflow's own workflow_call input
+  # btclib-org/.github's reusable-wait-for-index.yml, called at a tagged commit
+  # (section 10 of btclib-org/.github's README.md). package is this workflow's
+  # own distribution name, read off the script's own argument rather than
+  # derived from the repository's; version is forwarded from this workflow's own
+  # workflow_call input
   wait-for-index:
-    uses: btclib-org/.github/.github/workflows/reusable-wait-for-index.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-wait-for-index.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       package: btclib-secp256k1
       version: ${{ inputs.version }}

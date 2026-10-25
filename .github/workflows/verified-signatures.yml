@@ -1,11 +1,11 @@
 ---
 name: verified-signatures
 
-# Every commit pushed to main is verified on the forge, which is what
-# replaces the required_signatures rule the ruleset no longer carries
+# Every commit pushed to main is verified on the forge, which is what replaces
+# the required_signatures rule the ruleset no longer carries
 # (btclib-org/.github#1738). The job and its range are btclib-org/.github's
-# reusable-verified-signatures.yml, called at @main (section 10 of its
-# README.md); what is this tree's is the trigger.
+# reusable-verified-signatures.yml, called at a tagged commit (section 10 of
+# btclib-org/.github's README.md); what is this tree's is the trigger.
 #
 # Not a required check, and it cannot be one: it runs after a push, and
 # a context a pull request never reports would wait for ever. A red run
@@ -43,7 +43,7 @@ concurrency:
 
 jobs:
   verified-signatures:
-    uses: btclib-org/.github/.github/workflows/reusable-verified-signatures.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-verified-signatures.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       before: ${{ inputs.before }}
       after: ${{ inputs.after }}

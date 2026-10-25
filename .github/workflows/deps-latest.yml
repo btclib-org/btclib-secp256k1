@@ -88,14 +88,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # the checkout, the uv setup, the runner-image step, the hook cache,
-  # the upgrade and the suite and lint runs over it are
-  # btclib-org/.github's: reusable-deps-latest.yml, called at @main so a
-  # fix there reaches this tree in one landing (issue
-  # btclib-org/.github#35). What stays here is the trigger, the
-  # concurrency group, the workflow-level permissions, this job's own
-  # id, coverage-latest and dist-latest below, and the facts the called
-  # workflow asks a caller for rather than states itself: the matrix.
+  # the checkout, the uv setup, the runner-image step, the hook cache, the
+  # upgrade and the suite and lint runs over it are btclib-org/.github's:
+  # reusable-deps-latest.yml, called at a tagged commit (section 10 of
+  # btclib-org/.github's README.md). What stays here is the trigger, the
+  # concurrency group, the workflow-level permissions, this job's own id,
+  # coverage-latest and dist-latest below, and the facts the called workflow
+  # asks a caller for rather than states itself: the matrix.
   #
   # submodules feeds both of the callee's jobs: the extension is built
   # from the vendored library in both, which is why this tree's own
@@ -116,7 +115,7 @@ jobs:
   # missing the module and the files that skip without the zkp flag --
   # and was never itself gated
   deps-latest:
-    uses: btclib-org/.github/.github/workflows/reusable-deps-latest.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-deps-latest.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     with:
       runners: '["ubuntu-latest", "macos-latest", "windows-latest"]'
       python-versions: '["3.11", "3.14", "3.15"]'

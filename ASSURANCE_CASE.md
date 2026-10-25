@@ -342,7 +342,7 @@ exposed to, and what counters each.
   from `uv.lock` with hashes: the wheels, and the sdist `test.yml` and
   `release.yml` build (the latter through `btclib-org/.github`'s
   `reusable-build.yml`, btclib-org/.github#1539). Every third-party
-  action is pinned to a commit sha, the organization's own reusable
-  workflows excepted;
+  action is pinned to a commit sha, and so is every call of
+  btclib-org/.github's reusable workflows but `claude-review.yml`'s;
   `actionlint`, `zizmor` and `detect-secrets` run as hooks in
   `.pre-commit-config.yaml`.

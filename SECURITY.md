@@ -119,7 +119,7 @@ version=<version>
 ```shell
 repo=btclib-org/btclib-secp256k1
 workflows=btclib-org/.github/.github/workflows
-signer=$workflows/reusable-build.yml@refs/heads/main
+signer=$workflows/reusable-build.yml
 gh attestation verify "btclib_secp256k1-${version:?}.tar.gz" \
   --repo "$repo" --signer-workflow "$signer" \
   --source-ref "refs/tags/v${version:?}"

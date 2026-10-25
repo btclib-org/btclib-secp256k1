@@ -739,7 +739,7 @@ Then:
    ```shell
    repo=btclib-org/btclib-secp256k1
    workflows=btclib-org/.github/.github/workflows
-   signer=$workflows/reusable-build.yml@refs/heads/main
+   signer=$workflows/reusable-build.yml
    tag=v$(uv version --short)
    dir=$(mktemp -d)
    gh release download "$tag" --repo "$repo" --dir "$dir"
@@ -944,7 +944,7 @@ already built.
    ```shell
    repo=btclib-org/btclib-secp256k1 &&
    workflows=btclib-org/.github/.github/workflows &&
-   signer=$workflows/reusable-build.yml@refs/heads/main &&
+   signer=$workflows/reusable-build.yml &&
    dir=$(mktemp -d) &&
    gh run download "${run:?}" --repo "${repo:?}" \
      --name sdist --dir "${dir:?}" &&
@@ -1022,7 +1022,7 @@ uv run --no-project --python "$python" \
   .github/scripts/generate_sbom.py --sdist-only dist/ sbom/ &&
 repo=btclib-org/btclib-secp256k1 &&
 workflows=btclib-org/.github/.github/workflows &&
-signer=$workflows/reusable-build.yml@refs/heads/main &&
+signer=$workflows/reusable-build.yml &&
 gh attestation verify "dist/btclib_secp256k1-${tag#v}.tar.gz" \
   --repo "${repo:?}" --signer-workflow "${signer:?}" \
   --source-ref "refs/tags/${tag:?}" &&

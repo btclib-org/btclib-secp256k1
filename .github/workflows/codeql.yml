@@ -125,15 +125,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # the analysis itself is btclib-org/.github's, called at @main so a fix
-  # there reaches this tree in one landing (section 10 of its README.md);
-  # what stays here is the trigger, the schedule, the concurrency group and
-  # the aggregate job below. No inputs: this tree and every sibling
-  # carrying codeql.yml scan the same two languages the same way, and an
-  # input for a difference none of them has would be a copy in disguise
-  # (btclib-org/.github#35)
+  # the analysis itself is btclib-org/.github's, called at a tagged commit
+  # (section 10 of btclib-org/.github's README.md); what stays here is the
+  # trigger, the schedule, the concurrency group and the aggregate job below. No
+  # inputs: this tree and every sibling carrying codeql.yml scan the same two
+  # languages the same way, and an input for a difference none of them has would
+  # be a copy in disguise (btclib-org/.github#35)
   analyze:
-    uses: btclib-org/.github/.github/workflows/reusable-codeql.yml@main
+    uses: btclib-org/.github/.github/workflows/reusable-codeql.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
     # permissions do not inherit through a call, and the called workflow
     # names what it needs in its own header: security-events: write for
     # the SARIF upload, contents: read to check out the tree, and
