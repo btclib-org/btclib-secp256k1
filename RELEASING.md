@@ -738,25 +738,33 @@ Then:
 
    ```shell
    repo=btclib-org/btclib-secp256k1
-   workflows=btclib-org/.github/.github/workflows
-   signer=$workflows/reusable-build.yml
+   signer=btclib-org/.github/.github/workflows/reusable-build.yml
+   id=$(gh api "repos/$repo" --jq .id)
+   cert='.[].verificationResult.signature.certificate'
    tag=v$(uv version --short)
    dir=$(mktemp -d)
    gh release download "$tag" --repo "$repo" --dir "$dir"
    gh attestation verify "$dir/btclib_secp256k1-${tag#v}.tar.gz" \
-     --repo "$repo" --signer-workflow "$signer" --source-ref "refs/tags/$tag"
+     --owner btclib-org \
+     --signer-workflow "${signer:?}" \
+     --source-ref "refs/tags/$tag" --format json \
+     --jq "${cert:?}.sourceRepositoryIdentifier" | grep -qx "${id:?}"
    ```
+
+   The exit code is `0` only where a verified attestation names this
+   repository. `SECURITY.md` says why the repository is compared by its
+   id rather than by `--repo`.
 
    PEP 625 escapes the distribution's `-` to `_` in an sdist filename,
    which is the whole of the difference between the tag and the file it
    names, so neither is typed here.
 
-   `--signer-workflow` names the workflow that signed, and here it is
-   required rather than a narrowing: the command refuses the release's
-   genuine sdist without it. The signer is the organization's
+   `--signer-workflow` names the workflow that signed, and `SECURITY.md`
+   says what passes without it. The signer is the organization's
    `reusable-build.yml`, the workflow the `build` job calls, and not
    `release.yml`: an attestation made inside a called workflow names the
-   callee, while `--repo` keeps naming this repository as the source.
+   callee, while the certificate keeps naming this repository as the
+   source.
    `publish-pypi` is `release.yml`'s own job, which is why the PEP 740
    provenance the rehearsal below checks names `release.yml` instead.
    `--source-ref` names the tag, which is what keeps a rehearsal
@@ -943,17 +951,20 @@ already built.
 
    ```shell
    repo=btclib-org/btclib-secp256k1 &&
-   workflows=btclib-org/.github/.github/workflows &&
-   signer=$workflows/reusable-build.yml &&
+   signer=btclib-org/.github/.github/workflows/reusable-build.yml &&
+   id=$(gh api "repos/${repo:?}" --jq .id) &&
+   cert='.[].verificationResult.signature.certificate' &&
    dir=$(mktemp -d) &&
    gh run download "${run:?}" --repo "${repo:?}" \
      --name sdist --dir "${dir:?}" &&
    gh run download "${run:?}" --repo "${repo:?}" \
      --name sbom --dir "${dir:?}" &&
-   gh attestation verify "${dir:?}"/*.tar.gz \
-     --repo "${repo:?}" --signer-workflow "${signer:?}" &&
-   gh attestation verify "${dir:?}"/*.cdx.json \
-     --repo "${repo:?}" --signer-workflow "${signer:?}"
+   gh attestation verify "${dir:?}"/*.tar.gz --owner btclib-org \
+     --signer-workflow "${signer:?}" --format json \
+     --jq "${cert:?}.sourceRepositoryIdentifier" | grep -qx "${id:?}" &&
+   gh attestation verify "${dir:?}"/*.cdx.json --owner btclib-org \
+     --signer-workflow "${signer:?}" --format json \
+     --jq "${cert:?}.sourceRepositoryIdentifier" | grep -qx "${id:?}"
    ```
 
    The document is the second subject of that one statement, and the
@@ -1021,14 +1032,19 @@ uv run --no-project --python "$python" \
 uv run --no-project --python "$python" \
   .github/scripts/generate_sbom.py --sdist-only dist/ sbom/ &&
 repo=btclib-org/btclib-secp256k1 &&
-workflows=btclib-org/.github/.github/workflows &&
-signer=$workflows/reusable-build.yml &&
+signer=btclib-org/.github/.github/workflows/reusable-build.yml &&
+id=$(gh api "repos/${repo:?}" --jq .id) &&
+cert='.[].verificationResult.signature.certificate' &&
 gh attestation verify "dist/btclib_secp256k1-${tag#v}.tar.gz" \
-  --repo "${repo:?}" --signer-workflow "${signer:?}" \
-  --source-ref "refs/tags/${tag:?}" &&
+  --owner btclib-org \
+  --signer-workflow "${signer:?}" \
+  --source-ref "refs/tags/${tag:?}" --format json \
+  --jq "${cert:?}.sourceRepositoryIdentifier" | grep -qx "${id:?}" &&
 gh attestation verify "sbom/btclib_secp256k1-${tag#v}.cdx.json" \
-  --repo "${repo:?}" --signer-workflow "${signer:?}" \
-  --source-ref "refs/tags/${tag:?}"
+  --owner btclib-org \
+  --signer-workflow "${signer:?}" \
+  --source-ref "refs/tags/${tag:?}" --format json \
+  --jq "${cert:?}.sourceRepositoryIdentifier" | grep -qx "${id:?}"
 ```
 
 is the whole of it, `--locked` included for the same reason as before: a
@@ -1059,14 +1075,14 @@ Through v0.8.0.9, a tag's `generate_sbom.py` refuses `--sdist-only` and
 describes the sdist alone anyway: drop the flag for those tags.
 
 `signer` is the workflow that signed the tag's attestation,
-`reusable-build.yml`, and `--signer-workflow` is required: without it
-the command refuses the release. `--source-ref` names the tag, which is
+`reusable-build.yml`, and `SECURITY.md` says what passes without
+`--signer-workflow`. `--source-ref` names the tag, which is
 what stops a rehearsal dispatched from a branch from verifying as the
 release. A tag from v0.8.0.7 to v0.8.0.9 was signed by
 `reusable-attest.yml`, named the same way. A tag
 from v0.8.0 to v0.8.0.6 was signed by `release.yml` itself, and for one
-of those `signer` is `"$repo/.github/workflows/release.yml"`, the flag
-there only narrowing what passes. Each path verifies only the releases
+of those `signer` is `"$repo/.github/workflows/release.yml"`. Each path
+verifies only the releases
 its own workflow signed.
 
 `python` is the interpreter the tag's own `.python-version` pins, its
