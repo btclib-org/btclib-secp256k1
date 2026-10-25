@@ -115,7 +115,7 @@ jobs:
   # missing the module and the files that skip without the zkp flag --
   # and was never itself gated
   deps-latest:
-    uses: btclib-org/.github/.github/workflows/reusable-deps-latest.yml@0f5684ab3d7bf310b0d7a2e4dd91a03522f75d67 # v2026.10.25
+    uses: btclib-org/.github/.github/workflows/reusable-deps-latest.yml@eb3b0c28476b98694ab3a3c3a9dce7e8e26ab4f5 # v2026.10.26
     with:
       runners: '["ubuntu-latest", "macos-latest", "windows-latest"]'
       python-versions: '["3.11", "3.14", "3.15"]'
