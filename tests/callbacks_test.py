@@ -443,10 +443,13 @@ def _refused(type_name: str) -> object:
 # every wrapper here takes an object the caller holds and answers its
 # own RuntimeError where libsecp256k1 refuses it, so each of those raises
 # is one an input reaches and the coverage ratchet counts
-# (btclib-org/btclib-secp256k1#1030). `keys.serialize`,
-# `xonly._from_keypair_` and `dsa.serialize_compact` have tests of their
-# own above
+# (btclib-org/btclib-secp256k1#1030). `keys.serialize` and
+# `xonly._from_keypair_` have tests of their own above
 _REFUSING_WRAPPERS: dict[str, tuple[Callable[[], object], str]] = {
+    "dsa.serialize_compact": (
+        lambda: dsa.serialize_compact(ffi.NULL),
+        "signature serialization failed",
+    ),
     "dsa.serialize_der": (
         lambda: dsa.serialize_der(ffi.NULL),
         "signature serialization failed",
@@ -461,6 +464,14 @@ _REFUSING_WRAPPERS: dict[str, tuple[Callable[[], object], str]] = {
     ),
     "musig.pubnonce_serialize": (
         lambda: musig.pubnonce_serialize(_refused("secp256k1_musig_pubnonce")),
+        "public nonce serialization failed",
+    ),
+    "musig.SecretNonce": (
+        lambda: musig.SecretNonce(
+            _refused("secp256k1_musig_secnonce"),
+            _refused("secp256k1_musig_pubnonce"),
+            _generator(),
+        ),
         "public nonce serialization failed",
     ),
     "musig.aggnonce_serialize": (
