@@ -690,11 +690,18 @@ jobs:
         with:
           enable-cache: true
 
-      # the cross toolchain, which is what makes a win_amd64 wheel on a
-      # Linux runner possible at all: build-windows installs the same
-      # package
+      # the cross compiler, which is what makes a win_amd64 wheel on a
+      # Linux runner possible at all: build-windows in test.yml installs
+      # the same package the same way, and says why
       - name: Install dependencies
-        run: sudo apt install -y mingw-w64
+        env:
+          PACKAGE: gcc-mingw-w64-x86-64-win32
+        run: |
+          timeout 2m sudo apt-get install -y --download-only "$PACKAGE" || {
+            sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt
+            sudo apt-get install -y --download-only "$PACKAGE"
+          }
+          sudo apt-get install -y --no-download "$PACKAGE"
 
       # nothing repairs this wheel, so what the pin buys is that the
       # archive under measurement carries the release's own instant
