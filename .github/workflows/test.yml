@@ -1024,13 +1024,12 @@ jobs:
       # the C compiler the vendored toolchain file names,
       # x86_64-w64-mingw32-gcc, in the win32 thread model the published
       # DLL is built with. The mingw-w64 metapackage adds the i686 and C++
-      # compilers and the posix model, four times the download
+      # compilers and the posix model
       #
-      # the runner's Azure mirror can serve it at tens of kB/s for hours,
-      # while archive.ubuntu.com, next in the image's mirror list, serves
-      # it in seconds (#1252). apt moves to the next mirror only on an
-      # error, so a download the Azure mirror has not finished in two
-      # minutes is finished from the rest of the list
+      # apt moves to the next mirror in /etc/apt/apt-mirrors.txt only on an
+      # error, and the runner's Azure mirror can be slow without failing
+      # (#1252), so a download it has not finished in two minutes is
+      # finished from the rest of the list
       - name: Install dependencies
         env:
           PACKAGE: gcc-mingw-w64-x86-64-win32
