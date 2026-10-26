@@ -183,7 +183,7 @@ _SEEDS = tuple(
 
 
 def _seed_id(seed: Path) -> str:
-    return str(seed.relative_to(_CORPUS))
+    return seed.relative_to(_CORPUS).as_posix()
 
 
 _ACCEPTED = tuple(seed for seed in _SEEDS if _seed_id(seed) not in _REFUSED)
