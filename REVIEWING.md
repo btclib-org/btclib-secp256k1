@@ -520,6 +520,11 @@ because that document, and not this one, is where the rule lives.
   side of the assertion is the independent one? Their own output
   agreeing with itself proves nothing, and `CONTRIBUTING.md`'s *What a
   change here has to satisfy* is where that is asked.
+- A test through a stand-in: does each value the stand-in asserts come
+  from the C source at the pinned commit, and not from reading the
+  wrapper? A stand-in written from the wrapper is the bindings agreeing
+  with themselves, and `CONTRIBUTING.md`'s *What a change here has to
+  satisfy* is where that is asked.
 - A check added to a workflow: is it in `.pre-commit-config.yaml`
   instead? `CONTRIBUTING.md`'s last section states that file as the
   single definition of clean, and a check discovered by CI after a push
