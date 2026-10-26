@@ -72,6 +72,7 @@ _DER_BUFFER_TYPE = ffi.typeof("char[72]")
 _DER_SIZE = ffi.sizeof(_DER_BUFFER_TYPE)
 _COMPACT_SIZE = 64
 _COMPACT_BUFFER_TYPE = ffi.typeof(f"char[{_COMPACT_SIZE}]")
+_ZERO_SCALAR = bytes(_COMPACT_SIZE // 2)
 
 
 @overload
@@ -676,9 +677,10 @@ def verify(
 
     Raises:
         ValueError: if the message hash is not 32 bytes, if the signature
-            is malformed in the serialization it was said to be in, or if
-            the public key is not a valid point. A well-formed signature
-            that simply does not verify is False, not an exception.
+            is malformed in the serialization it was said to be in or has
+            r or s outside [1, n-1], or if the public key is not a valid
+            point. A well-formed signature that simply does not verify is
+            False, not an exception.
 
     Example:
         >>> import hashlib
@@ -756,7 +758,8 @@ def normalize(signature_bytes: BytesLike) -> bytes:
         normalized is returned unchanged.
 
     Raises:
-        ValueError: if the DER signature is malformed.
+        ValueError: if the DER signature is malformed, or if r or s is not
+            in [1, n-1].
         RuntimeError: if libsecp256k1 fails to serialize the result,
             which no input can make it do.
     """
@@ -804,7 +807,8 @@ def is_low_s(signature_bytes: BytesLike) -> bool:
         requires and what `sign` always produces.
 
     Raises:
-        ValueError: if the DER signature is malformed.
+        ValueError: if the DER signature is malformed, or if r or s is not
+            in [1, n-1].
     """
     return _is_low_s_(parse_der(signature_bytes))
 
@@ -863,7 +867,8 @@ def is_low_r(signature_bytes: BytesLike) -> bool:
         True if the high bit of r is clear.
 
     Raises:
-        ValueError: if the DER signature is malformed.
+        ValueError: if the DER signature is malformed, or if r or s is not
+            in [1, n-1].
         RuntimeError: if libsecp256k1 fails to serialize it, which no
             signature it parsed can make it do.
 
@@ -887,7 +892,8 @@ def to_compact(signature_bytes: BytesLike) -> bytes:
         The 64 bytes of r and s, each big endian and zero padded.
 
     Raises:
-        ValueError: if the DER signature is malformed.
+        ValueError: if the DER signature is malformed, or if r or s is not
+            in [1, n-1].
         RuntimeError: if libsecp256k1 fails to serialize it, which no
             input can make it do.
     """
@@ -907,7 +913,7 @@ def to_der(signature_bytes: BytesLike) -> bytes:
 
     Raises:
         ValueError: if the input is not 64 bytes, or if r or s is not
-            below the group order.
+            in [1, n-1].
         RuntimeError: if libsecp256k1 fails to serialize it, which no
             input can make it do.
     """
@@ -929,7 +935,8 @@ def parse_der(signature_bytes: BytesLike) -> CData:
         The libsecp256k1 signature object.
 
     Raises:
-        ValueError: if the DER signature is malformed.
+        ValueError: if the DER signature is malformed, or if r or s is not
+            in [1, n-1].
     """
     signature = _parsed(signature_bytes, compact=False)
     if signature is None:
@@ -942,7 +949,7 @@ def parse_compact(signature_bytes: BytesLike) -> CData:
 
     The other way into the object `parse_der` answers with, and the
     cheaper one: there is no encoding to walk, only two scalars to prove
-    below the group order.
+    in [1, n-1].
 
     Args:
         signature_bytes: the 64 bytes of r and s.
@@ -953,7 +960,7 @@ def parse_compact(signature_bytes: BytesLike) -> CData:
 
     Raises:
         ValueError: if the input is not 64 bytes, or if r or s is not
-            below the group order.
+            in [1, n-1].
     """
     signature = _parsed(signature_bytes, compact=True)
     if signature is None:
@@ -994,7 +1001,7 @@ def _parsed(signature_bytes: BytesLike, compact: bool) -> CData | None:
     signature_bytes = octets(signature_bytes, name)
     signature = ffi.new("secp256k1_ecdsa_signature *")
     if compact:
-        if len(signature_bytes) != _COMPACT_SIZE:
+        if len(signature_bytes) != _COMPACT_SIZE or _has_zero_scalar(signature_bytes):
             return None
         parsed = lib.secp256k1_ecdsa_signature_parse_compact(
             ctx, signature, signature_bytes
@@ -1003,11 +1010,31 @@ def _parsed(signature_bytes: BytesLike, compact: bool) -> CData | None:
         parsed = lib.secp256k1_ecdsa_signature_parse_der(
             ctx, signature, signature_bytes, len(signature_bytes)
         )
+        # the DER parse reads some integers as zero, so the scalars it
+        # produced are what is asked, not the octets
+        if parsed and _has_zero_scalar(serialize_compact(signature)):
+            return None
     return signature if parsed else None
 
 
+def _has_zero_scalar(rs_bytes: bytes) -> bool:
+    """Return True if r or s of the 64 octets `r || s` is zero.
+
+    libsecp256k1 parses an ECDSA signature with r or s of zero, and the
+    parses here refuse it: README.md's *What the boundary checks* says
+    why. `recovery.parse_compact` asks the same of its octets.
+
+    Args:
+        rs_bytes: the 64 octets of `r || s`.
+
+    Returns:
+        True if either 32-octet half is zero.
+    """
+    return rs_bytes.startswith(_ZERO_SCALAR) or rs_bytes.endswith(_ZERO_SCALAR)
+
+
 def signature_verify(signature_bytes: BytesLike, compact: bool = False) -> bool:
-    """Return True if the octets are a signature libsecp256k1 accepts.
+    """Return True if the octets are a signature.
 
     What `keys.pubkey_verify` is to a public key: the proof a `parse`
     makes, with nothing kept and no exception to catch. A library
@@ -1016,8 +1043,8 @@ def signature_verify(signature_bytes: BytesLike, compact: bool = False) -> bool:
 
     It says nothing about a message or a key, `verify` being that
     question, and nothing about the lower-s form, which is `is_low_s`: a
-    signature is `r` and `s` below the group order, and that is what this
-    answers for.
+    signature is `r` and `s` in [1, n-1], and that is what this answers
+    for.
 
     Args:
         signature_bytes: the signature, in the serialization below.

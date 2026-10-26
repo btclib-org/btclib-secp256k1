@@ -1289,11 +1289,8 @@ def test_is_low_r_is_the_high_bit_of_the_first_octet_of_r(
     assert der[3] == (32 if low else 33)
 
 
-# encodings accepted by secp256k1_ecdsa_signature_parse_der: they parse
-# fine and merely fail verification; note that the parser is lenient on
-# two fronts (last three entries): integers with the high bit set are
-# read as unsigned, and out-of-range values are zeroed instead of
-# rejected
+# encodings with r and s in [1, n-1]: they parse fine and merely fail
+# verification
 PARSED_DER = [
     (
         "30450221009a0b7be0d4ed3146ee262b42202841834698bb3ee39c24e7437df208b8"
@@ -1319,20 +1316,9 @@ PARSED_DER = [
     "3007020166020200ee",
     "3007020200ee020177",
     "3008020200ee020200ff",
-    # r with the high bit set, read as a large unsigned integer
-    (
-        "304402207f0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1"
-        "f0220800102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-    ),
-    # s not below the group order, zeroed by the parser
-    (
-        "3046022100eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-        "eeeeee022100ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-        "ffffffff"
-    ),
 ]
 
-# rejected by secp256k1_ecdsa_signature_parse_der
+# refused as DER: the encoding is malformed, or r or s is not in [1, n-1]
 REJECTED_DER = [
     "",
     "3008020200ee020200ff00",  # trailing garbage
@@ -1340,6 +1326,17 @@ REJECTED_DER = [
     (
         "30440220007f0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1"
         "e022000800102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e"
+    ),
+    # s with the high bit set and no leading zero, a negative integer
+    (
+        "304402207f0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1"
+        "f0220800102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+    ),
+    # s not below the group order
+    (
+        "3046022100eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        "eeeeee022100ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        "ffffffff"
     ),
 ]
 
@@ -1416,3 +1413,102 @@ def test_der_parsing() -> None:
     for der_hex in REJECTED_DER:
         with pytest.raises(ValueError, match="DER"):
             dsa.verify(msg32, pubkey, bytes.fromhex(der_hex))
+
+
+# r and s of the signature in mainnet transaction
+# 70f7c15c6f62139cc41afa858894650344eda9975b46656d893ee59df8914a3d, s
+# being a negative DER integer (bitcoin-core/secp256k1#1981)
+TX_R = "02206b5c3b1c86748dcf328b9f3a65e10085afcf5d1af5b40970d8ce3a9355e06b5b"
+TX_S = "0220cdbdc23e6d3618e47056fccc60c5f73d1a542186705197e5791e97f0e6582a32"
+
+
+def der_sequence(r: str, s: str) -> bytes:
+    """Wrap two hex DER integers in the DER sequence of a signature."""
+    body = bytes.fromhex(r + s)
+    return bytes([0x30, len(body)]) + body
+
+
+@pytest.mark.parametrize(
+    "r, s",
+    [
+        pytest.param(TX_R, TX_S, id="s negative"),
+        pytest.param(TX_R, f"022100{N:064x}", id="s is n"),
+        pytest.param(TX_R, "020100", id="s is 0"),
+        pytest.param("020100", TX_R, id="r is 0"),
+    ],
+)
+def test_a_der_scalar_outside_1_to_n_minus_1_is_refused(r: str, s: str) -> None:
+    """A well-formed DER integer that is not a scalar in [1, n-1] is refused.
+
+    libsecp256k1 parses each of these, reading the negative s and s = n
+    as zero. The independent side is SEC 1's range for r and s, [1, n-1],
+    with n from SEC 2 at the top of this file, and the negative s of a
+    signature on the chain.
+    """
+    der = der_sequence(r, s)
+
+    assert not dsa.signature_verify(der)
+    with pytest.raises(ValueError, match="invalid DER signature"):
+        dsa.parse_der(der)
+
+
+@pytest.mark.parametrize("s", [1, N - 1])
+def test_a_der_scalar_at_either_end_of_1_to_n_minus_1_parses(s: int) -> None:
+    """The control of the refusal above: 1 and n - 1 parse to themselves.
+
+    The DER integer is written here, with the leading zero DER wants when
+    the top bit is set, and the compact form read back is held to it.
+    """
+    s_octets = s.to_bytes((s.bit_length() + 8) // 8, "big")
+    der = der_sequence(TX_R, f"02{len(s_octets):02x}{s_octets.hex()}")
+
+    assert dsa.signature_verify(der)
+    assert dsa.to_compact(der) == bytes.fromhex(TX_R[4:]) + s.to_bytes(32, "big")
+
+
+@pytest.mark.parametrize(
+    "compact, refused",
+    [
+        pytest.param(bytes(32) + (1).to_bytes(32, "big"), True, id="r is 0"),
+        pytest.param((1).to_bytes(32, "big") + bytes(32), True, id="s is 0"),
+        pytest.param((1).to_bytes(32, "big") * 2, False, id="r and s are 1"),
+    ],
+)
+def test_a_compact_scalar_of_zero_is_refused(compact: bytes, refused: bool) -> None:
+    """Zero is outside [1, n-1] in the compact form too, and 1 is not.
+
+    libsecp256k1 parses a compact r or s of zero. SEC 1's range is the
+    independent side, as for the DER refusal above.
+    """
+    assert dsa.signature_verify(compact, compact=True) is not refused
+    if refused:
+        with pytest.raises(ValueError, match="invalid compact signature"):
+            dsa.parse_compact(compact)
+    else:
+        assert dsa.serialize_compact(dsa.parse_compact(compact)) == compact
+
+
+@pytest.mark.parametrize(
+    "compact, refused",
+    [
+        pytest.param(bytes(32) + (1).to_bytes(32, "big"), True, id="r is 0"),
+        pytest.param((1).to_bytes(32, "big") + bytes(32), True, id="s is 0"),
+        pytest.param((1).to_bytes(32, "big") * 2, False, id="r and s are 1"),
+    ],
+)
+def test_a_recoverable_scalar_of_zero_is_refused(compact: bytes, refused: bool) -> None:
+    """A recoverable signature is held to [1, n-1] as a plain one is.
+
+    libsecp256k1's recoverable parse accepts a zero r or s. SEC 1's range
+    is the independent side, and the DER `recovery.to_der` writes for an
+    accepted signature is one `dsa.parse_der` accepts too.
+    """
+    if refused:
+        for call in (recovery.parse_compact, recovery.to_der):
+            with pytest.raises(ValueError, match="invalid compact signature"):
+                call(compact, 0)
+        with pytest.raises(ValueError, match="invalid compact signature"):
+            recovery.recover(b"\x01" * 32, compact, 0)
+    else:
+        der = recovery.to_der(compact, 0)
+        assert dsa.to_compact(der) == compact

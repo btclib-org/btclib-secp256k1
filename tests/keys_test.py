@@ -898,8 +898,8 @@ def test_signature_verify_is_the_parse_with_nothing_kept() -> None:
     assert not dsa.signature_verify(compact)
     assert not dsa.signature_verify(der, compact=True)
 
-    # r or s at or above the group order is what a compact signature has
-    # to be refused for, there being no encoding to malform
+    # r or s outside [1, n-1] is what a compact signature has to be
+    # refused for, there being no encoding to malform
     assert not dsa.signature_verify(N.to_bytes(32, "big") * 2, compact=True)
     # and a malformed encoding is what a DER one has
     for refused in (b"", b"\x30\x06", der[:-1], der + b"\x00"):

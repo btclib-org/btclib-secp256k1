@@ -11,8 +11,8 @@ zero-padded: bits 0 and 1 of the flag are the recovery id and bit 2 is
 `compressed`.
 
 `ValueError` is what `recover` answers a signature with an `r` or an `s`
-at or above the group order, or one from which no key is recovered, and
-is swallowed below; anything else propagates as the finding it is.
+outside [1, n-1], or one from which no key is recovered, and is
+swallowed below; anything else propagates as the finding it is.
 
 The seed corpus is the first signature of `tests/ecdsa_sig.json` as `r
 || s`, with the recovery id for which a key is recovered.
