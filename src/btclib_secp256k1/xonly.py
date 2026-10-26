@@ -75,17 +75,17 @@ _XONLY_SIZE = 32
 # below -- an int constant, and `ffi.typeof` of it -- so that the width is
 # stated once and `ffi.sizeof` of a cdata is not asked per call, `dsa`'s DER
 # capacity excepted for the mutation-testing reason its own comment gives.
-# That is a session of its own, which CHANGELOG.md names, and every figure in
-# the comments of `dsa`, `recovery`, `hashes`, `ellswift` and `ssa` comes
-# from it rather than from the one above: the primitive itself is 0.0520
+# That is a session of its own, which changelog/v0.8.0.3.md names, and every
+# figure in the comments of `dsa`, `recovery`, `hashes`, `ellswift` and `ssa`
+# comes from it rather than from the one above: the primitive itself is 0.0520
 # against main's 0.0690 microseconds, and at a call site it is 2.65% to 5.53%
 # of the serializations in the first three of those -- 0.006 to 0.016
 # microseconds, which is neither one number nor the primitive's: within a
 # session each noise row moves under 0.001, and across four sessions the same
 # site moved by more than that, `dsa.serialize_compact` between 0.006 and
-# 0.013. What is solid is a hundredth of a microsecond at a serialization,
-# not a figure per site. In `ssa` and `ellswift` it is that same hundredth of
-# calls of 15 to 31 microseconds, where timing a call against itself already
+# 0.013. What is solid is a hundredth of a microsecond at a serialization, not
+# a figure per site. In `ssa` and `ellswift` it is that same hundredth of calls
+# of 15 to 31 microseconds, where timing a call against itself already
 # moves as much or more: nothing those measurements resolve.
 # `ellswift.create`, `ellswift._encode_`, `ssa._sign32` and
 # `ssa._sign_custom` are spelled this way regardless, because a reader cannot
@@ -111,9 +111,9 @@ def _drop_y(pubkey: CData, parity: CData = ffi.NULL) -> CData:
             "Ignored if NULL", so the allocation is the caller's to make
             rather than this function's, and skipping it is 0.4295
             microseconds against 0.5021 on `xonly.parse` of a 65-byte
-            key -- CHANGELOG.md names the session every figure in this
-            module comes from. `_drop_y_with_parity` is the allocation,
-            written once, for the callers that read one.
+            key -- changelog/v0.8.0.3.md names the session every figure
+            in this module comes from. `_drop_y_with_parity` is the
+            allocation, written once, for the callers that read one.
 
     Returns:
         The libsecp256k1 x-only public key object.

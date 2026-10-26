@@ -188,7 +188,7 @@ def sign(
     multiplication: 28.57 microseconds against 15.87, where ECDSA's same
     check is 31.67 against 12.15 for having to derive the public key
     first. The cheaper of the two is the one a specification asks for.
-    CHANGELOG.md names the session those come from, and
+    changelog/v0.8.0.3.md names the session those come from, and
     `_abort_unless_verified` carries the rest of the reasoning.
 
     Args:

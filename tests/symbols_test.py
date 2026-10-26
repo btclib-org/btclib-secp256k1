@@ -58,10 +58,11 @@ prefix nothing matches any more fails rather than sitting there.
 
 ## What counts as this repository's prose
 
-`CHANGELOG.md` and `RELEASE_NOTES.md` are out of scope, for the reasons
-`tests/citations_test.py` gives for exempting them from its own sweep: a
-released section is that release's own account of itself, and is where
-the record of a name as it used to be survives a rename.
+`CHANGELOG.md`, the files under `changelog/` and `RELEASE_NOTES.md` are
+out of scope, for the reasons `tests/citations_test.py` gives for
+exempting the first and the last from its own sweep: a released section
+is that release's own account of itself, and is where the record of a
+name as it used to be survives a rename.
 
 A `.py` file is read for its comments and its module, class and function
 docstrings, not for the rest of its text: `scripts/cffi_build.py` and
@@ -139,8 +140,13 @@ _EXCLUDED_FILES = frozenset({
 })
 # fuzz/corpus/ holds the fuzzing seeds, octets rather than prose: a
 # public key or a DER signature decodes as no text at all. So does
-# docs/source/_inventories/, which `read_text` cannot decode
-_EXCLUDED_DIRECTORIES = ("fuzz/corpus/", "docs/source/_inventories/")
+# docs/source/_inventories/, which `read_text` cannot decode. changelog/
+# holds the older releases' sections, out of scope as CHANGELOG.md is
+_EXCLUDED_DIRECTORIES = (
+    "fuzz/corpus/",
+    "docs/source/_inventories/",
+    "changelog/",
+)
 
 
 def _collapse(text: str) -> str:

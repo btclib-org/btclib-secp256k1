@@ -94,11 +94,11 @@ else:
         `__version__` is that attribute, and reading it at import is
         what made that import 15.85 milliseconds where it is now 1.69 --
         an Apple M5, macOS 26.6, arm64, CPython 3.14.6, minimum of 12
-        fresh interpreters. CHANGELOG.md carries the command, the rest
-        of the table and what the 14 milliseconds are made of, so that
-        the decomposition is written down once. So the caller that wants
-        the version pays for it and the one that never asks pays
-        nothing.
+        fresh interpreters. changelog/v0.8.0.3.md carries the command,
+        the rest of the table and what the 14 milliseconds are made of,
+        so that the decomposition is written down once. So the caller
+        that wants the version pays for it and the one that never asks
+        pays nothing.
 
         The value is stored into the module's own namespace on the way
         out, which is the usual shape of PEP 562 and is what keeps the

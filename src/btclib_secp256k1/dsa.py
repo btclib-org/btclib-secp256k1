@@ -487,12 +487,12 @@ def sign(  # noqa: PLR0913
     microseconds against 12.15, where `ssa.sign` is 28.57 against 15.87.
     So the check is more than the signature it checks, and the 6.8
     between the two increments is the `secp256k1_ec_pubkey_create` this
-    one has to do and BIP340's does not. CHANGELOG.md names the session
-    every figure in this module comes from. A caller grinding *outside*
-    this call -- signing repeatedly and choosing among the answers --
-    pays it once per attempt rather than once, and `verify=False` on the
-    attempts with a check of whichever signature is kept is the shape
-    that costs what one signature's check costs.
+    one has to do and BIP340's does not. changelog/v0.8.0.3.md names the
+    session every figure in this module comes from. A caller grinding
+    *outside* this call -- signing repeatedly and choosing among the
+    answers -- pays it once per attempt rather than once, and
+    `verify=False` on the attempts with a check of whichever signature is
+    kept is the shape that costs what one signature's check costs.
 
     Args:
         msg_bytes: the 32-byte hash of the message.

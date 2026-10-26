@@ -242,13 +242,20 @@ Then:
    answers the other paste, the second fence alone, where the value is
    merely unset: unguarded it asks for `..HEAD`, which is empty.
 
+   In the same pull request the previous release leaves `CHANGELOG.md`
+   for `changelog/v<previous version>.md`, and its link goes at the top
+   of the list in `CHANGELOG.md`'s preamble. The new file opens with the
+   title and the paragraph the other files there open with, then carries
+   the section unchanged, except that a link relative to the root, such as
+   `./RELEASE_NOTES.md`, becomes `../RELEASE_NOTES.md`. `CHANGELOG.md`'s
+   preamble says why the file is split (#1267).
+
    The release notes take what a user has to act on, which includes
-   every line the griffe check above printed. Fold any `(work in
-   progress, not released yet)` section into the release's section and
-   delete its heading. `version-check` refuses a tag whose section in
-   either file is missing, empty, or carrying anything after the version
-   in its heading. If the vendored libsecp256k1 moved, update the
-   version named at the top of `README.md` too (`grep -n 'wraps
+   every line the griffe check above printed. `version-check` refuses a
+   tag whose section in either file is missing, empty, or carrying
+   anything after the version in its heading. If the vendored
+   libsecp256k1 moved, update the version named at the top of
+   `README.md` too (`grep -n 'wraps
    libsecp256k1' README.md` finds the line without a search through the
    prose)
 1. run each dependent's suite with this release in place of its PyPI
@@ -288,10 +295,11 @@ Then:
    not have to discover at the button belongs there too.
 
    What the cycle actually contained is not this pull request's diff,
-   which is a version bump and the release's sections of
-   `CHANGELOG.md` and `RELEASE_NOTES.md`: it is everything merged since
-   the last tag. Read it off the log rather than off the branch, and
-   against the sections the previous step wrote.
+   which is a version bump, the release's sections of `CHANGELOG.md` and
+   `RELEASE_NOTES.md`, and the previous release's move to `changelog/`:
+   it is everything merged since the last tag. Read it off the log
+   rather than off the branch, and against the sections the previous
+   step wrote.
 
    The previous version is fenced apart from the range, and `${tag:?}`
    guards the second paste, for the reasons the step writing the

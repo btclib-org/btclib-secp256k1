@@ -599,12 +599,12 @@ def test_anti_exfil_host_verify_reports_an_invalid_public_key(stand_in: None) ->
 # selection, `importorskip` is what actually skips.
 # ---------------------------------------------------------------------------
 
-# src/modules/ecdsa_s2c/tests_impl.h's own `ecdsa_s2c_tests`, at the pin
-# CHANGELOG.md names: the key of 0x55 repeated, the message of 0x88
-# repeated, and for each entry the s2c_data committed to, the opening
-# `secp256k1_ecdsa_s2c_sign` answers, and the opening
-# `secp256k1_ecdsa_anti_exfil_signer_commit` answers for the same
-# s2c_data used as a host commitment
+# src/modules/ecdsa_s2c/tests_impl.h's own `ecdsa_s2c_tests`, at the commit
+# the `secp256k1-zkp` submodule is pinned to: the key of 0x55 repeated, the
+# message of 0x88 repeated, and for each entry the s2c_data committed to,
+# the opening `secp256k1_ecdsa_s2c_sign` answers, and the opening
+# `secp256k1_ecdsa_anti_exfil_signer_commit` answers for the same s2c_data
+# used as a host commitment
 _PRVKEY = bytes([0x55]) * 32
 _MESSAGE = bytes([0x88]) * 32
 _FIXED_VECTORS = [

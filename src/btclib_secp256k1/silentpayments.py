@@ -77,9 +77,9 @@ SUMMARY_SIZE = _OUTPOINT_SIZE + keys._COMPRESSED_SIZE
 # hash the result, where `ffi.typeof` of the same string, evaluated
 # once, costs what a literal cdecl does and still states the width once.
 # 0.2023 microseconds against 0.2621 on this serialization -- one
-# session with every other figure of this change, which CHANGELOG.md
-# names. `xonly.py` says the rest, the reason a literal cdecl is left
-# alone included
+# session with every other figure of this change, which
+# changelog/v0.8.0.3.md names. `xonly.py` says the rest, the reason a
+# literal cdecl is left alone included
 _LABEL_BUFFER_TYPE = ffi.typeof(f"char[{LABEL_SIZE}]")
 
 

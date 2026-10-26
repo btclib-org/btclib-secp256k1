@@ -255,7 +255,7 @@ def sign(
     `dsa.sign` measured beside it in the same session was 31.54 against
     12.06 and `ssa.sign` is 28.57 against 15.87. A recovery is about a
     verification's work, and the comparison and the derivation are the
-    rest. CHANGELOG.md names the session.
+    rest. changelog/v0.8.0.3.md names the session.
 
     `pubkey` is how a caller already holding the key stops the comparison
     deriving it, and what it removes is the same call `dsa.sign` removes,
