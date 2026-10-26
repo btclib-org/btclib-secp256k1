@@ -22,7 +22,9 @@ compiling callbacks that return, so a crash under the address-sanitized
 build this runs in is a memory finding.
 
 The seed corpus is the generator point as its x coordinate and in its
-uncompressed form, the two lengths that take different paths in.
+uncompressed form, the two lengths that take different paths in, and x
+coordinates at the edges of the field, which `parse` refuses:
+`tests/fuzz_corpus_test.py`'s `_REFUSED` lists them.
 """
 
 from __future__ import annotations

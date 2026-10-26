@@ -15,7 +15,9 @@ btclib-org/.github#342's list.
 swallowed below; anything else propagates as the finding it is.
 
 The seed corpus is the generator point in its compressed and in its
-uncompressed form.
+uncompressed form, and x coordinates at the edges of the field under
+both compressed prefixes, which `parse` refuses:
+`tests/fuzz_corpus_test.py`'s `_REFUSED` lists them.
 """
 
 from __future__ import annotations

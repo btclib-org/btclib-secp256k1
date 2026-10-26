@@ -2,15 +2,21 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Every `fuzz/corpus/` seed is an input its harness's entry point accepts.
+"""Every `fuzz/corpus/` seed gets the answer its harness's entry point owes it.
 
 The seeds are what libFuzzer starts from, and a seed the entry point
 refuses is a start inside the domain the target already declines: a
 parser narrowed under one -- by a fix here, or by a bump of the vendored
 library -- would leave the sentinel starting from nothing, with no red
-anywhere. What is held here is that every seed is still accepted, and
-that `fuzz_ssa_verify_message`'s seeds still verify, in milliseconds
-and with no container built.
+anywhere. What is held here is that every seed but those `_REFUSED`
+names is still accepted, and that `fuzz_ssa_verify_message`'s seeds
+still verify, in milliseconds and with no container built.
+
+The seeds `_REFUSED` names are refused on purpose. They are x
+coordinates at the edges of the field, which a mutation would otherwise
+have to reach from the generator point. Each is held to being refused
+with the `ValueError` its harness swallows, so that a parser widened to
+accept one turns red here too.
 
 Each harness imports `atheris` at module level, which is pre-installed
 in ClusterFuzzLite's builder image and declared in no dependency group
@@ -25,8 +31,8 @@ the layout from the harness rather than restating it. The key and the signature
 
 A crash the sentinel finds does not come here. Section 10 of the
 organization standard makes its regression an ordinary test naming the
-input and what the entry point now does with it: a seed a hardened
-parser refuses is exactly what this module turns red on.
+input and what the entry point now does with it. `_REFUSED` holds the
+edges of the field and is not where such a regression goes.
 """
 
 from __future__ import annotations
@@ -149,6 +155,27 @@ _ACCEPTS: dict[str, Callable[[bytes], object]] = {
     ),
 }
 
+# the seeds each harness's entry point refuses, as paths
+# under fuzz/corpus/: x = 0, which no point has since 7 is not a square
+# mod p, and x = p - 1, p, p + 1 and 2**256 - 1
+_REFUSED = frozenset({
+    "fuzz_keys_parse/x_0_02.bin",
+    "fuzz_keys_parse/x_0_03.bin",
+    "fuzz_keys_parse/x_2_256_minus_1_02.bin",
+    "fuzz_keys_parse/x_2_256_minus_1_03.bin",
+    "fuzz_keys_parse/x_p_02.bin",
+    "fuzz_keys_parse/x_p_03.bin",
+    "fuzz_keys_parse/x_p_minus_1_02.bin",
+    "fuzz_keys_parse/x_p_minus_1_03.bin",
+    "fuzz_keys_parse/x_p_plus_1_02.bin",
+    "fuzz_keys_parse/x_p_plus_1_03.bin",
+    "fuzz_xonly_parse/x_0.bin",
+    "fuzz_xonly_parse/x_2_256_minus_1.bin",
+    "fuzz_xonly_parse/x_p.bin",
+    "fuzz_xonly_parse/x_p_minus_1.bin",
+    "fuzz_xonly_parse/x_p_plus_1.bin",
+})
+
 _HARNESSES = tuple(sorted(path.stem for path in _FUZZ.glob("fuzz_*.py")))
 _SEEDS = tuple(
     seed for name in _HARNESSES for seed in sorted((_CORPUS / name).glob("*.bin"))
@@ -157,6 +184,10 @@ _SEEDS = tuple(
 
 def _seed_id(seed: Path) -> str:
     return str(seed.relative_to(_CORPUS))
+
+
+_ACCEPTED = tuple(seed for seed in _SEEDS if _seed_id(seed) not in _REFUSED)
+_REFUSED_SEEDS = tuple(seed for seed in _SEEDS if _seed_id(seed) in _REFUSED)
 
 
 def test_every_harness_has_a_corpus_directory_and_an_entry_above() -> None:
@@ -183,10 +214,23 @@ def test_every_corpus_directory_holds_a_seed(name: str) -> None:
     )
 
 
-@pytest.mark.parametrize("seed", _SEEDS, ids=_seed_id)
+def test_every_name_in_refused_is_a_seed() -> None:
+    """A seed renamed or removed does not leave a name behind."""
+    seeds = {_seed_id(seed) for seed in _SEEDS}
+    assert seeds >= _REFUSED, f"no seed for {sorted(_REFUSED - seeds)}"
+
+
+@pytest.mark.parametrize("seed", _ACCEPTED, ids=_seed_id)
 def test_every_seed_is_accepted(seed: Path) -> None:
     """The harness's entry point takes the seed without refusing it."""
     _ACCEPTS[seed.parent.name](seed.read_bytes())
+
+
+@pytest.mark.parametrize("seed", _REFUSED_SEEDS, ids=_seed_id)
+def test_every_refused_seed_is_refused(seed: Path) -> None:
+    """The harness's entry point refuses the seed as an invalid key."""
+    with pytest.raises(ValueError, match="invalid public key"):
+        _ACCEPTS[seed.parent.name](seed.read_bytes())
 
 
 @pytest.mark.parametrize("seed", _SEEDS, ids=_seed_id)
