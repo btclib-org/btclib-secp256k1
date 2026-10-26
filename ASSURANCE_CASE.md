@@ -231,6 +231,10 @@ on a type, a length or a magnitude and never on a secret's content
 (README.md's *What the boundary checks* section, its closing paragraph).
 Which calls carry the guarantee and which do not is
 SECURITY.md's *Limitations of the binding layer*.
+`upstream-tests.yml` runs libsecp256k1's `ctime_tests` under Valgrind
+on the library built with the static Linux glibc wheels' compiler and
+flags and `SECP256K1_VALGRIND` on, on x86_64 and aarch64; its header says
+what it leaves out.
 
 ## Common implementation weaknesses
 
