@@ -1457,6 +1457,11 @@ introduced and a red check nobody can act on from a branch is noise.
 `verified-signatures.yml` reports after each push to `main` whether every
 commit pushed is `verified`; [the standard's *Signatures*][s-sigs] has the rule.
 
+`upstream-tests` reports for another reason. A pull request touching what its
+path filter names can turn it red, which is what it is for, but that filter
+would leave a required check `Pending`, as `REPOSITORY.md` says of
+`wheel-reproducibility`.
+
 <!-- markdownlint-disable MD013 -->
 
 | workflow | when | what it varies |
@@ -1467,6 +1472,7 @@ commit pushed is `verified`; [the standard's *Signatures*][s-sigs] has the rule.
 | `api-break` | pull request | — |
 | `verified-signatures` | push to main | — |
 | `vendored-vectors` | weekly, a pull request touching what it reads | — |
+| `upstream-tests` | a pull request touching what the wheel's build of the pin reads, a dispatch | x86_64 and aarch64, each in its pinned `manylinux_2_28` image |
 | `codeql` | pull request, push to main, weekly | the two scanned languages |
 | `scorecard` | push to main, weekly | — |
 | `os-ubuntu` | weekly, a release | both ubuntu images × every interpreter |

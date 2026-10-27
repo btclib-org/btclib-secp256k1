@@ -1,0 +1,195 @@
+---
+name: upstream tests
+
+# Builds the vendored libsecp256k1 pin as the static Linux glibc wheels
+# build it, and runs the pin's own test programs on that build:
+#
+# - `tests` and `exhaustive_tests`, which upstream's CMake compiles with
+#   VERIFY (issue #1269), and `noverify_tests`, which it compiles without;
+# - `ctime_tests` under Valgrind, which fails where a branch or a memory
+#   access depends on a secret (issue #1249);
+# - `precompute_ecmult` and `precompute_ecmult_gen`, whose output must
+#   match the tables in `secp256k1/src` byte for byte (issue #1269).
+#
+# The build is `scripts/cffi_build.py`'s own `build_c`, run in the
+# manylinux_2_28 image `pyproject.toml` pins for each architecture. A
+# second configure then turns on upstream's test programs and
+# SECP256K1_VALGRIND, which the wheel pins OFF. Every other option and
+# flag stays as the wheel's configure left it in the CMake cache.
+#
+# Not the wheel's library byte for byte: the second configure compiles
+# every target with -DVALGRIND, which the wheel's library is not, and
+# `tests` and `exhaustive_tests` add VERIFY.
+#
+# Left out: the macOS, Windows and musllinux wheels; the dynamic
+# `py3-none` wheels, which build on the runner; secp256k1-zkp; and every
+# compiler but the image's own. It gates nothing.
+
+on:
+  workflow_dispatch:
+  # a pull request that moves the pin, or changes scripts/cffi_build.py
+  # or build-constraints.txt, whose cmake this job installs. A move of
+  # the image digests in pyproject.toml is dispatched instead, as the
+  # comment there says; a path here would run this on every pull request
+  # touching that file. The types are links.yml's, for the reasons its
+  # own trigger gives
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, closed]
+    paths:
+      - secp256k1
+      - scripts/cffi_build.py
+      - build-constraints.txt
+      - .github/workflows/upstream-tests.yml
+
+permissions:
+  contents: read
+
+# grouped by the pull request's number where there is one, and a merged
+# pull request's closed run not cancelling the run in flight, for the
+# reasons links.yml gives beside its own group
+concurrency:
+  group: upstream-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
+
+jobs:
+  # one cell per architecture, each with the image pyproject.toml pins
+  # for it: the wheel builds read the digests there
+  images:
+    name: Read the pinned manylinux images
+    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      include: ${{ steps.read.outputs.include }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read each architecture's image
+        id: read
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'EOF'
+          import json
+          import tomllib
+
+          with open("pyproject.toml", "rb") as file:
+              linux = tomllib.load(file)["tool"]["cibuildwheel"]["linux"]
+          runners = {"x86_64": "ubuntu-latest", "aarch64": "ubuntu-24.04-arm"}
+          include = [
+              {"arch": arch, "runner": runner, "image": linux[f"manylinux-{arch}-image"]}
+              for arch, runner in runners.items()
+          ]
+          print(f"include={json.dumps(include)}")
+          EOF
+
+  upstream-tests:
+    name: Run libsecp256k1's tests on ${{ matrix.arch }}
+    needs: images
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    container:
+      # pinned by digest in pyproject.toml, which zizmor does not read
+      image: ${{ matrix.image }} # zizmor: ignore[unpinned-images]
+    # bash with pipefail, which the default shell runs without
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.images.outputs.include) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: true
+
+      # build-constraints.txt is what the wheel build installs, cmake and
+      # cffi among it. Any interpreter of the image serves: what build_c
+      # passes to CMake does not depend on it
+      - name: Install Valgrind and the build requirements
+        run: |
+          dnf install -y valgrind valgrind-devel
+          /opt/python/cp312-cp312/bin/python -m venv /opt/venv
+          /opt/venv/bin/pip install --require-hashes -r build-constraints.txt
+          echo /opt/venv/bin >> "$GITHUB_PATH"
+
+      - name: Show the toolchain
+        run: |
+          command -v cc gcc cmake valgrind
+          gcc --version
+          cmake --version
+          valgrind --version
+
+      # exec() rather than import, as scripts/hatch_build.py loads it
+      - name: Build the library as the wheel does
+        run: |
+          python - <<'EOF'
+          import pathlib
+
+          script = pathlib.Path("scripts/cffi_build.py").resolve()
+          namespace = {"__file__": str(script), "__name__": "cffi_build"}
+          exec(compile(script.read_text(encoding="utf-8"), str(script), "exec"), namespace)
+          namespace["ffi_ext"].build_c()
+          EOF
+
+      # the table sizes and the compile flags are those of the library
+      # target just built. The programs write src/precomputed_*.c under
+      # the directory they run in
+      - name: Regenerate the precomputed tables and compare them
+        run: |
+          flags=build/secp256k1/src/CMakeFiles/secp256k1.dir/flags.make
+          read -ra cflags <<< "$(sed -n 's/^C_FLAGS = //p' "$flags")"
+          mapfile -t sizes < <(sed -n 's/^C_DEFINES = //p' "$flags" | tr ' ' '\n' |
+            grep -E '^-D(ECMULT_WINDOW_SIZE|COMB_BLOCKS|COMB_TEETH)=')
+          if [ "${#sizes[@]}" -ne 3 ]; then
+            echo "::error::$flags does not define the three table sizes"
+            exit 1
+          fi
+          echo "flags: ${cflags[*]}"
+          echo "sizes: ${sizes[*]}"
+          out="$RUNNER_TEMP/precompute"
+          mkdir -p "$out/src"
+          for table in ecmult ecmult_gen; do
+            cc "${cflags[@]}" -DVERIFY "${sizes[@]}" \
+              -o "$out/precompute_$table" "secp256k1/src/precompute_$table.c"
+            (cd "$out" && "./precompute_$table")
+            cmp "$out/src/precomputed_$table.c" "secp256k1/src/precomputed_$table.c"
+            echo "precomputed_$table.c is identical"
+          done
+
+      # the step fails where the wheel's configure no longer leaves these
+      # four OFF, the state this workflow's header describes
+      - name: Turn on the test programs and Valgrind, and build them
+        run: |
+          cache=build/secp256k1/CMakeCache.txt
+          for entry in SECP256K1_BUILD_TESTS:BOOL SECP256K1_BUILD_EXHAUSTIVE_TESTS:BOOL \
+            SECP256K1_BUILD_CTIME_TESTS:BOOL SECP256K1_VALGRIND:STRING; do
+            if ! grep -qx "$entry=OFF" "$cache"; then
+              echo "::error::the wheel's configure does not leave $entry=OFF"
+              exit 1
+            fi
+          done
+          cmake -S secp256k1 -B build/secp256k1 \
+            -DSECP256K1_BUILD_TESTS=ON \
+            -DSECP256K1_BUILD_EXHAUSTIVE_TESTS=ON \
+            -DSECP256K1_BUILD_CTIME_TESTS=ON \
+            -DSECP256K1_VALGRIND=ON
+          cmake --build build/secp256k1 -j "$(nproc)"
+
+      - name: Run tests
+        run: build/secp256k1/bin/tests -j="$(nproc)"
+
+      # the same tests without VERIFY, as the library is compiled
+      - name: Run noverify_tests
+        run: build/secp256k1/bin/noverify_tests -j="$(nproc)"
+
+      - name: Run exhaustive_tests
+        run: build/secp256k1/bin/exhaustive_tests
+
+      # without --error-exitcode Valgrind exits 0 whatever it finds
+      - name: Run ctime_tests under Valgrind
+        run: valgrind --error-exitcode=42 build/secp256k1/bin/ctime_tests

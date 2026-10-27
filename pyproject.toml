@@ -1225,7 +1225,10 @@ skip = "pp*-win*"
 # reads a [tool.cibuildwheel] key, so the value moves by hand. Two things
 # say it is time: tests/cibuildwheel_images_test.py, which fails where a
 # digest below differs from that table, and a build failing on an
-# interpreter the pinned image does not carry.
+# interpreter the pinned image does not carry. A branch that moves the
+# two manylinux digests dispatches .github/workflows/upstream-tests.yml
+# on itself, since the image supplies the compiler that workflow tests
+# with; its trigger says why no path runs it.
 #
 # x86_64 and aarch64 are what archs = "auto64" above selects on the
 # Linux runners build-cibuildwheel names, and a PyPy identifier's
