@@ -1021,8 +1021,24 @@ jobs:
         with:
           suffix: ${{ inputs.version-suffix }}
 
+      # the C compiler the vendored toolchain file names,
+      # x86_64-w64-mingw32-gcc, in the win32 thread model the published
+      # DLL is built with. The mingw-w64 metapackage adds the i686 and C++
+      # compilers and the posix model
+      #
+      # apt moves to the next mirror in /etc/apt/apt-mirrors.txt only on an
+      # error, and the runner's Azure mirror can be slow without failing
+      # (#1252), so a download it has not finished in two minutes is
+      # finished from the rest of the list
       - name: Install dependencies
-        run: sudo apt install -y mingw-w64
+        env:
+          PACKAGE: gcc-mingw-w64-x86-64-win32
+        run: |
+          timeout 2m sudo apt-get install -y --download-only "$PACKAGE" || {
+            sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt
+            sudo apt-get install -y --download-only "$PACKAGE"
+          }
+          sudo apt-get install -y --no-download "$PACKAGE"
 
       # nothing repairs this wheel, so hatchling writes every member of
       # it and the constant it falls back to would be deterministic on
