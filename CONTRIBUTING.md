@@ -39,15 +39,34 @@ a newcomer need not know in advance which repository to look in.
 
 ## Documentation and comments
 
-[Section 9 of the standard][s9] is the prose style, and it governs the
-prose this tree ships — comments, docstrings and markdown. It is not
-restated here: a second wording is the one that goes stale, which is
-that section's own *One fact in one place*.
+[Section 9 of the standard][s9] is the prose style beyond *Write
+plainly* below, and it governs the prose this tree ships — comments,
+docstrings and markdown. It is not restated here: a second wording is
+the one that goes stale, which is that section's own *One fact in one
+place*.
 
 A commit message is prose this tree ships too, though section 9 does not
 say so: [the only merge method the rule accepts][s11] puts it on `main`
 as the landing commit's body, so what is written in one is read there
 long after the branch is gone.
+
+## Working with an LLM
+
+**Development here is LLM-based.** Most issues, code and reviews are
+written by agentic sessions that the maintainer directs and reads.
+Humans are welcome, as long as they are comfortable working that way.
+
+**A contribution is yours, whoever wrote it.** Read every line before
+you open the pull request, understand it, and be ready to answer a
+review without the model. Text or code you have not read, or cannot
+explain, is closed without review.
+
+**Write plainly**, in the tree and on the forge: the point first, plain
+words, one fact per sentence. On the forge, the title and the first
+sentence carry the point; a body is at most two short paragraphs before
+any code block or template section; a comment is about 200 words, and
+never more than 250, with no list and no heading; a review's summary
+takes the shape `REVIEWING.md`'s *The verdict* gives it.
 
 ## Pull requests
 
@@ -154,17 +173,27 @@ whose).
 
 CI is read once, and this is where: on the head that lands. `main` does
 not ask that head to be up to date with it, and [section 11][s-branch]
-says why. So a branch is rebased only where it conflicts with `main`, or
-where its checks ran on a `main` that has since been repaired, because
-re-running its checks would test the same merge commit. A rebase that
-moved nothing but the base leaves the ack standing; one that resolved a
-conflict does not, that resolution being a change no reviewer has seen.
+says why. So a branch is rebased only where it conflicts with `main`. A
+rebase that moved nothing but the base leaves the ack standing; one that
+resolved a conflict does not, that resolution being a change no reviewer
+has seen.
 
-When `main`'s CI is red after a merge, its repair lands before any other
-pull request, and no `--auto` below stays armed until then: what lands
-meanwhile is merged onto a tree known to be broken, and `main`'s next run
-cannot tell a new failure from the one already there. An armed pull
-request whose checks ran before the break merges on them all the same.
+When `main`'s CI is red after a merge, its repair takes priority over
+every other pull request, because until it lands `main`'s runs cannot
+tell a new failure from the one already there. A pull request armed with
+`--auto` (below) stays armed, and others keep landing meanwhile. Holding
+every landing for a repair costs more than the break it guards against,
+so the risk of landing on a red `main` is accepted
+(btclib-org/.github#1777).
+
+A pull request whose required check is red only because `main` was red
+is closed and reopened once the repair lands (`gh pr close <n>`, then
+`gh pr reopen <n>`). GitHub then runs its checks on a fresh merge with
+the repaired `main`, where a re-run would test the old merge commit. No
+push is made, so its approvals and its ack of record stand. `--auto`,
+where closing dropped it, is armed again once the checks are green. The
+reopen also runs the review bot again, and changes that review requests
+are answered like any other review's.
 
 Then squash, [the only method the rule accepts][s11].
 
