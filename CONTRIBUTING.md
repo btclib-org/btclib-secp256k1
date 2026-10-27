@@ -1586,6 +1586,13 @@ standard, this one among them.
   `PYTHONDONTWRITEBYTECODE=1`, with a passing baseline run before and a
   control run after. cosmic-ray sets that variable itself (#229) but still
   reads a stale `.pyc`.
+- To check that a `.pyc` holds its source's bytecode, compare code
+  objects, not bytes: `stored == compile(src, stored.co_filename,
+  "exec")`, where `raw` is the `.pyc`'s bytes, `stored` is
+  `marshal.loads(raw[16:])` and `src` is the source. On a clean tree
+  the marshalled bytes can differ, round-tripped or not, and `dis`
+  output differs by object addresses.
+  Either reads as a live mutant inside a green gate.
 - `check-sdist` fails with "SDist does not match git" on an untracked file
   that neither `.gitignore` nor the sdist `exclude` in `pyproject.toml`
   covers. `docs/_build/` is one: `.gitignore` has `build/`, and
