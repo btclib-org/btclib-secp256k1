@@ -414,7 +414,7 @@ and shrinker do both. Bytes outside the described domain are the
 fuzzer's question and not this layer's: section 10's `fuzz` entry names
 this tree, `fuzz.yml` runs ClusterFuzzLite over the entry points that
 read a stranger's own octets, and `fuzz_corpus_test.py` is this suite's
-own half of it, holding every target's seed corpus to still being
-accepted by its entry point.
+own half of it, holding each seed to the answer its entry point owes
+it.
 
 [std]: https://github.com/btclib-org/.github/blob/main/README.md
