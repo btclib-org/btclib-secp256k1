@@ -453,14 +453,17 @@ repos:
       # older entries alone cannot be written; and
       # check-useless-excludes asks the pattern to match some file the
       # hook selects rather than each name in it, which is what lets a
-      # tree with no release notes carry the same line
+      # tree with no release notes carry the same line.
+      # `changelog/` holds the older releases' sections, out of reach for
+      # the same reason: `changelog/v0.8.0.5.md` carries a `"<summary>"`
+      # in a `gh pr review` command
       - id: unquoted-placeholder
         name: a placeholder standing as a whole argument is unquoted
         language: pygrep
         entry: |-
           ^(?![\x20\t]*[A-Za-z_][A-Za-z0-9_.-]*[\x20\t]+=[\x20\t])(?:(?:[^"'\n]|'[^'\n]*')*"<[^<>"'`\n]*>"|(?:[^"'\n]|"[^"\n]*")*'<[^<>"'`\n]*>')
         types: [markdown]
-        exclude: ^(CHANGELOG|RELEASE_NOTES)\.md$
+        exclude: ^(CHANGELOG|RELEASE_NOTES)\.md$|^changelog/
   # what ruff-format is for Python, on the structured files ruff does not
   # read: yaml, and the jsonc that carries a comment. Before yamllint above
   # in effect and not in order -- pre-commit runs this file top to bottom, so

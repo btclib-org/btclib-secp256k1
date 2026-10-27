@@ -1,9 +1,9 @@
 # Release notes
 
 Notable changes to the codebase are documented here. Every entry of a
-release is in [CHANGELOG.md](./CHANGELOG.md); what follows is what a user
-has to act on and what a user gains, and it is what the GitHub release of
-a tag is generated from.
+release is in [CHANGELOG.md](./CHANGELOG.md) or a file it links; what
+follows is what a user has to act on and what a user gains, and it is
+what the GitHub release of a tag is generated from.
 
 ## v0.8.0.13
 

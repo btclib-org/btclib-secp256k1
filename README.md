@@ -482,8 +482,10 @@ equation, a MuSig2 aggregate key and BIP352's tweak data, and where the
 crossing is per term — every product serialized as 65 octets only for
 the sum to parse them again. Handed over whole it is about a seventh of
 the call from three terms up and stays there, 64 terms 459.3 µs against
-536.5; the CHANGELOG entry that added it has the count-by-count table
-and the conditions. It is the naive form and not a batched algorithm:
+536.5;
+[changelog/v0.8.0.3.md](https://github.com/btclib-org/btclib-secp256k1/blob/main/changelog/v0.8.0.3.md)
+has the count-by-count table and the conditions. It is the naive form
+and not a batched algorithm:
 `secp256k1_ecmult_multi_var` is internal to libsecp256k1 and not
 declared in its public header, so what is saved here is the crossing,
 which is flat in the number of terms.

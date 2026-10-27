@@ -623,7 +623,7 @@ skip = "fuzz/corpus/*"
 # `intoto` is in-toto's own spelling, in the bundle's name
 # `<tag>.intoto.jsonl`. This table has no `ignore-regex`, so the entry covers
 # every file the hook reads -- RELEASING.md's fenced commands, SECURITY.md,
-# CHANGELOG.md -- and the dictionary offers "into" for it, which
+# changelog/ -- and the dictionary offers "into" for it, which
 # --write-changes applies
 ignore-words-list = "intoto"
 
@@ -641,7 +641,7 @@ extend-exclude = ["secp256k1/", "secp256k1-zkp/", "fuzz/corpus/**"]
 # auditwheel: a real name, and one no spelling of it can avoid
 delocate = "delocate"
 # ruff's flake8-copyright rule code, named above in `select` and in the
-# comment below it, and again in CHANGELOG.md's prose: a real rule code,
+# comment below it, and again in changelog/'s prose: a real rule code,
 # not a typo of "copy" or "cpu"
 cpy = "cpy"
 # `intoto` in the bundle's name `<tag>.intoto.jsonl`, as for codespell above:
@@ -663,8 +663,15 @@ extend-ignore-re = ['"[0-9a-fA-F]+"']
 # a backticked span in these files quotes its text rather than using it,
 # an abbreviated commit sha among them: the dictionary reads a run of its
 # hex digits as a misspelt word, and this hook runs with --write-changes,
-# so without this table it rewrites the citation into one naming no commit
-extend-glob = ["CHANGELOG.md", "RELEASE_NOTES.md", ".pre-commit-config.yaml"]
+# so without this table it rewrites the citation into one naming no commit.
+# A glob here matches a file's name and not its path, so `v[0-9]*.md` is
+# what reaches the files under changelog/
+extend-glob = [
+    "CHANGELOG.md",
+    "v[0-9]*.md",
+    "RELEASE_NOTES.md",
+    ".pre-commit-config.yaml",
+]
 extend-ignore-re = ['`[^`]*`']
 
 [tool.ruff]

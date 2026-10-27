@@ -124,13 +124,12 @@ def test_import_defers_the_metadata() -> None:
 
     What the deferral in `__init__.py` bought, asserted rather than
     measured: reading `__version__` at import time is most of what made
-    that import 15.85 milliseconds where it is now 1.69, CHANGELOG.md
-    carrying the split -- `importlib.metadata` pulls `email`, `json` and
-    `inspect` behind it. Nothing else says so, and a module level import
-    added
-    later -- here or in anything this package imports -- puts those
-    milliseconds back with every other gate green, which is how they
-    arrived in the first place.
+    that import 15.85 milliseconds where it is now 1.69,
+    changelog/v0.8.0.3.md carrying the split -- `importlib.metadata` pulls
+    `email`, `json` and `inspect` behind it. Nothing else says so, and a
+    module level import added later -- here or in anything this package
+    imports -- puts those milliseconds back with every other gate green,
+    which is how they arrived in the first place.
 
     What is asserted is what *this* import adds, the names an empty
     interpreter already holds being subtracted first: asking for

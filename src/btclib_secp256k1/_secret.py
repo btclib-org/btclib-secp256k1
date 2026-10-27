@@ -50,12 +50,12 @@ def _zero(memory: memoryview) -> None:
     That it is a function and not the statement inlined in both places
     is a trade made deliberately and against the faster spelling.
     Measured over the same session as every other figure of this change,
-    which CHANGELOG.md names: calling `wipe` a second time is 0.1826
-    microseconds, this is 0.1439, and the inlined statement is 0.1314.
-    So the frame gives up about a quarter of what is on the table, and
-    what it buys is that the line which overwrites a secret exists once:
-    two copies are two things to keep true, in the one facility whose
-    whole claim is about what is left in memory.
+    which changelog/v0.8.0.3.md names: calling `wipe` a second time is
+    0.1826 microseconds, this is 0.1439, and the inlined statement is
+    0.1314. So the frame gives up about a quarter of what is on the table,
+    and what it buys is that the line which overwrites a secret exists once:
+    two copies are two things to keep true, in the one facility whose whole
+    claim is about what is left in memory.
 
     Args:
         memory: the `ffi.buffer` to overwrite, and a view of the whole
