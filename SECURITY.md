@@ -109,7 +109,7 @@ The version takes a fence of its own with nothing under it to reach:
 written into the file name, `btclib_secp256k1-<version>.tar.gz` is a
 `<version` redirection that creates a file named `.tar.gz` wherever the
 reader's directory holds a file called `version`. `${version:?}` answers
-the other paste, the second fence alone, where the value is merely unset:
+the other paste, the last fence alone, where the value is merely unset:
 it stops the check before it asks about a file nobody named.
 
 ```shell
@@ -117,26 +117,38 @@ version=<version>
 ```
 
 ```shell
-repo=btclib-org/btclib-secp256k1
-workflows=btclib-org/.github/.github/workflows
-signer=$workflows/reusable-build.yml
-gh attestation verify "btclib_secp256k1-${version:?}.tar.gz" \
-  --repo "$repo" --signer-workflow "$signer" \
-  --source-ref "refs/tags/v${version:?}"
+signer=btclib-org/.github/.github/workflows/reusable-build.yml
+id=$(gh api repos/btclib-org/btclib-secp256k1 --jq .id)
+cert='.[].verificationResult.signature.certificate'
 ```
 
-`--signer-workflow` names the workflow that signed. For a release built
-by the organization's `reusable-build.yml`, which `release.yml` calls,
-that is that workflow: an attestation made inside a called workflow
-names the callee as its signer, while `--repo` still names this
-repository as the source. The flag is required rather than a narrowing,
-the command refusing a genuine release without it, and `--source-ref` is
+```shell
+gh attestation verify "btclib_secp256k1-${version:?}.tar.gz" \
+  --owner btclib-org \
+  --signer-workflow "${signer:?}" \
+  --source-ref "refs/tags/v${version:?}" --format json \
+  --jq "${cert:?}.sourceRepositoryIdentifier" | grep -qx "${id:?}"
+```
+
+The exit code is `0` only where a verified attestation names this
+repository. The repository is compared by its id, which a rename keeps:
+`--repo` compares the current name and refuses every release signed
+before a rename.
+
+`--signer-workflow` names the workflow that signed, and narrows what
+passes to it. Without it, `--owner` and the id check hold only the
+source repository: an attestation from any workflow this repository ran,
+its own or one it calls from `btclib-org/.github`, passes.
+
+For a release built by the organization's `reusable-build.yml`, which
+`release.yml` calls, the signer is that workflow: an attestation made
+inside a called workflow names the callee as its signer, while the
+certificate still names this repository as the source. `--source-ref` is
 what keeps a build of a branch from passing as the release. From 0.8.0.7
 to 0.8.0.9 the signer is `reusable-attest.yml`, named the same way.
 From 0.8.0 to 0.8.0.6 the signer is `release.yml` itself, so for those
-releases `signer` is `"$repo/.github/workflows/release.yml"`, and there
-`--signer-workflow` narrows what passes: without it an attestation from
-any workflow in this repository is accepted. All three take
+releases `signer` is
+`btclib-org/btclib-secp256k1/.github/workflows/release.yml`. All three take
 `--source-ref "refs/tags/v${version:?}"`. No path verifies a release
 another signed. The PEP 740
 attestations on PyPI name `release.yml`, the job that uploads there
