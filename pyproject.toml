@@ -1186,7 +1186,7 @@ fail_under = 100.0
 # (btclib-org/btclib-secp256k1#1032). A name is matched as spelled, so it
 # is written as uv.lock writes it
 test-requires = [
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     "pytest-cov==7.1.0",
     "pytest-xdist==3.8.0",
     "pathspec==1.1.1",
@@ -1242,10 +1242,10 @@ skip = "pp*-win*"
 # platform tag is `manylinux_x86_64` like a CPython one's, so it reads
 # the key below rather than the `pypy_x86_64` one cibuildwheel also
 # offers.
-manylinux-x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64@sha256:b74a5b6f1705ecff17be8bd792589bef9b3b039766d12205720ecd2a9e919192"
-manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64@sha256:0333f44c4eb759ec8f47b27bc9dc27b1c929932a267cf13ce0cff1a4b758cccb"
-musllinux-x86_64-image = "quay.io/pypa/musllinux_1_2_x86_64@sha256:767e9118e48b4b8de84d3262ba95a3bc5f6679a09247f0bf9e283445608f37c1"
-musllinux-aarch64-image = "quay.io/pypa/musllinux_1_2_aarch64@sha256:0a7b18a1fce3dcfb1a6dd2ac99f077b78fb0f3cec8a2fed65bb999823c6a8fa0"
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_28_x86_64@sha256:e0adf18521ad35192df733a6c62d35df7801957d24e0470238aacecfab2188a3"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_28_aarch64@sha256:a3e02308c822fb6ce0d12248b0c941817ba5e1a1bc9e7bb5929f29c50eaa40a9"
+musllinux-x86_64-image = "quay.io/pypa/musllinux_1_2_x86_64@sha256:04e877afa939007f6784f9076d2aa797d1156f31281cfe19f203945d7b624970"
+musllinux-aarch64-image = "quay.io/pypa/musllinux_1_2_aarch64@sha256:1db347533f8a7ea39aa20b0203f4e4af00630cdb621216a2b43771523c9983c5"
 
 # how SOURCE_DATE_EPOCH reaches the Linux build, and the only way it
 # can: the compile and the auditwheel repair after it both run inside a
