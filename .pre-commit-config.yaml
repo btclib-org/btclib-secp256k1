@@ -663,8 +663,8 @@ repos:
         additional_dependencies:
           - cffi==2.1.1
           - types-cffi==2.1.0.20260827
-          - hatchling==1.32.4
-          - pytest==9.1.1
+          - hatchling==1.33.0
+          - pytest==9.2.0
           # hyphenated as uv.lock spells it, hook_pins_test.py keying
           # the two on one name
           - typing-extensions==4.16.0
