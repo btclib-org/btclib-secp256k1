@@ -513,8 +513,8 @@ Everything above is the same file in every repository of the
 organization; everything below is this one's, and the comparison stops at
 this heading.
 
-Each of these is a question, and the document that answers it is named
-because that document, and not this one, is where the rule lives.
+Each of these is a question. Where another document holds the rule, the
+question names it.
 
 - A change to `src/btclib_secp256k1/__init__.py` or to the build: does it
   keep **both branches of `_load_lib`** right? Only one of the two — the
