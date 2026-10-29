@@ -13,7 +13,7 @@
 # in below is a dependency `docker`'s own Dependabot entry already
 # tracks (btclib-org/btclib-wallet's identical Dockerfile is the same
 # pattern, one repository over).
-FROM ghcr.io/astral-sh/uv@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff AS uv
+FROM ghcr.io/astral-sh/uv@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 AS uv
 
 # The container `build.sh` runs in. `base-builder-python` is the image
 # ClusterFuzzLite's docs/build-integration/python_lang.md names for a
