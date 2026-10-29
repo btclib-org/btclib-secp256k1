@@ -86,6 +86,11 @@ The latest security review is dated 2026-09-30.
 [issue 1089](https://github.com/btclib-org/btclib-secp256k1/issues/1089)
 records it.
 
+The review's scope is the tree at commit `41d35c3252a1`, without the libraries
+its submodules vendor.
+[What changed since](https://github.com/btclib-org/btclib-secp256k1/compare/41d35c3252a12777031c80b6680d505b2e4d5eb3...main)
+is that commit's comparison with `main`.
+
 ## Supported versions
 
 Only the latest release is supported. Version numbers track the wrapped
