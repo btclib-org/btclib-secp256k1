@@ -18,10 +18,7 @@ factor from n up, which secp256k1-zkp refuses after `scalar` has taken
 it, and `tests/zkp_generator_vectors_test.py` pins that.
 
 The invalid values are those of the mainline test, imported from it,
-and a few the subpackage adds: a generator or a Pedersen commitment
-that is not a point, a sequence the library needs at least one item of
-left empty, and an int outside the range of `exp`, `n_inputs`,
-`npositive` or `rsizes`.
+and the ones the subpackage's own arguments need, defined in this file.
 
 The table is held to the modules' own contents, by the mainline test's
 rule: a public function that takes octets or integers and is not in it
@@ -151,7 +148,7 @@ def tagged_point(prefix: int, valid_bytes: bytes) -> Values:
     the x of any point, as `POINT` says.
 
     Args:
-        prefix: the tag of an even y.
+        prefix: the tag of a y that is a square mod p.
         valid_bytes: a valid serialization.
 
     Returns:
