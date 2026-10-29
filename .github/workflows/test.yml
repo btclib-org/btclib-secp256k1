@@ -163,7 +163,7 @@ jobs:
   # `with:` below (issue btclib-org/.github#35)
   changes:
     name: Decide whether the matrix has anything to check
-    uses: btclib-org/.github/.github/workflows/reusable-changes.yml@eb3b0c28476b98694ab3a3c3a9dce7e8e26ab4f5 # v2026.10.26
+    uses: btclib-org/.github/.github/workflows/reusable-changes.yml@72e0222ef466daf096e3ac8d07e2ba59c0544b1a # v2026.10.28
     # A job's permissions replace the workflow's map rather than adding
     # to it. This job held only pull-requests: read before the call --
     # it made no checkout of its own, so contents: read cost nothing to
@@ -282,7 +282,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           # the wheels of the test group, not the extension: the root
           # project is installed editable, so its build hook (and the
@@ -415,7 +415,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
 
@@ -513,7 +513,7 @@ jobs:
       # needs none of its own: the interpreters it builds wheels for are
       # the ones it installs itself
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.15"
           # section 1 of the organization standard counts a release
@@ -523,7 +523,7 @@ jobs:
           allow-prereleases: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
 
       # skipped on every trigger but a release rehearsal: the inputs
       # context is empty unless this workflow was called, and an empty
@@ -673,13 +673,13 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.15"
           allow-prereleases: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
 
       # see build-cibuildwheel
       - name: Make the version unique for TestPyPI (rehearsal only)
@@ -776,14 +776,14 @@ jobs:
 
       - name: Set up Python
         if: ${{ !inputs.use-signed-dist }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.15"
           allow-prereleases: true
 
       - name: Setup uv
         if: ${{ !inputs.use-signed-dist }}
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
 
       # what the build below and the normalizer after it both read.
       # hatchling's sdist writer honours this when it is set and falls
@@ -918,7 +918,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.15"
           allow-prereleases: true
@@ -1006,13 +1006,13 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.15"
           allow-prereleases: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
 
       # see build-cibuildwheel
       - name: Make the version unique for TestPyPI (rehearsal only)
@@ -1086,7 +1086,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           # the wheels of the check group, the three tools below among
           # them, keyed on uv.lock

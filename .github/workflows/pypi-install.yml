@@ -124,7 +124,7 @@ jobs:
   # derived from the repository's; version is forwarded from this workflow's own
   # workflow_call input
   wait-for-index:
-    uses: btclib-org/.github/.github/workflows/reusable-wait-for-index.yml@eb3b0c28476b98694ab3a3c3a9dce7e8e26ab4f5 # v2026.10.26
+    uses: btclib-org/.github/.github/workflows/reusable-wait-for-index.yml@72e0222ef466daf096e3ac8d07e2ba59c0544b1a # v2026.10.28
     with:
       package: btclib-secp256k1
       version: ${{ inputs.version }}
@@ -182,7 +182,7 @@ jobs:
       # part, which is also what guarantees that the import below resolves
       # to what pip installed and not to a source tree
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
           # section 1 of the organization standard counts a release
