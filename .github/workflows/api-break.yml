@@ -50,6 +50,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # the label; read-only on a fork
-    uses: btclib-org/.github/.github/workflows/reusable-api-break.yml@eb3b0c28476b98694ab3a3c3a9dce7e8e26ab4f5 # v2026.10.26
+    uses: btclib-org/.github/.github/workflows/reusable-api-break.yml@72e0222ef466daf096e3ac8d07e2ba59c0544b1a # v2026.10.28
     with:
       package: btclib_secp256k1
