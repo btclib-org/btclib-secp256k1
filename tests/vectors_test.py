@@ -1499,6 +1499,9 @@ def test_a_compact_scalar_outside_1_to_n_minus_1_is_refused(
     if refused:
         with pytest.raises(ValueError, match="invalid compact signature"):
             dsa.parse_compact(compact)
+        pubkey = keys.pubkey_from_prvkey(1)
+        with pytest.raises(ValueError, match="invalid compact signature"):
+            dsa.verify(b"\x01" * 32, pubkey, compact, compact=True)
     else:
         assert dsa.serialize_compact(dsa.parse_compact(compact)) == compact
 

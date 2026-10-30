@@ -17,8 +17,8 @@ thread, so `context.check` must find nothing afterwards.
 The invalid values are a zero scalar where zero is not a valid one, a
 scalar from n to 2**256 - 1, a negative DER integer, a point not on the
 curve, an int outside the range of its argument, and a value of the
-wrong type. Every other
-argument keeps a valid value, so each call isolates one invalid value.
+wrong type. Every other argument keeps a valid value, so each call
+isolates one invalid value.
 
 The table is held to the modules' own contents: a public function that
 takes octets or integers and is not in it fails here, and so does one
@@ -226,8 +226,8 @@ def der_signature(r: bytes, s: bytes) -> bytes:
 
 # an r or s of an ECDSA signature is a scalar in [1, n-1]. A DER integer
 # can also be negative, which is its top bit set with no leading zero.
-# libsecp256k1 parses a zero r or s, and reads a negative DER one, or
-# one from n up, as zero
+# libsecp256k1 parses a zero r or s; its DER parse reads a negative one,
+# or one from n up, as zero, and its compact parses refuse one from n up
 COMPACT_SIGNATURE = halves(COMPACT, 32, ZERO | OVERFLOWING)
 RECOVERABLE_SIGNATURE = halves(RECOVERABLE, 32, ZERO | OVERFLOWING)
 _NEGATIVE = bytes([0x02, 32, 0x80]) + b"\x01" * 31
@@ -789,6 +789,22 @@ def test_the_der_signatures_are_encoded_as_sign_encodes() -> None:
     """
     assert der_signature(_R, _S) == DER
     assert dsa.signature_verify(der_signature(_R, der_integer(b"\x01")))
+
+
+def test_the_negative_der_integer_gets_through_the_c_parse() -> None:
+    """libsecp256k1 parses `_NEGATIVE`, and reads it as zero.
+
+    The sweep then refuses it for its r or s, not for a malformed
+    encoding that the C parse refuses on its own, as it does an
+    integer with excess leading `ff` octets.
+    """
+    for der, zero_half in (
+        (der_signature(_NEGATIVE, _S), slice(0, 32)),
+        (der_signature(_R, _NEGATIVE), slice(32, 64)),
+    ):
+        signature = ffi.new("secp256k1_ecdsa_signature *")
+        assert lib.secp256k1_ecdsa_signature_parse_der(ctx, signature, der, len(der))
+        assert dsa.serialize_compact(signature)[zero_half] == bytes(32)
 
 
 def test_a_value_reaching_libsecp256k1_is_reported() -> None:
