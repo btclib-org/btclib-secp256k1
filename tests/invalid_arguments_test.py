@@ -26,8 +26,9 @@ its parameters (a `CData`) is excluded by rule. There is nothing to
 parse before the call, and `tests/callbacks_test.py` pins what those
 functions do with an object libsecp256k1 refuses.
 
-The `zkp` subpackage is not driven: it exists only in a build made with
-`BTCLIB_LIBSECP256K1_ZKP`, and it reports through a context of its own.
+The `zkp` subpackage exists only in a build made with
+`BTCLIB_LIBSECP256K1_ZKP`, and it reports through a context of its own:
+`tests/zkp_invalid_arguments_test.py` drives it.
 """
 
 from __future__ import annotations
