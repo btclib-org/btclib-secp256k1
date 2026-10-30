@@ -15,8 +15,9 @@ refusal must not be that report; every other call leaves it on the
 thread, so `context.check` must find nothing afterwards.
 
 The invalid values are a zero scalar where zero is not a valid one, a
-scalar from n to 2**256 - 1, a point not on the curve, an int outside
-the range of its argument, and a value of the wrong type. Every other
+scalar from n to 2**256 - 1, a negative DER integer, a point not on the
+curve, an int outside the range of its argument, and a value of the
+wrong type. Every other
 argument keeps a valid value, so each call isolates one invalid value.
 
 The table is held to the modules' own contents: a public function that
@@ -134,8 +135,7 @@ XONLY_POINT: Values = {
 }
 
 # octets driven with the wrong type only: a message, an outpoint, entropy,
-# a DER encoding (its r and s: see below) or an ElligatorSwift one, which
-# every 64 octets are
+# or an ElligatorSwift encoding, which every 64 octets are
 OCTETS: Values = WRONG_TYPE
 
 
@@ -195,11 +195,53 @@ def last_of(valid: list[Any], invalid: Values) -> Values:
     }
 
 
-# an r or s of an ECDSA signature: zero is not driven, nor a DER r or s
-# from n up, which libsecp256k1 parses as zero. Whether `dsa` and
-# `recovery` refuse those is btclib-org/btclib-secp256k1#1272's question
-COMPACT_SIGNATURE = halves(COMPACT, 32, OVERFLOWING)
-RECOVERABLE_SIGNATURE = halves(RECOVERABLE, 32, OVERFLOWING)
+def der_integer(value: bytes) -> bytes:
+    """Return the DER integer of unsigned big-endian octets.
+
+    Args:
+        value: the octets.
+
+    Returns:
+        The integer in its shortest encoding, with the leading zero DER
+        wants when the top bit is set.
+    """
+    value = value.lstrip(b"\x00")
+    if not value or value[0] & 0x80:
+        value = b"\x00" + value
+    return bytes([0x02, len(value)]) + value
+
+
+def der_signature(r: bytes, s: bytes) -> bytes:
+    """Return the DER sequence of two DER integers.
+
+    Args:
+        r: the DER integer of r.
+        s: the DER integer of s.
+
+    Returns:
+        The DER signature.
+    """
+    return bytes([0x30, len(r) + len(s)]) + r + s
+
+
+# an r or s of an ECDSA signature is a scalar in [1, n-1]. A DER integer
+# can also be negative, which is its top bit set with no leading zero.
+# libsecp256k1 parses a zero r or s, and reads a negative DER one, or
+# one from n up, as zero
+COMPACT_SIGNATURE = halves(COMPACT, 32, ZERO | OVERFLOWING)
+RECOVERABLE_SIGNATURE = halves(RECOVERABLE, 32, ZERO | OVERFLOWING)
+_NEGATIVE = bytes([0x02, 32, 0x80]) + b"\x01" * 31
+_R, _S = der_integer(COMPACT[:32]), der_integer(COMPACT[32:])
+DER_SIGNATURE: Values = {
+    **{
+        label: der_signature(der_integer(value[:32]), der_integer(value[32:]))
+        for label, value in COMPACT_SIGNATURE.items()
+        if isinstance(value, bytes)
+    },
+    "first half negative": der_signature(_NEGATIVE, _S),
+    "second half negative": der_signature(_R, _NEGATIVE),
+    **WRONG_TYPE,
+}
 # BIP340's r is the x of a point and its s a scalar
 SSA_SIGNATURE = halves(SSA_SIG, 32, XONLY_POINT | OVERFLOWING)
 # a public nonce is two compressed points, an aggregate nonce too
@@ -279,8 +321,8 @@ def signed_partially(**kwargs: Any) -> bytes:
 # built for it, and a constructor is the class
 Arguments = dict[str, tuple[Any, Values]]
 TABLE: dict[str, tuple[Callable[..., Any], Arguments]] = {
-    "dsa.is_low_r": (dsa.is_low_r, {"signature_bytes": (DER, OCTETS)}),
-    "dsa.is_low_s": (dsa.is_low_s, {"signature_bytes": (DER, OCTETS)}),
+    "dsa.is_low_r": (dsa.is_low_r, {"signature_bytes": (DER, DER_SIGNATURE)}),
+    "dsa.is_low_s": (dsa.is_low_s, {"signature_bytes": (DER, DER_SIGNATURE)}),
     "dsa.nonce_rfc6979": (
         dsa.nonce_rfc6979,
         {
@@ -291,12 +333,12 @@ TABLE: dict[str, tuple[Callable[..., Any], Arguments]] = {
             "into": (None, INTO),
         },
     ),
-    "dsa.normalize": (dsa.normalize, {"signature_bytes": (DER, OCTETS)}),
+    "dsa.normalize": (dsa.normalize, {"signature_bytes": (DER, DER_SIGNATURE)}),
     "dsa.parse_compact": (
         dsa.parse_compact,
         {"signature_bytes": (COMPACT, COMPACT_SIGNATURE)},
     ),
-    "dsa.parse_der": (dsa.parse_der, {"signature_bytes": (DER, OCTETS)}),
+    "dsa.parse_der": (dsa.parse_der, {"signature_bytes": (DER, DER_SIGNATURE)}),
     "dsa.sign": (
         dsa.sign,
         {
@@ -308,16 +350,16 @@ TABLE: dict[str, tuple[Callable[..., Any], Arguments]] = {
     ),
     "dsa.signature_verify": (
         dsa.signature_verify,
-        {"signature_bytes": (DER, OCTETS)},
+        {"signature_bytes": (DER, DER_SIGNATURE)},
     ),
-    "dsa.to_compact": (dsa.to_compact, {"signature_bytes": (DER, OCTETS)}),
+    "dsa.to_compact": (dsa.to_compact, {"signature_bytes": (DER, DER_SIGNATURE)}),
     "dsa.to_der": (dsa.to_der, {"signature_bytes": (COMPACT, COMPACT_SIGNATURE)}),
     "dsa.verify": (
         dsa.verify,
         {
             "msg_bytes": (MSG, OCTETS),
             "pubkey_bytes": (PUBKEY, POINT),
-            "signature_bytes": (DER, OCTETS),
+            "signature_bytes": (DER, DER_SIGNATURE),
         },
     ),
     "ecdh.shared_point": (
@@ -736,6 +778,17 @@ def test_every_valid_call_is_answered(name: str) -> None:
     call, arguments = TABLE[name]
     assert not refused(call, (), valid(arguments))
     context.check()
+
+
+def test_the_der_signatures_are_encoded_as_sign_encodes() -> None:
+    """The DER encoding of the valid r and s is the signature `sign` wrote.
+
+    A control on `der_signature` and `der_integer`: an encoding of their
+    own that libsecp256k1 refused as malformed would be refused for that,
+    and the sweep would never reach the r or s it was built to drive.
+    """
+    assert der_signature(_R, _S) == DER
+    assert dsa.signature_verify(der_signature(_R, der_integer(b"\x01")))
 
 
 def test_a_value_reaching_libsecp256k1_is_reported() -> None:

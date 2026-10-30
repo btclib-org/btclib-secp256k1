@@ -1434,22 +1434,28 @@ def der_sequence(r: str, s: str) -> bytes:
         pytest.param(TX_R, TX_S, id="s negative"),
         pytest.param(TX_R, f"022100{N:064x}", id="s is n"),
         pytest.param(TX_R, "020100", id="s is 0"),
+        pytest.param(TX_S, TX_R, id="r negative"),
+        pytest.param(f"022100{N:064x}", TX_R, id="r is n"),
         pytest.param("020100", TX_R, id="r is 0"),
     ],
 )
 def test_a_der_scalar_outside_1_to_n_minus_1_is_refused(r: str, s: str) -> None:
     """A well-formed DER integer that is not a scalar in [1, n-1] is refused.
 
-    libsecp256k1 parses each of these, reading the negative s and s = n
+    libsecp256k1 parses each of these, reading a negative integer and n
     as zero. The independent side is SEC 1's range for r and s, [1, n-1],
     with n from SEC 2 at the top of this file, and the negative s of a
-    signature on the chain.
+    signature on the chain. `verify` raises, where a signature that only
+    fails to verify is False.
     """
     der = der_sequence(r, s)
 
     assert not dsa.signature_verify(der)
     with pytest.raises(ValueError, match="invalid DER signature"):
         dsa.parse_der(der)
+    pubkey = keys.pubkey_from_prvkey(1)
+    with pytest.raises(ValueError, match="invalid DER signature"):
+        dsa.verify(b"\x01" * 32, pubkey, der)
 
 
 @pytest.mark.parametrize("s", [1, N - 1])
@@ -1471,14 +1477,23 @@ def test_a_der_scalar_at_either_end_of_1_to_n_minus_1_parses(s: int) -> None:
     [
         pytest.param(bytes(32) + (1).to_bytes(32, "big"), True, id="r is 0"),
         pytest.param((1).to_bytes(32, "big") + bytes(32), True, id="s is 0"),
+        pytest.param(
+            N.to_bytes(32, "big") + (1).to_bytes(32, "big"), True, id="r is n"
+        ),
+        pytest.param(
+            (1).to_bytes(32, "big") + N.to_bytes(32, "big"), True, id="s is n"
+        ),
         pytest.param((1).to_bytes(32, "big") * 2, False, id="r and s are 1"),
+        pytest.param((N - 1).to_bytes(32, "big") * 2, False, id="r and s are n-1"),
     ],
 )
-def test_a_compact_scalar_of_zero_is_refused(compact: bytes, refused: bool) -> None:
-    """Zero is outside [1, n-1] in the compact form too, and 1 is not.
+def test_a_compact_scalar_outside_1_to_n_minus_1_is_refused(
+    compact: bytes, refused: bool
+) -> None:
+    """The compact form is held to [1, n-1] too, both ends included.
 
-    libsecp256k1 parses a compact r or s of zero. SEC 1's range is the
-    independent side, as for the DER refusal above.
+    libsecp256k1 parses a compact r or s of zero, and refuses n. SEC 1's
+    range is the independent side, as for the DER refusal above.
     """
     assert dsa.signature_verify(compact, compact=True) is not refused
     if refused:
@@ -1493,15 +1508,25 @@ def test_a_compact_scalar_of_zero_is_refused(compact: bytes, refused: bool) -> N
     [
         pytest.param(bytes(32) + (1).to_bytes(32, "big"), True, id="r is 0"),
         pytest.param((1).to_bytes(32, "big") + bytes(32), True, id="s is 0"),
+        pytest.param(
+            N.to_bytes(32, "big") + (1).to_bytes(32, "big"), True, id="r is n"
+        ),
+        pytest.param(
+            (1).to_bytes(32, "big") + N.to_bytes(32, "big"), True, id="s is n"
+        ),
         pytest.param((1).to_bytes(32, "big") * 2, False, id="r and s are 1"),
+        pytest.param((N - 1).to_bytes(32, "big") * 2, False, id="r and s are n-1"),
     ],
 )
-def test_a_recoverable_scalar_of_zero_is_refused(compact: bytes, refused: bool) -> None:
+def test_a_recoverable_scalar_outside_1_to_n_minus_1_is_refused(
+    compact: bytes, refused: bool
+) -> None:
     """A recoverable signature is held to [1, n-1] as a plain one is.
 
-    libsecp256k1's recoverable parse accepts a zero r or s. SEC 1's range
-    is the independent side, and the DER `recovery.to_der` writes for an
-    accepted signature is one `dsa.parse_der` accepts too.
+    libsecp256k1's recoverable parse accepts a zero r or s, and refuses
+    n. SEC 1's range is the independent side, and the DER
+    `recovery.to_der` writes for an accepted signature is one
+    `dsa.parse_der` accepts too.
     """
     if refused:
         for call in (recovery.parse_compact, recovery.to_der):
