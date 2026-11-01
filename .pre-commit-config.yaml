@@ -630,7 +630,7 @@ repos:
         files: ^src/btclib_secp256k1/.*\.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.4.0
+    rev: v2.4.1
     hooks:
       - id: mypy
         # matching a sibling repository's own mypy hook, which checks its
