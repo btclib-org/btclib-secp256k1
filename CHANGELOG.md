@@ -16,6 +16,7 @@ answers a file with an empty `content` at HTTP 200, which reads as an
 empty file rather than as an error, and one file per release keeps each
 of them under it.
 
+- [v0.8.0.13](./changelog/v0.8.0.13.md)
 - [v0.8.0.12](./changelog/v0.8.0.12.md)
 - [v0.8.0.11](./changelog/v0.8.0.11.md)
 - [v0.8.0.10](./changelog/v0.8.0.10.md)
@@ -36,72 +37,79 @@ The changelog starts at v0.7.1.2. The releases before it were documented
 at release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.
 
-## v0.8.0.13
+## v0.8.0.14
 
-### One value where a list is wanted is refused
+### An ECDSA signature scalar is in [1, n-1]
 
-- **The list parameters of `create_outputs`, `pubkey_tweak_mul_sum` and
-  the `pedersen_blind_*` sums raise `TypeError`** for a bare value
-  (closes #1228, closes #1229, closes #1231).
+- **`dsa` and `recovery` refuse a zero r or s in every form, and a DER r
+  or s that is negative or not below n** (closes #1272).
 
-### `silentpayments.scan_outputs`
+### Invalid arguments never reach the illegal callback
 
-- **The label lookup is C built into the library**, and a label tweak
-  outside [1, n-1] raises `ValueError` (closes #1247, closes #1248).
+- **A test drives every public function with each invalid scalar and
+  point**, outside `zkp` (closes #1264) and in it (closes #1283).
 
-### The compiled wheels
+### Fuzzing
 
-- **They are built with hardening flags, which `check-dist` reads back**
-  (closes #1194).
+- **The key and x-only parse targets are seeded at the edges of the
+  field** (closes #1268).
 
-### cibuildwheel 4.3.1
+### libsecp256k1's own tests
 
-- **The Linux image pins move with it** (closes #1233).
+- **They run with the static Linux wheels' compiler and flags** (closes
+  #1249, closes #1269).
 
-### x86_64 macOS
+### Verifying a release
 
-- **It does not build on a pull request or a push to `main`** (closes
-  #1201).
+- **The sdist and the bill of materials are verified by repository id,
+  which a rename keeps** (closes #1256).
 
-### The secp256k1-zkp pin
+### The changelog
 
-- **It moves to `335dc1d2`, and `zkp-pin.yml` trusts the maintainer's
-  current key** (#1251).
+- **Every release but the newest has its own file under `changelog/`**
+  (closes #1267).
 
-### The suite
+### The workflows
 
-- **It runs under pytest-xdist** (closes #1180).
+- **CI moves off the compromised emSign roots** (issue
+  btclib-org/.github#1844).
 
-### Secret-free tests
+### The calls of btclib-org/.github
 
-- **`assert_secret_free` checks the refusals of secret inputs** (closes
-  #1177), and takes the shared helper's grouped-secret check (issue
-  btclib-org/.github#1697).
+- **They are pinned to a tagged commit** (issue btclib-org/.github#1870,
+  #1273, #1274).
+
+### The Windows cross build
+
+- **It installs only its compiler** (closes #1252).
+
+### cibuildwheel 4.3.5, pytest and hatchling
+
+- **The Linux image pins move with cibuildwheel** (closes #1261, closes
+  #1295).
 
 ### Dependencies
 
-- **aiohttp, virtualenv, GitPython and the CA bundle** (closes #1235; issue
-  btclib-org/.github#1824, btclib-org/.github#1835; #1240); hooks, actions
-  and the clusterfuzzlite image (#1237, #1245, #1244).
+- **mypy 2.4.1** (closes #1296); **setuptools and filelock past their
+  advisories** (issue btclib-org/.github#1849).
 
-### The organization's shared files
+### Locks, hooks and actions
 
-- **`CONTRIBUTING.md` takes the shared half** (issue
-  btclib-org/.github#1740); **`SECURITY.md` says a report easy to
-  rediscover is fixed as soon as possible** (issue btclib-org/.github#1771).
+- **pre-commit and ruff** (#1258), the hook revisions (#1286), actions
+  and the clusterfuzzlite image (#1277, #1293, #1294).
 
-### Repository guidance
+### Contributing
 
-- **`AGENTS.md` replaces `CLAUDE.md`** (issue btclib-org/.github#1808,
-  #1239).
+- **Development is LLM-based, and a contribution must be read** (issue
+  btclib-org/.github#1846); **`CONTRIBUTING.md` says how to check a
+  `.pyc`** (closes #1287, closes #1288).
 
-### `RELEASING.md` and stale comments
+### `REVIEWING.md`
 
-- **The next-version step has a four-part example** (closes #1224); stale
-  comments are corrected (closes #1225, closes #1213).
+- **It takes the shared part** (issue btclib-org/.github#1846,
+  btclib-org/.github#1904, btclib-org/.github#1919).
 
-### The hooks and workflows
+### `SECURITY.md` and the badges
 
-- **The pyroma hook builds no dependency from source** (issue
-  btclib-org/.github#1763); **`claude-review.yml` declines zizmor's
-  dangerous-triggers on `issue_comment`** (issue btclib-org/.github#1813).
+- **`SECURITY.md` links what changed since the security review** (issue
+  btclib-org/.github#1795); the version badges are blue (closes #1270).

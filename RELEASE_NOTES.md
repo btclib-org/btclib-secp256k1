@@ -5,6 +5,23 @@ release is in [CHANGELOG.md](./CHANGELOG.md) or a file it links; what
 follows is what a user has to act on and what a user gains, and it is
 what the GitHub release of a tag is generated from.
 
+## v0.8.0.14
+
+- **Breaking: `dsa` and `recovery` refuse an ECDSA signature whose r or s
+  is outside [1, n-1].** libsecp256k1 parses a zero r or s, and its DER
+  parse reads a negative r or s, or one not below n, as zero
+  (bitcoin-core/secp256k1#1981). `dsa.signature_verify` answers `False`
+  for such a signature, where it answered `True`. Every other `dsa` and
+  `recovery` function that parses a signature raises `ValueError` for
+  it, `dsa.verify` included. `dsa.normalize` and `dsa.to_compact`
+  answered a DER signature with r or s not below n as one with r or s
+  zero.
+- **Verifying the sdist and the bill of materials compares the
+  repository's id**, which a rename keeps: `gh attestation verify` takes
+  `--owner btclib-org`, and its certificate's
+  `sourceRepositoryIdentifier` is checked against the id. `SECURITY.md`
+  has the command.
+
 ## v0.8.0.13
 
 - **Breaking: a single key, tweak or blinding factor given where a list
