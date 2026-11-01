@@ -15,7 +15,7 @@ from __future__ import annotations
 from . import BytesLike, CData, ffi, keys, lib
 from ._scalar import in_range, octets, optional_entropy, scalar
 from .context import ctx
-from .dsa import serialize_der
+from .dsa import _has_zero_scalar, serialize_der
 from .keys import serialize
 
 __all__ = ["parse_compact", "recover", "serialize_compact", "sign", "to_der"]
@@ -392,9 +392,8 @@ def recover(
     Raises:
         TypeError: if the recovery id is not an int.
         ValueError: if the message hash is not 32 bytes, if the
-            signature is not 64 bytes or has r or s at or above the
-            group order, if recid is outside 0 to 3, or if no key can be
-            recovered.
+            signature is not 64 bytes or has r or s outside [1, n-1], if
+            recid is outside 0 to 3, or if no key can be recovered.
         RuntimeError: if libsecp256k1 fails to serialize the key, which
             no input can make it do.
     """
@@ -455,8 +454,8 @@ def to_der(signature_bytes: BytesLike, recid: int) -> bytes:
 
     Raises:
         TypeError: if the recovery id is not an int.
-        ValueError: if the signature is not 64 bytes or has r or s at or
-            above the group order, or if recid is outside 0 to 3.
+        ValueError: if the signature is not 64 bytes or has r or s
+            outside [1, n-1], or if recid is outside 0 to 3.
         RuntimeError: if libsecp256k1 fails to convert or serialize the
             signature, which no input can make it do.
     """
@@ -478,15 +477,18 @@ def parse_compact(signature_bytes: BytesLike, recid: int) -> CData:
 
     Raises:
         TypeError: if the recovery id is not an int.
-        ValueError: if the signature is not 64 bytes, if r or s is at or
-            above the group order, or if recid is outside 0 to 3.
+        ValueError: if the signature is not 64 bytes, if r or s is not in
+            [1, n-1], or if recid is outside 0 to 3.
     """
     signature_bytes = octets(signature_bytes, "signature", _COMPACT_SIZE)
     recid = in_range(recid, "recovery id", 3)
 
     signature = ffi.new("secp256k1_ecdsa_recoverable_signature *")
-    if not lib.secp256k1_ecdsa_recoverable_signature_parse_compact(
-        ctx, signature, signature_bytes, recid
+    # the C parse refuses r or s at or above n, and accepts a zero
+    if _has_zero_scalar(signature_bytes) or not (
+        lib.secp256k1_ecdsa_recoverable_signature_parse_compact(
+            ctx, signature, signature_bytes, recid
+        )
     ):
         raise ValueError("invalid compact signature")
     return signature

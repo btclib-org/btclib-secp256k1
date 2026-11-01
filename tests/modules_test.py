@@ -165,8 +165,9 @@ def test_recovery_invalid_inputs() -> None:
     """Every argument the recovery module bounds is refused out of range.
 
     A zero private key, a message hash that is not 32 octets, a compact
-    signature that is not 64, a recovery id outside 0..3, and a compact
-    signature whose r cannot be parsed.
+    signature that is not 64, a recovery id outside 0..3, a compact
+    signature whose r is not in [1, n-1], and one whose r is the x of no
+    point.
     """
     signature_bytes, recid = recovery.sign(msg, 7)
 
@@ -187,9 +188,13 @@ def test_recovery_invalid_inputs() -> None:
     with pytest.raises(ValueError, match="compact signature"):
         # an out of range r (and s) cannot be parsed
         recovery.recover(msg, b"\xff" * 64, 0)
-    with pytest.raises(ValueError, match="recovery failed"):
-        # a zero r parses, but no point can be recovered from it
+    with pytest.raises(ValueError, match="compact signature"):
+        # nor can a zero r
         recovery.recover(msg, b"\x00" * 64, 0)
+    with pytest.raises(ValueError, match="recovery failed"):
+        # r = 5 parses, but 5**3 + 7 is not a square mod p, so no point
+        # has 5 as its x
+        recovery.recover(msg, (5).to_bytes(32, "big") + (1).to_bytes(32, "big"), 0)
     with pytest.raises(ValueError, match="aux_rand32 must be 32 bytes"):
         recovery.sign(msg, 7, b"\x01" * 33)
 

@@ -4,8 +4,9 @@
 
 """An atheris harness over `btclib_secp256k1.dsa.parse_compact`.
 
-`parse_compact` proves two 32-byte scalars below the group order and
-hands them to `secp256k1_ecdsa_signature_parse_compact`.
+`parse_compact` hands two 32-byte scalars to
+`secp256k1_ecdsa_signature_parse_compact`, and refuses either of them
+being zero, which that call accepts.
 
 The harness reads exactly 64 octets, padded with zeros or cut, rather
 than leaving the length to the fuzzer: a fixed-size entry point refuses
@@ -13,8 +14,8 @@ any other length before it parses, and a byte-oriented fuzzer would
 spend nearly every input on that refusal.
 
 `ValueError` is what `parse_compact` answers a signature with an `r` or
-an `s` at or above the group order, and is swallowed below; anything
-else propagates as the finding it is.
+an `s` outside [1, n-1], and is swallowed below; anything else
+propagates as the finding it is.
 
 The seed corpus is the first signature of `tests/ecdsa_sig.json` as `r
 || s`.

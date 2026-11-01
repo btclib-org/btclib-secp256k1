@@ -273,7 +273,8 @@ names the commit the fork is pinned at, and Build below the flag.
 
 Every wrapper validates its arguments before calling, and what it
 validates is deliberately narrow: the boundary checks what C cannot see,
-and decides nothing else.
+and decides nothing else, but for the one check the validity bullet
+names.
 
 - **sizes are checked here, because nothing else can.** libsecp256k1
   takes bare pointers whose length is in the parameter name — `msg32`,
@@ -304,14 +305,20 @@ and decides nothing else.
   a `session` that is not a `Session` and `labels` that is not a mapping
   raise `TypeError`, not the
   `AttributeError` of the first attribute looked up on them
-- **validity is libsecp256k1's to decide, and it does.** Whether 32 bytes
-  are a scalar in `[1, n-1]` is answered by
+- **validity is libsecp256k1's to decide, but for one check.** Whether
+  32 bytes are a scalar in `[1, n-1]` is answered by
   `secp256k1_ec_seckey_verify`, and `keys.prvkey_verify` is that call, not
   a reimplementation of it. A public key becomes one by passing
   `secp256k1_ec_pubkey_parse`, a signature by
   `secp256k1_ecdsa_signature_parse_der`, a tweak by the return value of
   the function applying it; the `ValueError` names what the library
-  refused. No wrapper here knows the curve order
+  refused. No wrapper here knows the curve order.
+  One check is this package's own: `dsa` and `recovery` refuse an ECDSA
+  signature whose r or s is zero. libsecp256k1 parses a zero in both
+  forms, and its DER parse reads a negative r or s, or one not below n,
+  as zero (bitcoin-core/secp256k1#1981). A signature scalar is in
+  `[1, n-1]`, and the refusal keeps `parse_der` from returning a
+  signature other than the one it was given
 - **and a caller validating its own input gets a verdict, not an
   exception.** `keys.prvkey_verify`, `keys.pubkey_verify`,
   `xonly.pubkey_verify` and `dsa.signature_verify` are the four: the same

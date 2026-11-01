@@ -10,8 +10,9 @@ the shape a fuzzer was made for, and the one of these targets whose
 input carries lengths of its own, which is why btclib-org/.github#342
 calls it the strongest of them.
 
-`ValueError` is what `parse_der` answers a malformed signature with, and
-is swallowed below; anything else propagates as the finding it is.
+`ValueError` is what `parse_der` answers a malformed signature with, or
+one whose `r` or `s` is not in [1, n-1], and is swallowed below; anything
+else propagates as the finding it is.
 
 The seed corpus is two signatures of `tests/ecdsa_sig.json`, their
 trailing sighash octet stripped as `tests/vectors_test.py` strips it:

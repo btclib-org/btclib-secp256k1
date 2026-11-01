@@ -1392,8 +1392,9 @@ tree's prose:
 - **a new wrapper checks sizes and delegates the rest.** What the
   boundary is for is stopping a short buffer from reaching a bare
   pointer; whether the bytes are a valid key, point or signature is
-  libsecp256k1's answer to give, and an argument of the wrong size or
-  form raises rather than being padded or reinterpreted into a valid one.
+  libsecp256k1's answer to give, but for the zero r or s the README
+  refuses, and an argument of the wrong size or form raises rather than
+  being padded or reinterpreted into a valid one.
   The reasoning is in the README, under What the boundary checks
 - **warnings are errors** (`filterwarnings`), because the spread of
   interpreters this package claims turns a deprecation into a breakage
