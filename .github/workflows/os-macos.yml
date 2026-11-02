@@ -24,6 +24,7 @@ name: os-macos
 #
 # It gates no commit and no merge -- a macOS regression sits on main for at
 # most a week -- but release.yml calls it, so one cannot be published
+# over a platform this never answered for
 
 on:
   schedule:
@@ -82,12 +83,13 @@ jobs:
       # whole answer, and stopping at the first one hides the rest
       fail-fast: false
       matrix:
-        # both images, and not the newest alone: one is Apple silicon and
-        # the other Intel, and what differs between them is the
-        # architecture the vendored library and the extension are compiled
-        # for
+        # arm64 alone, the one macOS section 10 of the organization
+        # standard in btclib-org/.github supports. The static x86_64
+        # wheels a release still publishes are built and tested by
+        # test.yml, whose cibuildwheel runs the suite against each one;
+        # the dynamic x86_64 wheel build-dynamic builds runs no suite
+        # anywhere before it is published
         os:
-          - macos-26-intel
           - macos-latest
         # every interpreter this package claims. os-ubuntu.yml and
         # os-windows.yml carry the same list, so that the platform is the
