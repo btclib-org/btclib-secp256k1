@@ -1011,9 +1011,10 @@ its aggregate is a required check on a pull request, and *What gates a
 merge, and what only reports* below says why. Each is dispatchable, and all
 but `links` run locally.
 
-- `os-ubuntu`, `os-macos` and `os-windows`, the suite on both images of
-  a platform and on every interpreter, so only the row matching the
-  machine at hand reproduces. A cell is these two commands in this order —
+- `os-ubuntu`, `os-macos` and `os-windows`, the suite on the images of a
+  platform (both Linux ones, both Windows ones and the arm64 macOS one)
+  and on every interpreter, so only the row matching the machine at hand
+  reproduces. A cell is these two commands in this order —
   the suite run once against each linkage, with `--python` standing for
   the interpreter the row names:
 
@@ -1484,7 +1485,7 @@ would leave a required check `Pending`, as `REPOSITORY.md` says of
 | `codeql` | pull request, push to main, weekly | the two scanned languages |
 | `scorecard` | push to main, weekly | — |
 | `os-ubuntu` | weekly, a release | both ubuntu images × every interpreter |
-| `os-macos` | weekly, a release | both macOS images × every interpreter |
+| `os-macos` | weekly, a release | the arm64 macOS image × every interpreter |
 | `os-windows` | weekly, a release | both Windows images × every interpreter |
 | `deps-latest` | weekly | the dependencies, at the newest their bounds admit |
 | `deps-oldest` | weekly | the dependencies, at their floors |
