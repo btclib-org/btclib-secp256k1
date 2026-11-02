@@ -402,7 +402,7 @@ def test_a_path_the_branch_walked_never_held_answers_none(
     Unpacking one commit out of it would raise, the run would go red and
     no issue would open. A path upstream deleted or renamed away is not
     this case: the listing answers with the commit that removed it, an
-    ordinary tip (btclib-org/bitcoin-node-tests#150).
+    ordinary tip (btclib-org/functional-tests#150).
 
     Args:
         monkeypatch: the fixture `subprocess.run` is replaced through.
@@ -510,7 +510,7 @@ def test_a_removing_commit_is_drift_that_may_be_a_removal(
     or renamed away with the commit that removed it, which is not the
     pin: ordinary drift, reported as a change that may in fact be a
     removal rather than as `has_no_tip`
-    (btclib-org/bitcoin-node-tests#150).
+    (btclib-org/functional-tests#150).
 
     Args:
         monkeypatch: the fixture the tip lookup is replaced through.
