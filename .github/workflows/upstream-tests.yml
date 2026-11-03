@@ -11,23 +11,33 @@ name: upstream tests
 # - `precompute_ecmult` and `precompute_ecmult_gen`, whose output must
 #   match the tables in `secp256k1/src` byte for byte (issue #1269).
 #
+# It then builds the vendored secp256k1-zkp pin as a build with
+# BTCLIB_LIBSECP256K1_ZKP=true builds it, which no published wheel does,
+# and runs that pin's own `ctime_tests` under Valgrind (issue #1302).
+#
 # The build is `scripts/cffi_build.py`'s own `build_c`, run in the
 # manylinux_2_28 image `pyproject.toml` pins for each architecture. A
 # second configure then turns on upstream's test programs and
 # SECP256K1_VALGRIND, which the wheel pins OFF. Every other option and
-# flag stays as the wheel's configure left it in the CMake cache.
+# flag stays as the wheel's configure left it in the CMake cache. The
+# secp256k1-zkp build takes the same two steps, turning on `ctime_tests`
+# alone among the test programs.
 #
 # Not the wheel's library byte for byte: the second configure compiles
 # every target with -DVALGRIND, which the wheel's library is not, and
 # `tests` and `exhaustive_tests` add VERIFY.
 #
 # Left out: the macOS, Windows and musllinux wheels; the dynamic
-# `py3-none` wheels, which build on the runner; secp256k1-zkp; and every
-# compiler but the image's own. It gates nothing.
+# `py3-none` wheels, which build on the runner; every secp256k1-zkp
+# test program but `ctime_tests`; the secp256k1-zkp calls this package
+# wraps that its `ctime_tests.c` does not make,
+# `secp256k1_rangeproof_sign`, `secp256k1_rangeproof_rewind` and
+# `secp256k1_pedersen_blind_sum` among them; and every compiler but the
+# image's own. It gates nothing.
 
 on:
   workflow_dispatch:
-  # a pull request that moves the pin, or changes scripts/cffi_build.py
+  # a pull request that moves either pin, or changes scripts/cffi_build.py
   # or build-constraints.txt, whose cmake this job installs. A move of
   # the image digests in pyproject.toml is dispatched instead, as the
   # comment there says; a path here would run this on every pull request
@@ -37,6 +47,7 @@ on:
     types: [opened, reopened, synchronize, ready_for_review, closed]
     paths:
       - secp256k1
+      - secp256k1-zkp
       - scripts/cffi_build.py
       - build-constraints.txt
       - .github/workflows/upstream-tests.yml
@@ -85,7 +96,7 @@ jobs:
           EOF
 
   upstream-tests:
-    name: Run libsecp256k1's tests on ${{ matrix.arch }}
+    name: Run the vendored libraries' tests on ${{ matrix.arch }}
     needs: images
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
@@ -193,3 +204,37 @@ jobs:
       # without --error-exitcode Valgrind exits 0 whatever it finds
       - name: Run ctime_tests under Valgrind
         run: valgrind --error-exitcode=42 build/secp256k1/bin/ctime_tests
+
+      # the class scripts/cffi_build.py constructs only where the flag is
+      # true, built into build/secp256k1-zkp
+      - name: Build secp256k1-zkp as the BTCLIB_LIBSECP256K1_ZKP build does
+        env:
+          BTCLIB_LIBSECP256K1_ZKP: "true"
+        run: |
+          python - <<'EOF'
+          import pathlib
+
+          script = pathlib.Path("scripts/cffi_build.py").resolve()
+          namespace = {"__file__": str(script), "__name__": "cffi_build"}
+          exec(compile(script.read_text(encoding="utf-8"), str(script), "exec"), namespace)
+          namespace["ffi_ext_zkp"].build_c()
+          EOF
+
+      # fails where that configure no longer leaves these two OFF, as the
+      # libsecp256k1 step above does for its four
+      - name: Turn on secp256k1-zkp's ctime_tests and Valgrind, and build them
+        run: |
+          cache=build/secp256k1-zkp/CMakeCache.txt
+          for entry in SECP256K1_BUILD_CTIME_TESTS:BOOL SECP256K1_VALGRIND:STRING; do
+            if ! grep -qx "$entry=OFF" "$cache"; then
+              echo "::error::the zkp build's configure does not leave $entry=OFF"
+              exit 1
+            fi
+          done
+          cmake -S secp256k1-zkp -B build/secp256k1-zkp \
+            -DSECP256K1_BUILD_CTIME_TESTS=ON \
+            -DSECP256K1_VALGRIND=ON
+          cmake --build build/secp256k1-zkp -j "$(nproc)"
+
+      - name: Run secp256k1-zkp's ctime_tests under Valgrind
+        run: valgrind --error-exitcode=42 build/secp256k1-zkp/bin/ctime_tests
