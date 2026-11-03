@@ -132,7 +132,7 @@ jobs:
   # languages the same way, and an input for a difference none of them has would
   # be a copy in disguise (btclib-org/.github#35)
   analyze:
-    uses: btclib-org/.github/.github/workflows/reusable-codeql.yml@72e0222ef466daf096e3ac8d07e2ba59c0544b1a # v2026.10.28
+    uses: btclib-org/.github/.github/workflows/reusable-codeql.yml@7b85b373d1957dcfc1a648a21dd7233954ef410b # v2026.11.2
     # permissions do not inherit through a call, and the called workflow
     # names what it needs in its own header: security-events: write for
     # the SARIF upload, contents: read to check out the tree, and

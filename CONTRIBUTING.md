@@ -992,6 +992,17 @@ command at all, for the reason below, and nothing requires its result.
       echo "::error::the links above resolve to no page (unresolved relative path)"
       exit 1
   fi
+  served=$(mktemp -d)
+  git clone --quiet --filter=blob:none --sparse \
+      https://github.com/btclib-org/.github "$served"
+  git -C "$served" sparse-checkout set .github/scripts
+  git -C "$served" checkout --quiet \
+      "$(sed -n 's/.*reusable-docs\.yml@\([0-9a-f]*\).*/\1/p' .github/workflows/docs.yml)"
+  found=0
+  uv run --no-project --python 3.15 \
+      "$served"/.github/scripts/check_included_links.py docs/build/html || found=$?
+  rm -rf "$served"
+  test "$found" -eq 0
   ```
 
   A link myst cannot resolve renders as an anchor on the page it is
@@ -1001,6 +1012,11 @@ command at all, for the reason below, and nothing requires its result.
   file takes the build above from exit 0 to exit 1 on `myst.xref_missing`).
   That `grep` asks the same question of the pages sphinx wrote instead,
   and is what still answers for the artifact if either of those changes
+
+  `check_included_links.py` refuses a built page that links a file the
+  documentation renders at its GitHub URL instead of its page. It is
+  btclib-org/.github's: the commands above check it out at the commit
+  `docs.yml` pins, as the job does, and end non-zero where it fails
 
 The `pypi-install` workflow has no local equivalent by design: what it
 installs is what PyPI serves.

@@ -117,7 +117,7 @@ jobs:
   # more than the calling job holds, so the grant is written here rather
   # than left to the callee
   check:
-    uses: btclib-org/.github/.github/workflows/reusable-vendored-vectors.yml@72e0222ef466daf096e3ac8d07e2ba59c0544b1a # v2026.10.28
+    uses: btclib-org/.github/.github/workflows/reusable-vendored-vectors.yml@7b85b373d1957dcfc1a648a21dd7233954ef410b # v2026.11.2
     permissions:
       contents: read
       issues: write # gh issue create/edit/close, in the called workflow
