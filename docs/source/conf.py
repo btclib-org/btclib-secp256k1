@@ -200,9 +200,9 @@ class RootFileLinks(SphinxPostTransform):
                 )
                 reference.extend(node.children)
                 node.replace_self(reference)
-        # a BLOB link myst made an external reference; turned into the
-        # xref myst makes from a relative link, which its resolver then
-        # renders as it renders that one
+        # myst made each BLOB link an external reference: one naming an
+        # included file becomes the xref myst makes from a relative link,
+        # which myst's resolver then renders alike
         for node in list(self.document.findall(nodes.reference)):
             url, _, anchor = node.get("refuri", "").partition("#")
             target = url.removeprefix(BLOB)

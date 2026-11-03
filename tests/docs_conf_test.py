@@ -4,12 +4,10 @@
 
 """`RootFileLinks` in docs/source/conf.py links an included file to its page.
 
-Section 2 of the organization standard, *The documentation*, is the rule:
-a page links a file the documentation renders as that page, whether the
-link is relative or is `BLOB` plus the file's path. These tests run the
-transform on a hand-made doctree, so each case is checked whether or not
-a page of the tree holds it: a fragment, and a page other than an
-included one.
+Section 2 of the organization standard, *The documentation*, is the rule
+these tests hold `RootFileLinks` to. They run the transform on a
+hand-made doctree, so each case is checked whether or not a page of the
+tree holds it: a fragment, and a page other than an included one.
 
 Executing conf.py imports sphinx, which the `test` group carries and the
 wheel and sdist test environments do not: there the fixture skips.
@@ -55,7 +53,7 @@ def _run(conf: ModuleType, node: Any, docname: str = "readme_link") -> Any:
     Returns:
         The node in the link's place once the transform has run.
     """
-    utils = pytest.importorskip("docutils.utils")
+    utils = importlib.import_module("docutils.utils")
     document = utils.new_document("<test>")
     document.settings.env = SimpleNamespace(docname=docname)
     paragraph = conf.nodes.paragraph()
