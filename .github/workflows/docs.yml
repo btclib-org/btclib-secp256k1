@@ -88,6 +88,6 @@ jobs:
   # autodoc. This tree has no script of its own to run against the built
   # pages, so `post-build-script` is left at its default
   docs:
-    uses: btclib-org/.github/.github/workflows/reusable-docs.yml@72e0222ef466daf096e3ac8d07e2ba59c0544b1a # v2026.10.28
+    uses: btclib-org/.github/.github/workflows/reusable-docs.yml@7b85b373d1957dcfc1a648a21dd7233954ef410b # v2026.11.2
     with:
       submodules: true
