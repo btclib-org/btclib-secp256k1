@@ -248,6 +248,6 @@ downstream library's own pure python arithmetic, which made the
 packages it timed dependencies of this repository's lock — that
 library among them, and it is what depends on this package rather than
 the other way round. It lives in
-[btclib-benchmarks](https://github.com/btclib-org/btclib-benchmarks) now,
+[btclib-benchmarks](https://github.com/btclib-org/benchmarks) now,
 as `scripts/01-libsecp256k1.py`, where its comparands are what the
 project is for.

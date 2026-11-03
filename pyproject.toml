@@ -125,11 +125,11 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://btclib-secp256k1.readthedocs.io"
+homepage = "https://btclib.org/btclib-secp256k1/"
 # its own readthedocs project, matching a sibling repository's own: an
 # autodoc build of docs/source, the README included in its toctree
 # rather than left as the whole of the documentation
-documentation = "https://btclib-secp256k1.readthedocs.io"
+documentation = "https://btclib-secp256k1.readthedocs.io/"
 repository = "https://github.com/btclib-org/btclib-secp256k1"
 download = "https://github.com/btclib-org/btclib-secp256k1/releases"
 # RELEASE_NOTES.md and not CHANGELOG.md: this url is what an index puts

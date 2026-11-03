@@ -980,18 +980,19 @@ URL anywhere, and the endpoint answers 404:
 gh api repos/btclib-org/btclib-secp256k1/pages
 ```
 
-**`.homepage` names the tree's own Read the Docs project instead**, read
-back from the endpoint rather than from `pyproject.toml`'s own copy of it
-(issue btclib-org/.github#533):
+**`.homepage` is the repository's page on btclib.org**, as [section 3 of
+the organization
+standard](https://github.com/btclib-org/.github#3-pyprojecttoml-is-the-configuration)
+has it, read back from the endpoint rather than from `pyproject.toml`'s
+own copy of it:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 --jq '.homepage'
-# https://btclib-secp256k1.readthedocs.io
+# https://btclib.org/btclib-secp256k1/
 ```
 
-`[project.urls] homepage` carries the identical string: a releasing tree's
-home is its own documentation, not `btclib.org`, the sibling's project
-page the field named before.
+`[project.urls] homepage` carries the same URL. Read at
+2026-11-02T16:41:55Z.
 
 ## Read the Docs, which is btclib-secp256k1.readthedocs.io
 
