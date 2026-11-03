@@ -388,12 +388,10 @@ ignore = ["W003", "W009"]
 # `check`.
 #
 # `sphinx` resolves to more than one version in uv.lock, split by
-# `python_full_version`, and no workflow above runs it at a version other
-# than the one uv.lock resolves for the interpreter `.python-version`
-# pins. Its bound sits instead at or under the oldest version uv.lock
-# resolves for `requires-python`'s own floor: a bound above that breaks
-# the ordinary, unbounded resolution for that interpreter rather than
-# only `uv lock --resolution lowest-direct`, uv's own lock being
+# `python_full_version`. Its bound sits at or under the oldest version
+# uv.lock resolves for `requires-python`'s own floor: a bound above that
+# breaks the ordinary, unbounded resolution for that interpreter rather
+# than only `uv lock --resolution lowest-direct`, uv's own lock being
 # universal across the whole `requires-python` range regardless of which
 # group a workflow installs.
 #
@@ -444,6 +442,8 @@ test = [
     "pytest-randomly>=5.0.0",
     "pytest-xdist>=3.8.0",
     "pathspec>=1.1.1",
+    # tests/docs_conf_test.py executes docs/source/conf.py, which imports it
+    "sphinx>=8.1.3",
     # tests/secret_free_test.py, copied from btclib-org/.github, imports
     # `override` from it
     "typing_extensions>=4.4.0,<5",
