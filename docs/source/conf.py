@@ -126,22 +126,25 @@ html_theme = "furo"
 # become a second copy of it the next time a shim is added or dropped.
 # What is not shimmed is a root file no page renders, which is a fact
 # about this repository rather than a rule.
-# Those root files are written for the three places that read them
-# unrendered -- the GitHub file view, the PyPI long description, and (for
-# this repository) nothing else, there being no website served from it --
-# so a bare "SECURITY.md" is the correct spelling there, and myst resolves
-# not one of those links once the file is lifted into this tree.
+# Those root files are written for the places that read them unrendered:
+# the GitHub file view and, for README.md, the PyPI long description.
+# So a root file links another as "./SECURITY.md", which myst cannot
+# resolve once the file is lifted into this tree. README.md links it as
+# BLOB plus its path, PyPI resolving no relative link against the tree
+# (section 2 of the organization standard, Root files), and myst renders
+# that as a link to GitHub.
 #
-# What it emits instead is the reason this needs code rather than a
-# warning filter, exactly as a sibling repository's own conf.py
-# explains: a target myst cannot resolve becomes an anchor on the page
-# it is already on, href="#SECURITY.md", an id nothing has. The
+# What myst emits for a relative link is the reason this needs code
+# rather than a warning filter, exactly as a sibling repository's own
+# conf.py explains: a target myst cannot resolve becomes an anchor on the
+# page it is already on, href="#SECURITY.md", an id nothing has. The
 # transform below answers
 # each link from the repository rather than from a table that would have
 # to be kept in step with this directory: a path a *_link.md shim
-# includes becomes a reference to that page, any other path that exists
-# in the tree becomes a link to the file on GitHub, and a path that
-# exists nowhere is left to myst -- which reports it, and -W then fails.
+# includes becomes a reference to that page, whether written relative or
+# as BLOB plus the path; any other relative path that exists in the tree
+# becomes a link to the file on GitHub, and a relative path that exists
+# nowhere is left to myst -- which reports it, and -W then fails.
 
 INCLUDE = re.compile(r"^```\{include\}\s+(.+?)\s*$", re.MULTILINE)
 
@@ -164,14 +167,21 @@ BLOB = f"{PYPROJECT['project']['urls']['repository']}/blob/main/"
 
 
 class RootFileLinks(SphinxPostTransform):
-    """Resolve the repository-relative links of the included root files."""
+    """Resolve the links naming a file of this repository."""
 
     default_priority = 5
+
+    @staticmethod
+    def _to_page(node: pending_xref, target: str, anchor: str) -> None:
+        """Point a myst xref at the page rendering the included `target`."""
+        node["refdomain"] = "doc"
+        node["reftarget"] = INCLUDED[target]
+        node["reftargetid"] = anchor or None
 
     # kwargs is unused: this overrides SphinxPostTransform.run, whose
     # signature sphinx itself calls with, not this method's to narrow
     def run(self, **kwargs: Any) -> None:  # noqa: ARG002
-        """Rewrite every myst xref naming a file of this repository."""
+        """Rewrite every link naming a file of this repository."""
         for node in list(self.document.findall(pending_xref)):
             if node.get("reftype") != "myst" or node.get("refdomain") is not None:
                 continue
@@ -182,9 +192,7 @@ class RootFileLinks(SphinxPostTransform):
             if target.startswith(".."):
                 continue
             if target in INCLUDED:
-                node["refdomain"] = "doc"
-                node["reftarget"] = INCLUDED[target]
-                node["reftargetid"] = anchor or None
+                self._to_page(node, target, anchor)
             elif (ROOT / target).is_file():
                 fragment = f"#{anchor}" if anchor else ""
                 reference = nodes.reference(
@@ -192,6 +200,24 @@ class RootFileLinks(SphinxPostTransform):
                 )
                 reference.extend(node.children)
                 node.replace_self(reference)
+        # a BLOB link myst made an external reference; turned into the
+        # xref myst makes from a relative link, which its resolver then
+        # renders as it renders that one
+        for node in list(self.document.findall(nodes.reference)):
+            url, _, anchor = node.get("refuri", "").partition("#")
+            target = url.removeprefix(BLOB)
+            if target == url or target not in INCLUDED:
+                continue
+            xref = pending_xref(
+                "",
+                nodes.inline("", "", *node.children, classes=["xref", "myst"]),
+                reftype="myst",
+                refexplicit=True,
+                refdoc=self.env.docname,
+            )
+            xref.source, xref.line = node.source, node.line
+            self._to_page(xref, target, anchor)
+            node.replace_self(xref)
 
 
 def setup(app: Sphinx) -> None:
