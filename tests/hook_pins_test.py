@@ -509,10 +509,10 @@ def _pins(values: list[list[_Requirement]]) -> tuple[tuple[str, str], ...]:
 
 def _locked(name: str) -> str | None:
     """Return the version `uv.lock` resolves for `name`, or None."""
-    for package in _PACKAGES:
-        if package["name"] == name:
-            return package.get("version")
-    return None
+    return next(
+        (package.get("version") for package in _PACKAGES if package["name"] == name),
+        None,
+    )
 
 
 def _resolution_mode(lock: str) -> str:

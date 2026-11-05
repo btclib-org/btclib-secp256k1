@@ -228,7 +228,9 @@ def _signed(
         raise ValueError("invalid private key: not in [1, n-1]")
 
 
-def _grind(signature: CData, msg_bytes: bytes, prvkey_bytes: bytes) -> None:
+def _grind(  # sourcery skip: remove-redundant-slice-index
+    signature: CData, msg_bytes: bytes, prvkey_bytes: bytes
+) -> None:
     """Sign again into the same object until r is the low one.
 
     Bitcoin Core's `CKey::Sign` scheme, and it has to be that one octet
@@ -268,7 +270,8 @@ def _grind(signature: CData, msg_bytes: bytes, prvkey_bytes: bytes) -> None:
             signature libsecp256k1 has just made cannot make it fail.
     """
     # the counter goes in the first 4 octets and the other 28 stay zero,
-    # so the buffer is written into rather than rebuilt
+    # so the buffer is written into rather than rebuilt. The slice keeps
+    # its 0: a cffi array refuses a slice with no start
     entropy = ffi.new("unsigned char[32]")
     counter = 0
     while not _is_low_r_(signature):

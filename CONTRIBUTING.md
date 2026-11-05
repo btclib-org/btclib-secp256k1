@@ -436,10 +436,12 @@ from somewhere else on purpose:
   pins exactly, from the index.
 
 The gates below decide every merge, together with `lint / Dependency
-review`, which has no command, and `lint / Sign-off`, whose command
-*Running what CI runs* gives. `wheel-reproducibility` decides a merge
-that touches what its builds read, its command being among the sentinels
-further down. Each command below is close to the one its workflow runs.
+review`, which has no command, `lint / Sign-off`, whose command
+*Running what CI runs* gives, and `sourcery / Sourcery`, a pull request's
+check and not a local gate, as section 10 of the organization standard
+says. `wheel-reproducibility` decides a merge that touches what its builds
+read, its command being among the sentinels further down. Each command
+below is close to the one its workflow runs.
 The second is `test.yml`'s `Run the suite against a static build` step,
 which also sets `COVERAGE_FILE`:
 
@@ -1473,11 +1475,13 @@ hand.
 check discovered by CI after a push is a check in the wrong place.
 
 The aggregate of `test`, the `lint` workflow's jobs, the
-documentation build and the aggregate of `wheel-reproducibility` are the
-required checks, and `REPOSITORY.md` reads that rule back from the endpoint
-rather than restating it. `release` reuses the first three.
-`wheel-reproducibility` is among them because a pull request can turn it red
-by changing the build, and `REPOSITORY.md` says why its trigger lets it be.
+documentation build, the aggregate of `wheel-reproducibility` and the job of
+`sourcery.yml` are the required checks, and `REPOSITORY.md` reads that rule
+back from the endpoint rather than restating it. `release` reuses the first
+three. `wheel-reproducibility` is among them because a pull request can turn
+it red by changing the build, and `REPOSITORY.md` says why its trigger lets
+it be. Section 10 of the organization standard says when a tree requires
+`sourcery`.
 Everything
 else reports: a sentinel opens no issue when it fails, `vendored-vectors`
 excepted for the reason the header of the workflow it calls gives,
@@ -1497,6 +1501,7 @@ would leave a required check `Pending`, as `REPOSITORY.md` says of
 | --- | --- | --- |
 | `test` | pull request, push | the wheels, those of x86_64 macOS at a release and a dispatch only, the sdist, one suite cell |
 | `lint`, `docs` | pull request, push | — |
+| `sourcery` | pull request | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
 | `api-break` | pull request | — |
 | `verified-signatures` | push to main | — |
@@ -1519,7 +1524,7 @@ would leave a required check `Pending`, as `REPOSITORY.md` says of
 
 <!-- markdownlint-enable MD013 -->
 
-The first two rows and `wheel-reproducibility` are what a merge waits for,
+The first three rows and `wheel-reproducibility` are what a merge waits for,
 by the rule `REPOSITORY.md` reads back from the endpoint, and the suite cell
 among them is one: `ubuntu-latest` on the interpreter
 `.python-version` pins, measured for coverage. Which day each of the rest
@@ -1580,10 +1585,11 @@ Section 10 of the organization standard in `btclib-org/.github` has the
 reason and when it ends.
 
 Every workflow here takes `workflow_dispatch`, the gates included, except
-`claude-review` and `scorecard`, and for the three platform workflows it is
-the only way to ask about a branch at all. Both of the jobs
+`claude-review`, `sourcery` and `scorecard`, and for the three platform
+workflows it is the only way to ask about a branch at all. Both of the jobs
 `claude-review.yml` calls into read the pull request or the comment that
-triggered them, so a manual run would start with nothing to read.
+triggered them, and `sourcery.yml`'s reads the pull request's files, so a
+manual run would start with nothing to read.
 `scorecard`'s triggers are its action's rather than this organization's:
 `ossf/scorecard-action`'s own README names
 push and schedule on the default branch as what it supports, and calls

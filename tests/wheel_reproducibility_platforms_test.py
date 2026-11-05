@@ -120,8 +120,7 @@ def _job_body(text: str, name: str) -> str:
 
 def _os_list(body: str) -> tuple[str, ...]:
     """Return the `os:` list a job body names, in order, in either shape."""
-    block = _OS_LIST.search(body)
-    if block:
+    if block := _OS_LIST.search(body):
         return tuple(line.strip().lstrip("- ") for line in block["block"].splitlines())
     inline = _OS_INLINE.search(body)
     assert inline, "no os: list in this job, or not in either expected shape"

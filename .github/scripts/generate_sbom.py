@@ -354,8 +354,7 @@ def component(readings: list[Reading]) -> dict[str, Any]:
     # deduplicated and in the order the metadata declares them, a
     # reference repeated once per line being noise rather than a second
     # place to look
-    urls = dict.fromkeys(entry.url for entry in readings if entry.url is not None)
-    if urls:
+    if urls := dict.fromkeys(entry.url for entry in readings if entry.url is not None):
         result["externalReferences"] = [{"type": "vcs", "url": each} for each in urls]
     return result
 
@@ -707,8 +706,7 @@ def build_wheel_sbom(
         entry["properties"][0]["value"]: entry
         for entry in submodule_components(repo_root)
     }
-    unknown = sorted(set(compiled) - set(vendored))
-    if unknown:
+    if unknown := sorted(set(compiled) - set(vendored)):
         msg = f"{unknown} compiled, and not declared in .gitmodules"
         raise SystemExit(msg)
     components = sorted(

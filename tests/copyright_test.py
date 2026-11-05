@@ -48,7 +48,7 @@ def _license_holder() -> str:
     text = (_ROOT / "LICENSE").read_text(encoding="utf-8")
     match = re.search(_HOLDER_RE, text)
     assert match, f"LICENSE has no 'Copyright (c) holder' line: {text[:80]!r}"
-    return match.group(1)
+    return match[1]
 
 
 def _pyproject_author() -> str:

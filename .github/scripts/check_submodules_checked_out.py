@@ -107,8 +107,7 @@ def main() -> int:
         print(".gitmodules names no submodule", file=sys.stderr)
         return 1
 
-    missing = [path for path in paths if not checked_out(_ROOT / path)]
-    if missing:
+    if missing := [path for path in paths if not checked_out(_ROOT / path)]:
         for path in missing:
             print(
                 f"{path} is not checked out: where it is configured active"

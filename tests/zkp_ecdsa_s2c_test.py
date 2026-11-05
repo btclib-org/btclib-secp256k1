@@ -88,6 +88,10 @@ class _FakeLib:
     pattern instead -- enough for the caller's own post-processing (a
     `bytes` of the right length) to run, and nothing that could be
     mistaken for a real commitment.
+
+    A method that slices a cffi array from `0` skips Sourcery's
+    `remove-redundant-slice-index` on its `def` line: the array refuses
+    a slice with no start.
     """
 
     def secp256k1_context_create(self, flags: int) -> object:  # noqa: ARG002
@@ -101,7 +105,7 @@ class _FakeLib:
     def secp256k1_context_randomize(self, ctx: object, seed32: bytes) -> int:  # noqa: ARG002
         return 1
 
-    def secp256k1_ec_pubkey_parse(
+    def secp256k1_ec_pubkey_parse(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         pubkey: Any,
@@ -112,10 +116,10 @@ class _FakeLib:
         # honoring one would write past this fake's own 64-byte `data`
         if inputlen != 33 or input_ == _INVALID_PUBKEY:
             return 0
-        pubkey.data[0:inputlen] = input_[0:inputlen]
+        pubkey.data[0:inputlen] = input_[:inputlen]
         return 1
 
-    def secp256k1_ecdsa_signature_parse_compact(
+    def secp256k1_ecdsa_signature_parse_compact(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         signature: Any,
@@ -126,7 +130,7 @@ class _FakeLib:
         signature.data[0:64] = input64
         return 1
 
-    def secp256k1_ecdsa_signature_serialize_compact(
+    def secp256k1_ecdsa_signature_serialize_compact(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         output64: Any,
@@ -135,7 +139,7 @@ class _FakeLib:
         output64[0:64] = bytes(signature.data[0:64])
         return 1
 
-    def secp256k1_ecdsa_s2c_opening_parse(
+    def secp256k1_ecdsa_s2c_opening_parse(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         opening: Any,
@@ -146,7 +150,7 @@ class _FakeLib:
         opening.data[0:33] = input33
         return 1
 
-    def secp256k1_ecdsa_s2c_opening_serialize(
+    def secp256k1_ecdsa_s2c_opening_serialize(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         output33: Any,
@@ -155,7 +159,7 @@ class _FakeLib:
         output33[0:33] = bytes(opening.data[0:33])
         return 1
 
-    def secp256k1_ecdsa_s2c_sign(  # noqa: PLR0913, PLR0917
+    def secp256k1_ecdsa_s2c_sign(  # noqa: PLR0913, PLR0917  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         signature: Any,
@@ -183,7 +187,7 @@ class _FakeLib:
         # and True is everything else, sign()'s own check included
         return 0 if data32 == _MISMATCHED_S2C_DATA else 1
 
-    def secp256k1_ec_pubkey_create(
+    def secp256k1_ec_pubkey_create(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         pubkey: Any,
@@ -207,7 +211,7 @@ class _FakeLib:
         # needs one to
         return 1
 
-    def secp256k1_ecdsa_anti_exfil_host_commit(
+    def secp256k1_ecdsa_anti_exfil_host_commit(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         output32: Any,
@@ -235,7 +239,7 @@ class _FakeLib:
         opening.data[1:33] = b"\x04" * 32
         return 1
 
-    def secp256k1_anti_exfil_sign(
+    def secp256k1_anti_exfil_sign(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         signature: Any,

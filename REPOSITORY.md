@@ -77,11 +77,19 @@ gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
 | `wheel-reproducibility: every job passed` | `wheel-reproducibility.yml`, aggregate over its jobs |
 | `lint / Dependency review` | `lint.yml`, calling `reusable-lint.yml` |
 | `lint / Sign-off` | `lint.yml`, calling `reusable-lint.yml` |
+| `sourcery / Sourcery` | `sourcery.yml`, calling `reusable-sourcery.yml` |
 
 <!-- markdownlint-enable MD013 -->
 
+The command answers these checks in this order, each with `app_id` 15368,
+and `strict` false. Read at 2026-11-05T07:17:38Z.
+
 A merge waits for all of these checks unless an administrator lands it
 with `--admin`: `enforce_admins` is off (*Branch protection*).
+
+[Section 10 of the
+standard](https://github.com/btclib-org/.github#the-set-and-its-cadence)
+says when a tree requires `sourcery / Sourcery`.
 
 `codeql: every job passed` is not among them, and its absence is a
 decision rather than an impossibility: `codeql.yml` runs on a pull
@@ -118,17 +126,19 @@ build outside the required checks entirely. It moved from `lint.yml` to
 renaming anything — a context is matched by name, not by the workflow
 that reported it, so moving a job is free and renaming one is not.
 
-`lint.yml`'s `lint` job and `docs.yml`'s `docs` job contribute no name of
-their own, a shape `test: every job passed` does not take: each job's
-whole body is a call to a `btclib-org/.github` reusable workflow, so the
-context joins the calling job's id to the called job's own name.
-`lint.yml`'s `lint` job calls `reusable-lint.yml`, whose own job is still
-named `Lint and type-check`, producing `lint / Lint and type-check`, and
-whose `Dependency review` and `Sign-off` jobs produce
-`lint / Dependency review` and `lint / Sign-off`;
+`lint.yml`'s `lint` job, `docs.yml`'s `docs` job and `sourcery.yml`'s
+`sourcery` job contribute no name of their own, a shape
+`test: every job passed` does not take: each job's whole body is a call to
+a `btclib-org/.github` reusable workflow, so the context joins the calling
+job's id to the called job's own name. `lint.yml`'s `lint` job calls
+`reusable-lint.yml`, whose own job is still named `Lint and type-check`,
+producing `lint / Lint and type-check`, and whose `Dependency review` and
+`Sign-off` jobs produce `lint / Dependency review` and `lint / Sign-off`;
 `docs.yml`'s `docs` job calls `reusable-docs.yml` the same way, whose own
 job is still named `Build the documentation`, producing
 `docs / Build the documentation` (issue btclib-org/.github#35).
+`sourcery.yml`'s `sourcery` job calls `reusable-sourcery.yml`, whose job
+is named `Sourcery`, producing `sourcery / Sourcery`.
 
 `pre-commit.ci` is not in the rule either, and nothing here makes it
 one. It runs the hooks of `.pre-commit-config.yaml` from a checkout of
@@ -167,7 +177,9 @@ succeeded or was skipped, failure otherwise.
 A check joins the rule, by the `PATCH` below, only once the workflow that
 produces it has landed on `main`: a pull request whose run predates the
 landing produces no such context, and a rule naming it would hold that
-pull request `Pending` until a push to it.
+pull request `Pending` until a push to it. Section 10 of the standard
+orders `sourcery / Sourcery` otherwise: the protection gains it before its
+workflow lands.
 
 A check can be bound to the app that produces it — `checks` with an
 `app_id` rather than the bare `contexts` list — so that nothing else can
@@ -303,6 +315,8 @@ gh api "repos/btclib-org/btclib-secp256k1/$sub" -X PATCH -F strict=false \
   -F 'checks[][context]=lint / Dependency review' \
   -F 'checks[][app_id]=15368' \
   -F 'checks[][context]=lint / Sign-off' \
+  -F 'checks[][app_id]=15368' \
+  -F 'checks[][context]=sourcery / Sourcery' \
   -F 'checks[][app_id]=15368'
 ```
 

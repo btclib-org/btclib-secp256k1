@@ -670,8 +670,7 @@ def compare_one_platform(platform: Path, *, across_toolchains: bool) -> list[str
     complaints: list[str] = []
     wheels: dict[str, list[Path]] = {}
     for image in sorted(path for path in platform.iterdir() if path.is_dir()):
-        found = sorted(image.glob("*.whl"))
-        if found:
+        if found := sorted(image.glob("*.whl")):
             wheels[image.name] = found
         else:
             complaints.append(f"{image.name} left no wheel")
@@ -730,8 +729,9 @@ def compare_across_images(root: Path, *, across_toolchains: bool = False) -> int
     )
     failed = False
     for platform in platforms:
-        complaints = compare_one_platform(platform, across_toolchains=across_toolchains)
-        if complaints:
+        if complaints := compare_one_platform(
+            platform, across_toolchains=across_toolchains
+        ):
             failed = True
             for complaint in complaints:
                 print(f"::error::{platform.name}: {complaint}", file=sys.stderr)
