@@ -8,12 +8,16 @@ name: codeql
 # is decided and it reads the endpoint rather than this file, and the
 # aggregate at the end of this file is the name such a rule would hold.
 #
-# It reproduces what the setting held rather than inventing a configuration,
-# which is what keeps the alert history continuous. Read from the API before
-# this file was written:
+# The languages and the schedule reproduce what the setting held rather
+# than inventing a configuration, which is what keeps the alert history
+# continuous. Read from the API before this file was written:
 #
 #     gh api repos/{owner}/{repo}/code-scanning/default-setup
 #     # languages: actions, python; query_suite: default; schedule: weekly
+#
+# The query suite is not default setup's: this tree passes no `queries`,
+# so the analysis runs the called workflow's default, security-extended,
+# which btclib-org/.github#2032 chose.
 #
 # The one thing that cannot be reproduced is the analysis *key*: default
 # setup's runs are `dynamic/github-code-scanning/codeql:analyze`, and an
@@ -132,7 +136,7 @@ jobs:
   # languages the same way, and an input for a difference none of them has would
   # be a copy in disguise (btclib-org/.github#35)
   analyze:
-    uses: btclib-org/.github/.github/workflows/reusable-codeql.yml@7b85b373d1957dcfc1a648a21dd7233954ef410b # v2026.11.2
+    uses: btclib-org/.github/.github/workflows/reusable-codeql.yml@5be4b0fbb5231cff001a3ee0eaa8f7d82bffef11 # v2026.11.5
     # permissions do not inherit through a call, and the called workflow
     # names what it needs in its own header: security-events: write for
     # the SARIF upload, contents: read to check out the tree, and

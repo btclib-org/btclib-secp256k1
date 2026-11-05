@@ -452,6 +452,10 @@ uv run --locked --no-default-groups --group docs \
     sphinx-build -n -W -b html docs/source docs/build/html
 ```
 
+The documentation gate also runs the checks of the built pages that
+*Running what CI runs* gives under `docs / Build the documentation`,
+`check_included_links.py` among them.
+
 The suite runs under pytest-xdist, `-n auto --dist worksteal` sitting in
 `addopts` beside `--cov`. `-n 0` runs it in the one process, and `-n 2`
 is the pool to ask for on a shared machine. `pyproject.toml`'s `addopts`

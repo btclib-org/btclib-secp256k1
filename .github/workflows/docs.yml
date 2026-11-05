@@ -7,9 +7,11 @@ name: docs
 # a docstring, or a module sphinx cannot import because the extension did not
 # compile, would surface after the merge and somewhere else.
 #
-# The build itself, the checkout and the unresolved-link check are
-# btclib-org/.github's: reusable-docs.yml, called at a tagged commit (section 10
-# of btclib-org/.github's README.md). What stays here is the trigger, the
+# The build itself, the checkout, the unresolved-link check and
+# check_included_links.py, which refuses a page linking a file the docs
+# render at its /blob/main/ address, are btclib-org/.github's:
+# reusable-docs.yml, called at a tagged commit (section 10 of
+# btclib-org/.github's README.md). What stays here is the trigger, the
 # concurrency group and the submodule this tree's own build needs that the
 # standard asks of nobody else (btclib-org/.github#35)
 
@@ -76,18 +78,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # the checkout, the uv setup, the build and the unresolved-link check
-  # are btclib-org/.github's; the draft and closed declines are the called
-  # workflow's own, reading github.event.pull_request.draft and
-  # github.event.action off this caller's trigger. Every automodule
-  # directive here imports this package, which compiles the vendored
-  # libsecp256k1 out of the checked-out submodule to do that, so
-  # `submodules` is passed rather than left at its default -- measured by
-  # running the build against an unregistered submodule directory, which
-  # fails CMake on the missing CMakeLists.txt before sphinx ever gets to
-  # autodoc. This tree has no script of its own to run against the built
-  # pages, so `post-build-script` is left at its default
+  # the checkout, the uv setup, the build, the unresolved-link check and
+  # the included-links check are btclib-org/.github's; the draft and
+  # closed declines are the called workflow's own, reading
+  # github.event.pull_request.draft and github.event.action off this
+  # caller's trigger. Every automodule directive here imports this
+  # package, which compiles the vendored libsecp256k1 out of the
+  # checked-out submodule to do that, so `submodules` is passed rather
+  # than left at its default -- measured by running the build against an
+  # unregistered submodule directory, which fails CMake on the missing
+  # CMakeLists.txt before sphinx ever gets to autodoc. This tree has no
+  # script of its own to run against the built pages, so
+  # `post-build-script` is left at its default
   docs:
-    uses: btclib-org/.github/.github/workflows/reusable-docs.yml@7b85b373d1957dcfc1a648a21dd7233954ef410b # v2026.11.2
+    uses: btclib-org/.github/.github/workflows/reusable-docs.yml@5be4b0fbb5231cff001a3ee0eaa8f7d82bffef11 # v2026.11.5
     with:
       submodules: true
