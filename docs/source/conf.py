@@ -39,7 +39,7 @@ project_copyright = re.search(
     r"^Copyright \(c\) (.+)$",
     (ROOT / "LICENSE").read_text(encoding="utf-8"),
     re.MULTILINE,
-).group(1)
+)[1]
 author = "The btclib developers"
 # read from pyproject.toml, the one place the version is declared, rather
 # than from importlib.metadata, so the value does not depend on whether

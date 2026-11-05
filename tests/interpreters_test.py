@@ -410,8 +410,7 @@ def _gate_interpreters() -> tuple[str, ...]:
     jobs = _jobs()
     closure = _gate_closure(jobs)
     found = {v for key in closure for v in _INTERPRETER.findall(jobs[key])}
-    cibuildwheel_jobs = [key for key in closure if "cibuildwheel" in jobs[key]]
-    if cibuildwheel_jobs:
+    if [key for key in closure if "cibuildwheel" in jobs[key]]:
         found.update(_cibuildwheel_free_threaded_interpreters())
     return tuple(sorted(found))
 

@@ -1117,7 +1117,7 @@ def test_main_cross_windows_compares_what_no_tool_repaired(
 
     assert check.main(["prog", "--cross-windows"]) == 0
 
-    assert record == []
+    assert not record
     assert "two builds of this commit agree" in capsys.readouterr().out
 
 

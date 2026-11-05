@@ -700,8 +700,7 @@ def test_the_table_is_whole() -> None:
     """
     expected = {}
     for name, function in public_functions().items():
-        parameters = octets_or_integers(function)
-        if parameters:
+        if parameters := octets_or_integers(function):
             expected[name] = parameters
     listed = {name: set(arguments) for name, (_, arguments) in TABLE.items()}
     assert listed == expected

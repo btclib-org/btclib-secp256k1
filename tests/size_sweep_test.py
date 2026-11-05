@@ -338,7 +338,7 @@ def side(real_name: str, value: Any, size: int) -> str | None:
         None where the argument is right or is something else.
     """
     if real_name == "scalar" and type(value) is int:
-        return "past" if not 0 <= value < 2**256 else None
+        return None if 0 <= value < 2**256 else "past"
     if not isinstance(value, bytes) or len(value) == size:
         return None
     return "short" if len(value) < size else "long"
@@ -546,9 +546,9 @@ def test_every_entry_accepts_its_own_arguments() -> None:
     Without it a table entry that is broken refuses every variant, and
     the sweep reads that as a check working.
     """
-    assert [
+    assert not [
         name for name, call, args, kwargs in SWEPT if refused(call, args, kwargs)
-    ] == []
+    ]
 
 
 def test_no_module_calls_a_check_through_its_module() -> None:
@@ -565,7 +565,7 @@ def test_no_module_calls_a_check_through_its_module() -> None:
             inspect.getsource(module),
         )
     ]
-    assert spelled == []
+    assert not spelled
 
 
 def test_the_sweep_is_whole() -> None:

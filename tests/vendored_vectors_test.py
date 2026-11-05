@@ -712,7 +712,7 @@ def test_a_dry_run_prints_the_finding_and_touches_no_issue(
     assert f"BEHIND: {_AT_THE_TIP}" in out
     assert _TIP[:12] in out
     assert "SKIPPED: `tests/no_block.csv` (no fenced block)" in out
-    assert reported == []
+    assert not reported
 
 
 def test_a_path_with_no_tip_is_printed_as_no_commit_rather_than_as_behind(
@@ -1339,7 +1339,7 @@ def test_every_vendored_file_the_readme_names_is_the_blob_it_records(
     wrong = [
         pin.local for pin in pins if check._git_blob(Path(pin.local)) != pin.expected
     ]
-    assert wrong == []
+    assert not wrong
 
 
 def test_every_file_the_readme_names_is_marked_minus_text() -> None:
@@ -1354,7 +1354,7 @@ def test_every_file_the_readme_names_is_marked_minus_text() -> None:
     marked = (_ROOT / ".gitattributes").read_text("utf-8").splitlines()
 
     assert pins
-    assert [pin.local for pin in pins if f"{pin.local} -text" not in marked] == []
+    assert not [pin.local for pin in pins if f"{pin.local} -text" not in marked]
 
 
 def _failing_gh(

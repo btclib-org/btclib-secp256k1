@@ -55,7 +55,12 @@ def _octets(value: Any) -> bytes:
 
 
 class _FakeLib:
-    """Just enough of libsecp256k1-zkp to drive `ecdsa_adaptor.py`."""
+    """Just enough of libsecp256k1-zkp to drive `ecdsa_adaptor.py`.
+
+    A method that slices a cffi array from `0` skips Sourcery's
+    `remove-redundant-slice-index` on its `def` line: the array refuses
+    a slice with no start.
+    """
 
     def __init__(self) -> None:
         self.recover_buffers: list[Any] = []
@@ -72,7 +77,7 @@ class _FakeLib:
     def secp256k1_context_randomize(self, ctx: object, seed32: bytes) -> int:  # noqa: ARG002
         return 1
 
-    def secp256k1_ec_pubkey_parse(
+    def secp256k1_ec_pubkey_parse(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         pubkey: Any,
@@ -81,10 +86,10 @@ class _FakeLib:
     ) -> int:
         if inputlen != 33 or input_ == _INVALID_PUBKEY:
             return 0
-        pubkey.data[0:inputlen] = input_[0:inputlen]
+        pubkey.data[0:inputlen] = input_[:inputlen]
         return 1
 
-    def secp256k1_ec_pubkey_create(
+    def secp256k1_ec_pubkey_create(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         pubkey: Any,
@@ -93,7 +98,7 @@ class _FakeLib:
         pubkey.data[0:32] = seckey
         return 1
 
-    def secp256k1_ecdsa_signature_parse_compact(
+    def secp256k1_ecdsa_signature_parse_compact(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         signature: Any,
@@ -104,7 +109,7 @@ class _FakeLib:
         signature.data[0:64] = input64
         return 1
 
-    def secp256k1_ecdsa_signature_serialize_compact(
+    def secp256k1_ecdsa_signature_serialize_compact(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         output64: Any,
@@ -113,7 +118,7 @@ class _FakeLib:
         output64[0:64] = bytes(signature.data[0:64])
         return 1
 
-    def secp256k1_ecdsa_adaptor_encrypt(  # noqa: PLR0913, PLR0917
+    def secp256k1_ecdsa_adaptor_encrypt(  # noqa: PLR0913, PLR0917  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         adaptor_sig162: Any,
@@ -139,7 +144,7 @@ class _FakeLib:
     ) -> int:
         return 0 if _octets(adaptor_sig162) == _INVALID_ADAPTOR_SIGNATURE else 1
 
-    def secp256k1_ecdsa_adaptor_decrypt(
+    def secp256k1_ecdsa_adaptor_decrypt(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         signature: Any,
@@ -151,7 +156,7 @@ class _FakeLib:
         signature.data[0:64] = b"\x05" * 64
         return 1
 
-    def secp256k1_ecdsa_adaptor_recover(
+    def secp256k1_ecdsa_adaptor_recover(  # sourcery skip: remove-redundant-slice-index
         self,
         ctx: object,  # noqa: ARG002
         deckey32: Any,

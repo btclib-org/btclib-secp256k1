@@ -155,7 +155,7 @@ class _FakeLib:
             bytes([0x08])
             + bytes(blind[:16])
             + value.to_bytes(8, "big")
-            + bytes(_fake_ffi.buffer(gen.data)[0:8])
+            + bytes(_fake_ffi.buffer(gen.data)[:8])
         )
         _put(commit, payload)
         return 1
@@ -876,8 +876,8 @@ def test_pedersen_blind_generator_blind_sum_refuses_a_bare_list(
         "values": [5] * 32,
         "generator_blinds": [bytes(32)] * 32,
         "blinding_factors": [bytes(32)] * 32,
+        which: bare,
     }
-    lists[which] = bare
     with pytest.raises(TypeError, match=f"the {which} must be a sequence of values"):
         g.pedersen_blind_generator_blind_sum(
             lists["values"], lists["generator_blinds"], lists["blinding_factors"], 16
