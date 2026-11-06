@@ -217,21 +217,17 @@ nothing here those vectors could be compared against.
 ```text
 repo    bitcoin/bips
 path    bip-0352/send_and_receive_test_vectors.json
-commit  c2ac36f48f71615984087fd151f410457edfed72  2026-04-16
-blob    3a189757ddbc90e5ec538d643f7ac238a51704e8
+commit  3c68d3f3a19b9ed3ee1e9129147541a15f1603cb  2026-10-25
+blob    b915113acc8130bb0e7347fa4485af25906123bd
 pulled  2026-08-11
 behind  0 revisions; that commit is the tip of the path
 ```
 
-Verdict: **identical**. Every case, both directions of each. It is also
-the blob libsecp256k1 vendors, at
-`src/modules/silentpayments/bip352_send_and_receive_test_vectors.json`
-in the submodule: byte for byte the same file, which is worth saying
-because it makes the copy here look redundant and it is not. The sdist
-suite job checks out without `submodules: recursive` -- what it exercises
-is an install of the published sdist, which carries the vendored sources
-of its own -- so a test reading the submodule would silently not run
-there.
+Verdict: **identical**. Every case, both directions of each. It is not
+the file libsecp256k1 vendors in the `secp256k1` submodule, at
+`src/modules/silentpayments/bip352_send_and_receive_test_vectors.json`:
+that copy is the blob at `c2ac36f`, the revision before this pin, and
+lacks the last case here, a taproot key-path spend with an annex.
 
 Read in part, and the part is a decision rather than a limit. Each case
 carries its transaction as scriptSig, witness and prevout scriptPubKey
