@@ -313,6 +313,19 @@ These are known and inherent, not vulnerabilities:
     is where a secret scalar belongs. `keys.prvkey_tweak_mul` does
     not share this: it multiplies two scalars mod n through
     `secp256k1_ec_seckey_tweak_mul`, a different call
+- **secp256k1-zkp calls Valgrind reports as not constant time:** it
+    finds a branch or a memory access that depends on their secrets, in
+    `tests/zkp_ctime_tests.c` as `upstream-tests.yml` runs it.
+    `zkp.generator.pedersen_blind_sum` and
+    `zkp.generator.pedersen_blind_generator_blind_sum` return early when
+    a secret blinding factor is not below the group order.
+    `zkp.generator.generate_blinded` normalizes the blinded generator it
+    outputs in variable time. `zkp.rangeproof.sign` derives the proof's
+    shape and its ring indices from the value, and the forged ring
+    members are computed in variable time from the nonce, as a comment
+    in secp256k1-zkp's Borromean signer says.
+    `zkp.rangeproof.rewind` decodes the value from the nonce in variable
+    time
 - **the entry side takes one form that is not a copy**: where a scalar is
     accepted, so is a cffi array of 32 octets —
     `ffi.new("unsigned char[32]", ...)`, or any other item type an octet
