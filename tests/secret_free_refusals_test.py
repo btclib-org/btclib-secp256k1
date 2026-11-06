@@ -647,8 +647,8 @@ SCALARS: dict[str, tuple[str, Callable[[Any], object]]] = {
 }
 
 #: The pairs that are no refusal: `prvkey_verify` answers a verdict for a
-#: value of the wrong size or range, `tweak_add_check` for a tweak at the
-#: order, and a scan with a label tweak at the order finds nothing.
+#: value of the wrong size or range, and `tweak_add_check` for a tweak at
+#: the order.
 VERDICTS = {
     ("keys.prvkey_verify", wrong)
     for wrong in (
@@ -662,7 +662,6 @@ VERDICTS = {
     )
 } | {
     ("xonly.tweak_add_check", "at the order"),
-    ("silentpayments.scan_outputs labels", "at the order"),
 }
 
 #: What the refusal of a key or a tweak at the order says, by entry point. A
@@ -704,6 +703,7 @@ ORDER = {
     "musig.KeyAggCache.pubkey_xonly_tweak_add": TWEAKED,
     "silentpayments.create_outputs prvkeys": "silent payment output creation failed",
     "silentpayments.create_outputs taproot_prvkeys": KEY,
+    "silentpayments.scan_outputs labels": "the label tweak must be in [1, n-1]",
     "silentpayments.label": "invalid scan private key",
     "silentpayments.scan_outputs scan_prvkey": "silent payment scanning failed",
 }
