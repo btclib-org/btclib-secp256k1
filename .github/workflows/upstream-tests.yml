@@ -257,26 +257,21 @@ jobs:
             -o build/secp256k1-zkp/bin/zkp_ctime_tests tests/zkp_ctime_tests.c \
             build/secp256k1-zkp/lib/libsecp256k1.a
 
-      # the control branches on a secret: a run that does not exit 42 is
-      # one where Valgrind would not have reported the calls below either
-      - name: Check that Valgrind reports the harness's control
-        run: |
-          status=0
-          valgrind --error-exitcode=42 build/secp256k1-zkp/bin/zkp_ctime_tests control || status=$?
-          if [ "$status" -ne 42 ]; then
-            echo "::error::the control exited $status, not 42"
-            exit 1
-          fi
-
       # one Valgrind run per call, each held to the outcome SECURITY.md's
       # "Limitations of the binding layer" records for it: `reported` for
-      # a call it names as not constant time, `clean` otherwise.
-      # A call whose outcome moves fails the step, naming the call, so
-      # that the record and this list are updated together
-      - name: Run each call of tests/zkp_ctime_tests.c under Valgrind
+      # a call it names as not constant time, `clean` otherwise. The
+      # control, first, branches on a secret and has to be reported.
+      # --error-exitcode fires on every kind of memcheck error, so a
+      # `reported` run passes only where the kinds its XML log names are
+      # UninitCondition and UninitValue, the two a secret marked undefined
+      # raises, and no other. A call whose outcome moves fails the step,
+      # naming the call, so that the record and this list are updated
+      # together
+      - name: Run the control and each call of tests/zkp_ctime_tests.c under Valgrind
         run: |
           failed=0
-          for entry in anti_exfil_sign:clean \
+          for entry in control:reported \
+            anti_exfil_sign:clean \
             generator_generate_blinded:reported \
             pedersen_blind_sum:reported \
             pedersen_blind_generator_blind_sum:reported \
@@ -284,22 +279,47 @@ jobs:
             rangeproof_rewind:reported; do
             call=${entry%%:*}
             want=${entry#*:}
+            xml="$RUNNER_TEMP/valgrind-$call.xml"
             echo "::group::$call, recorded $want"
             status=0
-            valgrind --error-exitcode=42 build/secp256k1-zkp/bin/zkp_ctime_tests "$call" || status=$?
+            valgrind --error-exitcode=42 --xml=yes --xml-file="$xml" \
+              build/secp256k1-zkp/bin/zkp_ctime_tests "$call" || status=$?
+            cat "$xml"
             echo "::endgroup::"
-            case "$want:$status" in
-              clean:0 | reported:42)
-                echo "$call: $want, as recorded" ;;
-              reported:0)
-                echo "::error::$call is clean under Valgrind: update SECURITY.md's record and this list"
-                failed=1 ;;
-              clean:42)
-                echo "::error::Valgrind reports $call, which SECURITY.md records as clean"
-                failed=1 ;;
-              *)
-                echo "::error::$call exited $status"
-                failed=1 ;;
-            esac
+            uninit=no
+            other=
+            kinds=$(sed -n 's|.*<kind>\(.*\)</kind>.*|\1|p' "$xml" | sort -u)
+            while read -r kind; do
+              case "$kind" in
+                "") ;;
+                UninitCondition | UninitValue) uninit=yes ;;
+                *) other="$other $kind" ;;
+              esac
+            done <<< "$kinds"
+            if [ "$status" -eq 0 ]; then
+              got=clean
+            elif [ "$status" -eq 42 ] && [ -n "$other" ]; then
+              echo "::error::Valgrind reports$other for $call, a kind no secret raises: a defect in the harness or the library"
+              failed=1
+              continue
+            elif [ "$status" -eq 42 ] && [ "$uninit" = yes ]; then
+              got=reported
+            else
+              echo "::error::$call exited $status, neither 0 nor 42 with a secret-dependent error"
+              failed=1
+              continue
+            fi
+            if [ "$got" = "$want" ]; then
+              echo "$call: $want, as recorded"
+            elif [ "$call" = control ]; then
+              echo "::error::Valgrind does not report the control, so its silence on the calls says nothing"
+              failed=1
+            elif [ "$got" = clean ]; then
+              echo "::error::$call is clean under Valgrind: update SECURITY.md's record and this list"
+              failed=1
+            else
+              echo "::error::Valgrind reports $call, which SECURITY.md records as clean"
+              failed=1
+            fi
           done
           exit "$failed"
