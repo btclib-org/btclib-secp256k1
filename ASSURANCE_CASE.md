@@ -126,6 +126,8 @@ the binding layer*:
   timed by the scalar rather than constant; `ecdh.shared_point` is the
   same product through the constant-time `secp256k1_ecdh`, and is where
   a secret scalar belongs
+- the secp256k1-zkp calls Valgrind reports a secret-dependent branch or
+  memory access in, which that section names with the reason for each
 - a nonce read back through `dsa.nonce_rfc6979` or `ssa.nonce_bip340`,
   which exists to check a derivation against libsecp256k1's own and is
   the private key given the signature it made
@@ -234,7 +236,11 @@ SECURITY.md's *Limitations of the binding layer*.
 `upstream-tests.yml` runs the `ctime_tests` of libsecp256k1 and of
 secp256k1-zkp under Valgrind, each on its library built with the static
 Linux glibc wheels' compiler and flags and `SECP256K1_VALGRIND` on, on
-x86_64 and aarch64; its header says what it leaves out.
+x86_64 and aarch64. On the secp256k1-zkp build it also runs each call of
+`tests/zkp_ctime_tests.c`, the secret-taking calls this package wraps
+that zkp's `ctime_tests` does not make, and fails where one's outcome
+differs from what SECURITY.md records. Its header says what it leaves
+out.
 
 ## Common implementation weaknesses
 

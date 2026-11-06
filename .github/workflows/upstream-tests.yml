@@ -13,7 +13,12 @@ name: upstream tests
 #
 # It then builds the vendored secp256k1-zkp pin as a build with
 # BTCLIB_LIBSECP256K1_ZKP=true builds it, which no published wheel does,
-# and runs that pin's own `ctime_tests` under Valgrind (issue #1302).
+# and runs that pin's own `ctime_tests` under Valgrind (issue #1302),
+# then each call of `tests/zkp_ctime_tests.c`, this repository's own
+# check of the secret-taking secp256k1-zkp calls the package wraps that
+# zkp's `ctime_tests.c` does not make. Each call is held to the outcome
+# SECURITY.md's "Limitations of the binding layer" records for it
+# (issue #1315).
 #
 # The build is `scripts/cffi_build.py`'s own `build_c`, run in the
 # manylinux_2_28 image `pyproject.toml` pins for each architecture. A
@@ -29,16 +34,14 @@ name: upstream tests
 #
 # Left out: the macOS, Windows and musllinux wheels; the dynamic
 # `py3-none` wheels, which build on the runner; every secp256k1-zkp
-# test program but `ctime_tests`; the secp256k1-zkp calls this package
-# wraps that its `ctime_tests.c` does not make,
-# `secp256k1_rangeproof_sign`, `secp256k1_rangeproof_rewind` and
-# `secp256k1_pedersen_blind_sum` among them; and every compiler but the
-# image's own. It gates nothing.
+# test program but `ctime_tests`; and every compiler but the image's
+# own. It gates nothing.
 
 on:
   workflow_dispatch:
-  # a pull request that moves either pin, or changes scripts/cffi_build.py
-  # or build-constraints.txt, whose cmake this job installs. A move of
+  # a pull request that moves either pin, or changes scripts/cffi_build.py,
+  # build-constraints.txt, whose cmake this job installs, or the harness
+  # tests/zkp_ctime_tests.c. A move of
   # the image digests in pyproject.toml is dispatched instead, as the
   # comment there says; a path here would run this on every pull request
   # touching that file. The types are links.yml's, for the reasons its
@@ -50,6 +53,7 @@ on:
       - secp256k1-zkp
       - scripts/cffi_build.py
       - build-constraints.txt
+      - tests/zkp_ctime_tests.c
       - .github/workflows/upstream-tests.yml
 
 permissions:
@@ -238,3 +242,64 @@ jobs:
 
       - name: Run secp256k1-zkp's ctime_tests under Valgrind
         run: valgrind --error-exitcode=42 build/secp256k1-zkp/bin/ctime_tests
+
+      # compiled with the flags and defines CMake gave ctime_tests, -DVALGRIND
+      # among them, and linked against the same library
+      - name: Build tests/zkp_ctime_tests.c as secp256k1-zkp's ctime_tests
+        run: |
+          flags=build/secp256k1-zkp/src/CMakeFiles/ctime_tests.dir/flags.make
+          read -ra cflags <<< "$(sed -n 's/^C_FLAGS = //p' "$flags")"
+          read -ra defines <<< "$(sed -n 's/^C_DEFINES = //p' "$flags")"
+          echo "flags: ${cflags[*]}"
+          echo "defines: ${defines[*]}"
+          cc "${cflags[@]}" "${defines[@]}" \
+            -I secp256k1-zkp/include -I secp256k1-zkp/src \
+            -o build/secp256k1-zkp/bin/zkp_ctime_tests tests/zkp_ctime_tests.c \
+            build/secp256k1-zkp/lib/libsecp256k1.a
+
+      # the control branches on a secret: a run that does not exit 42 is
+      # one where Valgrind would not have reported the calls below either
+      - name: Check that Valgrind reports the harness's control
+        run: |
+          status=0
+          valgrind --error-exitcode=42 build/secp256k1-zkp/bin/zkp_ctime_tests control || status=$?
+          if [ "$status" -ne 42 ]; then
+            echo "::error::the control exited $status, not 42"
+            exit 1
+          fi
+
+      # one Valgrind run per call, each held to the outcome SECURITY.md's
+      # "Limitations of the binding layer" records for it: `reported` for
+      # a call it names as not constant time, `clean` otherwise.
+      # A call whose outcome moves fails the step, naming the call, so
+      # that the record and this list are updated together
+      - name: Run each call of tests/zkp_ctime_tests.c under Valgrind
+        run: |
+          failed=0
+          for entry in anti_exfil_sign:clean \
+            generator_generate_blinded:reported \
+            pedersen_blind_sum:reported \
+            pedersen_blind_generator_blind_sum:reported \
+            rangeproof_sign:reported \
+            rangeproof_rewind:reported; do
+            call=${entry%%:*}
+            want=${entry#*:}
+            echo "::group::$call, recorded $want"
+            status=0
+            valgrind --error-exitcode=42 build/secp256k1-zkp/bin/zkp_ctime_tests "$call" || status=$?
+            echo "::endgroup::"
+            case "$want:$status" in
+              clean:0 | reported:42)
+                echo "$call: $want, as recorded" ;;
+              reported:0)
+                echo "::error::$call is clean under Valgrind: update SECURITY.md's record and this list"
+                failed=1 ;;
+              clean:42)
+                echo "::error::Valgrind reports $call, which SECURITY.md records as clean"
+                failed=1 ;;
+              *)
+                echo "::error::$call exited $status"
+                failed=1 ;;
+            esac
+          done
+          exit "$failed"
