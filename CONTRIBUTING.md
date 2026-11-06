@@ -1533,18 +1533,15 @@ runs, and at which minute, is section 10 of the organization standard in
 the organization is one thing to remember, and a copy of it per repository is
 one more thing to keep true in each.
 
-Why so little gates is one number: the ceiling the plan puts on how many
-jobs the organization may run at once, shared across every repository in
-it, which `REPOSITORY.md`'s *Plan-gated settings* holds beside the command
-that re-derives it. A
-commit here, in bitcoin-core-rpc and in one more repository each ask for
-more jobs than that ceiling alone allows, so a pull request in any of the
-three spent its wall clock waiting for a slot. At that ceiling a cell
-before a review buys a rarer answer at the price of every review: macOS
-runners queue for tens of
-minutes rather than for two, and the twenty-one Windows suite cells were
-27.3 of a run's 112.9 runner-minutes, the largest family of jobs in it and
-ahead of every wheel build. The numbers are in `test.yml`'s header.
+So few checks gate a merge because the plan caps the jobs the whole organization
+may run at once, and `REPOSITORY.md`'s *Plan-gated settings* records that
+ceiling. A commit here, in bitcoin-core-rpc and in one more repository each ask
+for more jobs than that ceiling alone allows, so a pull request in any of the
+three spent its wall clock waiting for a slot. At that ceiling a cell before a
+review buys a rarer answer at the price of every review: macOS runners queue for
+tens of minutes rather than for two, and the twenty-one Windows suite cells were
+27.3 of a run's 112.9 runner-minutes, the largest family of jobs in it and ahead
+of every wheel build. The numbers are in `test.yml`'s header.
 
 **What the sentinels vary, they vary whole.** `os-ubuntu` runs both images
 on every interpreter, the cell the gate already covers included. A matrix with
