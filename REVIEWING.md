@@ -555,6 +555,15 @@ question names it.
   instead? `CONTRIBUTING.md`'s last section states that file as the
   single definition of clean, and a check discovered by CI after a push
   is a check in the wrong place.
+- A CI step that reads a tool's exit code as one outcome: does the tool
+  give that code for that outcome alone, and where it gives it for
+  several, does the step read which kind of error it was? Valgrind's
+  `--error-exitcode` is the exit code for any error Valgrind reports, an
+  invalid read as much as a secret-dependent branch. So
+  `upstream-tests.yml`'s *Run the control and each call of
+  tests/zkp_ctime_tests.c under Valgrind* reads the kinds of error from
+  Valgrind's XML log before it calls a run `reported`, and the comment
+  above that step names the kinds it accepts.
 - A move of a vendored submodule: is it a pull request of its own,
   carrying what a bump of *that* submodule owes — the README's
   Versioning section moved with it? `CONTRIBUTING.md`'s
