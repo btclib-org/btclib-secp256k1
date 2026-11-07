@@ -1423,7 +1423,8 @@ magnitude to read there, never a number to quote here.
 Development is LLM-based: humans are welcome, as long as they are
 comfortable with agentic development ;-). A contribution must have been
 read and understood by the person who submits it.
-[`CONTRIBUTING.md`](./CONTRIBUTING.md#working-with-an-llm) has the rules.
+[`CONTRIBUTING.md`](https://github.com/btclib-org/btclib-secp256k1/blob/main/CONTRIBUTING.md#working-with-an-llm)
+has the rules.
 
 How to get the submodule, set up the development environment, run the
 suite, reproduce each CI job locally, and what a change is expected to
