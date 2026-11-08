@@ -1,6 +1,6 @@
 # Python bindings to libsecp256k1
 
-<!-- Section 2 of btclib-org/.github's README.md says which badges sit here. -->
+<!-- Section 2 of the organization's standard says which badges sit here. -->
 [![PyPI version](https://img.shields.io/pypi/v/btclib-secp256k1.svg?logo=pypi&color=blue)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![GitHub release](https://img.shields.io/github/v/release/btclib-org/btclib-secp256k1.svg?color=blue)](https://github.com/btclib-org/btclib-secp256k1/releases)
 [![development status](https://img.shields.io/pypi/status/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
@@ -1402,7 +1402,7 @@ what it intends to do, and what it deliberately does not, is its
 
 ## Status
 
-<!-- Section 2 of btclib-org/.github's README.md says which badges sit here. -->
+<!-- Section 2 of the organization's standard says which badges sit here. -->
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/btclib-secp256k1/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/btclib-secp256k1/main)
 [![lint workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/lint.yml?query=branch%3Amain)
 [![test workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/test.yml?query=branch%3Amain)
