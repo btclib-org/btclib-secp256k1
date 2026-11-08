@@ -1,23 +1,6 @@
 # Python bindings to libsecp256k1
 
-<!-- The badges are what the reader decides with, in groups: what the
-software is and whether it can be used, whether it works, and what the
-OpenSSF makes of it.
-
-Inside the second group the gates come first, in the order a commit meets
-them, and the sentinels follow in the order section 10 of the organization
-standard schedules them -- the badge order *is* the calendar order over
-that subset, which is why the two move together or not at all. The day and
-hour each sentinel owns live in that section and are not copied here: a
-reader wanting the schedule reads it there, where it is still true.
-
-One badge per line keeps a change to one line and every line inside MD013,
-whose 80 columns bind only where a space follows them.
-
-A badge that reports no state -- "we use ruff", "we use uv" -- reports a
-choice instead, and those are in CONTRIBUTING.md, beside the prose that
-says how the choice is enforced.
--->
+<!-- Section 2 of btclib-org/.github's README.md says which badges sit here. -->
 [![PyPI version](https://img.shields.io/pypi/v/btclib-secp256k1.svg?logo=pypi&color=blue)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![GitHub release](https://img.shields.io/github/v/release/btclib-org/btclib-secp256k1.svg?color=blue)](https://github.com/btclib-org/btclib-secp256k1/releases)
 [![development status](https://img.shields.io/pypi/status/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
@@ -27,26 +10,6 @@ says how the choice is enforced.
 [![implementation](https://img.shields.io/pypi/implementation/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
 [![wheel](https://img.shields.io/pypi/wheel/btclib-secp256k1.svg)](https://pypi.python.org/pypi/btclib-secp256k1/)
 
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/btclib-secp256k1/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/btclib-secp256k1/main)
-[![lint workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/lint.yml?query=branch%3Amain)
-[![test workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/test.yml?query=branch%3Amain)
-[![docs workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/docs.yml?query=branch%3Amain)
-[![documentation build](https://app.readthedocs.org/projects/btclib-secp256k1/badge/?version=latest)](https://btclib-secp256k1.readthedocs.io)
-[![vendored-vectors workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/vendored-vectors.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/vendored-vectors.yml?query=branch%3Amain)
-[![mutation workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/mutation.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/mutation.yml?query=branch%3Amain)
-[![fuzz workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/fuzz.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/fuzz.yml?query=branch%3Amain)
-[![deps-latest workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/deps-latest.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/deps-latest.yml?query=branch%3Amain)
-[![pypi-install workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/pypi-install.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/pypi-install.yml?query=branch%3Amain)
-[![deps-oldest workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/deps-oldest.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/deps-oldest.yml?query=branch%3Amain)
-[![os-macos workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-macos.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-macos.yml?query=branch%3Amain)
-[![os-ubuntu workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-ubuntu.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-ubuntu.yml?query=branch%3Amain)
-[![os-windows workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-windows.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-windows.yml?query=branch%3Amain)
-[![links workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/links.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/links.yml?query=branch%3Amain)
-[![wheel-reproducibility workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/wheel-reproducibility.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/wheel-reproducibility.yml?query=branch%3Amain)
-[![sdist-rebuild workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/sdist-rebuild.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/sdist-rebuild.yml?query=branch%3Amain)
-[![codeql workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/codeql.yml?query=branch%3Amain)
-
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-secp256k1/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-secp256k1)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14814/badge)](https://www.bestpractices.dev/projects/14814)
 [![OpenSSF Baseline](https://www.bestpractices.dev/projects/14814/baseline)](https://www.bestpractices.dev/projects/14814)
 
@@ -1436,6 +1399,29 @@ How the organization decides, and who holds which role, is its
 [GOVERNANCE.md](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md);
 what it intends to do, and what it deliberately does not, is its
 [ROADMAP.md](https://github.com/btclib-org/.github/blob/main/ROADMAP.md).
+
+## Status
+
+<!-- Section 2 of btclib-org/.github's README.md says which badges sit here. -->
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/btclib-secp256k1/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/btclib-secp256k1/main)
+[![lint workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/lint.yml?query=branch%3Amain)
+[![test workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/test.yml?query=branch%3Amain)
+[![docs workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/docs.yml?query=branch%3Amain)
+[![documentation build](https://app.readthedocs.org/projects/btclib-secp256k1/badge/?version=latest)](https://btclib-secp256k1.readthedocs.io)
+[![vendored-vectors workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/vendored-vectors.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/vendored-vectors.yml?query=branch%3Amain)
+[![mutation workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/mutation.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/mutation.yml?query=branch%3Amain)
+[![fuzz workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/fuzz.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/fuzz.yml?query=branch%3Amain)
+[![deps-latest workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/deps-latest.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/deps-latest.yml?query=branch%3Amain)
+[![pypi-install workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/pypi-install.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/pypi-install.yml?query=branch%3Amain)
+[![deps-oldest workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/deps-oldest.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/deps-oldest.yml?query=branch%3Amain)
+[![os-macos workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-macos.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-macos.yml?query=branch%3Amain)
+[![os-ubuntu workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-ubuntu.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-ubuntu.yml?query=branch%3Amain)
+[![os-windows workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-windows.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/os-windows.yml?query=branch%3Amain)
+[![links workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/links.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/links.yml?query=branch%3Amain)
+[![wheel-reproducibility workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/wheel-reproducibility.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/wheel-reproducibility.yml?query=branch%3Amain)
+[![sdist-rebuild workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/sdist-rebuild.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/sdist-rebuild.yml?query=branch%3Amain)
+[![codeql workflow status](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-secp256k1/actions/workflows/codeql.yml?query=branch%3Amain)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-secp256k1/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-secp256k1)
 
 ---
 
