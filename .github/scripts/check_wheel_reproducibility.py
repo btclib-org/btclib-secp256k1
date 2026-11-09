@@ -33,7 +33,7 @@ the checkout is not part of what either build sees, since it is not
 part of the commit the question is about.
 
 Two directories are still one environment, and `#514` is the other
-half: section 12 of the organization standard says the wheels do not
+half: section 12 of the organization's standard says the wheels do not
 reproduce because the compiler, its version and the toolchain the
 runner happened to have are unpinned inputs, and `RELEASING.md` says
 the same of a rebuild on a second image -- which is a claim about two

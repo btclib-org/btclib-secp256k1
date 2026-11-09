@@ -41,8 +41,9 @@ updates:
         patterns: ["*"]
     cooldown:
       default-days: 7
-      # the exclude section 11 of btclib-org/.github's README.md gives for
-      # that repository's own tags, which the calls in .github/workflows pin
+      # the exclude section 11 of the organization's standard gives for
+      # btclib-org/.github's own tags, which the calls in .github/workflows
+      # pin
       exclude: ["btclib-org/.github/*"]
 
   # uv.lock is committed, the coverage job installs from it, and the

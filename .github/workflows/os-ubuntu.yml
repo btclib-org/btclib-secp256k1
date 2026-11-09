@@ -81,7 +81,7 @@ on:
     # os-macos.yml has Thursday and os-windows.yml the hour after this
     # one.
     # The time is the organization grid -- section 10 of
-    # btclib-org/.github's README.md -- and not this file's to restate.
+    # the organization's standard -- and not this file's to restate.
     # Only the default branch schedules workflows, so on any other branch
     # this is reachable through the dispatch below, and through the
     # workflow_call trigger above it.
@@ -181,8 +181,9 @@ jobs:
       # addopts carries: what a cell asks is whether an (image,
       # interpreter) pair passes, and coverage is measured and gated once,
       # there, on lines no interpreter here walks differently. Section 8
-      # of the organization standard names that flag as a sentinel's own,
-      # one of the two a job may pass beyond what pyproject.toml holds
+      # of the organization's standard names that flag as a sentinel's
+      # own, one of the two a job may pass beyond what pyproject.toml
+      # holds
       - name: Run pytest against a static build
         run: uv run --locked --no-default-groups --group test pytest --no-cov
 

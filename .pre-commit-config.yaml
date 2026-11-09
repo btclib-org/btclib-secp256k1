@@ -47,7 +47,7 @@ ci:
   # key, or that clone arriving with its tags, is what takes this entry
   # back out.
   # pyroma runs out of the `check` group through `uv run`, and section 4
-  # of the organization standard names `skip:` as the price of a local
+  # of the organization's standard names `skip:` as the price of a local
   # hook of that form: uv is absent on pre-commit.ci, which also runs a
   # hook with no network (pre-commit-ci/issues#256). A service with both
   # is what takes this entry back out.
@@ -164,8 +164,8 @@ repos:
       - id: check-docstring-first
       # a file pytest never collects is not a failing test, it is no test,
       # which is the one failure a suite cannot report about itself.
-      # At its default, `*_test.py`, which is section 7 of the
-      # organization standard's one spelling: this tree was on
+      # At its default, `*_test.py`, which is the one spelling section 7
+      # of the organization's standard gives: this tree was on
       # `test_*.py` and passed --pytest-test-first to keep it, and the
       # rename is what took the argument away
       - id: name-tests-test
@@ -421,7 +421,7 @@ repos:
         types: [markdown]
         exclude: ^README\.md$
       # the root README.md is the package's page on the index, where a
-      # relative link reaches nothing: section 2 of the organization
+      # relative link reaches nothing: section 2 of the organization's
       # standard is the rule. The pattern above with "./" and "../" no
       # longer admitted
       - id: readme-absolute-link
@@ -432,9 +432,9 @@ repos:
         files: ^README\.md$
         types: [markdown]
       # a line that ends inside a word, at that word's own hyphen. Section 4 of
-      # the organization standard is the rule: what such a line renders as, why
-      # nothing else here catches it, what this pattern cannot see, and what the
-      # measurement was before it was proposed. The types are where a build
+      # the organization's standard is the rule: what such a line renders as,
+      # why nothing else here catches it, what this pattern cannot see, and what
+      # the measurement was before it was proposed. The types are where a build
       # renders prose from -- markdown, and what docutils reads, an rst page and
       # a Python docstring -- so a comment sharing a Python file with a
       # docstring is refused alongside it, one line at a time being all pygrep
@@ -445,8 +445,8 @@ repos:
         entry: "[A-Za-z0-9]-$"
         types_or: [markdown, python, rst]
       # a placeholder that is a whole argument, in quotes. Section 9 of
-      # the organization standard is the rule and what the quoting costs
-      # a paste; section 4 is where this hook is, which quotes it
+      # the organization's standard is the rule and what the quoting
+      # costs a paste; section 4 is where this hook is, which quotes it
       # exempts, and the three things this pattern cannot see. The
       # discrimination is read off the line and not off the fence around
       # it, because a fence-aware pattern has to consume everything
@@ -593,9 +593,9 @@ repos:
         language: pygrep
         entry: '\b(text|universal_newlines)=True'
         files: \.py$
-      # section 8 of the organization standard's own acceptance command,
-      # run at the gate: a pragma with nothing after it on its line
-      # carries no reason, for no cover and no branch alike. The `#`
+      # the acceptance command of section 8 of the organization's
+      # standard, run at the gate: a pragma with nothing after it on its
+      # line carries no reason, for no cover and no branch alike. The `#`
       # immediately before pragma is what a comment always carries and a
       # backticked reference to the rule in prose never does, section 8
       # already saying prose drops it -- so this does not refuse a
@@ -975,12 +975,12 @@ repos:
   # of that dependency, and the one naming a prerelease is what
   # `pinned-rev` above refuses.
   # `language: system` and `uv run --locked` are the form section 4 of the
-  # organization standard gives a local mypy hook, and uv is on the PATH
+  # organization's standard gives a local mypy hook, and uv is on the PATH
   # of every hook because the lint gate is started by it.
   # `--only-group check` adds that group to the environment the gate runs
   # from and takes nothing out of it, and installs no project;
   # `--no-build` makes a dependency with no wheel fail rather than
-  # build from source, as section 4 of the organization standard says.
+  # build from source, as section 4 of the organization's standard says.
   # The `-d --min=10 .` and `always_run` are the upstream hook's own
   # definition, written out because a local hook cannot inherit one.
   #

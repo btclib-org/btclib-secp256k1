@@ -4,7 +4,7 @@ name: api-break
 # The `api-break` label on a pull request that breaks the public API
 # (btclib-org/.github#1674). The walk, the comparison and the label are
 # btclib-org/.github's reusable-api-break.yml, called at a tagged commit
-# (section 10 of btclib-org/.github's README.md). What stays here is the
+# (section 10 of the organization's standard). What stays here is the
 # trigger, the concurrency group, the permissions and this header, none of which
 # the callee holds. `package` is the one input the callee has no default for,
 # the same value release.yml passes to reusable-public-api.yml.

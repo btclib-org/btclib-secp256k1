@@ -30,9 +30,9 @@ the layout from the harness rather than restating it. The key and the signature
 `ast`, so the seed is checked against what the harness verifies with.
 
 A crash the sentinel finds does not come here. Section 10 of the
-organization standard makes its regression an ordinary test naming the
-input and what the entry point now does with it. `_REFUSED` holds the
-edges of the field and is not where such a regression goes.
+organization's standard makes its regression an ordinary test naming
+the input and what the entry point now does with it. `_REFUSED` holds
+the edges of the field and is not where such a regression goes.
 """
 
 from __future__ import annotations

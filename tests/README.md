@@ -307,10 +307,10 @@ it to arithmetic it does itself.
 
 ## Convention tests
 
-Section 7 of the [organization standard][std] lists conventions a suite
-can turn into a red test, and says a repository needs the ones its own
-prose states rather than all of them. That escape clause is right and
-it costs something: an absent convention test reads exactly like a
+Section 7 of the [organization's standard][std] lists conventions a
+suite can turn into a red test, and says a repository needs the ones its
+own prose states rather than all of them. That escape clause is right
+and it costs something: an absent convention test reads exactly like a
 convention this repository does not have, and a `grep` over `tests/`
 cannot tell the two apart — the suites of the organization name the same
 idea three different ways.
@@ -373,7 +373,7 @@ tree says which.
 
 ## Property tests
 
-Section 7 of the [organization standard][std] keys a property layer on
+Section 7 of the [organization's standard][std] keys a property layer on
 the property section 10 keys the fuzzer on -- nobody standing between a
 parser and an adversary who chooses the bytes -- and section 10's own
 paragraph names this tree among those reading signatures and keys off

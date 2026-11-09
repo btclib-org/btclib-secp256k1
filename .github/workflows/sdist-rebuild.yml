@@ -5,9 +5,9 @@ name: sdist-rebuild
 # *Rebuild a release from its tag* rebuilds it. The rebuild and the verification
 # against the release's own attestation are btclib-org/.github's
 # reusable-sdist-rebuild.yml, called at a tagged commit (section 10 of
-# btclib-org/.github's README.md).
+# the organization's standard).
 #
-# The sdist alone: section 10 of btclib-org/.github's README.md makes
+# The sdist alone: section 10 of the organization's standard makes
 # the row the sdist's, the compiled wheels being outside the property
 # section 12 states, and wheel-reproducibility.yml is what asks about
 # them. A red run is an issue against this tree. It gates nothing, and
@@ -17,7 +17,7 @@ on:
   schedule:
     # Sunday, hour 03, between wheel-reproducibility and codeql. The
     # time is the organization grid -- section 10 of
-    # btclib-org/.github's README.md -- which gives a workflow its day
+    # the organization's standard -- which gives a workflow its day
     # and its hour and this repository its minute, and is not this
     # file's to restate. Only the default branch schedules workflows, so
     # on any other branch this is reachable through the dispatch below,

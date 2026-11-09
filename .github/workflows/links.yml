@@ -23,7 +23,7 @@ on:
     # Saturday, the day the grid gives to a tree's own health: this asks
     # whether the URLs it points at are still where they were.
     # The time is the organization grid -- section 10 of
-    # btclib-org/.github's README.md -- which gives a workflow its day
+    # the organization's standard -- which gives a workflow its day
     # and its hour and this repository its minute, and is not this
     # file's to restate.
     # Only the default branch schedules workflows, so on any other branch
@@ -98,7 +98,7 @@ concurrency:
 
 jobs:
   # the job itself is btclib-org/.github's, called at a tagged commit (section
-  # 10 of btclib-org/.github's README.md); what stays here is the trigger, the
+  # 10 of the organization's standard); what stays here is the trigger, the
   # schedule and which files are this tree's documentation
   links:
     uses: btclib-org/.github/.github/workflows/reusable-links.yml@5be4b0fbb5231cff001a3ee0eaa8f7d82bffef11 # v2026.11.5

@@ -10,8 +10,8 @@ name: wheel-reproducibility
 #
 # It asks #439's stage 3 as well, which is #514: two builds in one job
 # share an image, and the exemption in RELEASING.md and in section 12 of
-# the organization standard rests on what happens across two of them --
-# it names the compiler, its version and the toolchain the runner
+# the organization's standard rests on what happens across two of them
+# -- it names the compiler, its version and the toolchain the runner
 # happened to have as inputs nothing pins. So every platform below
 # carries a second image, chosen to differ in the toolchain it carries
 # -- a different OS release for all but the Windows arm64 pair, whose
@@ -136,7 +136,7 @@ name: wheel-reproducibility
 # macos-26-intel and macos-15-intel, build on the schedule and on a
 # dispatch only: a matrix excludes them when github.event_name is
 # pull_request, and across-images then finds no macos-x86-64 directory
-# rather than half of one. Section 10 of the organization standard in
+# rather than half of one. Section 10 of the organization's standard in
 # btclib-org/.github says why, and CONTRIBUTING.md's *What gates a merge,
 # and what only reports* says how this tree applies it.
 
@@ -145,7 +145,7 @@ on:
     # Sunday, hour 02: the day the grid gives to a tree's security, this
     # asking whether a wheel it builds reproduces byte for byte. The
     # time is the organization grid -- section 10 of
-    # btclib-org/.github's README.md -- which gives a workflow its day
+    # the organization's standard -- which gives a workflow its day
     # and its hour and this repository its minute, and is not this
     # file's to restate. Only the default branch schedules workflows, so
     # on any other branch this is reachable through the dispatch below,
@@ -506,7 +506,7 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.15"
-          # section 1 of the organization standard counts a release
+          # section 1 of the organization's standard counts a release
           # candidate as released, and setup-python matches one only under
           # this flag, which leaves a version with a final release on that
           # final. The two setup-python steps below carry it for that reason
@@ -854,13 +854,13 @@ jobs:
       actions: read # this run's own job listing, which contents: read misses
     steps:
       # the run's own job listing rather than `needs.*.result`, which is
-      # section 10 of the organization standard's shape for a workflow
-      # nothing calls: a matrix cell that died in *Set up job* is a
-      # `failure` row in the listing where `needs.<job>.result` does not
-      # carry it (btclib-org/btclib#1001). "skipped" passes beside
-      # "success": the changes job above skips every build job on a pull
-      # request touching nothing the builds read, which is the pass this
-      # check exists to give such a pull request
+      # the shape section 10 of the organization's standard gives a
+      # workflow nothing calls: a matrix cell that died in *Set up job*
+      # is a `failure` row in the listing where `needs.<job>.result`
+      # does not carry it (btclib-org/btclib#1001). "skipped" passes
+      # beside "success": the changes job above skips every build job on
+      # a pull request touching nothing the builds read, which is the
+      # pass this check exists to give such a pull request
       #
       # a skipped required check reads as passing, so the draft flag
       # moves from the job's own `if:` above into this first step: the
@@ -874,7 +874,7 @@ jobs:
       # the script is btclib-org/.github's, served from there at main under a
       # `path:` of its own and sparse on .github/scripts, so no copy of it is
       # kept in this tree: the wait and the verdict are tested where it lives
-      # (section 10 of that repository's README.md)
+      # (section 10 of the organization's standard)
       - name: Check out the check script
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

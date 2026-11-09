@@ -14,12 +14,12 @@ two declarations say the same thing.
 
 Nothing made them say it. `.pre-commit-config.yaml` records that they are
 "moved by hand, with the lint and test groups of uv.lock", which is a
-procedure rather than a check, and section 4 of the organization standard
-names that second declaration as the price of this branch. This module is
-what turns the procedure into a red test: a `uv lock` that moves one of
-these and a hand that does not follow is the whole of what it catches,
-and it is silent -- both environments still build, and mypy still passes
-in each, against different versions.
+procedure rather than a check, and section 4 of the organization's
+standard names that second declaration as the price of this branch. This
+module is what turns the procedure into a red test: a `uv lock` that
+moves one of these and a hand that does not follow is the whole of what
+it catches, and it is silent -- both environments still build, and mypy
+still passes in each, against different versions.
 
 That procedure is about a hand-moved pin rather than about mypy, so every
 `additional_dependencies` pin in the file is read here and asserted
@@ -959,7 +959,7 @@ def test_pyroma_installs_the_backend_build_system_declares() -> None:
     """The hook's `hatchling` is `[build-system]`'s, bounds included.
 
     pyroma builds this project to read its metadata, and section 12 of
-    the organization standard asks that a hook doing so use a backend
+    the organization's standard asks that a hook doing so use a backend
     the declaration admits. A hook run out of a dependency group has no
     `additional_dependencies`: the group its `entry` names is the
     environment the backend is imported from.

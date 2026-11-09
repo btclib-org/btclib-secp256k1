@@ -38,8 +38,8 @@ The shared half of `CONTRIBUTING.md` keeps the placeholder, for the same
 reason read the other way round: it is the same file in every repository
 of the organization, so it can name none of them.
 
-What is recorded is the settings the organization standard asks about —
-the ones [section 16's
+What is recorded is the settings the organization's standard asks about
+— the ones [section 16's
 checklist](https://github.com/btclib-org/.github#16-checklists) sets on
 a new repository, the ones a section of the standard states a rule for,
 and the ones a behaviour it describes rests on — together with whatever
@@ -477,7 +477,7 @@ gh api repos/btclib-org/btclib-secp256k1/rulesets --jq '.[].id' \
            "bypass=\(.bypass_actors | length)"] | join(" ")'
 ```
 
-`main-integrity` is what [section 11 of the organization
+`main-integrity` is what [section 11 of the organization's
 standard](https://github.com/btclib-org/.github#11-github-settings)
 names — linear history, no force push, no branch deletion — with **no
 bypass actor at all**, which is what makes "on every commit, not at review
@@ -493,8 +493,8 @@ gh api --jq '{rules: [.rules[].type], bypass: [.bypass_actors[].actor_type]}' \
 
 The id goes after `--jq` rather than into the middle of the call, so the
 line ends in the placeholder and a paste made before it is filled in has
-nothing for its `>` to open — section 9 of the organization standard is
-where that rule is.
+nothing for its `>` to open — section 9 of the organization's standard
+is where that rule is.
 
 The split is the point. The review is the rule an author cannot satisfy
 for their own pull request, GitHub refusing a self-approval; the
@@ -946,7 +946,7 @@ what it reads at all, so a flip to private leaves `scorecard.yml` and
 an issue about this tree alone stays here — and so does the
 `.github/ISSUE_TEMPLATE/` section 16's checklist gives every repository.
 
-[Section 11 of the organization
+[Section 11 of the organization's
 standard](https://github.com/btclib-org/.github#11-github-settings)
 turns the wiki and the projects board off on every tree: an unused wiki
 is a second place a reader can land looking for what the tracker already
@@ -995,7 +995,7 @@ gh api repos/btclib-org/btclib-secp256k1/pages
 ```
 
 **`.homepage` is the repository's page on btclib.org**, as [section 3 of
-the organization
+the organization's
 standard](https://github.com/btclib-org/.github#3-pyprojecttoml-is-the-configuration)
 has it, read back from the endpoint rather than from `pyproject.toml`'s
 own copy of it:
