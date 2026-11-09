@@ -73,7 +73,7 @@ jobs:
     permissions:
       contents: read
       attestations: read # what gh attestation verify reads
-    uses: btclib-org/.github/.github/workflows/reusable-sdist-rebuild.yml@5be4b0fbb5231cff001a3ee0eaa8f7d82bffef11 # v2026.11.5
+    uses: btclib-org/.github/.github/workflows/reusable-sdist-rebuild.yml@305b1840909ffd49d653d20cc6f5f9e1ab6a3382 # v2026.11.10
     with:
       sdist-builder: build-module
       submodules: recursive
