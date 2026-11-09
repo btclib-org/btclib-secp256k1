@@ -98,7 +98,7 @@ on:
     # for, so a repository that sits still is not a repository that stays
     # clean.
     # The time is the organization grid -- section 10 of
-    # btclib-org/.github's README.md -- and not this file's to restate.
+    # the organization's standard -- and not this file's to restate.
     # A sibling repository analyses on the same day and not at the same
     # minute, which is the whole of what the grid's minute is for.
     # Only the default branch schedules workflows, so on any other branch
@@ -130,7 +130,7 @@ concurrency:
 
 jobs:
   # the analysis itself is btclib-org/.github's, called at a tagged commit
-  # (section 10 of btclib-org/.github's README.md); what stays here is the
+  # (section 10 of the organization's standard); what stays here is the
   # trigger, the schedule, the concurrency group and the aggregate job below. No
   # inputs: this tree and every sibling carrying codeql.yml scan the same two
   # languages the same way, and an input for a difference none of them has would
@@ -205,16 +205,16 @@ jobs:
       actions: read # this run's own job listing, which contents: read misses
     steps:
       # the run's own job listing rather than `needs.*.result`, which is
-      # section 10 of the organization standard's shape for a workflow
-      # nothing calls: a matrix cell that died in *Set up job* is a
-      # `failure` row in the listing where `needs.analyze.result` does not
-      # carry it (btclib-org/btclib#1001). The price is a step per
+      # the shape section 10 of the organization's standard gives a
+      # workflow nothing calls: a matrix cell that died in *Set up job* is
+      # a `failure` row in the listing where `needs.analyze.result` does
+      # not carry it (btclib-org/btclib#1001). The price is a step per
       # workflow rather than one shared with test.yml's aggregate, `needs`
       # reaching nothing outside its own workflow -- and test.yml keeps
       # `needs`, release.yml calling it
       #
       # the allowlist in the script names "success" and "skipped" both, which
-      # section 10 of the organization standard asks of a listing step
+      # section 10 of the organization's standard asks of a listing step
       # whatever the workflow's own jobs can report today. Narrowing it to
       # "success" reads well against the jobs here -- the step above
       # already fails this job before this one runs while draft, so a run
@@ -244,7 +244,7 @@ jobs:
       # the script is btclib-org/.github's, served from there at main under a
       # `path:` of its own and sparse on .github/scripts, so no copy of it is
       # kept in this tree: the wait and the verdict are tested where it lives
-      # (section 10 of that repository's README.md)
+      # (section 10 of the organization's standard)
       - name: Check out the check script
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

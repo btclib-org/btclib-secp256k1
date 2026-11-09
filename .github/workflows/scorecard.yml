@@ -16,7 +16,7 @@ name: scorecard
 #
 # The analysis job -- its checkout, the scan itself, the artifact and the SARIF
 # upload -- is btclib-org/.github's reusable-scorecard.yml, called at a tagged
-# commit (section 10 of btclib-org/.github's README.md). The trigger, the cron
+# commit (section 10 of the organization's standard). The trigger, the cron
 # minute, the workflow-level permissions and the concurrency group stay here:
 # the callee takes no inputs and does not hold them.
 
@@ -57,8 +57,9 @@ jobs:
     # restore, what this calling job grants -- GitHub's own docs on
     # reusing workflow configurations -- so every scope the callee's job
     # asks for is named here too, or the run fails before any job starts
-    # (a startup_failure, README.md section 11's "the bound refuses
-    # rather than trims", measured in btclib-org/.github#912)
+    # (a startup_failure, measured in btclib-org/.github#912: section
+    # 11's *Tokens, publishing, scanning*, in the organization's
+    # standard, has "the bound refuses rather than trims")
     permissions:
       id-token: write # the OpenSSF transparency log publish
       security-events: write # the SARIF upload

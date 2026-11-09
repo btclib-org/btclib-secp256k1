@@ -38,7 +38,7 @@ name: deps-latest
 # and not an exception to it: its hook is `mirrors-mypy` at a pinned rev,
 # and the packages it type-checks against are pinned by hand in
 # `additional_dependencies`, which `uv lock --upgrade` does not write.
-# That is the second of the two answers section 4 of the organization
+# That is the second of the two answers section 4 of the organization's
 # standard gives, and the right one for a package whose types rest on a
 # handful of stubs rather than on itself. It is also why the lint job
 # below reaches less here.
@@ -68,7 +68,7 @@ on:
     # asking what moved underneath -- the dependencies here, and what the
     # index serves there.
     # The time is the organization grid -- section 10 of
-    # btclib-org/.github's README.md -- and not this file's to restate.
+    # the organization's standard -- and not this file's to restate.
     # Only the default branch schedules workflows, so on any other branch
     # this is reachable through the dispatch below alone
     - cron: "8 4 * * 3"
@@ -91,7 +91,7 @@ jobs:
   # the checkout, the uv setup, the runner-image step, the hook cache, the
   # upgrade and the suite and lint runs over it are btclib-org/.github's:
   # reusable-deps-latest.yml, called at a tagged commit (section 10 of
-  # btclib-org/.github's README.md). What stays here is the trigger, the
+  # the organization's standard). What stays here is the trigger, the
   # concurrency group, the workflow-level permissions, this job's own id,
   # coverage-latest and dist-latest below, and the facts the called workflow
   # asks a caller for rather than states itself: the matrix.

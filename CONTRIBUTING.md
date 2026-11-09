@@ -449,7 +449,7 @@ from somewhere else on purpose:
 The gates below decide every merge, together with `lint / Dependency
 review`, which has no command, `lint / Sign-off`, whose command
 *Running what CI runs* gives, and `sourcery / Sourcery`, a pull request's
-check and not a local gate, as section 10 of the organization standard
+check and not a local gate, as section 10 of the organization's standard
 says. `wheel-reproducibility` decides a merge that touches what its builds
 read, its command being among the sentinels further down. Each command
 below is close to the one its workflow runs.
@@ -1491,7 +1491,7 @@ documentation build, the aggregate of `wheel-reproducibility` and the job of
 back from the endpoint rather than restating it. `release` reuses the first
 three. `wheel-reproducibility` is among them because a pull request can turn
 it red by changing the build, and `REPOSITORY.md` says why its trigger lets
-it be. Section 10 of the organization standard says when a tree requires
+it be. Section 10 of the organization's standard says when a tree requires
 `sourcery`.
 Everything
 else reports: a sentinel opens no issue when it fails, `vendored-vectors`
@@ -1539,7 +1539,7 @@ The first three rows and `wheel-reproducibility` are what a merge waits for,
 by the rule `REPOSITORY.md` reads back from the endpoint, and the suite cell
 among them is one: `ubuntu-latest` on the interpreter
 `.python-version` pins, measured for coverage. Which day each of the rest
-runs, and at which minute, is section 10 of the organization standard in
+runs, and at which minute, is section 10 of the organization's standard in
 `btclib-org/.github` and not this file's to restate — one calendar covering
 the organization is one thing to remember, and a copy of it per repository is
 one more thing to keep true in each.
@@ -1589,7 +1589,7 @@ costs beside each other.
 never on a pull request or a push to `main`. `test` builds its wheels at a
 release and a dispatch, and `check-dist` fails those runs unless they are
 there; `wheel-reproducibility` builds its images weekly and on a dispatch.
-Section 10 of the organization standard in `btclib-org/.github` has the
+Section 10 of the organization's standard in `btclib-org/.github` has the
 reason and when it ends.
 
 Every workflow here takes `workflow_dispatch`, the gates included, except

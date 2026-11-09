@@ -17,10 +17,10 @@ suite is gated at zero instead, and its report still prints.
 The second thing here is a guard on that threshold reaching the run at
 all. coverage looks for its configuration in the directory the process
 started in, so a run started from `tests/` finds no `fail_under`, no
-`source` and no `branch = true`. Section 8 of the organization standard
-leaves a tree to point such a run at its configuration or to make it say
-it is ungated, and this file is the second of the two: such a run is
-refused (btclib-org/.github#443).
+`source` and no `branch = true`. Section 8 of the organization's
+standard leaves a tree to point such a run at its configuration or to
+make it say it is ungated, and this file is the second of the two: such
+a run is refused (btclib-org/.github#443).
 
 The last thing here is the fixture `scan_python_calls`, shared by the tests
 of Silent Payments scanning. It is why this file imports the built package
@@ -36,9 +36,9 @@ import pytest
 
 from btclib_secp256k1 import lib, silentpayments
 
-# what section 8 of the organization standard counts as asking for less
-# than the suite, beside a path that leaves part of it out: `-k`, `-m`,
-# `--deselect`, `--ignore`, `--ignore-glob` and `--lf`, spelled as
+# what section 8 of the organization's standard counts as asking for
+# less than the suite, beside a path that leaves part of it out: `-k`,
+# `-m`, `--deselect`, `--ignore`, `--ignore-glob` and `--lf`, spelled as
 # pytest's own parser stores them. A run of any of them measures the
 # same source with fewer tests, so what its report is short of is the
 # tests it did not run. An early `-x` is outside the set, what cuts that
@@ -216,7 +216,7 @@ def configuration_went_unread(
     if cov_config is None:
         return False
     if options.cov_fail_under is not None:
-        # section 8 of the organization standard has the hook never
+        # section 8 of the organization's standard has the hook never
         # overruling an explicit `--cov-fail-under`, and a caller who
         # named the floor has not had one taken away in silence
         return False

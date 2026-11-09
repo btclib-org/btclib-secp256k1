@@ -86,7 +86,7 @@ jobs:
   # The checkout, the lock check, the ancestry check, the version comparison,
   # the release-notes check on RELEASE_NOTES.md and CHANGELOG.md and the
   # rehearsal suffix are btclib-org/.github's: reusable-version-check.yml,
-  # called at a tagged commit (section 10 of btclib-org/.github's README.md).
+  # called at a tagged commit (section 10 of the organization's standard).
   # tag-requires-day is false, the one non-default caller in the family: 0.8.0.7
   # tracks libsecp256k1's own release rather than a calendar date, and the
   # shared check would refuse every release this tree can cut otherwise.
@@ -218,7 +218,7 @@ jobs:
   # The checkout, the previous-tag resolution, the griffe walk, api_gaps.py and
   # the check of their findings against RELEASE_NOTES.md are
   # btclib-org/.github's: reusable-public-api.yml, called at a tagged commit
-  # (section 10 of btclib-org/.github's README.md). package is the one input the
+  # (section 10 of the organization's standard). package is the one input the
   # family has no default for, the equality with the repository name being a
   # coincidence of four trees and not a rule (btclib-org/.github#35)
   public-api:
@@ -228,7 +228,7 @@ jobs:
 
   # `uv audit` over what the wheel declares, before anything is published:
   # btclib-org/.github's reusable-audit.yml, called at a tagged commit (section
-  # 10 of btclib-org/.github's README.md) so that the uv version, the flags and
+  # 10 of the organization's standard) so that the uv version, the flags and
   # what it refuses are written once. An advisory or an unreachable service
   # fails it, and the publish jobs below name it in `needs:` and in their `if:`,
   # `always()` there being what would otherwise let them run past a red one. The
@@ -240,7 +240,7 @@ jobs:
 
   # the sdist, the bill of materials and their signature: btclib-org/.github's
   # reusable-build.yml, called at a tagged commit (section 10 of
-  # btclib-org/.github's README.md). It builds the sdist and the bill of
+  # the organization's standard). It builds the sdist and the bill of
   # materials, uploads them as `sdist` and `sbom`, and signs them before any
   # publish job waits for its environment's approval, from a workflow this
   # tree's own steps cannot alter (SLSA Build L3). It uploads the bundle as
@@ -348,7 +348,7 @@ jobs:
     # this job when any listed job failed or was skipped. `always()` is
     # what opts back in, and the `.result` checks beside it are what keep
     # every other listed job the gate it is. Section 12 of the
-    # organization standard has the rule; github-release's comment below
+    # organization's standard has the rule; github-release's comment below
     # is this tree's own measurement of the same refusal, behind a skipped
     # job rather than a failed one.
     # submodule-pin-release is checked for its result unlike public-api: before
@@ -510,7 +510,7 @@ jobs:
   # by hand that recovers a skip, which `gh run rerun --failed` does not reach.
   # The checkout, the downloads and the release creation are
   # btclib-org/.github's: reusable-github-release.yml, called at a tagged commit
-  # (section 10 of btclib-org/.github's README.md). dist-artifact is sdist, the
+  # (section 10 of the organization's standard). dist-artifact is sdist, the
   # same value build above takes and for the same reason (issue
   # btclib-org/.github#35)
   github-release:
@@ -572,7 +572,7 @@ jobs:
   #
   # The checkout, the wait script and its test are all btclib-org/.github's:
   # reusable-documented.yml, called at a tagged commit (section 10 of
-  # btclib-org/.github's README.md). readthedocs-slug is the one input the
+  # the organization's standard). readthedocs-slug is the one input the
   # family has no default for, and it equals this repository's own name only by
   # coincidence (btclib-org/.github#35)
   documented:

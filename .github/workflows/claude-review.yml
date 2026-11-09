@@ -5,7 +5,7 @@ name: claude-review
 # naming @claude. The checkout, the credential guard, the prompt, the review
 # action, the verdict check and the mention job are all btclib-org/.github's
 # reusable-claude-review.yml, called at a tagged commit (section 10 of
-# btclib-org/.github's README.md). What stays here is the trigger, the
+# the organization's standard). What stays here is the trigger, the
 # concurrency group, the workflow-level permissions and this header, none of
 # which the callee holds.
 #

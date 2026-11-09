@@ -21,13 +21,13 @@ three are required to agree: a version added to one and forgotten in
 another is a difference between platforms, which is the one thing a
 platform sweep is arranged so as not to have.
 
-The organization standard's rule is that a library covers every Python
-that is not out of support, so all three move together twice around each
-October: one version leaves support as another is released. This module
-does not know that calendar and does not try to -- python.org keeps it,
-and a test that hard-coded a date would be one more thing to move. What
-it holds is the weaker and checkable claim: whatever the three say, they
-say the same thing.
+The rule of the organization's standard is that a library covers every
+Python that is not out of support, so all three move together twice
+around each October: one version leaves support as another is released.
+This module does not know that calendar and does not try to --
+python.org keeps it, and a test that hard-coded a date would be one more
+thing to move. What it holds is the weaker and checkable claim: whatever
+the three say, they say the same thing.
 
 A workflow is read with a regex rather than parsed, being yaml, for
 which no group here carries a parser; pyproject.toml is loaded with
@@ -92,13 +92,14 @@ _PYTHONS_CALLER = re.compile(
 )
 # the merge gate, and inside it the jobs a landing waits on: the
 # aggregate's own `needs:` closure, which is what section 3 of the
-# organization standard asks for. It declares a free-threading classifier
-# where the gate exercises that build, a gate being what refuses the
-# landing that breaks it, so an interpreter named only by a job nothing
-# waits on is the "it passed somewhere" that section refuses. Reading the
-# file whole is the alternative it names as rejected, and it answers the
-# same here, every job of this workflow sitting in that closure; what it
-# costs is the day one is moved out, which the file read cannot see
+# organization's standard asks for. It declares a free-threading
+# classifier where the gate exercises that build, a gate being what
+# refuses the landing that breaks it, so an interpreter named only by a
+# job nothing waits on is the "it passed somewhere" that section refuses.
+# Reading the file whole is the alternative it names as rejected, and it
+# answers the same here, every job of this workflow sitting in that
+# closure; what it costs is the day one is moved out, which the file read
+# cannot see
 _GATE = _ROOT / ".github/workflows/test.yml"
 # the aggregate, by the name a required context is keyed on, which is a
 # job's `name:` and not its key
@@ -612,7 +613,7 @@ def test_pypy_is_classified_exactly_when_it_is_run() -> None:
 def test_free_threading_is_classified_exactly_when_the_gate_runs_it() -> None:
     """The free-threading classifier is a claim about the merge gate.
 
-    The organization standard declares one where the gate exercises the
+    The organization's standard declares one where the gate exercises the
     free-threaded build: a gate refuses the landing that breaks that
     build, where a sentinel runs beside a landing and blocks nothing. So
     the second side here is the jobs the required check waits on and not
@@ -664,12 +665,12 @@ def test_the_pull_request_selection_was_read() -> None:
 def test_a_pull_request_builds_a_free_threaded_interpreter_on_every_platform() -> None:
     """The classifier is a claim about what a pull request builds, per platform.
 
-    The organization standard declares it where the gate refuses a landing
-    that breaks the free-threaded build, and the required check on a pull
-    request builds the interpreters `CIBW_BUILD` keeps, not the ones
-    `[tool.cibuildwheel]` configures: the biconditional above asks the
-    configuration, which a push to `main` builds whole on the images it
-    runs and a release on every image, so a selection that dropped the
+    The organization's standard declares it where the gate refuses a
+    landing that breaks the free-threaded build, and the required check on
+    a pull request builds the interpreters `CIBW_BUILD` keeps, not the
+    ones `[tool.cibuildwheel]` configures: the biconditional above asks
+    the configuration, which a push to `main` builds whole on the images
+    it runs and a release on every image, so a selection that dropped the
     free-threaded pattern would leave it green with the classifier still
     declared and nothing on a branch building the wheel it stands for.
 

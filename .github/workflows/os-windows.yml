@@ -48,7 +48,7 @@ on:
     # Friday, the hour after os-ubuntu.yml: see os-macos.yml for why the
     # platforms run apart.
     # The time is the organization grid -- section 10 of
-    # btclib-org/.github's README.md -- and not this file's to restate.
+    # the organization's standard -- and not this file's to restate.
     # Only the default branch schedules workflows, so on any other branch
     # this is reachable through the dispatch below, and through the
     # workflow_call trigger above it.

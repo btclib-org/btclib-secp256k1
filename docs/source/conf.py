@@ -33,8 +33,9 @@ project = "btclib_secp256k1"
 # no __copyright__ in this package to read back: LICENSE is the only
 # place the holder is declared, so this reads that file instead, minus
 # the "Copyright (c) " sphinx prepends itself.
-# What comes out carries no year, section 14 of the organization standard
-# having LICENSE name the holder and no range, so the footer dates nothing
+# What comes out carries no year, section 14 of the organization's
+# standard having LICENSE name the holder and no range, so the footer
+# dates nothing
 project_copyright = re.search(
     r"^Copyright \(c\) (.+)$",
     (ROOT / "LICENSE").read_text(encoding="utf-8"),
@@ -93,7 +94,7 @@ intersphinx_mapping = {
 # CONTRIBUTING.md links to "README.md#build", an anchor into a markdown
 # heading rather than a whole file, and myst generates no heading ids at
 # all unless told to. 6 is every level a markdown heading reaches, which
-# section 2 of the organization standard makes the value here: a depth
+# section 2 of the organization's standard makes the value here: a depth
 # read off the headings a root file links to is re-derived every time one
 # of them moves, and part of what it would read belongs to no one tree --
 # section 14 ports CONTRIBUTING.md's shared half into every repository,
@@ -131,8 +132,8 @@ html_theme = "furo"
 # So a root file links another as "./SECURITY.md", which myst cannot
 # resolve once the file is lifted into this tree. README.md links it as
 # BLOB plus its path, PyPI resolving no relative link against the tree
-# (section 2 of the organization standard, Root files), and myst renders
-# that as a link to GitHub.
+# (section 2 of the organization's standard, Root files), and myst
+# renders that as a link to GitHub.
 #
 # What myst emits for a relative link is the reason this needs code
 # rather than a warning filter, exactly as a sibling repository's own

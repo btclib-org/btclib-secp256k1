@@ -13,7 +13,7 @@ name: vendored vectors
 # same name, script included.
 #
 # The `check` job is btclib-org/.github's reusable-vendored-vectors.yml, called
-# at a tagged commit (section 10 of btclib-org/.github's README.md): the
+# at a tagged commit (section 10 of the organization's standard): the
 # checkout, the interpreter setup and the re-check itself are written there.
 # What stays here is the trigger, the cron minute, the concurrency group, the
 # ledger this tree checks and the interpreter it pins. `pin` is written out
@@ -34,7 +34,7 @@ on:
     # edits it in place, and the sample rate for that was never derived
     # from the subject.
     # The time is the organization grid -- section 10 of
-    # btclib-org/.github's README.md -- and not this file's to restate.
+    # the organization's standard -- and not this file's to restate.
     # Only the default branch schedules workflows, so on any other branch
     # this is reachable through the dispatch below, and through the
     # pull_request trigger further down.

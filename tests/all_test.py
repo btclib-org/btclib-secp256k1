@@ -4,10 +4,10 @@
 
 """Tests for what the package exports.
 
-Section 7 of the organization standard asks for `__all__` on every module
-and package, "a module under a private name excepted as no part of that
-surface", and a census walking the tree rather than listing it, "so a new
-public name fails until it is exported or recorded" (#357,
+Section 7 of the organization's standard asks for `__all__` on every
+module and package, "a module under a private name excepted as no part of
+that surface", and a census walking the tree rather than listing it, "so
+a new public name fails until it is exported or recorded" (#357,
 btclib-org/.github#79). The modules sitting directly under
 `btclib_secp256k1` are all in the census -- `_scalar`, `_secret` and
 `_cdata` excepted by their own leading underscore -- and the walk below

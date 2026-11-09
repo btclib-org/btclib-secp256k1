@@ -4,11 +4,11 @@
 
 """The `repr` and `str` of a class that holds a secret hold none of it.
 
-Section 7 of the btclib-org standard asks, for a class that holds a
-secret, for a test that its repr and its str() hold none of it.
-`tests/secret_free/__init__.py` reads an exception, so the two texts
-are put in one (`Shown`) and the helper's own window rule is applied to
-them.
+Section 7's *A refusal carries no secret*, in the organization's
+standard, asks, for a class that holds a secret, for a test that its
+repr and its str() hold none of it. `tests/secret_free/__init__.py`
+reads an exception, so the two texts are put in one (`Shown`) and the
+helper's own window rule is applied to them.
 
 Which classes hold a secret is read off the package: the classes each
 module of `btclib_secp256k1` defines, found by `defined_classes`, each

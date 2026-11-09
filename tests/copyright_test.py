@@ -26,7 +26,7 @@ from pathlib import Path
 _ROOT = Path(__file__).parents[1]
 _PYPROJECT = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 # the holder line, with no year group to make a range optional: section
-# 14 of the organization standard has LICENSE name the holder and no
+# 14 of the organization's standard has LICENSE name the holder and no
 # range, so a year left in the file is read as part of the holder here
 # and disagrees with `authors`, which is the direction that reports it
 # rather than tolerating it

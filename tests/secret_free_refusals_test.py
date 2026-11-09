@@ -4,8 +4,8 @@
 
 """A refusal carries no secret: each key, tweak and nonce parameter is fed one.
 
-This file tests the rule of section 7 of the btclib-org standard, *A
-refusal carries no secret*, for the refusals of secret inputs.
+This file tests the rule of section 7's *A refusal carries no secret*,
+in the organization's standard, for the refusals of secret inputs.
 
 `SCALARS` and `ENTROPIES` feed a secret, in each wrong way, to each
 parameter that takes a private key, a keypair, a tweak, the label tweaks
