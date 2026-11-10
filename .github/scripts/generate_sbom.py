@@ -14,17 +14,17 @@ declares.
 **A wheel and an sdist, the sdist alone, or a wheel from inside.** By
 default the document describes both files and reads the wheel's `METADATA`.
 `--sdist-only` describes the sdist alone and reads its `PKG-INFO`, for a
-distribution whose compiled wheels section 12 of the organization standard
-puts outside the property that a released file rebuilds from its tag: a
-serial number derived from their digests would be one nobody could
+distribution whose compiled wheels section 12 of the organization's
+standard puts outside the property that a released file rebuilds from its
+tag: a serial number derived from their digests would be one nobody could
 rebuild, where the same section asks that it can be. A wheel carries its
 own document instead, at `.dist-info/sboms/` as PEP 770 places it, which a
 build hook has `write_wheel_sbom` write while the wheel is built. It reads
-the core metadata and the gitlinks as the others do, narrowed to the
-wheel: the vendored libraries the build compiled rather than every
-submodule the tree holds, and how they are linked. It carries no digest,
-a document inside an archive being unable to name the archive's own, and
-no `vulnerabilities`: an entry of `.github/vex.toml` may name a library a
+the core metadata and the gitlinks as the others do, narrowed to the wheel:
+the vendored libraries the build compiled rather than every submodule the
+tree holds, and how they are linked. It carries no digest, a document
+inside an archive being unable to name the archive's own, and no
+`vulnerabilities`: an entry of `.github/vex.toml` may name a library a
 given wheel did not compile, which `vulnerabilities` refuses rather than
 skips. Nothing in it comes from the clock or from the compiled files, so
 two builds of one commit write it byte for byte alike.
