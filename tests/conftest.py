@@ -22,6 +22,12 @@ standard leaves a tree to point such a run at its configuration or to
 make it say it is ungated, and this file is the second of the two: such
 a run is refused (btclib-org/.github#443).
 
+A guard on the file set sits beside it. Pointed at its configuration
+with `--cov-config`, a run from `tests/` still reads the directories
+`source` names against `tests/`, and `.github/scripts` is not one there,
+so such a run is refused as well. So is a run from another checkout,
+whose `.github/scripts` coverage would measure in place of this tree's.
+
 The last thing here is the fixture `scan_python_calls`, shared by the tests
 of Silent Payments scanning. It is why this file imports the built package
 when pytest collects it.
@@ -47,6 +53,12 @@ from btclib_secp256k1 import lib, silentpayments
 # it is absent from the namespace under `-p no:cacheprovider`, which is
 # why these are read with a default rather than as attributes
 SELECTING_OPTIONS = ("keyword", "markexpr", "deselect", "ignore", "ignore_glob", "lf")
+
+# the tree that holds this file, which is where a refused run is sent and
+# where a `source` directory is looked for: no pytest or coverage flag
+# moves it, where `--rootdir` and `-c` move the rootdir and `--cov-config`
+# moves the file coverage reads
+TREE = Path(__file__).parents[1]
 
 
 def asks_for_everything(
@@ -155,9 +167,13 @@ class CoverageConfiguration(Protocol):
     file, so the attribute is the run's own answer to whether the
     configuration reached it, rather than an inference from a value
     that reached it.
+
+    `source` is the list `[tool.coverage.run]` names, each entry as
+    written there, and `None` where nothing names one.
     """
 
     config_file: str | None
+    source: list[str] | None
 
 
 def coverage_configuration(config: pytest.Config) -> CoverageConfiguration | None:
@@ -183,6 +199,40 @@ def coverage_configuration(config: pytest.Config) -> CoverageConfiguration | Non
     # return of that is what mypy's --strict refuses here
     measuring: CoverageConfiguration = controller.cov.config
     return measuring
+
+
+def held_to_a_floor(
+    asked: float | None, asked_for_help: bool, collect_only: bool
+) -> bool:
+    """Return whether a measuring run is one the guards below ask about.
+
+    The arguments are plain values rather than `config.option` itself:
+    reading the run is the hook's, and what is decided here is decided
+    from what it read.
+
+    Args:
+        asked: `--cov-fail-under`, `None` where the run named none.
+        asked_for_help: whether the run is `--help`.
+        collect_only: whether the run is `--collect-only`.
+
+    Returns:
+        Whether this run is held to the floor.
+    """
+    if asked is not None:
+        # section 8 of the organization's standard has the hook never
+        # overruling an explicit `--cov-fail-under`, and a caller who
+        # named the floor has not had one taken away in silence
+        return False
+    # neither `--help` nor `--collect-only` is held to a floor to begin
+    # with: `--help` exits before a session, and pytest-cov never fails a
+    # `--collect-only` run on the floor whatever its report prints. The
+    # pair is an enumeration rather than every run pytest-cov leaves
+    # ungated, and `--markers` and `--fixtures` are refused knowingly.
+    # Widening it is the rejected alternative: what would decide the
+    # question is whether pytest-cov would have gated this run, which is
+    # no property to read here, so a longer list is the same guess under
+    # more names
+    return not (asked_for_help or collect_only)
 
 
 def configuration_went_unread(
@@ -213,27 +263,65 @@ def configuration_went_unread(
     Returns:
         Whether this run is held to a floor it cannot see.
     """
-    if cov_config is None:
-        return False
-    if options.cov_fail_under is not None:
-        # section 8 of the organization's standard has the hook never
-        # overruling an explicit `--cov-fail-under`, and a caller who
-        # named the floor has not had one taken away in silence
-        return False
-    if options.help or options.collectonly:
-        # neither run is held to a floor to begin with: `--help` exits
-        # before a session, and pytest-cov never fails a
-        # `--collect-only` run on the floor whatever its report prints.
-        # The pair is an enumeration rather than every run pytest-cov
-        # leaves ungated, and `--markers` and `--fixtures` are refused
-        # knowingly. Widening it is the rejected alternative: what
-        # would decide the question is whether pytest-cov would have
-        # gated this run, which is no property to read here, so a
-        # longer list is the same guess under more names
+    if cov_config is None or not held_to_a_floor(
+        options.cov_fail_under, options.help, options.collectonly
+    ):
         return False
     # `inipath` is what the message has to name, so a run pytest read no
     # configuration for is one this cannot tell anybody anything about
     return cov_config.config_file is None and inipath is not None
+
+
+def sources_out_of_reach(
+    cov_config: CoverageConfiguration | None,
+    tree: Path,
+    asked: float | None,
+    asked_for_help: bool,
+    collect_only: bool,
+) -> list[str]:
+    """Return each `source` entry this run would leave unmeasured.
+
+    coverage takes an entry for a directory where it is one from the
+    directory the run started in, and for a module name otherwise. An
+    entry that is a directory under `tree` can be left unmeasured two
+    ways.
+
+    Where the entry is a directory from here, coverage measures that
+    directory, which is the one under `tree` only where both are the
+    same: from another checkout, `.github/scripts` and `tests` are that
+    checkout's, and the floor passes where they hold no Python file.
+    `samefile` asks it of the directories and not of their paths, which
+    differ where a symlink or a `..` spells one of them.
+
+    Where the entry is none from here and cannot be a module name, it is
+    measured by neither reading, and the floor still passes without it:
+    from `tests/`, `.github/scripts` is that entry. An entry that is a
+    module name, `tests` from `tests/` among them, is measured as one.
+    The sdist ships `.github/scripts`, so a run from its `tests/` is
+    refused as one from a checkout's is.
+
+    Args:
+        cov_config: what `coverage_configuration` answered.
+        tree: the tree holding this file, `TREE` in the hook.
+        asked: `--cov-fail-under`, `None` where the run named none.
+        asked_for_help: whether the run is `--help`.
+        collect_only: whether the run is `--collect-only`.
+
+    Returns:
+        Each `source` entry left unmeasured, in the order `source` names.
+    """
+    if cov_config is None or not held_to_a_floor(asked, asked_for_help, collect_only):
+        return []
+    return [
+        entry
+        for entry in cov_config.source or []
+        if (tree / entry).is_dir()
+        and (
+            not Path(entry).samefile(tree / entry)
+            if Path(entry).is_dir()
+            else not all(part.isidentifier() for part in entry.split("."))
+        )
+    ]
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -246,7 +334,8 @@ def pytest_configure(config: pytest.Config) -> None:
     changes nothing, the plugin never reading it back, so the run still
     fails on the whole tree's coverage.
 
-    A run coverage's configuration never reached is refused instead,
+    A run coverage's configuration never reached is refused instead, and
+    so is a run that would leave a `source` directory unmeasured,
     `pytest.UsageError` being what pytest prints without a traceback and
     exits `4` for -- an exit of its own, so the code says the run
     measured nothing rather than that something failed.
@@ -258,13 +347,23 @@ def pytest_configure(config: pytest.Config) -> None:
         coverage_configuration(config), config.inipath, config.option
     ):
         raise pytest.UsageError(
-            "coverage read no configuration, so this run is held to no floor"
-            " and measures a different set of files: coverage looks only in"
-            f" the directory the run started in, {Path.cwd()}, and pytest"
-            f" read {config.inipath}. Run from {config.rootpath};"
-            " --cov-config restores the floor and not the file set, a"
-            " relative source entry being resolved against the directory"
-            " the run started in."
+            "coverage read no configuration, so this run is held to no"
+            " floor and measures a different set of files: coverage looks"
+            f" only in the directory the run started in, {Path.cwd()}, and"
+            f" pytest read {config.inipath}. Run from {TREE}."
+        )
+    if unmeasured := sources_out_of_reach(
+        coverage_configuration(config),
+        TREE,
+        config.option.cov_fail_under,
+        config.option.help,
+        config.option.collectonly,
+    ):
+        raise pytest.UsageError(
+            f"coverage would not measure {', '.join(unmeasured)}: it reads"
+            " a source directory against the directory the run started in,"
+            f" {Path.cwd()}, and from there that name is not this tree's"
+            f" directory. Run from {TREE}."
         )
     namespace = config.known_args_namespace
     namespace.cov_fail_under = coverage_fail_under(
