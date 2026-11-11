@@ -569,9 +569,69 @@ def test_silent_payment_creation_refuses_a_transaction_with_no_keys() -> None:
 
 def test_silent_payment_creation_refuses_an_invalid_private_key() -> None:
     """A taproot private key libsecp256k1 rejects is named as one."""
-    with pytest.raises(ValueError, match="invalid private key"):
+    with pytest.raises(ValueError, match="invalid taproot private key at index 0"):
         silentpayments.create_outputs(
             [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY)], SP_OUTPOINT, taproot_prvkeys=[0]
+        )
+
+
+@pytest.mark.parametrize(
+    "lists, message",
+    [
+        (
+            {"prvkeys": [SP_INPUT_PRVKEY, b"\x01"]},
+            "the private key at index 1 must be 32 bytes",
+        ),
+        (
+            {"taproot_prvkeys": [SP_INPUT_PRVKEY, b"\x01"]},
+            "the taproot private key at index 1 must be 32 bytes",
+        ),
+        (
+            {"taproot_prvkeys": [SP_INPUT_PRVKEY, 0]},
+            "invalid taproot private key at index 1",
+        ),
+    ],
+)
+def test_silent_payment_creation_names_the_list_and_index_of_a_bad_key(
+    lists: dict[str, list[bytes | int]], message: str
+) -> None:
+    """Which of the two lists, and where in it, the refused key is.
+
+    A short key used to be `the private key must be 32 bytes` in either
+    list. The refusal cannot quote the key, so the list and the index are
+    what tell a caller which one to look at.
+
+    Args:
+        lists: the private-key list to pass, its second key refused.
+        message: what the exception has to name.
+    """
+    with pytest.raises(ValueError, match=message):
+        silentpayments.create_outputs(
+            [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY)], SP_OUTPOINT, **lists
+        )
+
+
+@pytest.mark.parametrize(
+    "recipient, message",
+    [
+        ((b"\x02" + bytes(32), SP_SPEND_PUBKEY), "invalid scan public key at index 1"),
+        ((SP_SCAN_PUBKEY, b"\x02" + bytes(32)), "invalid spend public key at index 1"),
+    ],
+)
+def test_silent_payment_creation_names_the_index_of_a_bad_recipient(
+    recipient: tuple[bytes, bytes], message: str
+) -> None:
+    """A recipient's unparsable key is named by the recipient's index.
+
+    Args:
+        recipient: the second pair to pay, one half of it unparsable.
+        message: what the exception has to name.
+    """
+    with pytest.raises(ValueError, match=message):
+        silentpayments.create_outputs(
+            [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY), recipient],
+            SP_OUTPOINT,
+            prvkeys=[SP_INPUT_PRVKEY],
         )
 
 
@@ -662,8 +722,21 @@ def test_a_prevouts_summary_checks_its_keys_before_its_outpoint() -> None:
 
 def test_a_prevouts_summary_of_an_unparsable_taproot_key_is_refused() -> None:
     """An x that is not on the curve is not a taproot input key."""
-    with pytest.raises(ValueError, match="invalid taproot public key"):
+    with pytest.raises(ValueError, match="invalid taproot public key at index 0"):
         silentpayments.prevouts_summary(SP_OUTPOINT, taproot_pubkeys_bytes=[bytes(32)])
+
+
+def test_a_prevouts_summary_names_the_index_of_a_bad_key() -> None:
+    """A key that does not parse is named by its list and its index."""
+    taproot_pubkey = xonly.from_pubkey(SP_INPUT_PUBKEY)[0]
+    with pytest.raises(ValueError, match="invalid taproot public key at index 1"):
+        silentpayments.prevouts_summary(
+            SP_OUTPOINT, taproot_pubkeys_bytes=[taproot_pubkey, bytes(32)]
+        )
+    with pytest.raises(ValueError, match="invalid public key at index 1"):
+        silentpayments.prevouts_summary(
+            SP_OUTPOINT, pubkeys_bytes=[SP_INPUT_PUBKEY, b"\x02" + bytes(32)]
+        )
 
 
 def test_scanning_refuses_an_empty_output_list() -> None:
@@ -884,7 +957,7 @@ def test_the_sender_wipes_the_keys_it_had_when_a_later_one_is_refused(
     """
     wiped = spy_on_wipe(monkeypatch)
 
-    with pytest.raises(ValueError, match="invalid private key"):
+    with pytest.raises(ValueError, match="invalid taproot private key at index 1"):
         silentpayments.create_outputs(
             [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY)],
             SP_OUTPOINT,

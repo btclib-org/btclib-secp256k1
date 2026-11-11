@@ -150,8 +150,14 @@ def _create_outputs_(
     keypairs: list[CData] = []
     seckeys: list[CData] = []
     try:
-        keypairs.extend(keypair(prvkey) for prvkey in taproot_prvkeys)
-        seckeys.extend(scalar_buffer(prvkey, "private key") for prvkey in prvkeys)
+        keypairs.extend(
+            keypair(prvkey, f"taproot private key at index {index}")
+            for index, prvkey in enumerate(taproot_prvkeys)
+        )
+        seckeys.extend(
+            scalar_buffer(prvkey, f"private key at index {index}")
+            for index, prvkey in enumerate(prvkeys)
+        )
         created = lib.secp256k1_silentpayments_sender_create_outputs(
             ctx,
             array("secp256k1_xonly_pubkey *[]", outputs),
@@ -235,10 +241,12 @@ def create_outputs(
     """
     recipients = [
         (
-            keys.parse(scan_pubkey_bytes, "scan public key"),
-            keys.parse(spend_pubkey_bytes, "spend public key"),
+            keys.parse(scan_pubkey_bytes, f"scan public key at index {index}"),
+            keys.parse(spend_pubkey_bytes, f"spend public key at index {index}"),
         )
-        for scan_pubkey_bytes, spend_pubkey_bytes in recipients_bytes
+        for index, (scan_pubkey_bytes, spend_pubkey_bytes) in enumerate(
+            recipients_bytes
+        )
     ]
     return [
         xonly.serialize(output)
@@ -512,10 +520,13 @@ def prevouts_summary(
         True
     """
     taproot_pubkeys = [
-        xonly.parse(pubkey_bytes, "taproot public key")
-        for pubkey_bytes in taproot_pubkeys_bytes
+        xonly.parse(pubkey_bytes, f"taproot public key at index {index}")
+        for index, pubkey_bytes in enumerate(taproot_pubkeys_bytes)
     ]
-    pubkeys = [keys.parse(pubkey_bytes) for pubkey_bytes in pubkeys_bytes]
+    pubkeys = [
+        keys.parse(pubkey_bytes, f"public key at index {index}")
+        for index, pubkey_bytes in enumerate(pubkeys_bytes)
+    ]
     # the call that refuses every input BIP352 refuses, an empty list and a
     # sum at infinity included; the sum below is what it adds, and so
     # cannot fail

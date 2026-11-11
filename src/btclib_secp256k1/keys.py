@@ -543,7 +543,9 @@ class PubkeyTweakChain:
         return self._pubkey
 
 
-def _pubkey_tweak_mul_(pubkey: CData, tweak: BytesLike | int) -> CData:
+def _pubkey_tweak_mul_(
+    pubkey: CData, tweak: BytesLike | int, name: str = "tweak"
+) -> CData:
     """Multiply an already-parsed public key by a tweak.
 
     The private half of `pubkey_tweak_mul`, for a caller who already
@@ -557,6 +559,9 @@ def _pubkey_tweak_mul_(pubkey: CData, tweak: BytesLike | int) -> CData:
             Mutated in place.
         tweak: the scalar to multiply by, 32 bytes or an int below
             2**256.
+        name: what the tweak is, as the exception should call it, for
+            `pubkey_tweak_mul_sum`, which names the one at fault by its
+            index.
 
     Returns:
         The same object passed in, multiplied.
@@ -568,10 +573,10 @@ def _pubkey_tweak_mul_(pubkey: CData, tweak: BytesLike | int) -> CData:
             last two being one message here -- `context.check` is what
             tells them apart.
     """
-    tweak_bytes = scalar(tweak, "tweak")
+    tweak_bytes = scalar(tweak, name)
     multiplied = lib.secp256k1_ec_pubkey_tweak_mul(ctx, pubkey, tweak_bytes)
     if not multiplied:
-        raise ValueError("invalid tweak")
+        raise ValueError(f"invalid {name}")
     return pubkey
 
 
@@ -698,7 +703,10 @@ def pubkey_combine(
             which no valid input can make it do.
     """
     return serialize(
-        _pubkey_combine_([parse(pubkey_bytes) for pubkey_bytes in pubkeys_bytes]),
+        _pubkey_combine_([
+            parse(pubkey_bytes, f"public key at index {index}")
+            for index, pubkey_bytes in enumerate(pubkeys_bytes)
+        ]),
         compressed,
     )
 
@@ -841,8 +849,14 @@ def pubkey_tweak_mul_sum(
     # can reach is one no test can drive, which this package does not
     # leave behind
     products = [
-        _pubkey_tweak_mul_(parse(pubkey_bytes), tweak)
-        for pubkey_bytes, tweak in zip(pubkeys_bytes, tweaks, strict=False)
+        _pubkey_tweak_mul_(
+            parse(pubkey_bytes, f"public key at index {index}"),
+            tweak,
+            f"tweak at index {index}",
+        )
+        for index, (pubkey_bytes, tweak) in enumerate(
+            zip(pubkeys_bytes, tweaks, strict=False)
+        )
     ]
     summed = _pubkey_sum_(products)
     return None if summed is None else serialize(summed, compressed)
