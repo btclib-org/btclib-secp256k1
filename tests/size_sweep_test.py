@@ -46,7 +46,8 @@ import pytest
 
 import btclib_secp256k1
 from btclib_secp256k1 import _scalar, keys, musig
-from tests.bytes_like_test import CALLS, TWEAK, at_the_boundary
+
+from .bytes_like_test import CALLS, TWEAK, at_the_boundary
 
 Call = tuple[str, Callable[..., Any], tuple[Any, ...], dict[str, Any]]
 
