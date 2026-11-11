@@ -138,10 +138,18 @@ cron, because what it answers is cheaper to know before a version is
 consumed than after. It gates nothing, so it will not stop you: reading
 it is the point. It resolves every dependency at the newest release its
 bounds admit and then runs the suite, the coverage union, the lint gate
-and the packaging checks; a release ships what `uv.lock` pins, so a red
-run here does not make the release wrong — it says the next dependency
-bump is going to be work, and that is worth knowing before rather than
-during.
+and the packaging checks.
+
+A release declares the ranges `pyproject.toml` gives its dependencies and
+its extras, not what `uv.lock` pins, so a user's install resolves the
+newest version each range admits. A failure in any package a user's
+install resolves, those dependencies and extras and what they in turn
+require, is one users will meet the day the release ships, and it is read
+before the tag. `deps-latest` does not test every such version: its lock
+holds the dependency groups too, so a group's upper bound keeps a package
+below the version a user's install resolves. A failure confined to a
+package that no user's install resolves, one only a dependency group
+brings in, reaches no user and waits for the next lock bump.
 
 `mutation` is not: it asks whether the suite would notice a wrong line,
 which a release does not change the answer to, and a session is measured
@@ -160,14 +168,14 @@ kept or discarded on its own schedule, never a condition of the tag.
 Updating the pinned dependencies is a decision of the same shape, and
 belongs here for the same reason: whether to run `uv lock --upgrade` (or
 wait for Dependabot's own pull requests to catch up) is not itself a
-release-timing question, `uv.lock` pinning what ships regardless of what
-`deps-latest` resolved against. Unlike `mutation`, though, it is worth
-deciding on purpose rather than defaulting by omission: `deps-latest`'s run
-for 0.8.0.4 found ruff 0.16.3→0.16.4, stevedore 5.9.0→5.9.1 and pygments
-2.20.0→2.21.0 already past what `uv.lock` pinned, with nobody having
-chosen either way. State the choice — upgraded, or left as `deps-latest`
-found it, and why — in the release pull request, the same line
-`deps-latest`'s own result already gets.
+release-timing question: the lock moves what the gates and the builds
+install, not the ranges a user's install resolves. Unlike `mutation`,
+though, it is worth deciding on purpose rather than defaulting by
+omission: `deps-latest`'s run for 0.8.0.4 found ruff 0.16.3→0.16.4,
+stevedore 5.9.0→5.9.1 and pygments 2.20.0→2.21.0 already past what
+`uv.lock` pinned, with nobody having chosen either way. State the choice —
+upgraded, or left as `deps-latest` found it, and why — in the release pull
+request, the same line `deps-latest`'s own result already gets.
 
 Then:
 
@@ -258,33 +266,6 @@ Then:
    `README.md` too (`grep -n 'wraps
    libsecp256k1' README.md` finds the line without a search through the
    prose)
-1. run each dependent's suite with this release in place of its PyPI
-   version, whether or not the notes declare a break. Section 12 of the
-   [organization standard](https://github.com/btclib-org/.github#12-releasing)
-   has the rule. The dependents of `btclib-secp256k1` are `btclib`,
-   `btclib-benchmarks`, `btclib-ecc`, `btclib-node` and
-   `btclib-wallet`. Re-derive them with the loop in that section
-   before each release rather than carry this list.
-
-   From a throwaway checkout of each dependent's default branch, with the
-   sha of the release pull request's head for `<sha>`, before it merges:
-
-   ```shell
-   ref=git+https://github.com/btclib-org/btclib-secp256k1@<sha>
-   ```
-
-   ```shell
-   uv run --locked --no-default-groups --group test \
-     --with "btclib-secp256k1 @ ${ref:?}" \
-     python -m pytest --no-cov
-   ```
-
-   It is `python -m pytest`, not `pytest`: that script is the environment's
-   own and imports the locked version. `--no-cov` because the question is
-   pass or fail, not the dependent's coverage floor.
-
-   A dependent that fails gets its fix ready first. The release is tagged,
-   then the dependent releases with its floor raised to it.
 1. give the pull request its title and its body before merging it, not
    after. The title is the version; the body says what the release is —
    what moved, what did not, and which of the two a user would notice.
@@ -634,7 +615,9 @@ Then:
    The version comes from the tree as at the tagging step above, so what
    this installs is the release that was just published.
    `--refresh-package` makes uv read the index again rather than its
-   cache, which can miss a version just published.
+   cache. uv keeps an index's page for as long as the index's HTTP
+   caching headers allow, so a page cached before the upload misses the
+   version just published.
 
    BIP340 vector 0, the same check `pypi-install` makes below. Then check
    the attestations, the two checks the rehearsal makes and for the same
@@ -856,6 +839,10 @@ Then:
     declares, so a tree already bumped would offer it the placeholder
     instead of the version being released
 
+A dependent adapts after the release, as section 12 of the
+[organization standard](https://github.com/btclib-org/.github#12-releasing)
+says.
+
 ## Rehearsing on TestPyPI
 
 A tag cannot be taken back: a version, once on PyPI, can only be yanked,
@@ -929,6 +916,7 @@ already built.
      --extra-index-url https://pypi.org/simple/ \
      --index-strategy unsafe-best-match --prerelease allow \
      --with "btclib-secp256k1==$version.dev<run><attempt>" \
+     --refresh-package btclib-secp256k1 \
      python -c "import btclib_secp256k1 as m; print(m.__version__)"
    ```
 
@@ -936,7 +924,8 @@ already built.
    and `--prerelease allow` for the `.dev<run><attempt>` suffix the
    version installed carries. Those two numbers are the run's own and are
    the whole of what is typed here, the version before the suffix being
-   read from the tree as in the check after a release above
+   read from the tree as in the check after a release above.
+   `--refresh-package` is there for the reason that check gives
 1. run something with it, installing being weaker than working where a
    compiled extension is what was installed. The check the `pypi-install`
    workflow makes — BIP340 vector 0, and the round trip of a signature
