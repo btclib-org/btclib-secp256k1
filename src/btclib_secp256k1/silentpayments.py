@@ -380,10 +380,9 @@ def _labeled_spend_pubkey_(spend_pubkey: CData, label_obj: CData) -> CData:
             tells them apart.
     """
     labeled = ffi.new("secp256k1_pubkey *")
-    added = lib.secp256k1_silentpayments_recipient_create_labeled_spend_pubkey(
+    if not lib.secp256k1_silentpayments_recipient_create_labeled_spend_pubkey(
         ctx, labeled, spend_pubkey, label_obj
-    )
-    if not added:
+    ):
         raise ValueError("invalid labeled spend public key")
     return labeled
 
@@ -473,7 +472,7 @@ def _prevouts_summary_(
     )
 
     summary = ffi.new("secp256k1_silentpayments_prevouts_summary *")
-    summarized = lib.secp256k1_silentpayments_recipient_prevouts_summary_create(
+    if not lib.secp256k1_silentpayments_recipient_prevouts_summary_create(
         ctx,
         summary,
         outpoint_smallest36,
@@ -481,8 +480,7 @@ def _prevouts_summary_(
         len(taproot_pubkeys),
         array("secp256k1_pubkey *[]", pubkeys),
         len(pubkeys),
-    )
-    if not summarized:
+    ):
         raise ValueError("not a silent payments transaction")
     return summary
 
@@ -906,10 +904,9 @@ def serialize_label(label_obj: CData) -> bytes:
             `context.check` is what tells the two apart.
     """
     output = ffi.new(_LABEL_BUFFER_TYPE)
-    serialized = lib.secp256k1_silentpayments_recipient_label_serialize(
+    if not lib.secp256k1_silentpayments_recipient_label_serialize(
         ctx, output, label_obj
-    )
-    if not serialized:
+    ):
         msg = "label serialization failed"
         raise RuntimeError(msg)
     # the length is the constant the buffer's type was built from, so the

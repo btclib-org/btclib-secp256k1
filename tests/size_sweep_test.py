@@ -75,9 +75,10 @@ NONCES = round_one()
 PUBNONCES = [nonce.pubnonce for nonce in NONCES]
 AGGNONCE = musig.nonce_agg(PUBNONCES)
 SESSION = musig.Session(AGGNONCE, MSG, CACHE)
-PARTIAL_SIGS = []
-for _nonce, _prvkey in zip(NONCES, PRVKEYS, strict=True):
-    PARTIAL_SIGS.append(_nonce.partial_sign(_prvkey, CACHE, SESSION))
+PARTIAL_SIGS = [
+    nonce.partial_sign(prvkey, CACHE, SESSION)
+    for nonce, prvkey in zip(NONCES, PRVKEYS, strict=True)
+]
 
 
 def key_aggregated(pubkeys: list[bytes]) -> bytes:

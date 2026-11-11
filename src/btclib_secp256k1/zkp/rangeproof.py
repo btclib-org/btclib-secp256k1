@@ -169,9 +169,7 @@ def verify(
         len(extra_bytes),
         gen,
     )
-    if not ok:
-        return None
-    return int(min_value[0]), int(max_value[0])
+    return (int(min_value[0]), int(max_value[0])) if ok else None
 
 
 def rewind(
@@ -225,7 +223,7 @@ def rewind(
     max_value = ffi.new("uint64_t *")
 
     try:
-        ok = lib.secp256k1_rangeproof_rewind(
+        if not lib.secp256k1_rangeproof_rewind(
             ctx,
             blind_out,
             value_out,
@@ -240,8 +238,7 @@ def rewind(
             extra_bytes or ffi.NULL,
             len(extra_bytes),
             gen,
-        )
-        if not ok:
+        ):
             raise ValueError("proof does not verify, or rewind failed")
         return (
             take(blind_out),
@@ -357,7 +354,7 @@ def sign(  # noqa: PLR0913
     # is read back with ffi.unpack too
     proof = ffi.new(f"char[{buffer_size}]")
     plen = ffi.new("size_t *", buffer_size)
-    ok = lib.secp256k1_rangeproof_sign(
+    if not lib.secp256k1_rangeproof_sign(
         ctx,
         proof,
         plen,
@@ -373,8 +370,7 @@ def sign(  # noqa: PLR0913
         extra_bytes or ffi.NULL,
         len(extra_bytes),
         gen,
-    )
-    if not ok:
+    ):
         raise ValueError("rangeproof signing failed")
     return bytes(ffi.unpack(proof, int(plen[0])))
 

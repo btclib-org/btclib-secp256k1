@@ -345,8 +345,7 @@ def _pubkey_negate_(pubkey: CData) -> CData:
             rather than in the message, and `context.check` is what
             reads it.
     """
-    negated = lib.secp256k1_ec_pubkey_negate(ctx, pubkey)
-    if not negated:
+    if not lib.secp256k1_ec_pubkey_negate(ctx, pubkey):
         msg = "public key negation failed"
         raise RuntimeError(msg)
     return pubkey
@@ -396,8 +395,7 @@ def _pubkey_tweak_add_(pubkey: CData, tweak: BytesLike | int) -> CData:
             tells them apart.
     """
     tweak_bytes = scalar(tweak, "tweak")
-    tweaked = lib.secp256k1_ec_pubkey_tweak_add(ctx, pubkey, tweak_bytes)
-    if not tweaked:
+    if not lib.secp256k1_ec_pubkey_tweak_add(ctx, pubkey, tweak_bytes):
         raise ValueError("invalid tweak or resulting public key")
     return pubkey
 
@@ -574,8 +572,7 @@ def _pubkey_tweak_mul_(
             tells them apart.
     """
     tweak_bytes = scalar(tweak, name)
-    multiplied = lib.secp256k1_ec_pubkey_tweak_mul(ctx, pubkey, tweak_bytes)
-    if not multiplied:
+    if not lib.secp256k1_ec_pubkey_tweak_mul(ctx, pubkey, tweak_bytes):
         raise ValueError(f"invalid {name}")
     return pubkey
 

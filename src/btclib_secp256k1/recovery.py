@@ -321,19 +321,18 @@ def sign(
     if pubkey is not None and not verify:
         raise ValueError("pubkey is for the check that verify=False declines")
 
-    return serialize_compact(
-        _sign_(
-            msg_bytes,
-            prvkey,
-            aux_rand32,
-            verify=verify,
-            # parsed here rather than inside the check, so that octets
-            # which are not a public key are refused before anything is
-            # signed: a caller who mistyped an argument should not be
-            # told about it by a check on a signature they now hold
-            pubkey=None if pubkey is None else keys.parse(pubkey),
-        )
+    signature = _sign_(
+        msg_bytes,
+        prvkey,
+        aux_rand32,
+        verify=verify,
+        # parsed here rather than inside the check, so that octets which
+        # are not a public key are refused before anything is signed: a
+        # caller who mistyped an argument should not be told about it by
+        # a check on a signature they now hold
+        pubkey=None if pubkey is None else keys.parse(pubkey),
     )
+    return serialize_compact(signature)
 
 
 def _recover_(msg_bytes: BytesLike, signature: CData) -> CData:
@@ -364,8 +363,7 @@ def _recover_(msg_bytes: BytesLike, signature: CData) -> CData:
     msg_bytes = octets(msg_bytes, "message hash", 32)
 
     pubkey = ffi.new("secp256k1_pubkey *")
-    recovered = lib.secp256k1_ecdsa_recover(ctx, pubkey, signature, msg_bytes)
-    if not recovered:
+    if not lib.secp256k1_ecdsa_recover(ctx, pubkey, signature, msg_bytes):
         raise ValueError("public key recovery failed")
     return pubkey
 
@@ -426,10 +424,9 @@ def _to_der_(signature: CData) -> bytes:
             which no input can make it do.
     """
     dsa_signature = ffi.new("secp256k1_ecdsa_signature *")
-    converted = lib.secp256k1_ecdsa_recoverable_signature_convert(
+    if not lib.secp256k1_ecdsa_recoverable_signature_convert(
         ctx, dsa_signature, signature
-    )
-    if not converted:
+    ):
         msg = "signature conversion failed"
         raise RuntimeError(msg)
     return serialize_der(dsa_signature)
@@ -515,10 +512,9 @@ def serialize_compact(signature: CData) -> tuple[bytes, int]:
     """
     sig_bytes = ffi.new(_COMPACT_BUFFER_TYPE)
     recid = ffi.new("int *")
-    serialized = lib.secp256k1_ecdsa_recoverable_signature_serialize_compact(
+    if not lib.secp256k1_ecdsa_recoverable_signature_serialize_compact(
         ctx, sig_bytes, recid, signature
-    )
-    if not serialized:
+    ):
         msg = "signature serialization failed"
         raise RuntimeError(msg)
     return ffi.unpack(sig_bytes, _COMPACT_SIZE), recid[0]

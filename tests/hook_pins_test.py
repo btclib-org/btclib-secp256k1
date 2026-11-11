@@ -419,9 +419,7 @@ def _hook_args(text: str, hook_id: str) -> list[str]:
         a flow sequence on one line.
     """
     found = _ARGS_LINE.findall(_hook_block(text, hook_id))
-    if len(found) != 1:
-        return []
-    return _flow(found[0])
+    return _flow(found[0]) if len(found) == 1 else []
 
 
 def _only_group(entry: str) -> str:

@@ -1103,10 +1103,9 @@ def serialize_der(signature: CData) -> bytes:
     # refuse every later serialization
     sig_bytes = ffi.new(_DER_BUFFER_TYPE)
     length = ffi.new("size_t *", _DER_SIZE)
-    serialized = lib.secp256k1_ecdsa_signature_serialize_der(
+    if not lib.secp256k1_ecdsa_signature_serialize_der(
         ctx, sig_bytes, length, signature
-    )
-    if not serialized:
+    ):
         msg = "signature serialization failed"
         raise RuntimeError(msg)
     return ffi.unpack(sig_bytes, length[0])
@@ -1129,10 +1128,7 @@ def serialize_compact(signature: CData) -> bytes:
             what tells the two apart.
     """
     sig_bytes = ffi.new(_COMPACT_BUFFER_TYPE)
-    serialized = lib.secp256k1_ecdsa_signature_serialize_compact(
-        ctx, sig_bytes, signature
-    )
-    if not serialized:
+    if not lib.secp256k1_ecdsa_signature_serialize_compact(ctx, sig_bytes, signature):
         msg = "signature serialization failed"
         raise RuntimeError(msg)
     return ffi.unpack(sig_bytes, _COMPACT_SIZE)

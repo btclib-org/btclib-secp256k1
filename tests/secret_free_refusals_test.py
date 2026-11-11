@@ -315,7 +315,7 @@ def untested(
         for table, parameters in zip((scalars, entropies), kinds, strict=True)
         for parameter in parameters
         if f"{name} {parameter}" not in table
-        and not (len(parameters) == 1 and name in table)
+        and (len(parameters) != 1 or name not in table)
     ]
 
 
