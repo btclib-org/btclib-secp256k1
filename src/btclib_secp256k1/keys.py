@@ -697,8 +697,9 @@ def pubkey_combine(
 
     Raises:
         ValueError: if the sequence is empty, if any key is not a valid
-            point, or if the sum is the point at infinity, which has no
-            serialization.
+            point -- named by its position in the sequence,
+            `pubkeys_bytes[1]` being "public key at index 1" -- or if the
+            sum is the point at infinity, which has no serialization.
         RuntimeError: if libsecp256k1 fails to serialize the result,
             which no valid input can make it do.
     """
@@ -817,7 +818,8 @@ def pubkey_tweak_mul_sum(
             point, or if any tweak is not 32 bytes, does not fit in
             them, or multiplies its key to something invalid -- zero and
             the group order being the two scalars there is no product
-            for.
+            for. A refused key or tweak is named by its position,
+            `tweaks[1]` being "tweak at index 1".
         RuntimeError: if libsecp256k1 fails to serialize the result,
             which no valid input can make it do.
 

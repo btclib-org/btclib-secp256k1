@@ -590,6 +590,14 @@ def test_silent_payment_creation_refuses_an_invalid_private_key() -> None:
             {"taproot_prvkeys": [SP_INPUT_PRVKEY, 0]},
             "invalid taproot private key at index 1",
         ),
+        (
+            {"prvkeys": [SP_INPUT_PRVKEY, 0]},
+            "invalid private key at index 1",
+        ),
+        (
+            {"prvkeys": [SP_INPUT_PRVKEY, N]},
+            "invalid private key at index 1",
+        ),
     ],
 )
 def test_silent_payment_creation_names_the_list_and_index_of_a_bad_key(
@@ -597,9 +605,8 @@ def test_silent_payment_creation_names_the_list_and_index_of_a_bad_key(
 ) -> None:
     """Which of the two lists, and where in it, the refused key is.
 
-    A short key used to be `the private key must be 32 bytes` in either
-    list. The refusal cannot quote the key, so the list and the index are
-    what tell a caller which one to look at.
+    The refusal cannot quote the key, so the list and the index are what
+    tell a caller which one to look at.
 
     Args:
         lists: the private-key list to pass, its second key refused.
@@ -621,7 +628,11 @@ def test_silent_payment_creation_names_the_list_and_index_of_a_bad_key(
 def test_silent_payment_creation_names_the_index_of_a_bad_recipient(
     recipient: tuple[bytes, bytes], message: str
 ) -> None:
-    """A recipient's unparsable key is named by the recipient's index.
+    """A recipient's unparsable key is named as scan or spend, and by index.
+
+    `keys.parse` would answer both halves with "invalid public key", which
+    for a recipient built out of two keys is the half of the answer that
+    does not help.
 
     Args:
         recipient: the second pair to pay, one half of it unparsable.
@@ -632,32 +643,6 @@ def test_silent_payment_creation_names_the_index_of_a_bad_recipient(
             [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY), recipient],
             SP_OUTPOINT,
             prvkeys=[SP_INPUT_PRVKEY],
-        )
-
-
-@pytest.mark.parametrize(
-    "recipient, message",
-    [
-        ((b"\x02" + bytes(32), SP_SPEND_PUBKEY), "invalid scan public key"),
-        ((SP_SCAN_PUBKEY, b"\x02" + bytes(32)), "invalid spend public key"),
-    ],
-)
-def test_silent_payment_creation_names_which_key_it_refused(
-    recipient: tuple[bytes, bytes], message: str
-) -> None:
-    """Scan and spend are two arguments, and the exception says which.
-
-    `keys.parse` would answer both with "invalid public key", which for a
-    recipient built out of two keys is the half of the answer that does
-    not help.
-
-    Args:
-        recipient: the pair to pay, one half of it unparsable.
-        message: what the exception has to name.
-    """
-    with pytest.raises(ValueError, match=message):
-        silentpayments.create_outputs(
-            [recipient], SP_OUTPOINT, prvkeys=[SP_INPUT_PRVKEY]
         )
 
 

@@ -154,10 +154,14 @@ def _create_outputs_(
             keypair(prvkey, f"taproot private key at index {index}")
             for index, prvkey in enumerate(taproot_prvkeys)
         )
-        seckeys.extend(
-            scalar_buffer(prvkey, f"private key at index {index}")
-            for index, prvkey in enumerate(prvkeys)
-        )
+        for index, prvkey in enumerate(prvkeys):
+            seckeys.append(scalar_buffer(prvkey, f"private key at index {index}"))
+            # in constant time, as `_label_table` checks a tweak, so that a
+            # key at zero or at the order is named before the call that
+            # takes the whole list, whose refusal names none
+            if not lib.secp256k1_ec_seckey_verify(ctx, seckeys[-1]):
+                msg = f"invalid private key at index {index}: not in [1, n-1]"
+                raise ValueError(msg)
         created = lib.secp256k1_silentpayments_sender_create_outputs(
             ctx,
             array("secp256k1_xonly_pubkey *[]", outputs),
@@ -227,7 +231,10 @@ def create_outputs(
             them, or is not in [1, n-1], or if libsecp256k1 refuses the
             set -- the sum of the private keys being zero, an output
             landing on an invalid point, or more outputs asked of one
-            scan key than BIP352 allows it.
+            scan key than BIP352 allows it. A refused key is named by its
+            list and its position there, `prvkeys[1]` being "private key
+            at index 1" and a recipient's scan key "scan public key at
+            index 1".
 
     Example:
         >>> from btclib_secp256k1 import keys, silentpayments
@@ -509,7 +516,10 @@ def prevouts_summary(
         ValueError: if no public key is given, if the outpoint is not 36
             bytes, if any key is not a valid point, or if the inputs sum
             to the point at infinity, which is BIP352's "not a Silent
-            Payments transaction" and which the recipient skips.
+            Payments transaction" and which the recipient skips. A refused
+            key is named by its list and its position there,
+            `taproot_pubkeys_bytes[1]` being "taproot public key at index
+            1".
 
     Example:
         >>> from btclib_secp256k1 import keys, silentpayments

@@ -701,7 +701,9 @@ ORDER = {
     "musig.SecretNonce.partial_sign": KEY,
     "musig.KeyAggCache.pubkey_ec_tweak_add": TWEAKED,
     "musig.KeyAggCache.pubkey_xonly_tweak_add": TWEAKED,
-    "silentpayments.create_outputs prvkeys": "silent payment output creation failed",
+    "silentpayments.create_outputs prvkeys": (
+        "invalid private key at index 0: not in [1, n-1]"
+    ),
     "silentpayments.create_outputs taproot_prvkeys": (
         "invalid taproot private key at index 0: not in [1, n-1]"
     ),
