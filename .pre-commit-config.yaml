@@ -614,7 +614,7 @@ repos:
         name: a sourcery skip names rules, and no tag
         language: pygrep
         entry: |-
-          #\W*sourcery\W+skip(?!:)|#\W*sourcery\W+skip:[^#]*(?<![\w-])(?:default|refactoring|suggestion|comment)(?![\w-])
+          #\W*sourcery\W+skip\b(?!:[^#;\w]*\w)|#\W*sourcery\W+skip:[^#]*(?<![\w-])(?:default|refactoring|suggestion|comment)(?![\w-])
         types: [python]
   # Scoped to btclib_secp256k1, which is what actually ships in the
   # wheel: a comment here is read by someone who installed only this
