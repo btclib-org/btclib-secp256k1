@@ -602,24 +602,51 @@ def test_the_tracking_issue_is_looked_for_by_its_title(
     Args:
         monkeypatch: the fixture `subprocess.run` is replaced through.
     """
-    run = _Run('[{"number": 7}]')
+    title = "A title of the caller's own"
+    run = _Run(json.dumps([{"number": 7, "title": title}]))
     monkeypatch.setattr(check.subprocess, "run", run)
 
-    assert check._open_issue_number("A title of the caller's own") == "7"
+    assert check._open_issue_number(title) == "7"
     assert '"A title of the caller\'s own" in:title' in run.calls[-1]
 
     monkeypatch.setattr(check.subprocess, "run", _Run("[]"))
 
-    assert check._open_issue_number("A title of the caller's own") is None
+    assert check._open_issue_number(title) is None
+
+
+def test_a_longer_title_holding_the_one_searched_is_another_issue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An issue the search finds under a longer title is not this one.
+
+    It is listed first, ahead of the exact title where there is one
+    (issue btclib-org/.github#2152).
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+    """
+    title = "Vendored vectors behind upstream"
+    longer = {"number": 41, "title": "Two vendored vectors behind upstream, in tests"}
+    monkeypatch.setattr(check.subprocess, "run", _Run(json.dumps([longer])))
+
+    assert check._open_issue_number(title) is None
+
+    exact = {"number": 42, "title": title}
+    monkeypatch.setattr(check.subprocess, "run", _Run(json.dumps([longer, exact])))
+
+    assert check._open_issue_number(title) == "42"
+
+
+_OPEN = '[{"number": 7, "title": "Vendored vectors behind upstream"}]'
 
 
 @pytest.mark.parametrize(
     "open_issues, drifted, expected",
     [
         ("[]", [], None),
-        ('[{"number": 7}]', [], "close"),
+        (_OPEN, [], "close"),
         ("[]", [check.Drift(_ENTRY, _TIP, "2026-02-03")], "create"),
-        ('[{"number": 7}]', [check.Drift(_ENTRY, _TIP, "2026-02-03")], "edit"),
+        (_OPEN, [check.Drift(_ENTRY, _TIP, "2026-02-03")], "edit"),
     ],
 )
 def test_the_report_is_one_gh_command_per_outcome(
@@ -906,8 +933,8 @@ class _Gh:
 
     The trees API answers from `trees`, keyed on the repository and the
     `<commit>:<directory>` the script asks for; the commits API from
-    `commits`; `gh issue list` finds the issue `open_issue` names, and
-    every other `gh issue` call answers nothing.
+    `commits`; `gh issue list` finds the issue `open_issue` names, under
+    the title searched, and every other `gh issue` call answers nothing.
     """
 
     def __init__(self) -> None:
@@ -949,7 +976,11 @@ class _Gh:
             commit = {"sha": sha, "commit": {"committer": {"date": date}}}
             return SimpleNamespace(stdout=json.dumps([commit]))
         if argv[2] == "list":
-            issues = [{"number": self.open_issue}] if self.open_issue else []
+            search = argv[argv.index("--search") + 1]
+            title = search.removeprefix('"').removesuffix('" in:title')
+            issues = (
+                [{"number": self.open_issue, "title": title}] if self.open_issue else []
+            )
             return SimpleNamespace(stdout=json.dumps(issues))
         return SimpleNamespace(stdout="")
 
