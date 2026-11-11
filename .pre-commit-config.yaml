@@ -154,8 +154,8 @@ repos:
         # the next file vendored into it is safe before anyone remembers
         # this line; check-json above still asks the question worth
         # asking of them, which is whether they parse. What is left is
-        # the hand-written json, `.claude/settings.json` today, which is
-        # this hook's subject
+        # `.bestpractices.json` and `.claude/settings.json` today, which
+        # are this hook's subject
         exclude: ^(\.vscode/|tests/)
       - id: check-merge-conflict
       - id: check-vcs-permalinks

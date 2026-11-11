@@ -819,7 +819,7 @@ Then:
    repository can make, tracked at btclib-org/.github#26, so a red run
    with no build attempted at all is that rule missing rather than a
    build failing
-1. **Review the bestpractices.dev answers.** This repository's
+1. review the bestpractices.dev answers. This repository's
    `.bestpractices.json` holds them (section 10 of the organization's
    standard). Where it has none yet, the `--seed` mode of
    btclib-org/.github's `.github/scripts/bestpractices.py` writes one
@@ -831,7 +831,7 @@ Then:
    `--drift` prints for this repository, one for each section of the form,
    and save the form at each. `--drift` then prints nothing for this
    repository. An advisory this repository publishes is owed the same
-   review.
+   review
 1. open the next version: bump `pyproject.toml` to a fourth number over
     what was just published — `0.7.1.1` after `0.7.1`, and `0.8.0.13`
     after `0.8.0.12`, where the fourth number is raised and not a fifth
