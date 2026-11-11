@@ -819,14 +819,19 @@ Then:
    repository can make, tracked at btclib-org/.github#26, so a red run
    with no build attempted at all is that rule missing rather than a
    build failing
-1. review the bestpractices.dev answers. Refresh the saved answers with
-   `btclib-org/.github`'s `.github/scripts/bestpractices.py`, and run its
-   `--stale` and `--differ` to find what to read (section 10 of its
-   `README.md`). Read <https://www.bestpractices.dev/projects/14814>
-   against the release and update every answer it changed: the release
-   notes and the vulnerabilities it fixed, the signed tag and assets, the
-   attestation names. Then refresh the saved answers again. An advisory
-   this repository publishes is owed the same review
+1. review the bestpractices.dev answers. This repository's
+   `.bestpractices.json` holds them (section 10 of the organization's
+   standard). Where it has none yet, the `--seed` mode of
+   btclib-org/.github's `.github/scripts/bestpractices.py` writes one
+   from the site's answers, to copy here. The script's `--stale` and
+   `--differ` find what to read. Read the file against the release, and
+   change in a pull request of its own every answer the release changed:
+   the release notes and the vulnerabilities it fixed, signed tags and
+   assets, attestation names. Once it lands, open each URL the script's
+   `--drift` prints for this repository, one for each section of the form,
+   and save the form at each. `--drift` then prints nothing for this
+   repository. An advisory this repository publishes is owed the same
+   review
 1. open the next version: bump `pyproject.toml` to a fourth number over
     what was just published — `0.7.1.1` after `0.7.1`, and `0.8.0.13`
     after `0.8.0.12`, where the fourth number is raised and not a fifth
