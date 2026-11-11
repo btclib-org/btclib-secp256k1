@@ -217,16 +217,16 @@ nothing here those vectors could be compared against.
 ```text
 repo    bitcoin/bips
 path    bip-0352/send_and_receive_test_vectors.json
-commit  3c68d3f3a19b9ed3ee1e9129147541a15f1603cb  2026-10-25
-blob    b915113acc8130bb0e7347fa4485af25906123bd
-pulled  2026-08-11
+commit  04393c98c0e5268e02f465dbbfc6ea09bb599c99  2026-11-05
+blob    1caf942b2ec443c38397e2c11f0134e2e382dbcf
+pulled  2026-11-11
 behind  0 revisions; that commit is the tip of the path
 ```
 
 Verdict: **identical**. Every case, both directions of each. It is not
 the file libsecp256k1 vendors in the `secp256k1` submodule, at
 `src/modules/silentpayments/bip352_send_and_receive_test_vectors.json`:
-that copy is the blob at `c2ac36f`, the revision before this pin, and
+that copy is the blob at `c2ac36f`, two revisions before this pin, and
 lacks the last case here, a taproot key-path spend with an annex.
 
 Read in part, and the part is a decision rather than a limit. Each case
