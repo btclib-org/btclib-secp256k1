@@ -637,6 +637,65 @@ def test_a_longer_title_holding_the_one_searched_is_another_issue(
     assert check._open_issue_number(title) == "42"
 
 
+# what `gh issue list --help` gives as `--limit`'s default
+_GH_DEFAULT_LIMIT = 30
+
+
+class _IssueList:
+    """A `subprocess.run` stand-in answering `gh issue list` as gh pages it.
+
+    It answers at most `--limit` of `issues`, in order, and gh's default
+    where no `--limit` is given.
+    """
+
+    def __init__(self, issues: list[dict[str, Any]]) -> None:
+        """Answer from `issues`, every one the search would find.
+
+        Args:
+            issues: the issues the search matches, in the order it lists them.
+        """
+        self.issues = issues
+
+    def __call__(self, args: list[str], **_kwargs: Any) -> SimpleNamespace:
+        """Answer one call with the first page of `issues`.
+
+        Args:
+            args: the argument list the script built.
+            **_kwargs: whatever it passed beside it, unread here.
+
+        Returns:
+            A completed process carrying as many issues as `--limit` asks.
+        """
+        limit = (
+            int(args[args.index("--limit") + 1])
+            if "--limit" in args
+            else _GH_DEFAULT_LIMIT
+        )
+        return SimpleNamespace(stdout=json.dumps(self.issues[:limit]))
+
+
+def test_the_exact_title_is_found_behind_a_full_default_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The exact title is found behind a full default page of longer ones.
+
+    Those sort first, and the lookup asks for more than gh's default
+    (issue btclib-org/.github#2185).
+
+    Args:
+        monkeypatch: the fixture `subprocess.run` is replaced through.
+    """
+    title = "Vendored vectors behind upstream"
+    issues = [
+        {"number": number, "title": f"{title}, part {number}"}
+        for number in range(_GH_DEFAULT_LIMIT)
+    ]
+    issues.append({"number": 42, "title": title})
+    monkeypatch.setattr(check.subprocess, "run", _IssueList(issues))
+
+    assert check._open_issue_number(title) == "42"
+
+
 _OPEN = '[{"number": 7, "title": "Vendored vectors behind upstream"}]'
 
 
