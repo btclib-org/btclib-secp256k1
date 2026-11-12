@@ -646,6 +646,32 @@ def test_silent_payment_creation_names_the_index_of_a_bad_recipient(
         )
 
 
+@pytest.mark.parametrize(
+    "recipient, error",
+    [
+        ((SP_SCAN_PUBKEY,), ValueError),
+        ((), ValueError),
+        ((SP_SCAN_PUBKEY, SP_SPEND_PUBKEY, SP_SPEND_PUBKEY), ValueError),
+        (None, TypeError),
+    ],
+)
+def test_silent_payment_creation_names_the_index_of_a_recipient_not_a_pair(
+    recipient: object, error: type[Exception]
+) -> None:
+    """A recipient that is not a pair of keys is named by its index.
+
+    Args:
+        recipient: the second recipient, of the wrong shape.
+        error: the class the unpacking raises for that shape.
+    """
+    with pytest.raises(error, match="the recipient at index 1 must be a pair"):
+        silentpayments.create_outputs(
+            [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY), recipient],  # type: ignore[list-item]
+            SP_OUTPOINT,
+            prvkeys=[SP_INPUT_PRVKEY],
+        )
+
+
 def test_a_label_m_outside_four_bytes_is_refused() -> None:
     """Refuse an m outside the uint32 the label index is.
 

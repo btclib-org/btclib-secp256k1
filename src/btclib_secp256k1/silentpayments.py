@@ -224,17 +224,19 @@ def create_outputs(
         TypeError: if `taproot_prvkeys` or `prvkeys` is a `str`, a cffi
             array of primitives or a one-dimensional buffer of anything
             but byte-strings, objects or structs (`bytes`, `bytearray`,
-            `memoryview`, `array.array`): one key, not a list of them.
-        ValueError: if no recipient or no private key is given, if the
-            outpoint is not 36 bytes, if any public key is not a valid
-            point, if any private key is not 32 bytes, does not fit in
-            them, or is not in [1, n-1], or if libsecp256k1 refuses the
-            set -- the sum of the private keys being zero, an output
-            landing on an invalid point, or more outputs asked of one
-            scan key than BIP352 allows it. A refused key is named by its
-            list and its position there, `prvkeys[1]` being "private key
-            at index 1" and a recipient's scan key "scan public key at
-            index 1".
+            `memoryview`, `array.array`): one key, not a list of them; or
+            if a recipient is not iterable.
+        ValueError: if no recipient or no private key is given, if a
+            recipient is not a pair, if the outpoint is not 36 bytes, if
+            any public key is not a valid point, if any private key is
+            not 32 bytes, does not fit in them, or is not in [1, n-1], or
+            if libsecp256k1 refuses the set -- the sum of the private
+            keys being zero, an output landing on an invalid point, or
+            more outputs asked of one scan key than BIP352 allows it. A
+            refused key is named by its list and its position there,
+            `prvkeys[1]` being "private key at index 1", a recipient's
+            scan key "scan public key at index 1" and a recipient that is
+            not a pair "the recipient at index 1".
 
     Example:
         >>> from btclib_secp256k1 import keys, silentpayments
@@ -246,15 +248,21 @@ def create_outputs(
         >>> len(outputs), len(outputs[0])
         (1, 32)
     """
-    recipients = [
-        (
+    recipients = []
+    for index, recipient in enumerate(recipients_bytes):
+        try:
+            scan_pubkey_bytes, spend_pubkey_bytes = recipient
+        except (TypeError, ValueError) as error:
+            # the unpacking's own message names no recipient; the class
+            # it raised is kept, TypeError for what is not iterable and
+            # ValueError for an iterable of another length
+            refusal = TypeError if isinstance(error, TypeError) else ValueError
+            msg = f"the recipient at index {index} must be a pair of public keys"
+            raise refusal(msg) from None
+        recipients.append((
             keys.parse(scan_pubkey_bytes, f"scan public key at index {index}"),
             keys.parse(spend_pubkey_bytes, f"spend public key at index {index}"),
-        )
-        for index, (scan_pubkey_bytes, spend_pubkey_bytes) in enumerate(
-            recipients_bytes
-        )
-    ]
+        ))
     return [
         xonly.serialize(output)
         for output in _create_outputs_(
