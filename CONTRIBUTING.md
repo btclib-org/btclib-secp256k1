@@ -1009,22 +1009,22 @@ command at all, for the reason below, and nothing requires its result.
 
   ```shell
   uv run --locked --no-default-groups --group docs \
-      sphinx-build -n -W -b html docs/source docs/build/html
+      sphinx-build -n -W -b html docs/source docs/build/html || exit $?
   if grep -rn 'href="#\.\.\?/' docs/build/html --include='*.html'; then
       echo "::error::the links above resolve to no page (unresolved relative path)"
       exit 1
   fi
-  served=$(mktemp -d)
-  git clone --quiet --filter=blob:none --sparse \
-      https://github.com/btclib-org/.github "$served"
-  git -C "$served" sparse-checkout set .github/scripts
-  git -C "$served" checkout --quiet \
-      "$(sed -n 's/.*reusable-docs\.yml@\([0-9a-f]*\).*/\1/p' .github/workflows/docs.yml)"
   found=0
+  pin=$(sed -n 's/.*reusable-docs\.yml@\([0-9a-f]*\).*/\1/p' .github/workflows/docs.yml)
+  served=$(mktemp -d) &&
+  git clone --quiet --filter=blob:none --sparse \
+      https://github.com/btclib-org/.github "$served" &&
+  git -C "$served" sparse-checkout set .github/scripts &&
+  git -C "$served" checkout --quiet "$pin" &&
   uv run --no-project --python 3.15 \
       "$served"/.github/scripts/check_included_links.py docs/build/html || found=$?
   rm -rf "$served"
-  test "$found" -eq 0
+  test "$found" -eq 0 || exit "$found"
   ```
 
   A link myst cannot resolve renders as an anchor on the page it is
