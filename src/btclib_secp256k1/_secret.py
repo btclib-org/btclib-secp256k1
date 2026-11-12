@@ -277,7 +277,7 @@ def scalar_buffer(prvkey: BytesLike | int | CData, name: str) -> CData:
     return buffer
 
 
-def keypair(prvkey: BytesLike | int) -> CData:
+def keypair(prvkey: BytesLike | int, name: str = "private key") -> CData:
     """Build the libsecp256k1 keypair of a private key.
 
     `ssa` needs one to sign, `xonly` to tweak a taproot private key,
@@ -291,6 +291,9 @@ def keypair(prvkey: BytesLike | int) -> CData:
 
     Args:
         prvkey: the private key, 32 bytes or an int below 2**256.
+        name: what the key is, as the exception should call it, for
+            `silentpayments`, which names a taproot input's key by its
+            index.
 
     Returns:
         The libsecp256k1 keypair object, which the caller wipes.
@@ -301,6 +304,6 @@ def keypair(prvkey: BytesLike | int) -> CData:
             not in [1, n-1].
     """
     buffer = ffi.new("secp256k1_keypair *")
-    if not lib.secp256k1_keypair_create(ctx, buffer, scalar(prvkey, "private key")):
-        raise ValueError("invalid private key: not in [1, n-1]")
+    if not lib.secp256k1_keypair_create(ctx, buffer, scalar(prvkey, name)):
+        raise ValueError(f"invalid {name}: not in [1, n-1]")
     return buffer
