@@ -519,14 +519,14 @@ build-requires = [
 # runs this -- the scheduled mutation workflow is the only consumer, and it
 # asks for --group test as well, cosmic-ray shelling out to pytest
 mutation = ["cosmic-ray>=8.7.0"]
-# myst-parser reads the four root markdown files docs/source/*_link.md
-# includes, furo is the html theme docs/source/conf.py names -- section 2
-# of the organization's standard, over sphinx_rtd_theme, the theme a Read
-# the Docs project starts with by default and not a reason to keep it --
-# and sphinx itself compiles this package to autodoc it: the reason the
-# environment section of CONTRIBUTING.md and the git submodule matter
-# here in a way they do not for a sibling repository's own pure Python
-# build
+# myst-parser reads the root markdown files the docs/source/*_link.md
+# shims include, furo is the html theme docs/source/conf.py names --
+# section 2 of the organization's standard, over sphinx_rtd_theme, the
+# theme a Read the Docs project starts with by default and not a reason
+# to keep it -- and sphinx itself compiles this package to autodoc it:
+# the reason the environment section of CONTRIBUTING.md and the git
+# submodule matter here in a way they do not for a sibling repository's
+# own pure Python build
 docs = ["furo>=2025.12.19", "myst-parser>=4.0.1", "sphinx>=8.1.3"]
 dev = [
     { include-group = "test" },
