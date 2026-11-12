@@ -7,13 +7,22 @@ what the GitHub release of a tag is generated from.
 
 ## v0.8.0.15
 
-- **This is the last release with x86_64 macOS wheels.** macOS is
-  supported on arm64 alone (btclib-org/.github#1982), so the next release
-  publishes no x86_64 macOS wheel. On an Intel Mac, pip then builds the
-  package from the sdist, which needs a C toolchain (the README's Build
-  section).
-- **The package's homepage is <https://btclib.org/btclib-secp256k1/>.**
-  The documentation stays on Read the Docs.
+### This is the last release with x86_64 macOS wheels
+
+macOS is supported on arm64 alone (issue btclib-org/.github#1982). From
+the next release, pip on an Intel Mac builds the sdist, which needs a C
+toolchain (the README's Build section).
+
+### A refused item of a list is named by its index
+
+`keys.pubkey_combine`, `keys.pubkey_tweak_mul_sum`,
+`silentpayments.create_outputs` and `prevouts_summary` name the index,
+as in "invalid public key at index 1" (closes #1203).
+
+### The homepage is on btclib.org
+
+It is <https://btclib.org/btclib-secp256k1/>; the documentation stays on
+Read the Docs (closes #1303).
 
 ## v0.8.0.14
 

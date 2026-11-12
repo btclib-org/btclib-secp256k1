@@ -46,6 +46,11 @@ at release-notes length in the first place, and are still in
   btclib-org/.github#1982, #1308). The release notes announce that the
   next release publishes no x86_64 macOS wheel.
 
+### A refused item of a list is named by its index
+
+- **`keys` and `silentpayments` name a refused item by its list and
+  index** (closes #1203, #1348).
+
 ### Constant time under Valgrind
 
 - **`upstream-tests` runs secp256k1-zkp's own `ctime_tests`, and checks
@@ -70,9 +75,13 @@ at release-notes length in the first place, and are still in
 
 ### The BIP352 vectors
 
-- **They are refreshed from bitcoin/bips** (closes #1309, closes #1338);
-  `check_vendored_vectors.py` takes only an issue titled exactly as
-  searched (issue btclib-org/.github#2152).
+- **They are refreshed from bitcoin/bips** (closes #1309, closes #1338).
+
+### `check_vendored_vectors.py`
+
+- **It reads every issue its title search answers, and takes only the
+  one titled exactly as searched** (issue btclib-org/.github#2152,
+  btclib-org/.github#2185).
 
 ### The package metadata
 
