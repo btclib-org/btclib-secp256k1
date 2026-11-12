@@ -16,6 +16,7 @@ answers a file with an empty `content` at HTTP 200, which reads as an
 empty file rather than as an error, and one file per release keeps each
 of them under it.
 
+- [v0.8.0.14](./changelog/v0.8.0.14.md)
 - [v0.8.0.13](./changelog/v0.8.0.13.md)
 - [v0.8.0.12](./changelog/v0.8.0.12.md)
 - [v0.8.0.11](./changelog/v0.8.0.11.md)
@@ -37,79 +38,100 @@ The changelog starts at v0.7.1.2. The releases before it were documented
 at release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.
 
-## v0.8.0.14
+## v0.8.0.15
 
-### An ECDSA signature scalar is in [1, n-1]
+### x86_64 macOS
 
-- **`dsa` and `recovery` refuse a zero r or s in every form, and a DER r
-  or s that is negative or not below n** (closes #1272).
+- **`os-macos` runs on the arm64 image alone** (issue
+  btclib-org/.github#1982, #1308). The release notes announce that the
+  next release publishes no x86_64 macOS wheel.
 
-### Invalid arguments never reach the illegal callback
+### Constant time under Valgrind
 
-- **A test drives every public function with each invalid scalar and
-  point**, outside `zkp` (closes #1264) and in it (closes #1283).
-
-### Fuzzing
-
-- **The key and x-only parse targets are seeded at the edges of the
-  field** (closes #1268).
-
-### libsecp256k1's own tests
-
-- **They run with the static Linux wheels' compiler and flags** (closes
-  #1249, closes #1269).
-
-### Verifying a release
-
-- **The sdist and the bill of materials are verified by repository id,
-  which a rename keeps** (closes #1256).
-
-### The changelog
-
-- **Every release but the newest has its own file under `changelog/`**
-  (closes #1267).
-
-### The workflows
-
-- **CI moves off the compromised emSign roots** (issue
-  btclib-org/.github#1844).
-
-### The calls of btclib-org/.github
-
-- **They are pinned to a tagged commit** (issue btclib-org/.github#1870,
-  #1273, #1274).
-
-### The Windows cross build
-
-- **It installs only its compiler** (closes #1252).
-
-### cibuildwheel 4.3.5, pytest and hatchling
-
-- **The Linux image pins move with cibuildwheel** (closes #1261, closes
-  #1295).
-
-### Dependencies
-
-- **mypy 2.4.1** (closes #1296); **setuptools and filelock past their
-  advisories** (issue btclib-org/.github#1849).
-
-### Locks, hooks and actions
-
-- **pre-commit and ruff** (#1258), the hook revisions (#1286), actions
-  and the clusterfuzzlite image (#1277, #1293, #1294).
-
-### Contributing
-
-- **Development is LLM-based, and a contribution must be read** (issue
-  btclib-org/.github#1846); **`CONTRIBUTING.md` says how to check a
-  `.pyc`** (closes #1287, closes #1288).
+- **`upstream-tests` runs secp256k1-zkp's own `ctime_tests`, and checks
+  the secret-taking secp256k1-zkp calls they do not make** (closes #1302,
+  closes #1315).
 
 ### `REVIEWING.md`
 
-- **It takes the shared part** (issue btclib-org/.github#1846,
-  btclib-org/.github#1904, btclib-org/.github#1919).
+- **It asks whether a CI step reads an overloaded exit code as one
+  outcome** (closes #1333).
 
-### `SECURITY.md` and the badges
+### Secrets in refusals
 
-- **`SECURITY.md` links what changed since the security review** (issue
-  btclib-org/.github#1795); the version badges are blue (closes #1270).
+- **The refusal of a label tweak at the order is checked for the
+  secret** (closes #1310); the `secret_free` helper is
+  btclib-org/.github's (issue btclib-org/.github#1950, #1351).
+
+### Coverage
+
+- **A run that leaves a source directory unmeasured is refused** (closes
+  #1345).
+
+### The BIP352 vectors
+
+- **They are refreshed from bitcoin/bips** (closes #1309, closes #1338);
+  `check_vendored_vectors.py` takes only an issue titled exactly as
+  searched (issue btclib-org/.github#2152).
+
+### The package metadata
+
+- **The homepage is the project's page on btclib.org**, and the links
+  to functional-tests and benchmarks follow their renames (closes #1301,
+  closes #1303, closes #1307).
+
+### The README
+
+- **The status badges are in a Status section at its end** (issue
+  btclib-org/.github#1856, #1336, #1337).
+
+### The README's links
+
+- **The README links its own files absolutely, kept local in the docs**
+  (issue btclib-org/.github#1851, #1313, #1335).
+
+### Sourcery
+
+- **Sourcery runs on every pull request, and its findings are cleared**
+  (issue btclib-org/.github#2005).
+
+### The bestpractices.dev answers
+
+- **`.bestpractices.json` holds them** (issue btclib-org/.github#2153),
+  **corrected** (issue btclib-org/.github#2159).
+
+### The calls of btclib-org/.github
+
+- **They follow its tags** (issue btclib-org/.github#1988, #1314, #1323,
+  #1340).
+
+### `CONTRIBUTING.md` and `REVIEWING.md`
+
+- **They take the shared part** (#1306; issue btclib-org/.github#2004,
+  btclib-org/.github#2022, btclib-org/.github#2054,
+  btclib-org/.github#2088, btclib-org/.github#2145).
+
+### `.coderabbit.yaml`
+
+- **It is the shared copy** (issue btclib-org/.github#1998).
+
+### The citations of the standard
+
+- **The standard is cited by its name** (#1339; issue
+  btclib-org/.github#2137).
+
+### `RELEASING.md`
+
+- **The rehearsal's install refreshes the package, `deps-latest` is read
+  by the declared ranges, and a release does not wait for its
+  dependents** (issue btclib-org/.github#2107).
+
+### Recreating a skipped GitHub release
+
+- **The by-hand recovery stops where the tag's notes are missing or
+  empty** (closes btclib-org/.github#2059, #1361).
+
+### Locks, hooks and actions
+
+- **coverage and ruff** (#1322), the hook revisions (#1311, #1343),
+  actions (#1324, #1340) and the clusterfuzzlite image (#1320).

@@ -5,6 +5,16 @@ release is in [CHANGELOG.md](./CHANGELOG.md) or a file it links; what
 follows is what a user has to act on and what a user gains, and it is
 what the GitHub release of a tag is generated from.
 
+## v0.8.0.15
+
+- **This is the last release with x86_64 macOS wheels.** macOS is
+  supported on arm64 alone (btclib-org/.github#1982), so the next release
+  publishes no x86_64 macOS wheel. On an Intel Mac, pip then builds the
+  package from the sdist, which needs a C toolchain (the README's Build
+  section).
+- **The package's homepage is <https://btclib.org/btclib-secp256k1/>.**
+  The documentation stays on Read the Docs.
+
 ## v0.8.0.14
 
 - **Breaking: `dsa` and `recovery` refuse an ECDSA signature whose r or s
