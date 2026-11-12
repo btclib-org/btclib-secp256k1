@@ -826,9 +826,12 @@ Then:
    the release notes and the vulnerabilities it fixed, signed tags and
    assets, attestation names. Once it lands, open each URL the script's
    `--drift` prints for this repository, one for each section of the form,
-   and save the form at each. `--drift` then prints nothing for this
-   repository. An advisory this repository publishes is owed the same
-   review
+   and save the form at each. Whoever cannot
+   sign in to bestpractices.dev comments on the answers' pull request
+   that the save is owed, so that the debt is on record and not in
+   anybody's memory, and whoever next can saves it. The step stays open
+   until `--drift` prints nothing for this repository. An advisory this
+   repository publishes is owed the same review
 1. open the next version: bump `pyproject.toml` to a fourth number over
     what was just published — `0.7.1.1` after `0.7.1`, and `0.8.0.13`
     after `0.8.0.12`, where the fourth number is raised and not a fifth
