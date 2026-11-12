@@ -136,7 +136,7 @@ _WRAP = re.compile(r"\n[ \t]*#?[ \t]*(?=_)")
 _EXCLUDED_FILES = frozenset({
     "CHANGELOG.md",
     "RELEASE_NOTES.md",
-    "tests/" + Path(__file__).name,
+    f"tests/{Path(__file__).name}",
 })
 # fuzz/corpus/ holds the fuzzing seeds, octets rather than prose: a
 # public key or a DER signature decodes as no text at all. So does

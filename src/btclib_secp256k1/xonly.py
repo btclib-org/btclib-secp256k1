@@ -125,10 +125,7 @@ def _drop_y(pubkey: CData, parity: CData = ffi.NULL) -> CData:
             is what tells the two apart.
     """
     xonly_pubkey = ffi.new("secp256k1_xonly_pubkey *")
-    converted = lib.secp256k1_xonly_pubkey_from_pubkey(
-        ctx, xonly_pubkey, parity, pubkey
-    )
-    if not converted:
+    if not lib.secp256k1_xonly_pubkey_from_pubkey(ctx, xonly_pubkey, parity, pubkey):
         msg = "x-only public key conversion failed"
         raise RuntimeError(msg)
     return xonly_pubkey
@@ -280,8 +277,7 @@ def _from_keypair_(keypair_obj: CData, parity: CData = ffi.NULL) -> CData:
             deserves, and `context.check` is what tells the two apart.
     """
     xonly_pubkey = ffi.new("secp256k1_xonly_pubkey *")
-    converted = lib.secp256k1_keypair_xonly_pub(ctx, xonly_pubkey, parity, keypair_obj)
-    if not converted:
+    if not lib.secp256k1_keypair_xonly_pub(ctx, xonly_pubkey, parity, keypair_obj):
         msg = "x-only public key conversion failed"
         raise RuntimeError(msg)
     return xonly_pubkey
@@ -717,8 +713,7 @@ def serialize(xonly_pubkey: CData) -> bytes:
             a key it produced cannot make it do.
     """
     output = ffi.new(_XONLY_BUFFER_TYPE)
-    serialized = lib.secp256k1_xonly_pubkey_serialize(ctx, output, xonly_pubkey)
-    if not serialized:
+    if not lib.secp256k1_xonly_pubkey_serialize(ctx, output, xonly_pubkey):
         msg = "x-only public key serialization failed"
         raise RuntimeError(msg)
     # the length is the constant the buffer's type was built from, so

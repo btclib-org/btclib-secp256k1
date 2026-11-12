@@ -50,7 +50,8 @@ from btclib_secp256k1.zkp import (
     musig,
     rangeproof,
 )
-from tests.invalid_arguments_test import (
+
+from .invalid_arguments_test import (
     ADDEND,
     INTO,
     OCTETS,
@@ -66,7 +67,7 @@ from tests.invalid_arguments_test import (
     octets_or_integers,
     valid,
 )
-from tests.zkp_rangeproof_vectors_test import (
+from .zkp_rangeproof_vectors_test import (
     BORROMEAN_E0,
     BORROMEAN_M,
     BORROMEAN_PUBKEYS,

@@ -63,7 +63,8 @@ from btclib_secp256k1 import (
     xonly,
 )
 from btclib_secp256k1.context import ctx
-from tests.bytes_like_test import (
+
+from .bytes_like_test import (
     COMPACT,
     DER,
     ELL_A,
@@ -87,7 +88,7 @@ from tests.bytes_like_test import (
     TWEAKED_PARITY,
     XONLY,
 )
-from tests.size_sweep_test import (
+from .size_sweep_test import (
     AGGNONCE,
     CACHE,
     PARTIAL_SIGS,

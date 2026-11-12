@@ -84,8 +84,7 @@ def _encode_(pubkey: CData, aux_rand32: BytesLike | None = None) -> bytes:
     """
     ell_bytes = ffi.new(_ENCODING_BUFFER_TYPE)
     aux_rand32_bytes = entropy(aux_rand32)
-    encoded = lib.secp256k1_ellswift_encode(ctx, ell_bytes, pubkey, aux_rand32_bytes)
-    if not encoded:
+    if not lib.secp256k1_ellswift_encode(ctx, ell_bytes, pubkey, aux_rand32_bytes):
         msg = "ElligatorSwift encoding failed"
         raise RuntimeError(msg)
     return ffi.unpack(ell_bytes, _ENCODING_SIZE)

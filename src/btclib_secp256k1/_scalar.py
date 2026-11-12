@@ -406,9 +406,7 @@ def optional_entropy(
         TypeError: if a value is given and is not bytes.
         ValueError: if a value is given and is not 32 bytes.
     """
-    if aux_rand32 is None:
-        return ffi.NULL
-    return octets(aux_rand32, name, 32)
+    return ffi.NULL if aux_rand32 is None else octets(aux_rand32, name, 32)
 
 
 def in_range(value: int, name: str, upper: int) -> int:

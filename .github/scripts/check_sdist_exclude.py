@@ -111,9 +111,7 @@ def tracked_files(root: Path) -> list[str] | None:
         encoding="utf-8",
         check=False,
     )
-    if result.returncode != 0:
-        return None
-    return result.stdout.splitlines()
+    return result.stdout.splitlines() if result.returncode == 0 else None
 
 
 def excluded_tracked_files(exclude: list[str], files: list[str]) -> list[str]:

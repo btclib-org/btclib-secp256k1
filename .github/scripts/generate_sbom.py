@@ -526,10 +526,7 @@ def vulnerabilities(
         # and a submodule can spell one name: an entry naming it would be
         # ambiguous, and is refused below rather than resolved by order
         key = canonical_name(str(entry["name"]))
-        if key in references:
-            references[key] = ""
-        else:
-            references[key] = str(entry["bom-ref"])
+        references[key] = "" if key in references else str(entry["bom-ref"])
     result = []
     for finding in findings:
         if "group" in finding:

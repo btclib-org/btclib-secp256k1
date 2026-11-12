@@ -490,12 +490,9 @@ def forbidden_reason(path: str) -> str | None:
     name = path.rsplit("/", 1)[-1]
     if name in FORBIDDEN_NAMES:
         return f"is {name}, which Python imports at startup"
-    for suffix in FORBIDDEN_SUFFIXES:
-        if path.endswith(suffix):
-            return f"carries the forbidden suffix {suffix}"
-    if "__pycache__" in path.split("/"):
-        return "is under __pycache__"
-    return None
+    if suffix := next((s for s in FORBIDDEN_SUFFIXES if path.endswith(s)), None):
+        return f"carries the forbidden suffix {suffix}"
+    return "is under __pycache__" if "__pycache__" in path.split("/") else None
 
 
 def package_payload_complaints(members: set[str]) -> list[str]:

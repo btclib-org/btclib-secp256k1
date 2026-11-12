@@ -34,8 +34,8 @@ from typing import cast
 
 import pytest
 
-import tests.conftest
-from tests.conftest import (
+from . import conftest
+from .conftest import (
     SELECTING_OPTIONS,
     CoverageConfiguration,
     configuration_went_unread,
@@ -818,7 +818,7 @@ def test_a_run_from_tests_leaves_the_scripts_out_of_reach(
     """
     root = _laid_out(tmp_path / "tree")
     (tmp_path / "elsewhere").mkdir()
-    monkeypatch.setattr(tests.conftest, "TREE", root)
+    monkeypatch.setattr(conftest, "TREE", root)
     monkeypatch.chdir(root / "tests")
     known = argparse.Namespace(cov_fail_under=100.0)
     controller = _controller(str(tmp_path / config_dir / "pyproject.toml"), _SOURCE)
@@ -906,7 +906,7 @@ def test_the_source_guard_leaves_alone_what_the_other_one_does(
 
 def test_the_tree_is_the_one_holding_the_conftest() -> None:
     """`TREE` is this tree, the one the cases above stand in for."""
-    assert tests.conftest.TREE == _ROOT
+    assert conftest.TREE == _ROOT
 
 
 def test_the_source_guard_reads_coverage_s_own_list(
