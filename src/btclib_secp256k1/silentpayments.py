@@ -150,8 +150,18 @@ def _create_outputs_(
     keypairs: list[CData] = []
     seckeys: list[CData] = []
     try:
-        keypairs.extend(keypair(prvkey) for prvkey in taproot_prvkeys)
-        seckeys.extend(scalar_buffer(prvkey, "private key") for prvkey in prvkeys)
+        keypairs.extend(
+            keypair(prvkey, f"taproot private key at index {index}")
+            for index, prvkey in enumerate(taproot_prvkeys)
+        )
+        for index, prvkey in enumerate(prvkeys):
+            seckeys.append(scalar_buffer(prvkey, f"private key at index {index}"))
+            # in constant time, as `_label_table` checks a tweak, so that a
+            # key at zero or at the order is named before the call that
+            # takes the whole list, whose refusal names none
+            if not lib.secp256k1_ec_seckey_verify(ctx, seckeys[-1]):
+                msg = f"invalid private key at index {index}: not in [1, n-1]"
+                raise ValueError(msg)
         created = lib.secp256k1_silentpayments_sender_create_outputs(
             ctx,
             array("secp256k1_xonly_pubkey *[]", outputs),
@@ -214,14 +224,19 @@ def create_outputs(
         TypeError: if `taproot_prvkeys` or `prvkeys` is a `str`, a cffi
             array of primitives or a one-dimensional buffer of anything
             but byte-strings, objects or structs (`bytes`, `bytearray`,
-            `memoryview`, `array.array`): one key, not a list of them.
-        ValueError: if no recipient or no private key is given, if the
-            outpoint is not 36 bytes, if any public key is not a valid
-            point, if any private key is not 32 bytes, does not fit in
-            them, or is not in [1, n-1], or if libsecp256k1 refuses the
-            set -- the sum of the private keys being zero, an output
-            landing on an invalid point, or more outputs asked of one
-            scan key than BIP352 allows it.
+            `memoryview`, `array.array`): one key, not a list of them; or
+            if a recipient is not iterable.
+        ValueError: if no recipient or no private key is given, if a
+            recipient is not a pair, if the outpoint is not 36 bytes, if
+            any public key is not a valid point, if any private key is
+            not 32 bytes, does not fit in them, or is not in [1, n-1], or
+            if libsecp256k1 refuses the set -- the sum of the private
+            keys being zero, an output landing on an invalid point, or
+            more outputs asked of one scan key than BIP352 allows it. A
+            refused key is named by its list and its position there,
+            `prvkeys[1]` being "private key at index 1", a recipient's
+            scan key "scan public key at index 1" and a recipient that is
+            not a pair "the recipient at index 1".
 
     Example:
         >>> from btclib_secp256k1 import keys, silentpayments
@@ -233,13 +248,21 @@ def create_outputs(
         >>> len(outputs), len(outputs[0])
         (1, 32)
     """
-    recipients = [
-        (
-            keys.parse(scan_pubkey_bytes, "scan public key"),
-            keys.parse(spend_pubkey_bytes, "spend public key"),
-        )
-        for scan_pubkey_bytes, spend_pubkey_bytes in recipients_bytes
-    ]
+    recipients = []
+    for index, recipient in enumerate(recipients_bytes):
+        try:
+            scan_pubkey_bytes, spend_pubkey_bytes = recipient
+        except (TypeError, ValueError) as error:
+            # the unpacking's own message names no recipient; the class
+            # it raised is kept, TypeError for what is not iterable and
+            # ValueError for an iterable of another length
+            refusal = TypeError if isinstance(error, TypeError) else ValueError
+            msg = f"the recipient at index {index} must be a pair of public keys"
+            raise refusal(msg) from None
+        recipients.append((
+            keys.parse(scan_pubkey_bytes, f"scan public key at index {index}"),
+            keys.parse(spend_pubkey_bytes, f"spend public key at index {index}"),
+        ))
     return [
         xonly.serialize(output)
         for output in _create_outputs_(
@@ -501,7 +524,10 @@ def prevouts_summary(
         ValueError: if no public key is given, if the outpoint is not 36
             bytes, if any key is not a valid point, or if the inputs sum
             to the point at infinity, which is BIP352's "not a Silent
-            Payments transaction" and which the recipient skips.
+            Payments transaction" and which the recipient skips. A refused
+            key is named by its list and its position there,
+            `taproot_pubkeys_bytes[1]` being "taproot public key at index
+            1".
 
     Example:
         >>> from btclib_secp256k1 import keys, silentpayments
@@ -512,10 +538,13 @@ def prevouts_summary(
         True
     """
     taproot_pubkeys = [
-        xonly.parse(pubkey_bytes, "taproot public key")
-        for pubkey_bytes in taproot_pubkeys_bytes
+        xonly.parse(pubkey_bytes, f"taproot public key at index {index}")
+        for index, pubkey_bytes in enumerate(taproot_pubkeys_bytes)
     ]
-    pubkeys = [keys.parse(pubkey_bytes) for pubkey_bytes in pubkeys_bytes]
+    pubkeys = [
+        keys.parse(pubkey_bytes, f"public key at index {index}")
+        for index, pubkey_bytes in enumerate(pubkeys_bytes)
+    ]
     # the call that refuses every input BIP352 refuses, an empty list and a
     # sum at infinity included; the sum below is what it adds, and so
     # cannot fail

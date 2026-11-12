@@ -701,15 +701,29 @@ Then:
    gh run download "${run:?}" --repo "${repo:?}" \
      --name attestation --dir attestation &&
    cp attestation/attestation.jsonl "${tag:?}.intoto.jsonl" &&
+   git show "${tag:?}:RELEASE_NOTES.md" > tag-notes.md &&
    awk -v tag="${tag:?}" '
      $0 ~ "^## " tag "( |$)" {found=1; next}
      /^## / && found {exit}
+     found && NF {text=1}
      found {print}
-   ' RELEASE_NOTES.md > notes.md &&
+     END {
+       if (!text) print "RELEASE_NOTES.md has no notes for " tag > "/dev/stderr"
+       exit !text
+     }
+   ' tag-notes.md > notes.md &&
    gh release create "${tag:?}" dist/* sbom/* "${tag:?}.intoto.jsonl" \
      --repo "${repo:?}" --title "${tag:?}" \
      --notes-file notes.md --verify-tag
    ```
+
+   Where the read fails or the tag's section has no notes, the block
+   stops before the release exists rather than publish an empty body.
+   `version-check` refuses a tag whose section is missing or empty before
+   `build`, so after the upload the stop means the read failed: check
+   `tag`, and that the clone the block runs in has fetched it. The tag
+   cannot change after the upload, so where its section is empty all the
+   same, write `notes.md` by hand and run the command after the awk.
 
    `--verify-tag` aborts where the tag is not already on the remote,
    `gh release create` otherwise creating one from the default branch.
