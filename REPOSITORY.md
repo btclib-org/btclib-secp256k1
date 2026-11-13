@@ -398,12 +398,16 @@ above names, with `strict` **off**, one approving review with
 pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off** — an administrator is exempt from this classic
 rule, though not from the rulesets below, matching another repository in
-the organization. `main-self-merge` has no bypass actor, so every merge
-needs an approval from somebody other than its author. In an emergency
-the maintainer adds the bypass back and removes it after the merge:
+the organization. `main-self-merge` has one bypass actor, the maintainer,
+in `pull_request` mode, so the maintainer can merge without an approval
+from somebody other than the author, and nobody else can. It is the
+organization-wide bypass, which the maintainer keeps until the backlog
+settles, with no date set (btclib-org/.github#2021). Once it is removed,
+the ruleset has no bypass actor, as the standard asks of a tree whose
+`README.md` carries the OpenSSF Best Practices badge, and
 [`GOVERNANCE.md`](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md)'s
-*How a decision is made* says when, and `CONTRIBUTING.md`'s *Landing it*
-gives the commands.
+*How a decision is made* says when the maintainer adds it back.
+`CONTRIBUTING.md`'s *Landing it* gives the commands.
 
 ```shell
 gh api -X DELETE \
@@ -482,9 +486,9 @@ standard](https://github.com/btclib-org/.github#11-github-settings)
 names — linear history, no force push, no branch deletion — with **no
 bypass actor at all**, which is what makes "on every commit, not at review
 time" true of an administrator too, `enforce_admins` above being off.
-`main-self-merge` is the pull request rule, and has none; the listing
-above answers each ruleset's id, and that id is what reads back the rule
-types and the bypass actors:
+`main-self-merge` is the pull request rule, whose one bypass actor is the
+maintainer; the listing above answers each ruleset's id, and that id is
+what reads back the rule types and the bypass actors:
 
 ```shell
 gh api --jq '{rules: [.rules[].type], bypass: [.bypass_actors[].actor_type]}' \
@@ -501,11 +505,11 @@ for their own pull request, GitHub refusing a self-approval; the
 integrity rules are the ones nobody should be able to. One ruleset each
 is what lets the first be bypassed without the second going with it.
 
-**What the bypass is for is the review, and nothing else.** The one the
-maintainer adds in an emergency is set to `pull_request` mode, which
-excuses its holder from the rule *while
-merging a pull request* and at no other time — so it answers a missing
-approving review, and answers nothing further. The rule has no
+**What the bypass is for is the review.** It is set to `pull_request`
+mode, which excuses its holder from the whole rule *while merging a pull
+request* and at no other time: the approving review, conversation
+resolution and the merge-method parameter all give way on that merge;
+the bypass reaches nothing outside this rule. The rule has no
 condition on use: btclib-org/.github's `GOVERNANCE.md`, *How a decision
 is made*, says when the maintainer adds the bypass. A direct push to
 `main` is refused for everyone, the holder included: outside a pull
@@ -532,7 +536,7 @@ which makes GitHub's web-flow key as good as the maintainer's.
 
 **The bypass is not the whole of the permission.** The protection above
 still carries `required_pull_request_reviews`, and what clears it for
-the maintainer, once the bypass is added back, is `enforce_admins` being
+the maintainer, when merging through the bypass, is `enforce_admins` being
 `false` together with holding `admin`; the ruleset bypass alone would not
 be enough. Turning `enforce_admins` on would remove the maintainer's merge
 without an approval instead, the classic review requirement having no
