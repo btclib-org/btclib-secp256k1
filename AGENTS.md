@@ -2,8 +2,7 @@
 
 This repository provides Python bindings to vendored libsecp256k1 and
 secp256k1-zkp. Follow [CONTRIBUTING.md](./CONTRIBUTING.md) for project
-process, environment setup, and gates; read [REVIEWING.md](./REVIEWING.md)
-before reviewing or opening a pull request. Use [README.md](./README.md)
+process, environment setup, and gates. Use [README.md](./README.md)
 and [ARCHITECTURE.md](./ARCHITECTURE.md) for design and build details,
 [SECURITY.md](./SECURITY.md) and [ASSURANCE_CASE.md](./ASSURANCE_CASE.md)
 for security, [REPOSITORY.md](./REPOSITORY.md) for workflows and settings,
