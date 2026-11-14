@@ -734,7 +734,8 @@ def pubkey_sum(
 
     Raises:
         ValueError: if the sequence is empty, or if any key is not a
-            valid point.
+            valid point -- named by its position in the sequence,
+            `pubkeys_bytes[1]` being "public key at index 1".
         RuntimeError: if libsecp256k1 fails to serialize the result,
             which no valid input can make it do.
 
@@ -746,7 +747,10 @@ def pubkey_sum(
         >>> keys.pubkey_sum([pubkey]) == pubkey
         True
     """
-    summed = _pubkey_sum_([parse(pubkey_bytes) for pubkey_bytes in pubkeys_bytes])
+    summed = _pubkey_sum_([
+        parse(pubkey_bytes, f"public key at index {index}")
+        for index, pubkey_bytes in enumerate(pubkeys_bytes)
+    ])
     return None if summed is None else serialize(summed, compressed)
 
 
@@ -977,14 +981,17 @@ def pubkey_sort(
         The same keys, serialized, in ascending order.
 
     Raises:
-        ValueError: if any key is not a valid point.
+        ValueError: if any key is not a valid point, named by its
+            position in the sequence, `pubkeys_bytes[1]` being "public
+            key at index 1".
         RuntimeError: if libsecp256k1 fails to serialize, which no valid
             input can make it do.
     """
     return [
         serialize(pubkey, compressed)
         for pubkey in _pubkey_sort_([
-            parse(pubkey_bytes) for pubkey_bytes in pubkeys_bytes
+            parse(pubkey_bytes, f"public key at index {index}")
+            for index, pubkey_bytes in enumerate(pubkeys_bytes)
         ])
     ]
 

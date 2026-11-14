@@ -708,7 +708,9 @@ def scan_outputs(
             the right length or does not hold a valid public key, if
             the spend public key is not a valid point, if a label or a
             label tweak is the wrong length, if a label tweak is not in
-            [1, n-1], or if libsecp256k1 refuses the scan.
+            [1, n-1], or if libsecp256k1 refuses the scan. A refused
+            output is named by its position, `tx_outputs_bytes[1]` being
+            "transaction output at index 1".
 
     Example:
         >>> from btclib_secp256k1 import keys, silentpayments
@@ -740,8 +742,8 @@ def scan_outputs(
 
     return _scan_outputs_(
         [
-            xonly.parse(pubkey_bytes, "transaction output")
-            for pubkey_bytes in tx_outputs_bytes
+            xonly.parse(pubkey_bytes, f"transaction output at index {index}")
+            for index, pubkey_bytes in enumerate(tx_outputs_bytes)
         ],
         scan_prvkey,
         summary,

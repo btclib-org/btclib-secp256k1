@@ -764,10 +764,13 @@ def test_scanning_refuses_an_empty_output_list() -> None:
 
 
 def test_scanning_refuses_an_unparsable_output() -> None:
-    """An output that is not an x-only public key is named as one."""
-    with pytest.raises(ValueError, match="invalid transaction output"):
+    """An output that is not an x-only public key is named by its index."""
+    with pytest.raises(ValueError, match="invalid transaction output at index 1"):
         silentpayments.scan_outputs(
-            [bytes(32)], SP_SCAN_PRVKEY, sp_summary(), SP_SPEND_PUBKEY
+            [SP_INPUT_PUBKEY[1:], bytes(32)],
+            SP_SCAN_PRVKEY,
+            sp_summary(),
+            SP_SPEND_PUBKEY,
         )
 
 

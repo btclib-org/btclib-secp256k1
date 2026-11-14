@@ -294,8 +294,8 @@ def test_type_checks_refuse_what_merely_has_a_length() -> None:
 
     # a sequence of public keys handed one public key: bytes is itself a
     # sequence, so what reaches parse is an int, and saying so is the
-    # whole of the diagnosis
-    with pytest.raises(TypeError, match="public key must be bytes, not int"):
+    # whole of the diagnosis, the first int named by its index
+    with pytest.raises(TypeError, match="public key at index 0 must be bytes, not int"):
         keys.pubkey_sort(pubkey_bytes)  # type: ignore[arg-type]
 
 
