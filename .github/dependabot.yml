@@ -9,8 +9,9 @@
 # on purpose (see the comment beside it), so the version pinned in its
 # additional_dependencies moves by nobody until a hand edit does
 #
-# every pull request here runs the whole build and test matrix, tens of
-# jobs compiling libsecp256k1 from source, so each ecosystem groups its
+# every pull request dependabot opens here runs the build and test
+# matrix as far as the `if:` of test.yml's jobs admits it, tens of jobs
+# compiling libsecp256k1 from source, so each ecosystem groups its
 # updates into a single pull request. None declares a target-branch:
 # without one dependabot opens against the default branch, which is the
 # only branch a change lands on -- and a target-branch naming a branch

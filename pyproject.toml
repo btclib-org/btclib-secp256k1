@@ -78,16 +78,16 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
     # test.yml's build-cibuildwheel job builds and runs the suite against
-    # a free-threaded wheel on every trigger, a pull request included, and
-    # tests/interpreters_test.py holds the biconditional between this
-    # classifier and the interpreters the jobs the merge gate waits on
-    # run. The extension leaves that interpreter's GIL disabled at import
-    # under cffi>=2.0, rather than turning it back on, which is what
-    # rules out "1 - Unstable" -- but a violation of the constraints
-    # README.md's "Thread safety" section documents is not reliably a
-    # segfault or reliably a Python exception, which is what "3 - Stable"
-    # and "4 - Resilient" each promise instead, so this claims the tier
-    # below both (#867)
+    # a free-threaded wheel on every run its own `if:` admits, a pull
+    # request included, and tests/interpreters_test.py holds the
+    # biconditional between this classifier and the interpreters the jobs
+    # the merge gate waits on run. The extension leaves that interpreter's
+    # GIL disabled at import under cffi>=2.0, rather than turning it back
+    # on, which is what rules out "1 - Unstable" -- but a violation of the
+    # constraints README.md's "Thread safety" section documents is not
+    # reliably a segfault or reliably a Python exception, which is what
+    # "3 - Stable" and "4 - Resilient" each promise instead, so this claims
+    # the tier below both (#867)
     "Programming Language :: Python :: Free Threading :: 2 - Beta",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",

@@ -1535,7 +1535,8 @@ on every interpreter, the cell the gate already covers included. A matrix with
 the gate's cell cut out of it is one nobody can read the shape of, and
 whoever asked what ran would have to re-derive the hole from the gate.
 
-**Every image but x86_64 macOS still builds wheels on every pull request**:
+**Every image but x86_64 macOS still builds wheels on every pull request
+that `build-cibuildwheel` runs on** (its `if:` in `test.yml` says which):
 `cibuildwheel` runs the suite against each wheel as it builds it, and the
 release publishes the artifacts of a run that built every one. What narrows
 on a branch is which interpreters per image — the oldest one and the
@@ -1584,7 +1585,8 @@ schedule, and none of the three makes it a gate: nothing requires the
 result, and REPOSITORY.md is where the rule that could is read back from
 the endpoint. What the pull-request trigger buys is that such a rule has a
 name to hold — one aggregate over the matrix rather than one context per
-language — at the price of those cells on every push to a branch.
+language — at the price of those cells on every push to a pull request
+the analysis runs on (the `if:` of `reusable-codeql.yml`'s `analyze`).
 There is no local command for it either: reproducing it means the CodeQL
 CLI, a bundle GitHub distributes rather than a dependency `uv.lock` can
 pin, so what answers a finding is the run itself and the Security tab
