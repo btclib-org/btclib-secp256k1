@@ -626,10 +626,10 @@ under the pull request's title, and `COMMIT_MESSAGES` makes the branch's
 commit messages the body — never the pull request's description, which
 `PR_BODY` would take with nothing here to show the flip.
 
-**It is also how a pull request lands here**, auto-merge below being
-what presses it once the review and the checks are in. The commit that
-reaches `main` is therefore one GitHub composes and signs with its
-web-flow key, which is the valid signature the check asks for.
+**It is also how a pull request lands here**, pressed once the review
+and the checks are in. The commit that reaches `main` is therefore one
+GitHub composes and signs with its web-flow key, which is the valid
+signature the check asks for.
 
 The merge commit was refused by `main`'s required linear history already,
 so turning it off takes away a button that could not have worked. The
@@ -638,53 +638,19 @@ branch's commits onto `main`, where one change is one commit and the steps
 of a review belong to the pull request that carries them.
 
 What a single method takes away is the dropdown. GitHub preselects
-whichever method was used last, and the dialog below carries the same
-one, so the answer could be given hours before anything merged and by
-whoever switched auto-merge on. One method is one entry: there is no
+whichever method was used last. One method is one entry: there is no
 wrong one to preselect, and nothing to read before pressing — and the
 ruleset above names the same one, so the constraint holds even if the
 repository setting is flipped.
 
 ## Auto-merge
 
-`allow_auto_merge` is on, since 11 August 2026:
+`allow_auto_merge` is off, so no pull request can be armed: the merge is
+explicit.
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 --jq '.allow_auto_merge'
-```
-
-It bypasses nothing: GitHub offers the button **only on a pull request
-that cannot be merged immediately**, and then merges it when the last
-thing blocking it clears — one of the required checks, the approving
-review, an unresolved conversation. Where nothing is pending there is
-nothing to wait for and the button is not offered at all, so this
-setting does something here precisely because the rule on `main` is what
-it is: the matrix is tens of jobs compiling C, and `test.yml`'s header
-measures what waiting for it costs.
-
-**A verified signature survives it**, measured rather than assumed,
-because GitHub composes the squash commit server-side and signs it with
-its own key exactly as a press of the button does. That the signer is
-GitHub rather than the author is not a trade this setting makes on its
-own: it is what any landing here carries, the check asking for a valid
-signature and not for a particular signer. The check is worth making on
-whatever landed all the same:
-
-```shell
-gh api --jq '.commit.verification | {verified, reason}' \
-  repos/btclib-org/btclib-secp256k1/commits/<sha>
-```
-
-**What auto-merge will press was chosen when it was switched on, rather
-than when the merge happened.** That dropdown carries one entry, squash
-being the only method either the repository setting or the ruleset will
-accept — "Merge methods" above is both — so switching auto-merge on
-answers nothing a reviewer has to catch before it lands. What a pull
-request is holding is still worth reading, the wait itself being what
-this bypasses:
-
-```shell
-gh pr view --repo btclib-org/btclib-secp256k1 --json autoMergeRequest <n>
+# false
 ```
 
 ## Token permissions
