@@ -1023,8 +1023,7 @@ version comparison, the `RELEASE_NOTES.md` section, and the ancestry on
 `SOURCE_DATE_EPOCH` from the commit date and normalizes the sdist, so a
 rebuild of a released tag is the same bytes as what was published — that
 workflow's own upload is what `publish-pypi` publishes, unchanged. Use a
-separate worktree for the tag so the primary checkout stays on `main`;
-`CONTRIBUTING.md` has the worktree setup and cleanup rule.
+separate worktree for the tag so the primary checkout stays on `main`.
 
 The tag is the reader's, so it is a placeholder rather than a version
 spelled out, and it stands in a fence of its own. The block below guards
