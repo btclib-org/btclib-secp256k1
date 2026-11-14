@@ -50,10 +50,11 @@ on:
   # tree against a query pack that moved, and pull_request scans a branch
   # while a finding is still cheap to answer.
   # The cost of the last is a real one and is stated rather than assumed:
-  # it queues the matrix and the aggregate on every push to a branch,
-  # against the ceiling the plan puts on how many jobs the organization may
-  # run at once -- REPOSITORY.md's Plan-gated settings has the figure and
-  # the command that re-derives it. What buys it back is that the aggregate
+  # it queues the aggregate on every push to a pull request, and the matrix
+  # on every push to one that is not a draft, against the ceiling the plan
+  # puts on how many jobs the organization may run at once --
+  # REPOSITORY.md's Plan-gated settings has the figure and the command that
+  # re-derives it. What buys it back is that the aggregate
   # below becomes a name a branch rule could hold at all: a required status
   # check reports on the run a pull request has, so without this trigger no
   # rule could name a context this workflow produces, whatever the analysis

@@ -9,11 +9,12 @@
 # on purpose (see the comment beside it), so the version pinned in its
 # additional_dependencies moves by nobody until a hand edit does
 #
-# every pull request here runs the whole build and test matrix, tens of
-# jobs compiling libsecp256k1 from source, so each ecosystem groups its
-# updates into a single pull request. None declares a target-branch:
-# without one dependabot opens against the default branch, which is the
-# only branch a change lands on -- and a target-branch naming a branch
+# every pull request here that is not a draft and changes more than prose
+# runs the whole build and test matrix, tens of jobs compiling
+# libsecp256k1 from source, so each ecosystem groups its updates into a
+# single pull request. None declares a target-branch: without one
+# dependabot opens against the default branch, which is the only branch a
+# change lands on -- and a target-branch naming a branch
 # that is not there is not an error anywhere, it is a repository where
 # nothing is ever proposed.
 #

@@ -117,7 +117,7 @@ held.
 
 `zizmor` is the workflow half of the same question and is required: it is
 a `pre-commit` hook, so `lint.yml` audits these very files for an injected
-expression on every pull request.
+expression on every pull request that is not a draft.
 
 `docs / Build the documentation` is named on its own on purpose: a rule
 naming `lint / Lint and type-check` alone would leave a red documentation
