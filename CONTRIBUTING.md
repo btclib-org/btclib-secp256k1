@@ -503,6 +503,12 @@ part of `tests` out, `-k`, `-m`, `--deselect`, `--ignore`,
 nothing either way, `tests/conftest.py` being where that is decided and
 why.
 
+Beyond that floor, new or changed functionality must come with tests of
+its own, added or updated in the same pull request, and a fix must come
+with a test that fails without the fix.
+Coverage shows that a line ran, not that anything checked what it did,
+and a test that passes without the fix proves nothing about it.
+
 The group flags are not decoration. `uv run` syncs the environment
 itself, and without `--no-default-groups --group test` it installs the
 whole dev set, wider than what the suite needs.
