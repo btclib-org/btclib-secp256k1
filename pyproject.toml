@@ -145,7 +145,8 @@ pull_requests = "https://github.com/btclib-org/btclib-secp256k1/pulls"
 # system one, so that installing the sdist needs no package manager
 # step (a C toolchain is still required, and cannot be provisioned this
 # way); a system cmake >= 3.22 works just as well, with
-# --no-build-isolation
+# --no-build-isolation. An iOS build is the exception, for the reason
+# given beside cmake below
 requires = [
     # 1.29 is where a build hook can hand hatchling a PEP 770 bill of
     # materials, through `build_data["sbom_files"]`: 1.28 reads only the
@@ -198,8 +199,13 @@ requires = [
     # the vendored libraries' own `cmake_minimum_required` is 3.22, which
     # is the floor and is not itself measured. 4.4.3 was the newest
     # release measured, and it builds the static library, the dynamic one
-    # and the one BTCLIB_LIBSECP256K1_ZKP=true adds
-    "cmake>=3.22,<5",
+    # and the one BTCLIB_LIBSECP256K1_ZKP=true adds.
+    #
+    # An iOS build takes cmake from the machine instead, through
+    # [tool.cibuildwheel.ios]'s `xbuild-tools`: no cmake wheel is tagged
+    # for iOS, and pip would build the sdist, whose own build requirements
+    # build-constraints.txt does not pin
+    'cmake>=3.22,<5; sys_platform!="ios"',
     # `typing.override` is 3.12: below it, scripts/ takes the decorator
     # mypy's explicit-override asks for from here. 4.4.0, the floor,
     # has it, and 4.3.0 fails the import with an ImportError on
@@ -510,7 +516,7 @@ build-requires = [
     'cffi>=1.17,<3; python_version=="3.13"',
     'cffi>=2.0,<3; python_version>="3.14"',
     'setuptools>=66.1.0,<85; python_version>="3.12"',
-    "cmake>=3.22,<5",
+    'cmake>=3.22,<5; sys_platform!="ios"',
     'typing_extensions>=4.4.0,<5; python_version<"3.12"',
 ]
 # mutation testing, which asks what coverage cannot: a line the suite
@@ -1274,3 +1280,31 @@ environment-pass = ["SOURCE_DATE_EPOCH"]
 # `environment` replaces the global one, so the constraint is written
 # again here
 environment = { UV_BUILD_CONSTRAINT = "build-constraints.txt", UV_NO_CONFIG = "1" }
+
+[tool.cibuildwheel.ios]
+# the iOS platform takes the pip and build frontends, not uv. pip's
+# PIP_BUILD_CONSTRAINT binds the build requirements of the project and of
+# nothing cibuildwheel installs for itself, which is what
+# UV_BUILD_CONSTRAINT does above; PIP_CONSTRAINT would bind those too,
+# and its hashes then refuse them. A platform's `environment` replaces
+# the global one
+build-frontend = "pip"
+environment = { PIP_BUILD_CONSTRAINT = "build-constraints.txt" }
+# the build runs on a PATH cibuildwheel cuts down to its own
+# environments, the system's directories and the tools named here: cmake
+# is the machine's, for the reason [build-system] gives beside it
+xbuild-tools = ["cmake"]
+# the device and the arm64 simulator. The x86_64 simulator is not among
+# them: cffi publishes no wheel for it at the version uv.lock resolves,
+# and its sdist does not build there
+#
+# The arm64 simulator wheel is tagged ios_13_0, the deployment target, as
+# cffi's own simulator wheel is, though its binary reads minos 14.0: clang
+# raises an arm64 simulator target to 14.0, and pip refuses an ios_14_0
+# tag where cibuildwheel's test step installs for ios_13_0
+archs = ["arm64_iphoneos", "arm64_iphonesimulator"]
+# the suite does not run in the simulator yet. The package does not
+# import there (btclib-org/btclib-secp256k1#1386), and the simulator's
+# test app holds only the files `test-sources` copies into it and starts
+# no process, where part of the suite reads the tree and starts processes
+test-skip = "*-ios_*"

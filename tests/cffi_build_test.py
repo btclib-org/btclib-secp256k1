@@ -12,7 +12,8 @@ does in the setuptools `uv.lock` resolves, and `_cmake_build_type` reads
 link at the wheel's architectures. Beside them, `_hardening_options` says
 which flags harden the native code, `_hardened_environment` puts them in
 front of the caller's, and `_link_command` does the same for the glue's
-link. Each is a pure function of its arguments -- no `sysconfig`, no
+link. `_ffi_backend` and `_ios_cmake_options` say what an iOS build
+changes. Each is a pure function of its arguments -- no `sysconfig`, no
 `os.environ`, no subprocess -- so what is checked here is the argv each
 one builds, never a compile (btclib-org/btclib-secp256k1#1019).
 
@@ -23,18 +24,22 @@ level constructs `Secp256k1CFFIExtension()`, whose `__init__` runs
 artifact this suite may be running against. Each function is instead
 taken out of the syntax tree and executed on its own -- real code, not a
 reimplementation of it, but never the module-level construction that
-comes with it.
+comes with it. The one test that reads the real cdef runs the module up
+to that construction, and runs the preprocessor `generate_def` calls.
 """
 
 from __future__ import annotations
 
 import ast
+import re
 import shlex
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
+import cffi
 import pytest
+from cffi.backend_ctypes import CTypesBackend
 
 _ROOT = Path(__file__).parents[1]
 _BUILD = _ROOT / "scripts" / "cffi_build.py"
@@ -88,6 +93,10 @@ hardened_environment = cast(
     "Callable[[Mapping[str, str], list[str], list[str]], dict[str, str]]",
     _extracted("_hardened_environment"),
 )
+ffi_backend = cast("Callable[[str], list[Any]]", _extracted("_ffi_backend"))
+ios_cmake_options = cast(
+    "Callable[[str, str, str | None], list[str]]", _extracted("_ios_cmake_options")
+)
 
 
 def test_every_function_was_read() -> None:
@@ -105,6 +114,8 @@ def test_every_function_was_read() -> None:
     assert callable(hardening_options)
     assert callable(hardened_environment)
     assert callable(link_command)
+    assert callable(ffi_backend)
+    assert callable(ios_cmake_options)
 
 
 def test_nothing_set_leaves_every_value_untouched() -> None:
@@ -392,6 +403,121 @@ def test_the_hardening_alone_is_the_whole_value_where_nothing_is_set() -> None:
         "LDFLAGS": "",
     }
     assert env == {"CFLAGS": ""}
+
+
+@pytest.mark.parametrize("system", ["Darwin", "Linux", "Windows"])
+def test_a_build_for_the_running_system_takes_the_compiled_backend(
+    system: str,
+) -> None:
+    """No argument leaves `cffi.FFI` its compiled `_cffi_backend`."""
+    assert ffi_backend(system) == []
+
+
+def test_an_ios_build_takes_the_ctypes_backend() -> None:
+    """The iOS cffi backend does not load in the cross environment."""
+    (backend,) = ffi_backend("iOS")
+    assert isinstance(backend, CTypesBackend)
+
+
+def _module_without_its_extensions() -> dict[str, object]:
+    """Run `scripts/cffi_build.py` up to the extensions it constructs.
+
+    Returns:
+        The module's namespace, its classes and functions defined and
+        neither extension constructed, so that nothing is cleaned.
+    """
+    tree = ast.parse(_BUILD.read_text(encoding="utf-8"))
+    # `next` raises where the module constructs no `ffi_ext`, failing the
+    # test rather than running the construction it exists to leave out
+    end = next(
+        index
+        for index, node in enumerate(tree.body)
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "ffi_ext"
+            for target in node.targets
+        )
+    )
+    namespace: dict[str, object] = {"__name__": "__cffi__", "__file__": str(_BUILD)}
+    module = ast.Module(body=tree.body[:end], type_ignores=[])
+    exec(compile(module, str(_BUILD), "exec"), namespace)
+    return namespace
+
+
+def test_the_ctypes_backend_emits_the_c_the_compiled_one_does(
+    tmp_path: Path,
+) -> None:
+    """The C of the static extension does not depend on the backend.
+
+    The cdef and the header are the real ones, which `generate_def` reads
+    from the vendored submodule. The compiled backend's C is the side the
+    ctypes one is held to.
+    """
+    namespace = _module_without_its_extensions()
+    extension = cast("type", namespace["Secp256k1CFFIExtension"])
+
+    class Headers(extension):  # type: ignore[misc, valid-type]
+        def clean(self) -> None:
+            """Remove nothing: no build is made."""
+
+    header, definitions = Headers().generate_def()
+    emitted = []
+    for name, arguments in (("compiled", []), ("ctypes", ffi_backend("iOS"))):
+        ffi = cffi.FFI(*arguments)
+        ffi.cdef(definitions)
+        ffi.set_source("_btclib_secp256k1", header)
+        path = tmp_path / f"{name}.c"
+        ffi.emit_c_code(str(path))
+        emitted.append(path.read_bytes())
+    assert emitted[0] == emitted[1]
+
+
+def test_a_build_for_the_running_system_takes_no_ios_option() -> None:
+    """A macOS build takes no iOS option."""
+    assert ios_cmake_options("Darwin", "macosx-11.0-arm64", "13.0") == []
+
+
+@pytest.mark.parametrize(
+    "target, arch, sdk",
+    [
+        ("ios-13.0-arm64-iphonesimulator", "arm64", "iphonesimulator"),
+        ("ios-13.0-x86_64-iphonesimulator", "x86_64", "iphonesimulator"),
+        ("ios-13.0-arm64-iphoneos", "arm64", "iphoneos"),
+    ],
+)
+def test_ios_names_the_system_the_sdk_and_the_architecture(
+    target: str, arch: str, sdk: str
+) -> None:
+    """Each of cibuildwheel's iOS targets reaches CMake whole."""
+    assert ios_cmake_options("iOS", target, "15.0") == [
+        "-DCMAKE_SYSTEM_NAME=iOS",
+        f"-DCMAKE_OSX_SYSROOT={sdk}",
+        f"-DCMAKE_OSX_ARCHITECTURES={arch}",
+        "-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0",
+    ]
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "ios-arm64-iphonesimulator",
+        "ios-13.0-arm64-iphone-simulator",
+        "ios-13.0--iphoneos",
+    ],
+)
+def test_ios_refuses_a_tag_without_four_fields(target: str) -> None:
+    """A tag of three or five fields, or an empty one, is named, not misread."""
+    with pytest.raises(RuntimeError, match=re.escape(repr(target))):
+        ios_cmake_options("iOS", target, "13.0")
+
+
+def test_ios_without_a_deployment_target_leaves_the_default() -> None:
+    """No deployment target is no option, not an empty one."""
+    assert ios_cmake_options("iOS", "ios-13.0-arm64-iphoneos", None) == [
+        "-DCMAKE_SYSTEM_NAME=iOS",
+        "-DCMAKE_OSX_SYSROOT=iphoneos",
+        "-DCMAKE_OSX_ARCHITECTURES=arm64",
+    ]
 
 
 def test_the_link_hardening_precedes_the_callers_ldflags() -> None:

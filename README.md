@@ -1322,7 +1322,9 @@ The vendored libsecp256k1 is built with CMake on every platform, out of
 tree: the submodule is only ever read from. CMake is declared as a build
 requirement, so a PEP 517 frontend provisions it and only a C toolchain
 has to be there already; a system CMake 3.22 or newer serves just as
-well, with `--no-build-isolation`.
+well, with `--no-build-isolation`. An iOS build is the exception, and
+takes CMake from the machine: `pyproject.toml` gives the reason beside
+the requirement.
 
 The cffi extension itself is compiled with the interpreter's own
 toolchain, which on Windows is the standard setuptools/MSVC one; a `gcc`
