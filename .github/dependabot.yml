@@ -9,13 +9,14 @@
 # on purpose (see the comment beside it), so the version pinned in its
 # additional_dependencies moves by nobody until a hand edit does
 #
-# every pull request dependabot opens here runs the whole build and test
-# matrix while it is not a draft, tens of jobs compiling libsecp256k1
-# from source, so each ecosystem groups its updates into a single pull
-# request. None declares a target-branch: without one dependabot opens
-# against the default branch, which is the only branch a change lands
-# on -- and a target-branch naming a branch that is not there is not an
-# error anywhere, it is a repository where nothing is ever proposed.
+# every pull request dependabot opens here runs the build and test
+# matrix as far as the `if:` of test.yml's jobs admits it, tens of jobs
+# compiling libsecp256k1 from source, so each ecosystem groups its
+# updates into a single pull request. None declares a target-branch:
+# without one dependabot opens against the default branch, which is the
+# only branch a change lands on -- and a target-branch naming a branch
+# that is not there is not an error anywhere, it is a repository where
+# nothing is ever proposed.
 #
 # Weekly: deps-latest.yml upgrades everything and runs that same matrix against
 # it every Wednesday, off the critical path, so a Thursday pull request is a
