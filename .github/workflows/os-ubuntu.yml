@@ -34,12 +34,13 @@ name: os-ubuntu
 # queue is the cost being managed and a second job pays it again.
 #
 # What that trades away, stated here rather than discovered later: pip's
-# *selection* among a directory of wheels tagged for several interpreters
-# is now asked nowhere. Each wheel is still tested by the job that builds
-# it -- `test-command` in pyproject.toml runs the whole suite against
-# every wheel cibuildwheel produces, on the runner that produced it --
-# and check-dist installs one by path into an empty environment. What no
-# longer runs is pip choosing between them.
+# *selection* among a directory of wheels tagged for several
+# interpreters is now asked nowhere. Each static wheel but an iOS device
+# wheel is still tested by the job that builds it -- `test-command` in
+# pyproject.toml runs the whole suite against it, on the runner that
+# produced it or in the iOS simulator -- and check-dist installs one by
+# path into an empty environment. What no longer runs is pip choosing
+# between them.
 #
 # The other half of that same trade: no suite runs against the dynamic
 # wheel as a package. `test-command` in pyproject.toml reaches

@@ -671,9 +671,10 @@ Google style napoleon renders, so a new argument nobody documented fails
 the lint gate; `Raises` is not enforced, and `pyproject.toml` says why
 beside the setting that turns it off. And anything written as a doctest,
 in a docstring or in `README.md`, is run by `tests/examples_test.py` on
-every interpreter and every kind of wheel — which constrains an example
-to be deterministic: fixed keys, and a verification rather than a
-signature wherever the value depends on randomness that is not pinned.
+every interpreter and against every static wheel but the iOS device's —
+which constrains an example to be deterministic: fixed keys, and a
+verification rather than a signature wherever the value depends on
+randomness that is not pinned.
 A docstring under `btclib_secp256k1.zkp` runs only where the flagged
 extension is built: `tests/examples_test.py` marks that module's case
 `zkp` and guards it with an `importorskip`. In CI that is the `Build the
@@ -933,6 +934,14 @@ command at all, for the reason below, and nothing requires its result.
 
   The Linux wheels of that job are built in a manylinux container, so
   reproducing them needs a container runtime (`colima` on macOS)
+
+- `Build the iOS wheels, and run the suite in the simulator`, on an arm64
+  Mac with Xcode, its iOS simulator runtime and a `cmake` on `PATH`, the
+  build timestamp pinned as in `Build wheels on <os>` above:
+
+  ```shell
+  uv run --locked --only-group build cibuildwheel --platform ios
+  ```
 
 - `Build dynamic wheel on <os>`
 
@@ -1413,7 +1422,9 @@ but `links` run locally.
   manylinux container, so reproducing it needs a container runtime
   (`colima` on macOS). `CIBW_BUILD` narrows the workflow's own run to
   one interpreter; left unset, this builds every interpreter
-  `cibuildwheel` selects for the platform at hand
+  `cibuildwheel` selects for the platform at hand. The `repaired-ios` job
+  runs the same command with `CIBW_PLATFORM=ios`, on the Mac
+  `Build the iOS wheels, and run the suite in the simulator` above asks for
 
   The `dynamic` and `cross-windows` jobs ask the same question of the
   `py3-none-*` wheels, which `build-dynamic` and `build-windows` build
@@ -1527,7 +1538,7 @@ would leave a required check `Pending`, as `REPOSITORY.md` says of
 
 | workflow | when | what it varies |
 | --- | --- | --- |
-| `test` | pull request, push | the wheels, those of x86_64 macOS at a release and a dispatch only, the sdist, one suite cell |
+| `test` | pull request, push | the wheels, those of x86_64 macOS and iOS at a release and a dispatch only, the sdist, one suite cell |
 | `lint`, `docs` | pull request, push | — |
 | `sourcery` | pull request | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
@@ -1545,7 +1556,7 @@ would leave a required check `Pending`, as `REPOSITORY.md` says of
 | `links` | weekly, a pull request touching its own configuration | — |
 | `mutation` | weekly | — |
 | `fuzz` | weekly | — |
-| `wheel-reproducibility` | weekly, pull request, building only where it touches what it builds | every wheel platform, on two images, built twice on each, and the repaired, dynamic and cross-compiled wheels, built twice on one image per platform; x86_64 macOS weekly and on a dispatch only |
+| `wheel-reproducibility` | weekly, pull request, building only where it touches what it builds | every wheel platform but iOS, on two images, built twice on each, and the repaired, iOS, dynamic and cross-compiled wheels, built twice on one image per platform; x86_64 macOS and iOS weekly and on a dispatch only |
 | `sdist-rebuild` | weekly, a pull request touching its own file | — |
 | `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
@@ -1609,6 +1620,12 @@ release and a dispatch, and `check-dist` fails those runs unless they are
 there; `wheel-reproducibility` builds its images weekly and on a dispatch.
 Section 10 of the organization's standard in `btclib-org/.github` has the
 reason and when it ends.
+
+**iOS builds on the same events**, as decided on #1385: `test`'s
+`build-ios` at a release and a dispatch, checked by `check-dist` the same
+way, and `wheel-reproducibility`'s `repaired-ios` weekly and on a dispatch.
+`cibuildwheel` runs the suite in the simulator against each simulator wheel,
+and no test against a device wheel.
 
 Every workflow here takes `workflow_dispatch`, the gates included, except
 `claude-review`, `sourcery` and `scorecard`, and for the three platform

@@ -24,8 +24,9 @@ python -m pip install --upgrade btclib-secp256k1
 ## Quickstart
 
 Sign and verify, ECDSA and BIP340. Every line below is executed by the
-test suite, on every interpreter and every kind of wheel, so an example
-that stops working fails a build rather than sitting here:
+test suite, on every interpreter and against every static wheel but the
+iOS device's, so an example that stops working fails a build rather than
+sitting here:
 
 ```python
 >>> import hashlib
@@ -204,7 +205,7 @@ went:
   coverage is ratcheted at 100%, with only the unreachable excluded
   from the measure
 - provenance is checkable: every wheel and the sdist are built and
-  tested in public CI from the pinned source, and published by the
+  checked in public CI from the pinned source, and published by the
   workflow itself through Trusted Publishing with PEP 740 attestations
   — no long-lived token, and no maintainer laptop in the path. The sdist
   attached to the GitHub release carries a build provenance attestation

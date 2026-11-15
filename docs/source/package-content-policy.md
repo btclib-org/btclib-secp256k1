@@ -12,10 +12,10 @@ the script alone.
 The prose around the lists is prose, and is checked by nobody.
 
 `test.yml`'s `check-dist` job runs the script on every wheel it
-downloads from `build-cibuildwheel`, `build-dynamic` and `build-windows`
-— the artifacts `release.yml`'s own `test` job produces and the publish
-jobs upload, so this judges the files that actually reach PyPI rather
-than a copy of them.
+downloads from `build-cibuildwheel`, `build-ios`, `build-dynamic` and
+`build-windows` — the artifacts `release.yml`'s own `test` job produces
+and the publish jobs upload, so this judges the files that actually
+reach PyPI rather than a copy of them.
 
 ## Two kinds of wheel
 
@@ -88,7 +88,7 @@ A static wheel: exactly one file whose name starts with
 `_btclib_secp256k1` and ends in a compiled-extension suffix,
 `EXTENSION_SUFFIXES`:
 
-- `.so` — Linux and macOS
+- `.so` — Linux, macOS and iOS
 - `.pyd` — Windows
 
 A dynamic wheel: exactly `_btclib_secp256k1.py`, the ABI-mode module
@@ -128,7 +128,7 @@ phrase per property missing, and a wheel that lacks any is refused:
   asked only of a wheel whose C runtime carries it, since the linker
   writes it only if every input does: of an x86_64 glibc wheel, and of no
   musllinux or aarch64 wheel
-- macOS, Mach-O, every architecture of a universal file: the stack
+- macOS and iOS, Mach-O, every architecture of a universal file: the stack
   protector and `_FORTIFY_SOURCE`
 - Windows, `.pyd` from MSVC: address space layout randomization, DEP,
   high entropy address space layout, control flow guard and the security

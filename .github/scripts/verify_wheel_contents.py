@@ -75,10 +75,11 @@ Run it against one built wheel:
         .github/scripts/verify_wheel_contents.py dist/*.whl
 
 `test.yml`'s `check-dist` job runs it on every wheel it downloads --
-`build-cibuildwheel`, `build-dynamic` and `build-windows` between them --
-which are the artifacts `release.yml`'s own `test` job produces and the
-publish jobs upload: one build, checked and shipped, so this judges the
-files this project actually publishes rather than a copy of them.
+`build-cibuildwheel`, `build-ios`, `build-dynamic` and `build-windows`
+between them -- which are the artifacts `release.yml`'s own `test` job
+produces and the publish jobs upload: one build, checked and shipped, so
+this judges the files this project actually publishes rather than a copy
+of them.
 """
 
 from __future__ import annotations

@@ -12,12 +12,12 @@ name: wheel-reproducibility
 # share an image, and the exemption in RELEASING.md and in section 12 of
 # the organization's standard rests on what happens across two of them
 # -- it names the compiler, its version and the toolchain the runner
-# happened to have as inputs nothing pins. So every platform below
-# carries a second image, chosen to differ in the toolchain it carries
-# -- a different OS release for all but the Windows arm64 pair, whose
-# two images share an OS build and differ in Visual Studio alone. Each
-# job keeps the wheel it already built, and across-images downloads the
-# pair and compares them. The second image costs a job and no extra
+# happened to have as inputs nothing pins. So every platform rebuild
+# builds carries a second image, chosen to differ in the toolchain it
+# carries -- a different OS release for all but the Windows arm64 pair,
+# whose two images share an OS build and differ in Visual Studio alone.
+# Each job keeps the wheel it already built, and across-images downloads
+# the pair and compares them. The second image costs a job and no extra
 # build: the double build each one already does is what makes a
 # difference between two images attributable to the image rather than to
 # either build's own drift.
@@ -44,6 +44,12 @@ name: wheel-reproducibility
 # instead of either job above taking a flag. What they inherit from
 # repaired is its bound: one image per platform, so whether two images
 # agree is not asked of these wheels either.
+#
+# And the iOS wheels, which build-ios in test.yml builds through
+# cibuildwheel alone: uv build builds for the machine it runs on, so
+# rebuild has no iOS pair, and across-images none to compare. The
+# repaired-ios job below builds them twice on build-ios's one image, which
+# is the bound repaired has on macOS and Windows.
 #
 # CIBW_BUILD narrows it to one interpreter, and the reason is not the
 # one test.yml's build-cibuildwheel gives for narrowing a pull request:
@@ -132,13 +138,16 @@ name: wheel-reproducibility
 # than skipping while draft, since a skipped required check reads as
 # passing (btclib-org/.github#1327).
 #
-# The pull request builds every platform but x86_64 macOS. Those images,
-# macos-26-intel and macos-15-intel, build on the schedule and on a
-# dispatch only: a matrix excludes them when github.event_name is
-# pull_request, and across-images then finds no macos-x86-64 directory
-# rather than half of one. Section 10 of the organization's standard in
-# btclib-org/.github says why, and CONTRIBUTING.md's *What gates a merge,
-# and what only reports* says how this tree applies it.
+# The pull request builds every platform but x86_64 macOS and iOS. The
+# x86_64 macOS images, macos-26-intel and macos-15-intel, build on the
+# schedule and on a dispatch only: a matrix excludes them when
+# github.event_name is pull_request, and across-images then finds no
+# macos-x86-64 directory rather than half of one. Section 10 of the
+# organization's standard in btclib-org/.github says why, and
+# CONTRIBUTING.md's *What gates a merge, and what only reports* says how
+# this tree applies it. The iOS wheels build on no pull request either, as
+# decided on #1385: repaired-ios below builds them on the schedule and on
+# a dispatch, and build-ios in test.yml at a release and on a dispatch.
 
 on:
   schedule:
@@ -576,6 +585,64 @@ jobs:
           name: repaired-wheel-${{ matrix.platform }}-${{ matrix.os }}
           path: ${{ runner.temp }}/wheel-repaired/
 
+  # the wheels build-ios in test.yml uploads, the device's and the
+  # simulator's, built twice through cibuildwheel and diffed as repaired
+  # does: cibuildwheel runs no repair on iOS, so the file under
+  # measurement is the one hatchling writes. A job of its own, for the
+  # reason build-ios gives for being one, on the one image that job
+  # names. The schedule and a dispatch build it and a pull request
+  # skips it, as the x86_64 macOS cells above (see the header)
+  repaired-ios:
+    name: Build the iOS wheels twice and diff them
+    needs: changes
+    # rebuild's own conditions, and the pull request's skip
+    if: >-
+      ${{ !github.event.pull_request.draft
+      && needs.changes.outputs.build == 'true'
+      && github.event_name != 'pull_request' }}
+    runs-on: macos-latest
+    # the same bound-a-hung-job ceiling the jobs above carry: the job
+    # took under three minutes on macos-26-arm64 in November 2026
+    timeout-minutes: 40
+    # repaired's own variables, and the platform: one interpreter, no
+    # test run
+    env:
+      UV_PYTHON_DOWNLOADS: never
+      CIBW_BUILD: cp315-*
+      CIBW_TEST_SKIP: "*"
+      CIBW_PLATFORM: ios
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the vendored library is compiled in each build here
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15"
+          allow-prereleases: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+
+      # hatchling reads it for every member it writes, and build-ios in
+      # test.yml pins the same value the same way
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
+      # repaired's own step and command: the build group and --locked
+      - name: Build the iOS wheels twice and diff the two archives
+        run: >
+          uv run --locked --only-group build python
+          .github/scripts/check_wheel_reproducibility.py
+          --repaired
+
   dynamic:
     name: Build the dynamic wheel twice on ${{ matrix.os }} and diff them
     needs: changes
@@ -823,6 +890,7 @@ jobs:
       - changes
       - rebuild
       - repaired
+      - repaired-ios
       - dynamic
       - cross-windows
       - across-images
@@ -898,6 +966,7 @@ jobs:
             changes ${{ needs.changes.result }}
             rebuild ${{ needs.rebuild.result }}
             repaired ${{ needs.repaired.result }}
+            repaired-ios ${{ needs.repaired-ios.result }}
             dynamic ${{ needs.dynamic.result }}
             cross-windows ${{ needs.cross-windows.result }}
             across-images ${{ needs.across-images.result }}
@@ -930,6 +999,7 @@ jobs:
             repaired Build the repaired wheel twice on macos-latest and diff them
             repaired Build the repaired wheel twice on windows-latest and diff them
             repaired Build the repaired wheel twice on windows-11-arm and diff them
+            repaired-ios Build the iOS wheels twice and diff them
             dynamic Build the dynamic wheel twice on ubuntu-latest and diff them
             dynamic Build the dynamic wheel twice on ubuntu-24.04-arm and diff them
             dynamic Build the dynamic wheel twice on macos-26-intel and diff them

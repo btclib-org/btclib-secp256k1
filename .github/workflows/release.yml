@@ -53,10 +53,11 @@ jobs:
       # see the lint job above
       concurrency-suffix: "-release"
 
-  # the suite on every platform and every interpreter, which test.yml runs
-  # one cell of, for the reason os-ubuntu.yml's header gives: a week is the
-  # right sample rate for a regression that can sit on main for a week,
-  # and the wrong one for a version that cannot be unpublished
+  # the suite on Linux, macOS and Windows, on every interpreter, which
+  # test.yml runs one cell of, for the reason os-ubuntu.yml's header
+  # gives: a week is the right sample rate for a regression that can sit
+  # on main for a week, and the wrong one for a version that cannot be
+  # unpublished
   ubuntu:
     name: Run the ubuntu workflow
     uses: ./.github/workflows/os-ubuntu.yml # zizmor: ignore[self-repository]
@@ -280,7 +281,7 @@ jobs:
       build-constraints: build-constraints.txt
 
   # reuse the whole build/test pipeline: every wheel the release ships is
-  # built and tested here, by the very matrices that run on a push, and
+  # built and checked here, by the jobs a push runs and by build-ios, and
   # the sdist the build job signed is checked and installed here
   test:
     name: Run the test workflow
