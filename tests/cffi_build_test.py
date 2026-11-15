@@ -13,9 +13,10 @@ link at the wheel's architectures. Beside them, `_hardening_options` says
 which flags harden the native code, `_hardened_environment` puts them in
 front of the caller's, and `_link_command` does the same for the glue's
 link. `_ffi_backend` and `_ios_cmake_options` say what an iOS build
-changes. Each is a pure function of its arguments -- no `sysconfig`, no
-`os.environ`, no subprocess -- so what is checked here is the argv each
-one builds, never a compile (btclib-org/btclib-secp256k1#1019).
+changes, and `_python_library` what an Android one does. Each is a pure
+function of its arguments -- no `sysconfig`, no `os.environ`, no
+subprocess -- so what is checked here is the argv each one builds, never
+a compile (btclib-org/btclib-secp256k1#1019).
 
 None is read by importing `scripts/cffi_build.py`, for the reason
 `tests/module_flags_test.py`'s own docstring gives: the module's own top
@@ -97,6 +98,7 @@ ffi_backend = cast("Callable[[str], list[Any]]", _extracted("_ffi_backend"))
 ios_cmake_options = cast(
     "Callable[[str, str, str | None], list[str]]", _extracted("_ios_cmake_options")
 )
+python_library = cast("Callable[[str, str], list[str]]", _extracted("_python_library"))
 
 
 def test_every_function_was_read() -> None:
@@ -116,6 +118,7 @@ def test_every_function_was_read() -> None:
     assert callable(link_command)
     assert callable(ffi_backend)
     assert callable(ios_cmake_options)
+    assert callable(python_library)
 
 
 def test_nothing_set_leaves_every_value_untouched() -> None:
@@ -364,6 +367,15 @@ def test_macos_gets_no_branch_protection_and_no_linker_flag(machine: str) -> Non
     assert hardening_options("Darwin", machine, False) == (_COMMON, [])
 
 
+@pytest.mark.parametrize("machine", ["aarch64", "x86_64"])
+def test_android_gets_no_branch_protection_and_no_linker_flag(machine: str) -> None:
+    """The NDK toolchain links `relro` and `now` without being asked.
+
+    No branch protection yet: btclib-org/btclib-secp256k1#1390.
+    """
+    assert hardening_options("Android", machine, False) == (_COMMON, [])
+
+
 @pytest.mark.parametrize("machine", ["AMD64", "ARM64"])
 def test_msvc_gets_gs_and_control_flow_guard(machine: str) -> None:
     """MSVC takes `/GS` and `/guard:cf` to compile and `/GUARD:CF` to link."""
@@ -518,6 +530,18 @@ def test_ios_without_a_deployment_target_leaves_the_default() -> None:
         "-DCMAKE_OSX_SYSROOT=iphoneos",
         "-DCMAKE_OSX_ARCHITECTURES=arm64",
     ]
+
+
+@pytest.mark.parametrize("system", ["Darwin", "iOS", "Linux"])
+def test_only_an_android_glue_links_libpython(system: str) -> None:
+    """Elsewhere the interpreter resolves the glue's Python symbols."""
+    assert python_library(system, "3.14") == []
+
+
+@pytest.mark.parametrize("ldversion", ["3.13", "3.14", "3.14t"])
+def test_an_android_glue_links_the_interpreters_libpython(ldversion: str) -> None:
+    """The library's name is `LDVERSION`'s, a free-threaded `t` included."""
+    assert python_library("Android", ldversion) == [f"-lpython{ldversion}"]
 
 
 def test_the_link_hardening_precedes_the_callers_ldflags() -> None:

@@ -422,6 +422,28 @@ def _ios_cmake_options(
     return options
 
 
+def _python_library(system: str, ldversion: str) -> list[str]:
+    """Return the `-l` option linking the glue against libpython.
+
+    An Android extension names libpython among the libraries it needs:
+    setuptools links it there too (`build_ext.get_libraries`), whose
+    comment gives the reason, that Android loads the libraries the
+    executable depends on as `RTLD_LOCAL`. cibuildwheel's Android
+    `LDFLAGS` carry `-Wl,--no-undefined`, so a glue linked without it
+    fails on every Python symbol. The `-L` that finds it is in those
+    `LDFLAGS` too.
+
+    Args:
+        system: the platform being built for, as `platform.system()`
+            spells it.
+        ldversion: the interpreter's `LDVERSION`, as `3.14` or `3.14t`.
+
+    Returns:
+        No option where the build is not for Android.
+    """
+    return [f"-lpython{ldversion}"] if system == "Android" else []
+
+
 def _cmake_build_type(env: Mapping[str, str]) -> str:
     """Read the vendored library's CMake build type.
 
@@ -459,6 +481,11 @@ def _hardening_options(
       Mach-O file has no `relro`, `now` or marking to read back, and
       Apple's compiler rejects `-mbranch-protection` for an x86_64
       target.
+    - Android: the same two flags, and no link flag. The NDK toolchain
+      links the glue with a `GNU_RELRO` segment and `BIND_NOW` by
+      default. `-fcf-protection` and `-mbranch-protection` are not given
+      yet: what they leave in the glue's property note there is not
+      measured (btclib-org/btclib-secp256k1#1390).
     - Windows, MSVC: `/GS` and `/guard:cf`, linked with `/GUARD:CF`.
     - Windows, cross-compiled with mingw-w64: no compile flag, because
       the stack protector would link a `libssp` DLL; the DLL is linked
@@ -839,7 +866,10 @@ class FFIExtension:
             hardening_link,
             [str(o_filename)],
             [f"-L{libs_dir}" for libs_dir in self.library_dirs],
-            [f"-l{lib}" for lib in self.libraries],
+            [
+                *(f"-l{lib}" for lib in self.libraries),
+                *_python_library(self.platform, get_config_var("LDVERSION")),
+            ],
             ["-Wl,-oso_prefix,."] if apple else [],
             str(so_filename),
         )

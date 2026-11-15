@@ -112,8 +112,9 @@ first, because it remembers the previous configuration. For an iOS
 wheel the configure line also names the system, the SDK, the
 architecture and the deployment target, which `build_c` reads from the
 interpreter and from `IPHONEOS_DEPLOYMENT_TARGET`: cibuildwheel builds
-that wheel on macOS, and CMake otherwise builds for the machine it runs
-on.
+that wheel on macOS, and without them CMake configures the library for
+macOS. An Android wheel takes no such option: CMake reads the toolchain
+file cibuildwheel names in `CMAKE_TOOLCHAIN_FILE`.
 
 The build also replaces libsecp256k1's default callbacks, which
 `abort()`, with do-nothing ones, so that an illegal input can never take
@@ -161,7 +162,8 @@ backend, and `_ffi_backend`'s docstring says why.
   with the interpreter's own `CC`, `CFLAGS`, `CCSHARED` and `LDSHARED`,
   composed with a caller's own `CC`, `LDSHARED`, `CFLAGS`, `LDFLAGS` and
   `CPPFLAGS` the way setuptools does -- *Environment variables* below
-  has them
+  has them. An Android glue also links libpython, for the reason
+  `_python_library`'s docstring gives
 - dynamic: no C is compiled at all. `emit_python_code()` writes the ABI
   mode module, and the shared libsecp256k1 is copied next to it — found
   by searching every candidate directory CMake may have used, skipping
