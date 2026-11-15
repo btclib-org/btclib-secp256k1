@@ -961,7 +961,7 @@ repos:
           - 'cffi>=1.17,<3; python_version=="3.13"'
           - 'cffi>=2.0,<3; python_version>="3.14"'
           - 'setuptools>=66.1.0,<85; python_version>="3.12"'
-          - "cmake>=3.22,<5"
+          - 'cmake>=3.22,<5; sys_platform!="ios"'
           - 'typing_extensions>=4.4.0,<5; python_version<"3.12"'
 
   # what test.yml's own pyroma step rates the sdist for -- a missing

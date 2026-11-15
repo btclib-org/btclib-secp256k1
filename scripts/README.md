@@ -108,7 +108,12 @@ the build machine rather than with a value — `AUTO` is
 ships a library compiled with `-DVALGRIND`, which is a wheel this
 repository cannot tell from any other. Upstream's own tests, benchmarks
 and install rules are all turned off. A stale CMake cache is deleted
-first, because it remembers the previous configuration.
+first, because it remembers the previous configuration. For an iOS
+wheel the configure line also names the system, the SDK, the
+architecture and the deployment target, which `build_c` reads from the
+interpreter and from `IPHONEOS_DEPLOYMENT_TARGET`: cibuildwheel builds
+that wheel on macOS, and CMake otherwise builds for the machine it runs
+on.
 
 The build also replaces libsecp256k1's default callbacks, which
 `abort()`, with do-nothing ones, so that an illegal input can never take
@@ -145,7 +150,8 @@ PATH is therefore required even on Windows, where MSVC compiles the
 extension. The stripping pattern allows whitespace between `#` and
 `include`: three of secp256k1-zkp's own headers spell their include of
 `secp256k1.h` that way, where every header of the primary submodule
-spells it `#include`.
+spells it `#include`. An iOS build creates the FFI on cffi's ctypes
+backend, and `_ffi_backend`'s docstring says why.
 
 **Compile the extension**, by one of three paths:
 

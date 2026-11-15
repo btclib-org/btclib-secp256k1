@@ -395,7 +395,7 @@ build = [
 ]
 build-requires = [
     { name = "cffi" },
-    { name = "cmake" },
+    { name = "cmake", marker = "sys_platform != 'ios'" },
     { name = "hatchling" },
     { name = "setuptools", marker = "python_full_version >= '3.12'" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'" },
@@ -479,7 +479,7 @@ build-requires = [
     { name = "cffi", marker = "python_full_version < '3.13'", specifier = ">=1.14.1,<3" },
     { name = "cffi", marker = "python_full_version == '3.13.*'", specifier = ">=1.17,<3" },
     { name = "cffi", marker = "python_full_version >= '3.14'", specifier = ">=2.0,<3" },
-    { name = "cmake", specifier = ">=3.22,<5" },
+    { name = "cmake", marker = "sys_platform != 'ios'", specifier = ">=3.22,<5" },
     { name = "hatchling", specifier = ">=1.29,!=1.32.3,<2" },
     { name = "setuptools", marker = "python_full_version >= '3.12'", specifier = ">=66.1.0,<85" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'", specifier = ">=4.4.0,<5" },

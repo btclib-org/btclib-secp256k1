@@ -355,6 +355,73 @@ def _pin_architectures(flags: str, architectures: list[str]) -> str:
     return shlex.join(pinned)
 
 
+def _ffi_backend(system: str) -> list[Any]:
+    """Return the backend `cffi.FFI` is built with, as its arguments.
+
+    An iOS wheel is built by a macOS interpreter that cibuildwheel's
+    cross environment makes report iOS. The cffi that environment
+    installs is the iOS wheel, whose `_cffi_backend` that interpreter
+    cannot import. cffi's ctypes backend is Python, and the C it emits
+    for this module's cdef is the same, byte for byte, as the C the
+    compiled backend emits.
+
+    Args:
+        system: the platform being built for, as `platform.system()`
+            spells it.
+
+    Returns:
+        `[CTypesBackend()]` for iOS, else no argument, which is the
+        compiled backend.
+    """
+    if system != "iOS":
+        return []
+    from cffi.backend_ctypes import CTypesBackend  # noqa: PLC0415
+
+    return [CTypesBackend()]
+
+
+def _ios_cmake_options(
+    system: str, target: str, deployment_target: str | None
+) -> list[str]:
+    """Return the CMake options aiming the vendored build at iOS.
+
+    cibuildwheel builds an iOS wheel on macOS, and CMake configures for
+    the machine it runs on unless it is told the system, the SDK, the
+    architecture and the deployment target.
+
+    Args:
+        system: the platform being built for, as `platform.system()`
+            spells it.
+        target: the platform tag, `sysconfig.get_platform()`, as
+            `ios-13.0-arm64-iphonesimulator`: its last two fields are the
+            architecture and the SDK.
+        deployment_target: the iOS version to build for, or None for
+            the compiler's default.
+
+    Returns:
+        No option where the build is not for iOS.
+
+    Raises:
+        RuntimeError: where `target` is not four fields joined by `-`, or
+            one of them is empty.
+    """
+    if system != "iOS":
+        return []
+    fields = target.split("-")
+    if len(fields) != 4 or not all(fields):
+        msg = f"an iOS platform tag has four fields, not {target!r}"
+        raise RuntimeError(msg)
+    _, _, arch, sdk = fields
+    options = [
+        "-DCMAKE_SYSTEM_NAME=iOS",
+        f"-DCMAKE_OSX_SYSROOT={sdk}",
+        f"-DCMAKE_OSX_ARCHITECTURES={arch}",
+    ]
+    if deployment_target:
+        options.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}")
+    return options
+
+
 def _cmake_build_type(env: Mapping[str, str]) -> str:
     """Read the vendored library's CMake build type.
 
@@ -559,7 +626,7 @@ class FFIExtension:
         build_dir = pathlib.Path(build_dir)
 
         self.build_c()
-        ffi = cffi.FFI()
+        ffi = cffi.FFI(*_ffi_backend(platform.system()))
         header, definitions = self.generate_def()
         ffi.cdef(definitions)
 
@@ -725,9 +792,14 @@ class FFIExtension:
         # under the default build type -- build_c's own note beside the
         # configure has the reason, and what a caller naming another
         # type trades away (btclib-org/btclib-secp256k1#522)
+        #
+        # An iOS extension is linked by the same ld64, from a compile
+        # whose interpreter CFLAGS carry -g too, so it takes the macOS
+        # flags and the mtime pin below
+        apple = platform.system() in {"Darwin", "iOS"}
         build_path_flags = (
             ["-fdebug-compilation-dir=."]
-            if platform.system() == "Darwin"
+            if apple
             else [f"-ffile-prefix-map={build_dir.resolve()}=."]
         )
         sysconfig_cflags = get_config_var("CFLAGS") or ""
@@ -768,12 +840,12 @@ class FFIExtension:
             [str(o_filename)],
             [f"-L{libs_dir}" for libs_dir in self.library_dirs],
             [f"-l{lib}" for lib in self.libraries],
-            ["-Wl,-oso_prefix,."] if platform.system() == "Darwin" else [],
+            ["-Wl,-oso_prefix,."] if apple else [],
             str(so_filename),
         )
 
         subprocess.run(compile_command, cwd=build_dir, check=True)
-        if platform.system() == "Darwin":
+        if apple:
             # ld64 attaches a debug map to the binary it links whenever
             # the compile carries -g, as this interpreter's own CFLAGS
             # always does above where no CFLAGS in the environment
@@ -1108,6 +1180,14 @@ class VendoredCMakeExtension(FFIExtension):
             "-DSECP256K1_INSTALL=OFF",
             *self.target_architecture_options(),
             *self.macos_deployment_target_options(),
+            # the deployment target cibuildwheel exports, as for macOS
+            # above, or else the interpreter's own
+            *_ios_cmake_options(
+                platform.system(),
+                get_platform(),
+                os.environ.get("IPHONEOS_DEPLOYMENT_TARGET")
+                or get_config_var("IPHONEOS_DEPLOYMENT_TARGET"),
+            ),
         ]
         # not in that list, and deliberately: SECP256K1_ASM,
         # SECP256K1_ECMULT_WINDOW_SIZE and SECP256K1_ECMULT_GEN_KB are
