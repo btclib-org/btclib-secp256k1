@@ -1,11 +1,11 @@
 ---
 # PROBE, never to land: measures cibuildwheel's Android platform for
-# btclib-org/btclib-secp256k1#1385 on the branch android-wheels-probe-2 only
+# btclib-org/btclib-secp256k1#1385 on the branch cffi240-probe only
 name: android-probe
 
 on:
   push:
-    branches: [android-wheels-probe-2]
+    branches: [cffi240-probe]
 
 permissions:
   contents: read
@@ -77,7 +77,7 @@ jobs:
             --python-platform x86_64-linux-android --target "$RUNNER_TEMP/c-target" \
             wheelhouse-a/*cp314-cp314-android_24_x86_64.whl || echo "EXIT_C=$?"
 
-      - name: D. Test cp314 x86_64 in the emulator, cffi from Flet's index by URL
+      - name: D. Test cp314 x86_64 in the emulator, cffi from python-cffi/cffi#240 by URL
         if: always()
         continue-on-error: true
         env:
@@ -92,7 +92,7 @@ jobs:
           CIBW_TEST_REQUIRES: >-
             pytest==9.2.0 pytest-cov==7.1.0 pytest-xdist==3.8.0
             pathspec==1.1.1 typing-extensions==4.16.0
-            cffi@https://pypi.flet.dev/-/ver_E2rYs/cffi-2.1.1-1-cp314-cp314-android_24_x86_64.whl#sha256=275e314ac53a3894b702c3736c6bdb5d32e67bb934a5f0d3965a37f4dd5b4684
+            cffi@https://github.com/fametrano/cffi/releases/download/pr240-probe-wheels/cffi-2.2.0.dev0-cp314-cp314-android_24_x86_64.whl#sha256=1a2e6f18a5fde13cf1307615eef42c7507d730bad346677ffaba0abbef49a737
         run: uv run --locked --only-group build cibuildwheel --platform android --output-dir wheelhouse-d
 
       - name: D2. The same test step under pyproject.toml's environment
@@ -106,7 +106,7 @@ jobs:
           CIBW_TEST_REQUIRES: >-
             pytest==9.2.0 pytest-cov==7.1.0 pytest-xdist==3.8.0
             pathspec==1.1.1 typing-extensions==4.16.0
-            cffi@https://pypi.flet.dev/-/ver_E2rYs/cffi-2.1.1-1-cp314-cp314-android_24_x86_64.whl#sha256=275e314ac53a3894b702c3736c6bdb5d32e67bb934a5f0d3965a37f4dd5b4684
+            cffi@https://github.com/fametrano/cffi/releases/download/pr240-probe-wheels/cffi-2.2.0.dev0-cp314-cp314-android_24_x86_64.whl#sha256=1a2e6f18a5fde13cf1307615eef42c7507d730bad346677ffaba0abbef49a737
         run: uv run --locked --only-group build cibuildwheel --platform android --output-dir wheelhouse-d2
 
       - name: Upload the wheels
