@@ -24,8 +24,9 @@ level constructs `Secp256k1CFFIExtension()`, whose `__init__` runs
 artifact this suite may be running against. Each function is instead
 taken out of the syntax tree and executed on its own -- real code, not a
 reimplementation of it, but never the module-level construction that
-comes with it. The one test that reads the real cdef runs the module up
-to that construction, and runs the preprocessor `generate_def` calls.
+comes with it. The tests that read the real cdef run the module up to
+that construction, through `_headers`, and run the preprocessor
+`generate_def` calls.
 """
 
 from __future__ import annotations
@@ -444,14 +445,12 @@ def _module_without_its_extensions() -> dict[str, object]:
     return namespace
 
 
-def test_the_ctypes_backend_emits_the_c_the_compiled_one_does(
-    tmp_path: Path,
-) -> None:
-    """The C of the static extension does not depend on the backend.
+def _headers() -> Any:
+    """Construct the primary extension, cleaning nothing.
 
-    The cdef and the header are the real ones, which `generate_def` reads
-    from the vendored submodule. The compiled backend's C is the side the
-    ctypes one is held to.
+    Returns:
+        A `Secp256k1CFFIExtension` whose `generate_def` reads the real
+        headers, static or dynamic as the environment of the suite asks.
     """
     namespace = _module_without_its_extensions()
     extension = cast("type", namespace["Secp256k1CFFIExtension"])
@@ -460,7 +459,23 @@ def test_the_ctypes_backend_emits_the_c_the_compiled_one_does(
         def clean(self) -> None:
             """Remove nothing: no build is made."""
 
-    header, definitions = Headers().generate_def()
+    return Headers()
+
+
+def test_the_ctypes_backend_emits_the_c_the_compiled_one_does(
+    tmp_path: Path,
+) -> None:
+    """The C of the static extension does not depend on the backend.
+
+    The cdef and the header are the real ones, which `generate_def` reads
+    from the vendored submodule. The compiled backend's C is the side the
+    ctypes one is held to. The extension is pinned static whatever the
+    suite's lane, an iOS build being static, so the compared cdef holds
+    the `extern "Python"` declaration.
+    """
+    headers = _headers()
+    headers.static = True
+    header, definitions = headers.generate_def()
     emitted = []
     for name, arguments in (("compiled", []), ("ctypes", ffi_backend("iOS"))):
         ffi = cffi.FFI(*arguments)
@@ -470,6 +485,31 @@ def test_the_ctypes_backend_emits_the_c_the_compiled_one_does(
         ffi.emit_c_code(str(path))
         emitted.append(path.read_bytes())
     assert emitted[0] == emitted[1]
+
+
+def test_only_a_static_cdef_declares_the_illegal_callback(tmp_path: Path) -> None:
+    """The `extern "Python"` callback is in the static cdef alone.
+
+    cffi refuses that declaration in ABI mode: the static cdef cannot
+    emit the dynamic extension's module, and the dynamic cdef can.
+    """
+    headers = _headers()
+    headers.static = True
+    _, static_definitions = headers.generate_def()
+    headers.static = False
+    _, dynamic_definitions = headers.generate_def()
+    assert 'extern "Python" void btclib_secp256k1_record_illegal(' in static_definitions
+    assert 'extern "Python"' not in dynamic_definitions
+
+    static = cffi.FFI()
+    static.cdef(static_definitions)
+    static.set_source("_btclib_secp256k1", None)
+    with pytest.raises(cffi.VerificationError, match="ABI mode"):
+        static.emit_python_code(str(tmp_path / "static.py"))
+    dynamic = cffi.FFI()
+    dynamic.cdef(dynamic_definitions)
+    dynamic.set_source("_btclib_secp256k1", None)
+    dynamic.emit_python_code(str(tmp_path / "dynamic.py"))
 
 
 def test_a_build_for_the_running_system_takes_no_ios_option() -> None:

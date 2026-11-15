@@ -151,7 +151,10 @@ extension. The stripping pattern allows whitespace between `#` and
 `include`: three of secp256k1-zkp's own headers spell their include of
 `secp256k1.h` that way, where every header of the primary submodule
 spells it `#include`. An iOS build creates the FFI on cffi's ctypes
-backend, and `_ffi_backend`'s docstring says why.
+backend, and `_ffi_backend`'s docstring says why. In a static build,
+`_btclib_secp256k1`'s cdef then declares the shared context's illegal
+callback as cffi's `extern "Python"`, and `ILLEGAL_CALLBACK_DECLARATION`
+says why only a static one does.
 
 **Compile the extension**, by one of three paths:
 

@@ -1303,8 +1303,8 @@ xbuild-tools = ["cmake"]
 # raises an arm64 simulator target to 14.0, and pip refuses an ios_14_0
 # tag where cibuildwheel's test step installs for ios_13_0
 archs = ["arm64_iphoneos", "arm64_iphonesimulator"]
-# the suite does not run in the simulator yet. The package does not
-# import there (btclib-org/btclib-secp256k1#1386), and the simulator's
-# test app holds only the files `test-sources` copies into it and starts
-# no process, where part of the suite reads the tree and starts processes
+# the suite does not run in the simulator yet: the simulator's test app
+# holds only the files `test-sources` copies into it and starts no
+# process, where part of the suite reads the tree and starts processes,
+# and tests make an `ffi.callback`, which iOS refuses
 test-skip = "*-ios_*"

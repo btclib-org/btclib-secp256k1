@@ -9,6 +9,7 @@ from __future__ import annotations
 import secrets
 import threading
 from collections.abc import Callable
+from typing import Any
 
 from . import CData, ffi, lib
 
@@ -55,6 +56,32 @@ def _record_illegal(message: CData, data: CData) -> None:  # noqa: ARG001
     _reported.illegal = ffi.string(message).decode()
 
 
+def _illegal_callback_for(ffi: Any, lib: Any) -> CData:
+    """Return the C function that calls `_record_illegal`.
+
+    A static `_btclib_secp256k1` declares `btclib_secp256k1_record_illegal`
+    as cffi's `extern "Python"`, its C compiled into the extension, and
+    this attaches `_record_illegal` to it. A dynamic one (cffi ABI mode)
+    declares no such function, and gets an `ffi.callback` instead.
+    `ILLEGAL_CALLBACK_DECLARATION`, in `scripts/cffi_build.py`, says why
+    the two differ.
+
+    `ffi` and `lib` are arguments for the reason `_load_lib` takes the
+    module: only one of the two branches exists in a given build.
+
+    Args:
+        ffi: the extension's `ffi`.
+        lib: the `lib` `_load_lib` returned for it.
+
+    Returns:
+        The function pointer to register on a context.
+    """
+    if hasattr(lib, "btclib_secp256k1_record_illegal"):
+        ffi.def_extern(name="btclib_secp256k1_record_illegal")(_record_illegal)
+        return lib.btclib_secp256k1_record_illegal
+    return ffi.callback("void(*)(const char *, void *)", _record_illegal)
+
+
 # libsecp256k1 reports a violated precondition (an illegal argument, an
 # object in an invalid state) through the illegal callback, and most
 # calls then return 0; some do not, and `_checked` below is for the ones
@@ -64,7 +91,8 @@ def _record_illegal(message: CData, data: CData) -> None:  # noqa: ARG001
 # process down, but leaves the caller with a bare return code and no
 # reason for it. On the shared context the callback instead records what
 # was reported, so that check() can raise it. The reference to the cffi
-# callback has to outlive the context, hence the module level name.
+# callback has to outlive the context, hence the module level name: an
+# `ffi.callback` can be called only while its reference lives.
 #
 # An internal error is different news: it means the library itself
 # cannot be trusted -- hardware failure, miscompilation, memory
@@ -74,7 +102,7 @@ def _record_illegal(message: CData, data: CData) -> None:  # noqa: ARG001
 # never gets the chance to return a value -- still less to sign -- after
 # libsecp256k1 has told it not to trust itself. See SECURITY.md for the
 # split.
-_illegal_callback = ffi.callback("void(*)(const char *, void *)", _record_illegal)
+_illegal_callback = _illegal_callback_for(ffi, lib)
 lib.secp256k1_context_set_illegal_callback(ctx, _illegal_callback, ffi.NULL)
 
 
