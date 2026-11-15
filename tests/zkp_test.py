@@ -47,6 +47,8 @@ import btclib_secp256k1
 import btclib_secp256k1.zkp.context as zkp_context
 from btclib_secp256k1 import zkp
 
+from .ios_test import MAKES_AN_FFI_CALLBACK, STARTS_A_PROCESS
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -149,6 +151,7 @@ def _imported_modules(name: str) -> set[str]:
     return set(completed.stdout.split())
 
 
+@STARTS_A_PROCESS
 def test_importing_the_subpackage_does_not_reach_the_extension() -> None:
     """`import btclib_secp256k1.zkp` (and `.context`) never imports it.
 
@@ -301,6 +304,7 @@ def test_ctx_without_the_extension_raises_import_error() -> None:
 
 
 @pytest.mark.usefixtures("without_the_extension")
+@MAKES_AN_FFI_CALLBACK
 def test_getattr_builds_a_real_context_with_a_stand_in(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -320,6 +324,7 @@ def test_getattr_builds_a_real_context_with_a_stand_in(
 
 
 @pytest.mark.usefixtures("without_the_extension")
+@MAKES_AN_FFI_CALLBACK
 def test_the_context_is_randomized_with_32_octets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -347,6 +352,7 @@ def test_the_context_is_randomized_with_32_octets(
 
 
 @pytest.mark.usefixtures("without_the_extension")
+@MAKES_AN_FFI_CALLBACK
 def test_bindings_builds_the_context_once(monkeypatch: pytest.MonkeyPatch) -> None:
     """A second `_bindings()` call answers the same `ctx`, not a fresh one.
 
@@ -371,6 +377,7 @@ def test_bindings_builds_the_context_once(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 @pytest.mark.usefixtures("without_the_extension")
+@MAKES_AN_FFI_CALLBACK
 def test_racing_threads_build_the_context_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -439,6 +446,7 @@ class _Handoff:
 
 
 @pytest.mark.usefixtures("without_the_extension")
+@MAKES_AN_FFI_CALLBACK
 def test_a_thread_that_lost_the_lock_takes_the_context_built_under_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -500,6 +508,7 @@ def test_check_with_nothing_reported() -> None:
 
 
 @pytest.mark.usefixtures("without_the_extension")
+@MAKES_AN_FFI_CALLBACK
 def test_illegal_argument_is_recorded_and_raised(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

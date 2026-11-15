@@ -56,6 +56,8 @@ from btclib_secp256k1 import zkp
 from btclib_secp256k1.zkp import context as zkp_context
 from btclib_secp256k1.zkp import generator as g
 
+from .ios_test import MAKES_AN_FFI_CALLBACK
+
 FAIL = 0xFF
 
 _fake_ffi = cffi.FFI()
@@ -326,53 +328,62 @@ def _fake_extension(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     _forget_cached_extension()
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_generator_parse_and_serialize_round_trip() -> None:
     """`parse` and `serialize` are inverse over a well-formed generator."""
     payload = bytes([0x0B]) + bytes(range(1, 33))
     assert g.serialize(g.parse(payload)) == payload
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_generator_parse_rejects_the_wrong_length() -> None:
     """A generator that is not 33 bytes is refused before parsing."""
     with pytest.raises(ValueError, match="generator must be 33 bytes"):
         g.parse(b"\x0b" * 10)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_generator_parse_rejects_what_the_library_refuses() -> None:
     """A 33-byte string that is not a valid generator is refused."""
     with pytest.raises(ValueError, match="invalid generator"):
         g.parse(bytes([FAIL]) * 33)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_h_is_the_static_generator() -> None:
     """`h()` serializes the fake's own `secp256k1_generator_h`."""
     assert g.h() == bytes([0x0B]) + bytes(range(1, 33))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_generate() -> None:
     """`generate` returns a 33-byte generator."""
     gen = g.generate(b"\x01" * 32)
     assert len(gen) == 33
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_generate_rejects_what_the_library_refuses() -> None:
     """The library's own refusal of a seed becomes a `RuntimeError`."""
     with pytest.raises(RuntimeError, match="generator generation failed"):
         g.generate(bytes([FAIL]) + bytes(31))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_generate_blinded() -> None:
     """`generate_blinded` returns a 33-byte generator."""
     gen = g.generate_blinded(b"\x01" * 32, 5)
     assert len(gen) == 33
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_generate_blinded_rejects_an_out_of_range_blind() -> None:
     """An all-zero `blind32` is the fake's own library-refusal marker."""
     with pytest.raises(ValueError, match="invalid blind32"):
         g.generate_blinded(b"\x01" * 32, bytes(32))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commitment_parse_and_serialize_round_trip() -> None:
     """`pedersen_commitment_parse`/`_serialize` are inverse, well-formed."""
     payload = bytes([0x08]) + bytes(range(1, 33))
@@ -381,24 +392,28 @@ def test_pedersen_commitment_parse_and_serialize_round_trip() -> None:
     )
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commitment_parse_rejects_the_wrong_length() -> None:
     """A commitment that is not 33 bytes is refused before parsing."""
     with pytest.raises(ValueError, match="Pedersen commitment must be 33 bytes"):
         g.pedersen_commitment_parse(b"\x08" * 10)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commitment_parse_rejects_what_the_library_refuses() -> None:
     """A 33-byte string that is not a valid commitment is refused."""
     with pytest.raises(ValueError, match="invalid Pedersen commitment"):
         g.pedersen_commitment_parse(bytes([FAIL]) * 33)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_with_the_default_generator() -> None:
     """`pedersen_commit` with no `gen_bytes` commits under `h()`."""
     commit = g.pedersen_commit(1, 42)
     assert len(commit) == 33
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_with_an_explicit_generator() -> None:
     """`pedersen_commit` accepts a caller-supplied generator."""
     gen_bytes = g.generate(b"\x02" * 32)
@@ -406,6 +421,7 @@ def test_pedersen_commit_with_an_explicit_generator() -> None:
     assert len(commit) == 33
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_rejects_a_value_out_of_range() -> None:
     """A value that does not fit in 8 bytes is refused."""
     with pytest.raises(ValueError, match=r"value must be an int in \[0, 2\*\*64\)"):
@@ -423,6 +439,7 @@ INSIDE_A_UINT64 = [0, 2**63, 2**64 - 1]
 
 
 @pytest.mark.parametrize("value", OUTSIDE_A_UINT64)
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_refuses_a_value_outside_a_uint64(value: int) -> None:
     """A value that is not in [0, 2**64) is a `ValueError`, whichever side."""
     with pytest.raises(ValueError, match=r"value must be an int in \[0, 2\*\*64\)"):
@@ -430,65 +447,76 @@ def test_pedersen_commit_refuses_a_value_outside_a_uint64(value: int) -> None:
 
 
 @pytest.mark.parametrize("value", INSIDE_A_UINT64)
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_takes_a_value_up_to_the_last_uint64(value: int) -> None:
     """The first and the last value a `uint64_t` holds are committed to."""
     assert len(g.pedersen_commit(1, value)) == 33
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_rejects_a_bool_value() -> None:
     """A bool is not accepted where an int is asked for."""
     with pytest.raises(ValueError, match=r"value must be an int"):
         g.pedersen_commit(1, True)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_rejects_a_non_int_value() -> None:
     """A value that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="value must be an int, not str"):
         g.pedersen_commit(1, "42")  # type: ignore[arg-type]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_rejects_an_invalid_generator() -> None:
     """An invalid `gen_bytes` is refused before the library commits to it."""
     with pytest.raises(ValueError, match="invalid gen"):
         g.pedersen_commit(1, 42, bytes([FAIL]) * 33)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_commit_rejects_what_the_library_refuses() -> None:
     """An all-zero blind is what the fake reads as the library's own refusal."""
     with pytest.raises(RuntimeError, match="Pedersen commitment failed"):
         g.pedersen_commit(bytes(32), 42)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum() -> None:
     """`pedersen_blind_sum` returns a 32-byte sum."""
     total = g.pedersen_blind_sum([1, 2, 3], 2)
     assert len(total) == 32
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_of_nothing() -> None:
     """An empty sequence sums to 32 zero bytes."""
     total = g.pedersen_blind_sum([], 0)
     assert total == bytes(32)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_rejects_an_out_of_range_npositive() -> None:
     """`npositive` outside `[0, len(blinds)]` is refused."""
     with pytest.raises(ValueError, match=r"npositive must be in \[0, 2\]"):
         g.pedersen_blind_sum([1, 2], 3)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_rejects_a_non_int_npositive() -> None:
     """An `npositive` that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="the npositive must be an int, not str"):
         g.pedersen_blind_sum([1, 2], "1")  # type: ignore[call-overload]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_names_the_bad_element() -> None:
     """A malformed blinding factor is named by its position in the sequence."""
     with pytest.raises(ValueError, match="blinding factor at index 1"):
         g.pedersen_blind_sum([1, b"\x01" * 10], 1)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_into_a_caller_s_buffer() -> None:
     """With `into` the sum lands there, not in a returned `bytes` (#640).
 
@@ -503,12 +531,14 @@ def test_pedersen_blind_sum_into_a_caller_s_buffer() -> None:
     assert bytes(into) == g.pedersen_blind_sum([1, 2, 3], 3)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_verify_tally_agrees() -> None:
     """A commitment tallies against itself."""
     commit = g.pedersen_commit(1, 42)
     assert g.pedersen_verify_tally([commit], [commit]) is True
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_verify_tally_disagrees() -> None:
     """Two different commitments do not tally."""
     a = g.pedersen_commit(1, 1)
@@ -516,23 +546,27 @@ def test_pedersen_verify_tally_disagrees() -> None:
     assert g.pedersen_verify_tally([a], [b]) is False
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_verify_tally_of_nothing() -> None:
     """Two empty sequences tally, vacuously."""
     assert g.pedersen_verify_tally([], []) is True
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_verify_tally_names_the_bad_commitment() -> None:
     """A malformed negative commitment is named by its position."""
     with pytest.raises(ValueError, match="negative commitment at index 0"):
         g.pedersen_verify_tally([], [b"\x08" * 10])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum() -> None:
     """The corrected last blinding factor is 32 bytes."""
     last = g.pedersen_blind_generator_blind_sum([10, 20], [1, 2], [3, 4], 1)
     assert len(last) == 32
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_into_a_caller_s_buffer() -> None:
     """With `into` the corrected factor lands there, not in a `bytes` (#640)."""
     into = bytearray(32)
@@ -545,6 +579,7 @@ def test_pedersen_blind_generator_blind_sum_into_a_caller_s_buffer() -> None:
     )
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_rejects_the_empty_case() -> None:
     """`n_inputs == len(values)` is refused even at `0, 0`.
 
@@ -555,6 +590,7 @@ def test_pedersen_blind_generator_blind_sum_rejects_the_empty_case() -> None:
         g.pedersen_blind_generator_blind_sum([], [], [], 0)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_rejects_mismatched_lengths() -> None:
     """The three sequences must be the same length."""
     with pytest.raises(ValueError, match="must match in length"):
@@ -563,6 +599,7 @@ def test_pedersen_blind_generator_blind_sum_rejects_mismatched_lengths() -> None
 
 @pytest.mark.parametrize("longer", [False, True])
 @pytest.mark.parametrize("which", ["generator_blinds", "blinding_factors"])
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_refuses_either_list_off_by_one(
     which: str, longer: bool
 ) -> None:
@@ -584,6 +621,7 @@ def test_pedersen_blind_generator_blind_sum_refuses_either_list_off_by_one(
 
 
 @pytest.mark.parametrize("n_inputs", [-1, 2])
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_refuses_n_inputs_either_side(
     n_inputs: int,
 ) -> None:
@@ -598,6 +636,7 @@ def test_pedersen_blind_generator_blind_sum_refuses_n_inputs_either_side(
 
 
 @pytest.mark.parametrize("n_inputs", [0, 1])
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_takes_n_inputs_from_0_to_the_last(
     n_inputs: int,
 ) -> None:
@@ -607,6 +646,7 @@ def test_pedersen_blind_generator_blind_sum_takes_n_inputs_from_0_to_the_last(
 
 
 @pytest.mark.parametrize("value", OUTSIDE_A_UINT64)
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_refuses_a_value_outside_a_uint64(
     value: int,
 ) -> None:
@@ -618,6 +658,7 @@ def test_pedersen_blind_generator_blind_sum_refuses_a_value_outside_a_uint64(
 
 
 @pytest.mark.parametrize("value", INSIDE_A_UINT64)
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_takes_a_value_up_to_the_last_uint64(
     value: int,
 ) -> None:
@@ -626,18 +667,21 @@ def test_pedersen_blind_generator_blind_sum_takes_a_value_up_to_the_last_uint64(
     assert len(last) == 32
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_rejects_an_out_of_range_n_inputs() -> None:
     """`n_inputs` outside `[0, len(values))` is refused."""
     with pytest.raises(ValueError, match=r"n_inputs must be in \[0, len\(values\)\)"):
         g.pedersen_blind_generator_blind_sum([10], [1], [3], 2)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_rejects_a_non_int_n_inputs() -> None:
     """An `n_inputs` that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="n_inputs must be an int, not str"):
         g.pedersen_blind_generator_blind_sum([10], [1], [3], "0")  # type: ignore[call-overload]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_rejects_a_value_out_of_range() -> None:
     """A value that does not fit in 8 bytes is named by its position."""
     with pytest.raises(
@@ -646,6 +690,7 @@ def test_pedersen_blind_generator_blind_sum_rejects_a_value_out_of_range() -> No
         g.pedersen_blind_generator_blind_sum([2**64], [1], [3], 0)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_rejects_a_bool_value() -> None:
     """A bool is not accepted where an int is asked for.
 
@@ -657,30 +702,35 @@ def test_pedersen_blind_generator_blind_sum_rejects_a_bool_value() -> None:
         g.pedersen_blind_generator_blind_sum([True], [1], [3], 0)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_rejects_a_non_int_value() -> None:
     """A value that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="value at index 0 must be an int, not str"):
         g.pedersen_blind_generator_blind_sum(["10"], [1], [3], 0)  # type: ignore[list-item]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_names_the_bad_generator_blind() -> None:
     """A malformed generator blind is named by its position."""
     with pytest.raises(ValueError, match="generator blind at index 0"):
         g.pedersen_blind_generator_blind_sum([10], [b"\x01" * 10], [3], 0)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_names_the_bad_blinding_factor() -> None:
     """A malformed blinding factor is named by its position."""
     with pytest.raises(ValueError, match="blinding factor at index 0"):
         g.pedersen_blind_generator_blind_sum([10], [1], [b"\x01" * 10], 0)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_rejects_what_the_library_refuses() -> None:
     """A generator blind starting with the fake's own failure marker."""
     with pytest.raises(RuntimeError, match="blinding factor correction failed"):
         g.pedersen_blind_generator_blind_sum([10], [bytes([FAIL]) + bytes(31)], [3], 0)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_wipes_the_blinds_it_copied(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -707,6 +757,7 @@ def test_pedersen_blind_sum_wipes_the_blinds_it_copied(
     assert set(recorder.scalars()) == {bytes(32)}
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_wipes_the_blinds_a_refusal_leaves(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -727,6 +778,7 @@ def test_pedersen_blind_sum_wipes_the_blinds_a_refusal_leaves(
     assert set(recorder.scalars()) == {bytes(32)}
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_wipes_the_blinds_it_copied(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -758,6 +810,7 @@ def test_pedersen_blind_generator_blind_sum_wipes_the_blinds_it_copied(
     assert set(recorder.scalars()) == {bytes(32)}
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_wipes_what_a_failure_leaves(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -781,6 +834,7 @@ def test_pedersen_blind_generator_blind_sum_wipes_what_a_failure_leaves(
     assert set(recorder.scalars()) == {bytes(32)}
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_takes_a_caller_held_blind(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -809,6 +863,7 @@ def test_pedersen_blind_sum_takes_a_caller_held_blind(
     assert total == (int.from_bytes(octets, "big") + 1).to_bytes(32, "big")
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_takes_caller_held_blinds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -856,6 +911,7 @@ BARE = [
 
 
 @pytest.mark.parametrize("bare", BARE)
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_sum_refuses_a_bare_blind(bare: Any) -> None:
     """A blinding factor given alone is not a list of 32 one-octet ones."""
     with pytest.raises(TypeError, match="the blinds must be a sequence of values"):
@@ -864,6 +920,7 @@ def test_pedersen_blind_sum_refuses_a_bare_blind(bare: Any) -> None:
 
 @pytest.mark.parametrize("which", ["generator_blinds", "blinding_factors"])
 @pytest.mark.parametrize("bare", BARE)
+@MAKES_AN_FFI_CALLBACK
 def test_pedersen_blind_generator_blind_sum_refuses_a_bare_list(
     which: str, bare: Any
 ) -> None:

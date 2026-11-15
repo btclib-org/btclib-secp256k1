@@ -1303,11 +1303,66 @@ xbuild-tools = ["cmake"]
 # raises an arm64 simulator target to 14.0, and pip refuses an ios_14_0
 # tag where cibuildwheel's test step installs for ios_13_0
 archs = ["arm64_iphoneos", "arm64_iphonesimulator"]
-# the suite does not run in the simulator yet: the simulator's test app
-# holds only the files `test-sources` copies into it and starts no
-# process, where part of the suite reads the tree and starts processes,
-# and tests make an `ffi.callback`, which iOS refuses
-test-skip = "*-ios_*"
+# cibuildwheel runs the suite in the simulator against the arm64
+# simulator wheel where it builds on an arm64 Mac, and runs no test
+# against the device wheel. The test app holds the installed wheel and
+# the paths named here: every top-level path `git ls-files` lists but
+# those the sdist leaves out on purpose, so that a build from a checkout
+# and one from the sdist both find them. tests/ios_test.py holds this list
+# to the tree, and says what else iOS refuses a test
+test-sources = [
+    ".bestpractices.json",
+    ".claude",
+    ".clusterfuzzlite",
+    ".coderabbit.yaml",
+    ".gitattributes",
+    ".github",
+    ".gitignore",
+    ".gitmodules",
+    ".lycheeignore",
+    ".markdownlint.jsonc",
+    ".pre-commit-config.yaml",
+    ".prettierignore",
+    ".python-version",
+    ".readthedocs.yaml",
+    ".secrets.baseline",
+    ".secrets.vectors.baseline",
+    ".sourcery.yaml",
+    ".taplo.toml",
+    ".vscode",
+    ".yamllint.yaml",
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    "ASSURANCE_CASE.md",
+    "AUTHORS.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "README.md",
+    "RELEASE_NOTES.md",
+    "RELEASING.md",
+    "REPOSITORY.md",
+    "REVIEWING.md",
+    "SECURITY.md",
+    "build-constraints.txt",
+    "changelog",
+    "docs",
+    "fuzz",
+    "lychee.toml",
+    "pyproject.toml",
+    "scripts",
+    "secp256k1",
+    "secp256k1-zkp",
+    "src",
+    "stubs",
+    "tests",
+    "uv-android.toml",
+    "uv.lock",
+]
+# cibuildwheel runs an iOS test command as a module, and refuses its
+# `{project}`. iOS starts no process, so `-n 0` runs the suite without
+# pytest-xdist's workers
+test-command = "python -m pytest --no-cov -n 0 tests"
 
 [tool.cibuildwheel.android]
 # cibuildwheel installs [build-system]'s `requires` into its Android build

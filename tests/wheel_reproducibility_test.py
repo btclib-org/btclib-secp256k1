@@ -50,6 +50,8 @@ from typing import Any
 
 import pytest
 
+from .ios_test import STARTS_A_PROCESS
+
 _SCRIPT = (
     Path(__file__).parents[1] / ".github" / "scripts" / "check_wheel_reproducibility.py"
 )
@@ -267,6 +269,7 @@ def build_writing_in_turn(contents: list[bytes], *, out_flag: str = "--out-dir")
     return build_call
 
 
+@STARTS_A_PROCESS
 def test_copy_source_tree_clones_the_commit_with_its_submodule(
     check: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

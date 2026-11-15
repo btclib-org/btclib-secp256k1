@@ -28,6 +28,8 @@ from btclib_secp256k1 import dsa, keys, zkp
 from btclib_secp256k1.zkp import context as zkp_context
 from btclib_secp256k1.zkp import ecdsa_adaptor
 
+from .ios_test import MAKES_AN_FFI_CALLBACK
+
 _fake_ffi = cffi.FFI()
 _fake_ffi.cdef("""
 typedef struct { unsigned char data[64]; } secp256k1_ecdsa_signature;
@@ -252,24 +254,28 @@ def test_recover_rejects_a_short_signature() -> None:
 # ---------------------------------------------------------------------------
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_encrypt_answers_162_bytes(stand_in: None) -> None:  # noqa: ARG001
     """A successful call answers the adaptor signature the library wrote."""
     adaptor_sig = ecdsa_adaptor.encrypt(_MESSAGE, _SIGNING_KEY, b"\x02" * 33)
     assert adaptor_sig == b"\x02" * 162
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_encrypt_reports_an_invalid_private_key(stand_in: None) -> None:  # noqa: ARG001
     """A private key the library refuses reaches the caller as ValueError."""
     with pytest.raises(ValueError, match="invalid private key"):
         ecdsa_adaptor.encrypt(_MESSAGE, _ZERO_KEY, b"\x02" * 33)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_encrypt_reports_an_invalid_encryption_key(stand_in: None) -> None:  # noqa: ARG001
     """An encryption key the library refuses is a ValueError."""
     with pytest.raises(ValueError, match="invalid encryption key"):
         ecdsa_adaptor.encrypt(_MESSAGE, _SIGNING_KEY, _INVALID_PUBKEY)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_encrypt_passes_the_aux_rand_or_null(stand_in: None) -> None:  # noqa: ARG001
     """`aux_rand32` reaches the library as `ndata`, and none as NULL."""
     ecdsa_adaptor.encrypt(_MESSAGE, _SIGNING_KEY, b"\x02" * 33)
@@ -282,6 +288,7 @@ def test_encrypt_passes_the_aux_rand_or_null(stand_in: None) -> None:  # noqa: A
 @pytest.mark.parametrize(
     "call", ["secp256k1_ec_pubkey_create", "secp256k1_ecdsa_adaptor_verify"]
 )
+@MAKES_AN_FFI_CALLBACK
 def test_encrypt_verifies_by_default(
     monkeypatch: pytest.MonkeyPatch,
     stand_in: None,  # noqa: ARG001
@@ -293,6 +300,7 @@ def test_encrypt_verifies_by_default(
         ecdsa_adaptor.encrypt(_MESSAGE, _SIGNING_KEY, b"\x02" * 33)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_encrypt_verify_false_skips_the_check(
     monkeypatch: pytest.MonkeyPatch,
     stand_in: None,  # noqa: ARG001
@@ -306,6 +314,7 @@ def test_encrypt_verify_false_skips_the_check(
     assert len(adaptor_sig) == 162
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_true_and_false(stand_in: None) -> None:  # noqa: ARG001
     """Both of verify's answers, chosen by the stand-in."""
     args = (_PUBKEY, _MESSAGE, _PUBKEY)
@@ -316,6 +325,7 @@ def test_verify_true_and_false(stand_in: None) -> None:  # noqa: ARG001
     )
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_reports_an_invalid_public_key(stand_in: None) -> None:  # noqa: ARG001
     """A public key the library refuses is a ValueError, not False."""
     with pytest.raises(ValueError, match="invalid public key"):
@@ -324,17 +334,20 @@ def test_verify_reports_an_invalid_public_key(stand_in: None) -> None:  # noqa: 
         ecdsa_adaptor.verify(bytes(162), _PUBKEY, _MESSAGE, _INVALID_PUBKEY)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_decrypt_answers_a_signature(stand_in: None) -> None:  # noqa: ARG001
     """A successful call answers the 64 bytes the library wrote."""
     assert ecdsa_adaptor.decrypt(_DECRYPTION_KEY, bytes(162)) == b"\x05" * 64
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_decrypt_reports_an_invalid_key(stand_in: None) -> None:  # noqa: ARG001
     """A decryption key the library refuses reaches the caller as ValueError."""
     with pytest.raises(ValueError, match="invalid decryption key"):
         ecdsa_adaptor.decrypt(_ZERO_KEY, bytes(162))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_recover_answers_the_key_or_fills_into(stand_in: None) -> None:  # noqa: ARG001
     """The key the library wrote comes back, and `into` receives it instead."""
     args = (bytes(64), bytes(162), _PUBKEY)
@@ -346,6 +359,7 @@ def test_recover_answers_the_key_or_fills_into(stand_in: None) -> None:  # noqa:
     assert all(_octets(buf) == bytes(32) for buf in _FAKE.lib.recover_buffers)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_recover_wipes_a_key_it_refuses(stand_in: None) -> None:  # noqa: ARG001
     """A refused recovery leaves no key in the buffer the library wrote."""
     with pytest.raises(ValueError, match="does not match"):
@@ -354,6 +368,7 @@ def test_recover_wipes_a_key_it_refuses(stand_in: None) -> None:  # noqa: ARG001
     assert _octets(buffer) == bytes(32)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_recover_reports_an_invalid_signature_or_key(stand_in: None) -> None:  # noqa: ARG001
     """What the library refuses to parse reaches the caller as ValueError."""
     with pytest.raises(ValueError, match="invalid compact signature"):

@@ -47,6 +47,8 @@ from btclib_secp256k1 import dsa, keys, zkp
 from btclib_secp256k1.zkp import context as zkp_context
 from btclib_secp256k1.zkp import ecdsa_s2c
 
+from .ios_test import MAKES_AN_FFI_CALLBACK
+
 # the three structs this extension's own header set declares that
 # ecdsa_s2c.py allocates: all three are `unsigned char data[64]`
 # underneath (secp256k1.h's own secp256k1_pubkey and
@@ -433,6 +435,7 @@ def test_anti_exfil_host_verify_rejects_a_short_signature() -> None:
 # ---------------------------------------------------------------------------
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_opening_parse_and_serialize_round_trip(stand_in: None) -> None:  # noqa: ARG001
     """opening_serialize(opening_parse(x)) answers x back, via the stand-in."""
     opening_bytes = bytes([2]) + b"\x09" * 32
@@ -440,12 +443,14 @@ def test_opening_parse_and_serialize_round_trip(stand_in: None) -> None:  # noqa
     assert ecdsa_s2c.opening_serialize(opening) == opening_bytes
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_opening_parse_reports_an_invalid_opening(stand_in: None) -> None:  # noqa: ARG001
     """The stand-in's own refusal reaches the caller as ValueError."""
     with pytest.raises(ValueError, match="invalid opening"):
         ecdsa_s2c.opening_parse(_INVALID_OPENING)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_answers_a_signature_and_an_opening(stand_in: None) -> None:  # noqa: ARG001
     """A successful call answers a 64-byte signature and a 33-byte opening."""
     signature, opening = ecdsa_s2c.sign(bytes(32), 1, bytes(32))
@@ -453,6 +458,7 @@ def test_sign_answers_a_signature_and_an_opening(stand_in: None) -> None:  # noq
     assert len(opening) == 33
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_reports_an_invalid_private_key(stand_in: None) -> None:  # noqa: ARG001
     """A private key the stand-in refuses reaches the caller as ValueError."""
     with pytest.raises(ValueError, match="invalid private key"):
@@ -460,6 +466,7 @@ def test_sign_reports_an_invalid_private_key(stand_in: None) -> None:  # noqa: A
 
 
 @pytest.mark.parametrize("call", _VERIFY_CALLS)
+@MAKES_AN_FFI_CALLBACK
 def test_sign_verifies_by_default(
     monkeypatch: pytest.MonkeyPatch,
     stand_in: None,  # noqa: ARG001
@@ -471,6 +478,7 @@ def test_sign_verifies_by_default(
         ecdsa_s2c.sign(bytes(32), 1, bytes(32))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_verify_false_skips_the_check(
     monkeypatch: pytest.MonkeyPatch,
     stand_in: None,  # noqa: ARG001
@@ -484,6 +492,7 @@ def test_sign_verify_false_skips_the_check(
     assert len(opening) == 33
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_verify_does_not_change_the_signature(stand_in: None) -> None:  # noqa: ARG001
     """The check only reads the signature the stand-in already produced."""
     checked = ecdsa_s2c.sign(bytes(32), 1, bytes(32))
@@ -491,12 +500,14 @@ def test_sign_verify_does_not_change_the_signature(stand_in: None) -> None:  # n
     assert checked == unchecked
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_mismatched_commitment(stand_in: None) -> None:  # noqa: ARG001
     """A commitment that does not verify is a RuntimeError, never returned."""
     with pytest.raises(RuntimeError, match="commitment does not verify"):
         ecdsa_s2c.sign(bytes(32), 1, _MISMATCHED_S2C_DATA)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_commit_true_and_false(stand_in: None) -> None:  # noqa: ARG001
     """Both of verify_commit's answers, chosen by the stand-in on data32."""
     signature, opening = ecdsa_s2c.sign(bytes(32), 1, bytes(32))
@@ -504,6 +515,7 @@ def test_verify_commit_true_and_false(stand_in: None) -> None:  # noqa: ARG001
     assert ecdsa_s2c.verify_commit(signature, _MISMATCHED_S2C_DATA, opening) is False
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_commit_reports_an_invalid_signature(stand_in: None) -> None:  # noqa: ARG001
     """An unparsable signature reaches the caller as ValueError."""
     opening_bytes = bytes([2]) + b"\x09" * 32
@@ -511,18 +523,21 @@ def test_verify_commit_reports_an_invalid_signature(stand_in: None) -> None:  # 
         ecdsa_s2c.verify_commit(_INVALID_SIGNATURE, bytes(32), opening_bytes)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_host_commit(stand_in: None) -> None:  # noqa: ARG001
     """The stand-in's own commitment is what anti_exfil_host_commit answers."""
     rand32 = b"\x08" * 32
     assert ecdsa_s2c.anti_exfil_host_commit(rand32) == rand32
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_signer_commit(stand_in: None) -> None:  # noqa: ARG001
     """A successful call answers a 33-byte opening."""
     opening = ecdsa_s2c.anti_exfil_signer_commit(bytes(32), 1, bytes(32))
     assert len(opening) == 33
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_signer_commit_reports_an_invalid_private_key(
     stand_in: None,  # noqa: ARG001
 ) -> None:
@@ -531,12 +546,14 @@ def test_anti_exfil_signer_commit_reports_an_invalid_private_key(
         ecdsa_s2c.anti_exfil_signer_commit(bytes(32), _ZERO_PRVKEY, bytes(32))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_sign_answers_a_signature(stand_in: None) -> None:  # noqa: ARG001
     """A successful call answers a 64-byte signature."""
     signature = ecdsa_s2c.anti_exfil_sign(bytes(32), 1, bytes(32))
     assert len(signature) == 64
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_sign_reports_an_invalid_private_key(stand_in: None) -> None:  # noqa: ARG001
     """A private key the stand-in refuses reaches the caller as ValueError."""
     with pytest.raises(ValueError, match="invalid private key"):
@@ -544,6 +561,7 @@ def test_anti_exfil_sign_reports_an_invalid_private_key(stand_in: None) -> None:
 
 
 @pytest.mark.parametrize("call", _VERIFY_CALLS)
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_sign_verifies_by_default(
     monkeypatch: pytest.MonkeyPatch,
     stand_in: None,  # noqa: ARG001
@@ -555,6 +573,7 @@ def test_anti_exfil_sign_verifies_by_default(
         ecdsa_s2c.anti_exfil_sign(bytes(32), 1, bytes(32))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_sign_verify_false_skips_the_check(
     monkeypatch: pytest.MonkeyPatch,
     stand_in: None,  # noqa: ARG001
@@ -566,6 +585,7 @@ def test_anti_exfil_sign_verify_false_skips_the_check(
     assert len(signature) == 64
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_sign_verify_does_not_change_the_signature(
     stand_in: None,  # noqa: ARG001
 ) -> None:
@@ -575,6 +595,7 @@ def test_anti_exfil_sign_verify_does_not_change_the_signature(
     assert checked == unchecked
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_host_verify_true_and_false(stand_in: None) -> None:  # noqa: ARG001
     """Both of anti_exfil_host_verify's answers, chosen on host_data32."""
     pubkey_bytes = bytes([2]) + b"\x0a" * 32
@@ -587,6 +608,7 @@ def test_anti_exfil_host_verify_true_and_false(stand_in: None) -> None:  # noqa:
     )
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_anti_exfil_host_verify_reports_an_invalid_public_key(stand_in: None) -> None:  # noqa: ARG001
     """An unparsable public key reaches the caller as ValueError."""
     signature, opening = ecdsa_s2c.sign(bytes(32), 1, bytes(32))

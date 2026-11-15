@@ -43,6 +43,8 @@ import cffi
 import pytest
 from cffi.backend_ctypes import CTypesBackend
 
+from .ios_test import STARTS_A_PROCESS
+
 _ROOT = Path(__file__).parents[1]
 _BUILD = _ROOT / "scripts" / "cffi_build.py"
 
@@ -479,6 +481,7 @@ def _headers() -> Any:
     return Headers()
 
 
+@STARTS_A_PROCESS
 def test_the_ctypes_backend_emits_the_c_the_compiled_one_does(
     tmp_path: Path,
 ) -> None:
@@ -504,6 +507,7 @@ def test_the_ctypes_backend_emits_the_c_the_compiled_one_does(
     assert emitted[0] == emitted[1]
 
 
+@STARTS_A_PROCESS
 def test_only_a_static_cdef_declares_the_illegal_callback(tmp_path: Path) -> None:
     """The `extern "Python"` callback is in the static cdef alone.
 

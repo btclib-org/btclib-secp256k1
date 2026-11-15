@@ -23,6 +23,8 @@ import re
 import tomllib
 from pathlib import Path
 
+import pytest
+
 _ROOT = Path(__file__).parents[1]
 _PYPROJECT = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 # the holder line, with no year group to make a range optional: section
@@ -78,6 +80,11 @@ def test_license_holder_matches_the_declared_author() -> None:
     )
 
 
+@pytest.mark.skipif(
+    not (_ROOT / "COPYRIGHT").exists(),
+    reason="COPYRIGHT is not here: the sdist leaves it out on purpose, and"
+    " the iOS test app with it",
+)
 def test_notice_rgx_is_copyright_transcribed() -> None:
     """`notice-rgx` is COPYRIGHT, regex-escaped, after an optional `#!` line."""
     notice_rgx = _pyproject_notice_rgx()

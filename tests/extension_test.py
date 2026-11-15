@@ -31,6 +31,8 @@ import pytest
 import btclib_secp256k1
 from btclib_secp256k1 import __version__, _load_lib
 
+from .ios_test import STARTS_A_PROCESS
+
 
 def test_version() -> None:
     """Check that __version__ is a non-empty string.
@@ -119,6 +121,7 @@ def _imported_modules(name: str) -> set[str]:
     return set(completed.stdout.split())
 
 
+@STARTS_A_PROCESS
 def test_import_defers_the_metadata() -> None:
     """Importing the package does not import `importlib.metadata`.
 
@@ -151,6 +154,7 @@ def test_import_defers_the_metadata() -> None:
     not hasattr(_btclib_secp256k1, "lib"),
     reason="a dynamic extension reaches _load_lib's second branch, which uses pathlib",
 )
+@STARTS_A_PROCESS
 def test_import_defers_pathlib() -> None:
     """A static extension does not import `pathlib` either.
 
@@ -204,7 +208,13 @@ def test_load_lib_returns_a_loadable_candidate(tmp_path: pathlib.Path) -> None:
     line stays covered because coverage is measured on CPython.
     """
     suffix = {"win32": ".dll", "darwin": ".dylib"}.get(sys.platform, ".so")
-    shutil.copy(_cffi_backend.__file__, tmp_path / f"libsecp256k1{suffix}")
+    # the spec's origin and not `__file__`: on iOS an extension's
+    # `__file__` is the `.fwork` file naming its shared object in the
+    # app's Frameworks directory, and the origin is that shared object
+    spec = _cffi_backend.__spec__
+    assert spec is not None
+    assert spec.origin is not None
+    shutil.copy(spec.origin, tmp_path / f"libsecp256k1{suffix}")
     module = types.SimpleNamespace(__file__=str(tmp_path / "_extension.py"))
     assert _load_lib(module) is not None
 
