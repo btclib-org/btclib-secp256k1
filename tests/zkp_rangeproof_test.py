@@ -31,6 +31,8 @@ from btclib_secp256k1 import zkp
 from btclib_secp256k1.zkp import context as zkp_context
 from btclib_secp256k1.zkp import rangeproof as r
 
+from .ios_test import MAKES_AN_FFI_CALLBACK
+
 FAIL = 0xFF
 
 _fake_ffi = cffi.FFI()
@@ -250,6 +252,7 @@ FAIL_PROOF = bytes([FAIL, 0x02, 0x03])
 FAIL_COMMIT = bytes([FAIL]) + bytes(range(1, 33))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_max_size() -> None:
     """`max_size` answers what the fake computes, not the header's formula.
 
@@ -264,12 +267,14 @@ def test_max_size() -> None:
     assert r.max_size(100, 0) == 64 + 0 + 100 % 32
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_max_size_rejects_an_out_of_range_max_value() -> None:
     """A `max_value` that does not fit in 8 bytes is refused."""
     with pytest.raises(ValueError, match=r"max_value must be an int in \[0, 2\*\*64\)"):
         r.max_size(2**64, 0)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_max_size_rejects_a_bool_max_value() -> None:
     """A bool is not accepted where an int is asked for.
 
@@ -281,57 +286,67 @@ def test_max_size_rejects_a_bool_max_value() -> None:
         r.max_size(True, 0)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_max_size_rejects_a_non_int_max_value() -> None:
     """A `max_value` that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="max_value must be an int, not str"):
         r.max_size("100", 0)  # type: ignore[arg-type]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_max_size_rejects_an_out_of_range_min_bits() -> None:
     """A `min_bits` outside `[0, 64]` is refused."""
     with pytest.raises(ValueError, match=r"min_bits must be in \[0, 64\]"):
         r.max_size(100, 65)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_max_size_rejects_a_non_int_min_bits() -> None:
     """A `min_bits` that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="the min_bits must be an int, not str"):
         r.max_size(100, "0")  # type: ignore[arg-type]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_succeeds() -> None:
     """`verify` returns the proof's own range for a well-formed proof."""
     assert r.verify(COMMIT, PROOF) == (0, 63)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_fails() -> None:
     """A proof the fake reads as invalid makes `verify` answer None."""
     assert r.verify(COMMIT, FAIL_PROOF) is None
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_with_an_explicit_generator() -> None:
     """`verify` accepts a caller-supplied generator."""
     gen_bytes = bytes([0x0B]) + bytes(range(1, 33))
     assert r.verify(COMMIT, PROOF, gen_bytes=gen_bytes) == (0, 63)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_with_extra_commit() -> None:
     """`verify` accepts the same `extra_commit` the proof was signed over."""
     assert r.verify(COMMIT, PROOF, extra_commit=b"context") == (0, 63)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_rejects_an_invalid_commitment() -> None:
     """An invalid commitment is refused before the library sees the proof."""
     with pytest.raises(ValueError, match="invalid commitment"):
         r.verify(FAIL_COMMIT, PROOF)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_verify_rejects_an_invalid_generator() -> None:
     """An invalid generator is refused before the library sees the proof."""
     with pytest.raises(ValueError, match="invalid gen"):
         r.verify(COMMIT, PROOF, gen_bytes=bytes([FAIL]) * 33)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_rewind_succeeds() -> None:
     """`rewind` recovers the blind, value, message and range the fake set."""
     blind, value, message, min_value, max_value = r.rewind(COMMIT, PROOF, b"\x01" * 32)
@@ -341,6 +356,7 @@ def test_rewind_succeeds() -> None:
     assert (min_value, max_value) == (0, 63)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_rewind_fails() -> None:
     """A proof the fake reads as invalid makes `rewind` raise."""
     with pytest.raises(ValueError, match="rewind failed"):
@@ -348,6 +364,7 @@ def test_rewind_fails() -> None:
 
 
 @pytest.mark.parametrize("nonce_byte", [1, FAIL], ids=["recovered", "refused"])
+@MAKES_AN_FFI_CALLBACK
 def test_rewind_wipes_the_buffers_it_handed_over(nonce_byte: int) -> None:
     """The blind, value and message buffers are zero when `rewind` returns.
 
@@ -363,12 +380,14 @@ def test_rewind_wipes_the_buffers_it_handed_over(nonce_byte: int) -> None:
     assert bytes(_fake_ffi.buffer(message_out)) == bytes(r.MAX_MESSAGE_LEN)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_rewind_rejects_a_short_nonce() -> None:
     """A nonce that is not 32 bytes is refused before the library sees it."""
     with pytest.raises(ValueError, match="nonce must be 32 bytes"):
         r.rewind(COMMIT, PROOF, b"\x01" * 10)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_succeeds() -> None:
     """`sign` returns a proof encoding the value the fake reads back."""
     proof = r.sign(COMMIT, 1, b"\x01" * 32, 42)
@@ -376,12 +395,14 @@ def test_sign_succeeds() -> None:
     assert int.from_bytes(proof[1:9], "big") == 42
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_with_a_message_and_extra_commit() -> None:
     """`sign` accepts a message and an extra commit alongside the value."""
     proof = r.sign(COMMIT, 1, b"\x01" * 32, 42, message=b"hi", extra_commit=b"ctx")
     assert int.from_bytes(proof[1:9], "big") == 42
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_with_an_explicit_generator() -> None:
     """`sign` accepts a caller-supplied generator."""
     gen_bytes = bytes([0x0B]) + bytes(range(1, 33))
@@ -389,36 +410,42 @@ def test_sign_with_an_explicit_generator() -> None:
     assert int.from_bytes(proof[1:9], "big") == 42
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_an_out_of_range_value() -> None:
     """A value that does not fit in 8 bytes is refused."""
     with pytest.raises(ValueError, match=r"value must be an int in \[0, 2\*\*64\)"):
         r.sign(COMMIT, 1, b"\x01" * 32, 2**64)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_bool_value() -> None:
     """A bool is not accepted where an int is asked for."""
     with pytest.raises(ValueError, match="value must be an int"):
         r.sign(COMMIT, 1, b"\x01" * 32, True)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_non_int_value() -> None:
     """A value that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="value must be an int, not str"):
         r.sign(COMMIT, 1, b"\x01" * 32, "42")  # type: ignore[arg-type]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_an_out_of_range_min_value() -> None:
     """A `min_value` that does not fit in 8 bytes is refused."""
     with pytest.raises(ValueError, match=r"min_value must be an int in \[0, 2\*\*64\)"):
         r.sign(COMMIT, 1, b"\x01" * 32, 42, min_value=2**64)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_non_int_min_value() -> None:
     """A `min_value` that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="min_value must be an int, not str"):
         r.sign(COMMIT, 1, b"\x01" * 32, 42, min_value="0")  # type: ignore[arg-type]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_bool_min_value() -> None:
     """A bool is not accepted where `min_value` asks for an int.
 
@@ -429,42 +456,49 @@ def test_sign_rejects_a_bool_min_value() -> None:
         r.sign(COMMIT, 1, b"\x01" * 32, 42, min_value=True)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_an_out_of_range_exp() -> None:
     """An `exp` outside `[-1, 18]` is refused."""
     with pytest.raises(ValueError, match=r"exp must be in \[-1, 18\]"):
         r.sign(COMMIT, 1, b"\x01" * 32, 42, exp=19)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_non_int_exp() -> None:
     """An `exp` that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="exp must be an int, not str"):
         r.sign(COMMIT, 1, b"\x01" * 32, 42, exp="0")  # type: ignore[arg-type]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_an_out_of_range_min_bits() -> None:
     """A `min_bits` outside `[0, 64]` is refused."""
     with pytest.raises(ValueError, match=r"min_bits must be in \[0, 64\]"):
         r.sign(COMMIT, 1, b"\x01" * 32, 42, min_bits=65)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_non_int_min_bits() -> None:
     """A `min_bits` that is not an int at all is a `TypeError`."""
     with pytest.raises(TypeError, match="the min_bits must be an int, not str"):
         r.sign(COMMIT, 1, b"\x01" * 32, 42, min_bits="0")  # type: ignore[arg-type]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_message_too_long() -> None:
     """A message longer than `MAX_MESSAGE_LEN` is refused."""
     with pytest.raises(ValueError, match="message must be at most"):
         r.sign(COMMIT, 1, b"\x01" * 32, 42, message=b"\x00" * (r.MAX_MESSAGE_LEN + 1))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_what_the_library_refuses() -> None:
     """An all-zero blind is what the fake reads as the library's own refusal."""
     with pytest.raises(ValueError, match="rangeproof signing failed"):
         r.sign(COMMIT, bytes(32), b"\x01" * 32, 42)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_rejects_a_bounded_value_that_does_not_fit_in_63_bits() -> None:
     """A bounded value of 2**63 or more is the library's own refusal.
 
@@ -476,11 +510,13 @@ def test_sign_rejects_a_bounded_value_that_does_not_fit_in_63_bits() -> None:
         r.sign(COMMIT, 1, b"\x01" * 32, 2**63, min_value=1)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_info() -> None:
     """`info` decodes the exponent, mantissa and range a proof carries."""
     assert r.info(PROOF) == (0, 6, 0, 63)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_info_rejects_an_undecodable_proof() -> None:
     """A proof the fake reads as invalid makes `info` raise."""
     with pytest.raises(ValueError, match="invalid proof"):
@@ -491,6 +527,7 @@ PUBKEY = bytes([0x02]) + bytes(range(1, 33))
 FAIL_PUBKEY = bytes([FAIL]) + bytes(range(1, 33))
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_succeeds() -> None:
     """A well-formed call the fake reads as verifying answers True."""
     e0 = bytes(32)
@@ -498,6 +535,7 @@ def test_borromean_verify_succeeds() -> None:
     assert r.borromean_verify(e0, s, b"msg", [PUBKEY, PUBKEY, PUBKEY], [2, 1]) is True
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_fails() -> None:
     """A signature the fake reads as not verifying answers False, not a raise.
 
@@ -510,24 +548,28 @@ def test_borromean_verify_fails() -> None:
     assert r.borromean_verify(e0, s, b"msg", [PUBKEY, PUBKEY, PUBKEY], [2, 1]) is False
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_a_short_e0() -> None:
     """A wrong-length e0 is refused before the extension is touched."""
     with pytest.raises(ValueError, match="e0 must be 32 bytes"):
         r.borromean_verify(bytes(31), bytes(32), b"msg", [PUBKEY], [1])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_a_wrong_length_s() -> None:
     """`s` must be exactly 32 bytes per pubkey, ring-major."""
     with pytest.raises(ValueError, match="s must be 64 bytes"):
         r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY, PUBKEY], [2])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_an_invalid_pubkey() -> None:
     """An unparsable public key is refused before the library sees anything."""
     with pytest.raises(ValueError, match="invalid public key at index 0"):
         r.borromean_verify(bytes(32), bytes(32), b"msg", [FAIL_PUBKEY], [1])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_a_mismatched_ring_shape() -> None:
     """`sum(rsizes) != len(pubkeys)` is the ring-shape ARG_CHECK, refused first.
 
@@ -541,12 +583,14 @@ def test_borromean_verify_rejects_a_mismatched_ring_shape() -> None:
         r.borromean_verify(bytes(32), bytes(32) * 2, b"msg", [PUBKEY, PUBKEY], [1])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_an_empty_pubkeys() -> None:
     """`n_pubkeys` must be at least 1, the header's own ARG_CHECK."""
     with pytest.raises(ValueError, match="pubkeys must hold between 1 and 128"):
         r.borromean_verify(bytes(32), b"", b"msg", [], [])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_too_many_pubkeys() -> None:
     """`n_pubkeys` must be at most 128, the header's own ARG_CHECK."""
     with pytest.raises(ValueError, match="pubkeys must hold between 1 and 128"):
@@ -555,6 +599,7 @@ def test_borromean_verify_rejects_too_many_pubkeys() -> None:
         )
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_too_many_rings() -> None:
     """`nrings` must be at most 32, the header's own ARG_CHECK."""
     with pytest.raises(ValueError, match="rsizes must hold between 1 and 32"):
@@ -572,6 +617,7 @@ INSIDE_A_UINT64 = [0, 2**63, 2**64 - 1]
 
 
 @pytest.mark.parametrize("max_value", OUTSIDE_A_UINT64)
+@MAKES_AN_FFI_CALLBACK
 def test_max_size_refuses_a_max_value_outside_a_uint64(max_value: int) -> None:
     """A `max_value` outside [0, 2**64) is a `ValueError`, whichever side."""
     with pytest.raises(ValueError, match=r"max_value must be an int in \[0, 2\*\*64\)"):
@@ -579,6 +625,7 @@ def test_max_size_refuses_a_max_value_outside_a_uint64(max_value: int) -> None:
 
 
 @pytest.mark.parametrize("value", OUTSIDE_A_UINT64)
+@MAKES_AN_FFI_CALLBACK
 def test_sign_refuses_a_value_outside_a_uint64(value: int) -> None:
     """A `value` that is not in [0, 2**64) is a `ValueError`, whichever side."""
     with pytest.raises(ValueError, match=r"value must be an int in \[0, 2\*\*64\)"):
@@ -586,6 +633,7 @@ def test_sign_refuses_a_value_outside_a_uint64(value: int) -> None:
 
 
 @pytest.mark.parametrize("value", INSIDE_A_UINT64)
+@MAKES_AN_FFI_CALLBACK
 def test_sign_takes_a_value_up_to_the_last_uint64(value: int) -> None:
     """The first and the last value a `uint64_t` holds are signed for."""
     proof = r.sign(COMMIT, 1, b"\x01" * 32, value)
@@ -593,6 +641,7 @@ def test_sign_takes_a_value_up_to_the_last_uint64(value: int) -> None:
 
 
 @pytest.mark.parametrize("min_value", OUTSIDE_A_UINT64)
+@MAKES_AN_FFI_CALLBACK
 def test_sign_refuses_a_min_value_outside_a_uint64(min_value: int) -> None:
     """A `min_value` outside [0, 2**64) is a `ValueError`, whichever side."""
     with pytest.raises(ValueError, match=r"min_value must be an int in \[0, 2\*\*64\)"):
@@ -600,6 +649,7 @@ def test_sign_refuses_a_min_value_outside_a_uint64(min_value: int) -> None:
 
 
 @pytest.mark.parametrize("exp", [-2, 19])
+@MAKES_AN_FFI_CALLBACK
 def test_sign_refuses_an_exp_either_side_of_the_range(exp: int) -> None:
     """`exp` is in [-1, 18], and -2 is as much out of it as 19 is."""
     with pytest.raises(ValueError, match=r"exp must be in \[-1, 18\]"):
@@ -607,11 +657,13 @@ def test_sign_refuses_an_exp_either_side_of_the_range(exp: int) -> None:
 
 
 @pytest.mark.parametrize("exp", [-1, 18])
+@MAKES_AN_FFI_CALLBACK
 def test_sign_takes_both_ends_of_the_exp_range(exp: int) -> None:
     """The smallest and the largest `exp` the header documents are signed."""
     assert r.sign(COMMIT, 1, b"\x01" * 32, 42, exp=exp)
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_sign_takes_a_message_of_3968_bytes_and_no_more() -> None:
     """`MAX_MESSAGE_LEN` is 3968, `SECP256K1_RANGEPROOF_MAX_MESSAGE_LEN`.
 
@@ -640,6 +692,7 @@ def test_sign_takes_everything_after_the_value_by_keyword() -> None:
         assert parameters[name].kind is inspect.Parameter.KEYWORD_ONLY, name
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_refuses_more_in_the_rings_than_there_are_keys() -> None:
     """`sum(rsizes)` above `len(pubkeys)` is refused as much as below it.
 
@@ -652,12 +705,14 @@ def test_borromean_verify_refuses_more_in_the_rings_than_there_are_keys() -> Non
         r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [2])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_no_rings_over_some_keys() -> None:
     """An empty `rsizes` is a ring-count refusal, not a sum that is off."""
     with pytest.raises(ValueError, match="rsizes must hold between 1 and 32"):
         r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_a_non_int_rsize() -> None:
     """A whole-number float is refused, not taken as a ring size -- ISS 1028.
 
@@ -675,6 +730,7 @@ def test_borromean_verify_rejects_a_non_int_rsize() -> None:
         )
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_a_bool_rsize() -> None:
     """A bool is refused here, unlike a recovery id through `_scalar.in_range`.
 
@@ -684,6 +740,7 @@ def test_borromean_verify_rejects_a_bool_rsize() -> None:
         r.borromean_verify(bytes(32), bytes(32), b"msg", [PUBKEY], [True])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_a_negative_rsize() -> None:
     """A negative element is a ValueError, not an OverflowError -- ISS 1028.
 
@@ -694,6 +751,7 @@ def test_borromean_verify_rejects_a_negative_rsize() -> None:
         r.borromean_verify(bytes(32), bytes(32) * 2, b"msg", [PUBKEY, PUBKEY], [-1, 3])
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_borromean_verify_rejects_an_rsize_above_128() -> None:
     """No single ring holds more than the 128 keys `pubkeys` allows in all."""
     with pytest.raises(ValueError, match=r"rsizes\[0\] must be an int in \[0, 128\]"):

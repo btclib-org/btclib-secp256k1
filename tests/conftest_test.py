@@ -44,6 +44,7 @@ from .conftest import (
     pytest_configure,
     sources_out_of_reach,
 )
+from .ios_test import STARTS_A_PROCESS
 
 _ROOT = Path(__file__).parents[1]
 # what pytest reads its own configuration from here, which the guard
@@ -729,6 +730,7 @@ def test_the_refusal_names_the_tree_whatever_the_rootdir(tmp_path: Path) -> None
     assert str(raised.value).endswith(f"Run from {_ROOT}.")
 
 
+@STARTS_A_PROCESS
 def test_a_run_started_from_tests_says_it_is_ungated(tmp_path: Path) -> None:
     """Verify the guard stops a real run started from `tests/`.
 

@@ -39,6 +39,8 @@ from btclib_secp256k1 import (
     xonly,
 )
 
+from .ios_test import MAKES_AN_FFI_CALLBACK
+
 msg = hashlib.sha256(b"btclib_secp256k1").digest()
 
 # secp256k1 group order
@@ -1078,6 +1080,9 @@ def test_the_label_lookup_runs_no_python(scan_python_calls: list[int]) -> None:
     so a lookup in Python is one crossing into the interpreter for each.
     The labeled output is found, so the lookup did run.
 
+    The control below makes an `ffi.callback`, so it is skipped on iOS:
+    there this zero trusts a spy the control proves where it runs.
+
     Args:
         scan_python_calls: the count of Python calls, one per native scan.
     """
@@ -1102,6 +1107,7 @@ def test_the_label_lookup_runs_no_python(scan_python_calls: list[int]) -> None:
     assert scan_python_calls == [0]
 
 
+@MAKES_AN_FFI_CALLBACK
 def test_the_count_of_python_calls_sees_a_python_lookup(
     scan_python_calls: list[int], monkeypatch: pytest.MonkeyPatch
 ) -> None:

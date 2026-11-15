@@ -34,6 +34,8 @@ from typing import Any
 
 import pytest
 
+from .ios_test import STARTS_A_PROCESS
+
 _PYPROJECT = """\
 [project]
 name = "btclib-secp256k1"
@@ -367,6 +369,7 @@ def test_main_fails_when_git_ls_files_fails(
     assert "git ls-files" in capsys.readouterr().err
 
 
+@STARTS_A_PROCESS
 def test_the_entry_point_guard_runs_the_check_as___main__() -> None:
     """The guard turns `main`'s return value into the process exit status.
 
