@@ -59,11 +59,17 @@ btclib-org/.github#1395's own defect come back. The last tests below
 hold the list against each job's own `name:` and matrix, and
 `NEEDS_RESULTS` against `needs:`.
 
+The iOS wheels have a job in each file and no matrix: `build-ios` in
+`test.yml` and `repaired-ios` in the sentinel. What is held of them is
+the events each runs on, the image the two share, and that `check-dist`
+asks for their wheels and the release downloads them.
+
 Read with a regex rather than parsed, for the same reason
 `interpreters_test.py` gives: a workflow is yaml and no group here
 carries a parser for it.
 """
 
+import fnmatch
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -233,7 +239,7 @@ def test_the_dynamic_job_builds_the_release_images_and_no_others() -> None:
 
 
 def test_every_platform_carries_a_second_image() -> None:
-    """Each platform is built on two images, which is what #514 asks.
+    """Each platform of `rebuild` is built on two images, as #514 asks.
 
     A platform down to one image measures whether that image builds one
     wheel twice, and says nothing about the environment being an input,
@@ -369,3 +375,175 @@ def test_check_dist_asks_for_the_x86_64_macos_wheels_at_a_release() -> None:
     assert step["cond"] == (
         "${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}"
     )
+
+
+# a job's own `if:`, as the folded scalar the iOS jobs write it in
+_IF = re.compile(r"^    if: >-\n(?P<expr>(?:^      \S.*\n)+)", re.MULTILINE)
+# the conditions the iOS jobs carry: the gate's skips a pull request and a
+# push to a branch, as `_GATE_SKIPS` excludes the Intel image there, and
+# the sentinel's a pull request, as `_SENTINEL_SKIPS` does
+_BUILD_IOS_IF = (
+    "${{ !github.event.pull_request.draft"
+    " && needs.changes.outputs.code == 'true'"
+    " && github.event.action != 'closed'"
+    " && github.event_name != 'pull_request'"
+    " && !(github.event_name == 'push' && github.ref_type == 'branch') }}"
+)
+_REPAIRED_IOS_IF = (
+    "${{ !github.event.pull_request.draft"
+    " && needs.changes.outputs.build == 'true'"
+    " && github.event_name != 'pull_request' }}"
+)
+# check-dist takes build-ios's skip, and every other need's success alone
+_CHECK_DIST_IF = (
+    "${{ !cancelled() && !github.event.pull_request.draft"
+    " && github.event.action != 'closed'"
+    " && needs.build-cibuildwheel.result == 'success'"
+    " && needs.build-dynamic.result == 'success'"
+    " && needs.build-sdist.result == 'success'"
+    " && needs.build-windows.result == 'success'"
+    " && (needs.build-ios.result == 'success'"
+    " || needs.build-ios.result == 'skipped') }}"
+)
+_RUNS_ON = re.compile(r"^    runs-on: (?P<image>\S+)$", re.MULTILINE)
+# what check-dist's step runs to refuse a dist without either iOS wheel
+_IOS_PRESENCE = (
+    "        shell: bash\n"
+    "        run: |\n"
+    "          shopt -s nullglob\n"
+    "          device=(dist/*-cp3*-ios_*_arm64_iphoneos.whl)\n"
+    "          simulator=(dist/*-cp3*-ios_*_arm64_iphonesimulator.whl)\n"
+    "          if [ ${#device[@]} -eq 0 ] || [ ${#simulator[@]} -eq 0 ]; then\n"
+    '            echo "::error::dist lacks an iOS device or an iOS simulator wheel"\n'
+    "            exit 1\n"
+    "          fi\n"
+)
+# a job's key, at the indent `jobs:` gives its entries, and one item of
+# a `needs:` block list
+_JOB_KEY = re.compile(r"^  (?P<key>[a-z0-9-]+):$", re.MULTILINE)
+_ITEM = re.compile(r"^      - (?P<key>\S+)$", re.MULTILINE)
+# what a job downloads artifacts by, as `download-artifact`'s input
+_PATTERN = re.compile(r'^          pattern: "(\S+)"$', re.MULTILINE)
+
+
+def _condition(body: str) -> str:
+    """Return a job's own folded `if:`, on one line, or "" where it has none."""
+    found = _IF.search(body)
+    return " ".join(found["expr"].split()) if found else ""
+
+
+def test_the_ios_jobs_skip_where_the_x86_64_macos_cells_do() -> None:
+    """`build-ios` and `repaired-ios` run on the events the Intel image does.
+
+    They have no matrix to exclude from, so the events are their `if:`,
+    and each is read whole: a clause dropped, or joined by `||`, is a
+    condition that builds iOS on a pull request, or on no release.
+    """
+    assert _condition(_job_body(_GATE, "build-ios")) == _BUILD_IOS_IF
+    assert _condition(_job_body(_SENTINEL, "repaired-ios")) == _REPAIRED_IOS_IF
+
+
+def test_the_condition_reader_sees_a_changed_clause() -> None:
+    """The control the test above needs: one clause changed is a difference."""
+    body = f"    if: >-\n      {_REPAIRED_IOS_IF}\n    runs-on: macos-latest\n"
+    assert _condition(body) == _REPAIRED_IOS_IF
+    widened = body.replace("!= 'pull_request'", "!= 'schedule'")
+    assert widened != body
+    assert _condition(widened) != _REPAIRED_IOS_IF
+    assert _condition("    runs-on: macos-latest\n") == ""
+
+
+def test_check_dist_asks_for_the_ios_wheels_at_a_release() -> None:
+    """The step refuses a release or a dispatch that built no iOS wheel.
+
+    check-dist takes `build-ios`'s skip, which a pull request always
+    gives, so this step is what refuses that skip where it should not
+    happen. Both wheels are asked for, the device's and the simulator's.
+    """
+    body = _job_body(_GATE, "check-dist")
+    step = re.search(
+        r"- name: Check the iOS wheels were built.*\n        if: (?P<cond>.*)\n"
+        r"(?P<rest>(?:^ {8,}.*\n)+)",
+        body,
+        re.MULTILINE,
+    )
+    assert step, "check-dist has no step asking for the iOS wheels"
+    assert step["cond"] == (
+        "${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}"
+    )
+    # whole, as the conditions above are: an `&&` for the `||` is a dist
+    # with one of the two wheels that passes
+    assert step["rest"] == _IOS_PRESENCE
+
+
+def test_check_dist_waits_for_build_ios_and_takes_its_skip() -> None:
+    """`build-ios` is a need of check-dist, and the only one it may skip.
+
+    A skipped need skips a job whose `if:` opens with no status function,
+    so the condition opens with one and names each need's result. The
+    needs are read as a block list, the shape `tests/interpreters_test.py`
+    reads too.
+    """
+    body = _job_body(_GATE, "check-dist")
+    needs = _NEEDS.search(body)
+    assert needs, "check-dist has no needs: block list"
+    assert "build-ios" in _ITEM.findall(needs["block"])
+    assert _condition(body) == _CHECK_DIST_IF
+
+
+def test_test_passed_waits_for_every_job() -> None:
+    """The gate's aggregate needs every other job of `test.yml`.
+
+    A job missing from its `needs` is one whose failure the required
+    check does not see: `build-ios` among them is a release whose iOS
+    wheels failed and whose aggregate passed.
+    """
+    needs = _NEEDS.search(_job_body(_GATE, "test-passed"))
+    assert needs, "test-passed has no needs: block list"
+    # the keys under `jobs:` alone: the triggers under `on:` sit at the
+    # same indent
+    jobs = set(_JOB_KEY.findall(_GATE.split("\njobs:\n", 1)[1])) - {"test-passed"}
+    assert "build-ios" in jobs
+    assert set(_ITEM.findall(needs["block"])) == jobs
+
+
+def test_the_ios_wheels_are_measured_on_the_image_that_builds_them() -> None:
+    """`repaired-ios` builds for iOS on `build-ios`'s own image.
+
+    The image carries the Xcode that compiles the wheel, which is the
+    environment a reproduction is bound to.
+    """
+    gate = _job_body(_GATE, "build-ios")
+    sentinel = _job_body(_SENTINEL, "repaired-ios")
+    built = _RUNS_ON.search(gate)
+    measured = _RUNS_ON.search(sentinel)
+    assert built, "build-ios names no runs-on image"
+    assert measured, "repaired-ios names no runs-on image"
+    assert built["image"] == measured["image"]
+    # GitHub's arm64 macOS image, which the simulator wheel's suite runs on
+    assert built["image"] == "macos-latest"
+    assert "cibuildwheel --platform ios\n" in gate
+    assert "      CIBW_PLATFORM: ios\n" in sentinel
+
+
+def test_the_release_publishes_the_ios_wheels() -> None:
+    """The iOS artifact's name is one the publish jobs and check-dist download.
+
+    Each of them takes the wheels by `pattern:`, so a name it does not
+    match is a wheel built, tested and published nowhere.
+    """
+    release = (_ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    upload = re.search(
+        r"^          name: (?P<name>\S+)\n          path: \./wheelhouse/\*$",
+        _job_body(_GATE, "build-ios"),
+        re.MULTILINE,
+    )
+    assert upload, "build-ios uploads no artifact in the expected shape"
+    for job, text in (
+        ("publish-pypi", release),
+        ("publish-testpypi", release),
+        ("check-dist", _GATE),
+    ):
+        patterns = _PATTERN.findall(_job_body(text, job))
+        assert patterns, f"{job} downloads no artifact by pattern"
+        assert any(fnmatch.fnmatchcase(upload["name"], p) for p in patterns), job

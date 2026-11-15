@@ -95,12 +95,12 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Education",
     "Natural Language :: English",
-    # the three systems the wheels are built for, and not
-    # "OS Independent": this package is platform-specific compiled
-    # wheels, eleven kinds of them, and the classifier PyPI filters on
-    # should say so rather than the opposite
+    # the systems the wheels are built for, and not "OS Independent":
+    # this package is platform-specific compiled wheels, and the
+    # classifier PyPI filters on should say so rather than the opposite
     "Operating System :: POSIX",
     "Operating System :: MacOS",
+    "Operating System :: iOS",
     "Operating System :: Microsoft :: Windows",
     "Topic :: Security :: Cryptography",
     "Topic :: Scientific/Engineering",

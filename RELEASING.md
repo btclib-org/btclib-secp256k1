@@ -574,7 +574,7 @@ Then:
    signature is the one thing about it that no later check looks at.
 
    `git push --tags` would push whatever other local tags happen to
-   exist. The workflow then builds and tests every artifact the release
+   exist. The workflow then builds and checks every artifact the release
    ships and stops at the `pypi` environment.
 
    A run that comes back `startup_failure` with **zero jobs
@@ -715,12 +715,12 @@ Then:
    release itself: `release.yml`'s own `published` job (`needs:
    publish-pypi`) calls the same workflow directly, so by the time the run
    finishes it has already installed from PyPI what was just uploaded, on
-   every platform and at both ends of the supported interpreter range, and
-   verified BIP340 vector 0 with it. Read its result in the run rather
-   than dispatching a second one. It still runs weekly on its own too, and
-   a failure there means the outside world moved, not this repository —
-   which is why it stayed a workflow of its own rather than folding into
-   `release.yml` outright.
+   the images of its matrix and at both ends of the supported interpreter
+   range, and verified BIP340 vector 0 with it. Read its result in the run
+   rather than dispatching a second one. It still runs weekly on its own
+   too, and a failure there means the outside world moved, not this
+   repository — which is why it stayed a workflow of its own rather than
+   folding into `release.yml` outright.
 
    A cell of that matrix can still lose the race with the index even
    though `version-check` already confirmed PyPI serves the version: 0.8.0
@@ -1275,49 +1275,49 @@ object requires — the `manylinux` in those file names is a
 compatibility tag rather than an image. Their environment is the
 runner's own, which is the paragraph above.
 
-On macOS and Windows the pin is declined rather than pending.
+On macOS, iOS and Windows the pin is declined rather than pending.
 `xcode-select` and `-vcvars_ver` choose among what the runner image
 already carries, so a version recorded here describes nothing to a
 reader who does not have that image; GitHub retires the images, so the
 one a given wheel was built on stops being available; and rebuilding a
-macOS wheel needs a Mac and a Windows wheel needs Windows, where the
-container runs wherever `docker` does. Pinning there narrows the drift
-and leaves the check unrunnable, so what those two wheels carry instead
-is the PEP 740 attestation `publish-pypi` uploads with every file, which
-says who built it and where rather than what is in it.
+macOS or an iOS wheel needs a Mac and a Windows wheel needs Windows,
+where the container runs wherever `docker` does. Pinning there narrows
+the drift and leaves the check unrunnable, so what those wheels carry
+instead is the PEP 740 attestation `publish-pypi` uploads with every
+file, which says who built it and where rather than what is in it.
 
 A verifier who rebuilds a released static wheel outside the image that
 built it and gets other bytes therefore has the expected outcome and not
 a defect to report. On Linux the image is obtainable, so the rebuild
-inside it is a check a stranger can run; on macOS and Windows there is
-no image to rebuild in, and that is the end state rather than something
-a fix is coming for.
+inside it is a check a stranger can run; on macOS, iOS and Windows there
+is no image to rebuild in, and that is the end state rather than
+something a fix is coming for.
 btclib-org/btclib-secp256k1#439 is the umbrella over both halves. Which
 issue section 12 of the organization standard cites for a compiled
 wheel's exemption is that file's own to state, not this one's to
 restate.
 
 `wheel-reproducibility.yml` is what measures any of the above rather
-than leaving it asserted. Its `rebuild`, `repaired`, `dynamic` and
-`cross-windows` jobs each build one commit twice in one image and name
-the members that differ, and `across-images` compares two images'
-wheels of one platform: `rebuild`'s wherever it builds one, with the
-compiled extension's bytes left out, since an extension compiled on the
-runner is not claimed to reproduce on another image; and `repaired`'s on
-the two Linux platforms, which carry a second image of their own, whole.
-`repaired`, `dynamic` and
+than leaving it asserted. Its `rebuild`, `repaired`, `repaired-ios`,
+`dynamic` and `cross-windows` jobs each build one commit twice in one
+image and name the members that differ, and `across-images` compares
+two images' wheels of one platform: `rebuild`'s wherever it builds one,
+with the compiled extension's bytes left out, since an extension
+compiled on the runner is not claimed to reproduce on another image; and
+`repaired`'s on the two Linux platforms, which carry a second image of
+their own, whole. `repaired`, `repaired-ios`, `dynamic` and
 `cross-windows` take the frontend and the repair from the job that
 uploads the wheel each is about, so the file under measurement is the
 one PyPI receives; `build-windows` runs no repair, so `cross-windows`
-runs none either. Two images differ
+runs none either, and `cibuildwheel` runs none on iOS. Two images differ
 in more than one input at a time, so which input reached a member is a
-question that output poses rather than answers. `rebuild` and
-`repaired` narrow to one interpreter, so whether a wheel of another ABI
-tag reproduces is outside what either measures, which that workflow's
-own header states. `dynamic` and `cross-windows` have no interpreter
-axis to narrow, the jobs they follow building one wheel per platform;
-what they leave unasked instead is the environment, neither carrying a
-second image.
+question that output poses rather than answers. `rebuild`, `repaired`
+and `repaired-ios` narrow to one interpreter, so whether a wheel of
+another ABI tag reproduces is outside what any of them measures, which
+that workflow's own header states. `dynamic` and `cross-windows` have no
+interpreter axis to narrow, the jobs they follow building one wheel per
+platform. What `repaired-ios`, `dynamic` and `cross-windows` leave
+unasked is the environment, none of them carrying a second image.
 
 So a rebuild of a released static wheel is a rebuild in the image that
 built it, from the tag, with `SOURCE_DATE_EPOCH` exported from the

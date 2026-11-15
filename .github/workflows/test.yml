@@ -21,7 +21,8 @@ name: test
 # dispatch, and check-dist refuses those runs unless its wheels are there.
 # Section 10 of the organization's standard in btclib-org/.github says
 # why, and CONTRIBUTING.md's *What gates a merge, and what only reports*
-# says how this tree applies it.
+# says how this tree applies it. The iOS wheels of build-ios build on the
+# same events and are checked the same way, as decided on #1385.
 #
 # macOS was where the wait first showed, and the split is a measurement
 # rather than a preference. Over six pull request runs of this workflow,
@@ -641,6 +642,75 @@ jobs:
           name: static-wheels-${{ matrix.os }}
           path: ./wheelhouse/*
 
+  # the iOS wheels, for the architectures and the interpreters
+  # [tool.cibuildwheel.ios] and cibuildwheel select. cibuildwheel runs the
+  # suite in the simulator against each simulator wheel and no test
+  # against a device wheel. A job of its own and not a cell of
+  # build-cibuildwheel: there the image is the whole cell, and every
+  # image of that list is one wheel-reproducibility.yml's rebuild builds
+  # on, through uv build, which builds for the machine it runs on and
+  # not for iOS. A release and a dispatch build it, as they build
+  # macos-26-intel there, and a pull request and a push to main skip it
+  # (see the header): github.event_name and github.ref_type are the
+  # caller's in a called workflow, and a release is a push of a tag
+  build-ios:
+    name: Build the iOS wheels, and run the suite in the simulator
+    if: >-
+      ${{ !github.event.pull_request.draft
+      && needs.changes.outputs.code == 'true'
+      && github.event.action != 'closed'
+      && github.event_name != 'pull_request'
+      && !(github.event_name == 'push' && github.ref_type == 'branch') }}
+    # an arm64 Mac, where cibuildwheel runs the arm64 simulator
+    runs-on: macos-latest
+    # what this bounds is a hung job rather than a slow one, as the
+    # comment on coverage says of every job below it
+    timeout-minutes: 135
+    # see build-cibuildwheel
+    env:
+      UV_PYTHON_DOWNLOADS: never
+
+    needs: changes
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15"
+          allow-prereleases: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      # see build-cibuildwheel
+      - name: Make the version unique for TestPyPI (rehearsal only)
+        uses: ./.github/actions/dev-version # zizmor: ignore[self-repository]
+        if: inputs.version-suffix != ''
+        with:
+          suffix: ${{ inputs.version-suffix }}
+
+      # see build-cibuildwheel
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
+      # the build group and --locked: see build-cibuildwheel. The build
+      # requirements come from build-constraints.txt through
+      # [tool.cibuildwheel.ios]'s `environment`, and cmake from the runner
+      # through its `xbuild-tools`
+      - name: Build the wheels
+        run: uv run --locked --only-group build cibuildwheel --platform ios
+
+      - name: Upload the wheels
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: static-wheels-ios
+          path: ./wheelhouse/*
+
   build-dynamic:
     name: Build dynamic wheel on ${{ matrix.os }}
     if: >-
@@ -1074,12 +1144,31 @@ jobs:
   # workflow reaches the point of no return: broken metadata or a README
   # that does not render cannot be fixed by reuploading, a version can
   # only be yanked and burnt
+  #
+  # build-ios is skipped on a pull request, and a skipped need skips a
+  # job whose `if:` opens with no status function, so this one opens
+  # with !cancelled() and names the result it takes of each need: success,
+  # or for build-ios a skip as well. The check of the iOS wheels below
+  # is what refuses that skip on a release and a dispatch
   check-dist:
     name: Inspect the distribution files and install one
-    if: ${{ !github.event.pull_request.draft && github.event.action != 'closed' }}
+    if: >-
+      ${{ !cancelled() && !github.event.pull_request.draft
+      && github.event.action != 'closed'
+      && needs.build-cibuildwheel.result == 'success'
+      && needs.build-dynamic.result == 'success'
+      && needs.build-sdist.result == 'success'
+      && needs.build-windows.result == 'success'
+      && (needs.build-ios.result == 'success'
+      || needs.build-ios.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [build-cibuildwheel, build-dynamic, build-sdist, build-windows]
+    needs:
+      - build-cibuildwheel
+      - build-ios
+      - build-dynamic
+      - build-sdist
+      - build-windows
 
     steps:
       # for the check-wheel-contents configuration in pyproject.toml
@@ -1130,6 +1219,22 @@ jobs:
           dynamic=(dist/*-py3-none-macosx_10_13_universal2.whl)
           if [ ${#static[@]} -eq 0 ] || [ ${#dynamic[@]} -eq 0 ]; then
             echo "::error::dist lacks a static or a dynamic x86_64 macOS wheel"
+            exit 1
+          fi
+
+      # build-ios is skipped on a pull request and a push to main, and
+      # check-dist takes that skip, so a release and a dispatch refuse a
+      # dist without a device and a simulator wheel. The guard reads no
+      # github.ref_type, for the reason the step above gives
+      - name: Check the iOS wheels were built (release and dispatch)
+        if: ${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          device=(dist/*-cp3*-ios_*_arm64_iphoneos.whl)
+          simulator=(dist/*-cp3*-ios_*_arm64_iphonesimulator.whl)
+          if [ ${#device[@]} -eq 0 ] || [ ${#simulator[@]} -eq 0 ]; then
+            echo "::error::dist lacks an iOS device or an iOS simulator wheel"
             exit 1
           fi
 
@@ -1241,6 +1346,7 @@ jobs:
       - coverage
       - zkp
       - build-cibuildwheel
+      - build-ios
       - build-dynamic
       - build-sdist
       - suite-sdist
@@ -1263,12 +1369,13 @@ jobs:
         # the loop reads the whole needs context rather than naming each job, so
         # a job added to needs above is covered without touching this. "skipped"
         # is not a failure on its own: coverage, zkp, build-cibuildwheel,
-        # build-dynamic, build-sdist and build-windows are each conditional on
-        # changes' own output, so a prose-only pull request skips every one of
-        # them by design, and reading that as a defect would fail the gate the
-        # changes job exists to let pass cheaply. changes is named in needs
-        # directly though, so its own failure still shows up as "failure" in the
-        # results and still fails this job.
+        # build-ios, build-dynamic, build-sdist and build-windows are each
+        # conditional on changes' own output, so a prose-only pull request skips
+        # every one of them by design, and reading that as a defect would fail
+        # the gate the changes job exists to let pass cheaply; build-ios skips
+        # every pull request besides, as its own comment says. changes is named
+        # in needs directly though, so its own failure still shows up as
+        # "failure" in the results and still fails this job.
         #
         # This step used to decide with a `case` denylist over a space-joined
         # `join(needs.*.result, ' ')`: its blindness was passing any result this
