@@ -601,8 +601,7 @@ jobs:
       && needs.changes.outputs.build == 'true'
       && github.event_name != 'pull_request' }}
     runs-on: macos-latest
-    # the same bound-a-hung-job ceiling the jobs above carry: the job
-    # took under three minutes on macos-26-arm64 in November 2026
+    # the same bound-a-hung-job ceiling the jobs above carry
     timeout-minutes: 40
     # repaired's own variables, and the platform: one interpreter, no
     # test run
