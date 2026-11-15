@@ -18,10 +18,9 @@ on:
   push:
     # main only: a push to a branch that has an open pull request would
     # run this workflow twice, once per event, and the two runs land in
-    # different concurrency groups for every pull_request action except
-    # closed on a merge -- see that trigger's own comment below, and the
-    # concurrency block, for why closed is the exception and how the
-    # group now avoids it. The pull_request run is the one worth
+    # different concurrency groups, which do not cancel each other -- see
+    # that trigger's own comment below, and the concurrency block, for
+    # how each is keyed. The pull_request run is the one worth
     # keeping, because it tests the merge commit and is the only run a
     # fork's pull request produces at all.
     # main keeps a trigger of its own because a merge creates a commit
@@ -43,9 +42,9 @@ on:
     # the real work on it, the merge commit being main's own push
     # trigger's question. "This pull request's own group" is the part
     # github.ref alone got wrong: for a closed, merged pull request it
-    # resolves to the base branch's ref, the same one the push trigger's
-    # own run computes, so the closed run landed in *that* group instead
-    # and would cancel the run linting the actual merge commit --
+    # resolves to the base branch's ref, the key the push trigger's own
+    # run had at the time, so the closed run landed in *that* group
+    # instead and would cancel the run linting the actual merge commit --
     # observed doing exactly that to bitcoin-core-rpc's own main, after
     # btclib-org/bitcoin-core-rpc#136 merged there. The concurrency block
     # below groups by the pull request's own number instead, immune to
@@ -70,23 +69,24 @@ on:
 permissions:
   contents: read
 
-# cancel superseded runs on the same branch/PR. The group is named
-# literally, not through github.workflow: concurrency groups are
-# per-repository, and what that context resolves to inside a called
-# workflow is not documented (the explicit note covers job.workflow_ref
-# only). Were it the caller's name, this workflow and every
-# other one the release workflow calls would compute the same group, and
-# cancel-in-progress would have each cancel the last: a release losing its
-# lint gate, its docs build or its whole build matrix, on a path that runs
-# once per release and where nobody is watching for a cancellation.
+# cancel superseded runs of a pull request, and of dispatches on one
+# branch. The group is named literally, not through github.workflow:
+# concurrency groups are per-repository, and what that context resolves
+# to inside a called workflow is not documented (the explicit note
+# covers job.workflow_ref only). Were it the caller's name, this
+# workflow and every other one the release workflow calls would compute
+# the same group, and cancel-in-progress would have each cancel the
+# last: a release losing its lint gate, its docs build or its whole
+# build matrix, on a path that runs once per release and where nobody is
+# watching for a cancellation.
 #
 # github.ref has the same shape of problem one level down, and it is why
 # the suffix is there. Inside a called workflow that context is the
 # caller's ref, so a rehearsal -- a workflow_dispatch of release.yml on a
 # branch, which is what RELEASING.md prescribes -- computes
-# lint-refs/heads/<branch>, the very group a push to that branch or a
-# direct dispatch of this workflow computes. One then kills the other:
-# either the rehearsal dies mid-build, or it cancels the run of the push.
+# lint-refs/heads/<branch>, the very group a direct dispatch of this
+# workflow on that branch computes. One then kills the other: either the
+# rehearsal dies mid-build, or it cancels the dispatched run.
 # A tag run is unaffected, refs/tags/v* being a ref nothing else uses.
 # release.yml passes a suffix of its own, which keeps the release path
 # out of the branch groups while still letting a second rehearsal of the
@@ -95,13 +95,21 @@ permissions:
 # github.event.pull_request.number, not github.ref alone, is a third
 # problem with the same shape: for a closed, merged pull request's run,
 # github.ref resolves to the base branch's ref rather than
-# refs/pull/N/merge, colliding with the push trigger's own group --
-# the pull_request trigger's own comment above has the evidence. A
-# pull_request run of any action, closed included, now groups by the
-# pull request's own number instead, which a push never carries and so
-# still groups by github.ref, unchanged
+# refs/pull/N/merge, the group a dispatch on main computes; the
+# pull_request trigger's own comment above has the evidence, from when a
+# push run had that key too. A pull_request run of any action, closed
+# included, groups by the pull request's own number instead.
+#
+# A push run is keyed on its commit and its ref instead, so each push to
+# main has a group of its own, and a run that no later push cancels or
+# replaces: section 10 of the organization's standard has why
+# cancel-in-progress: false and queue: max do not give that. A dispatch
+# has no number and falls back to github.ref
 concurrency:
-  group: lint-${{ github.event.pull_request.number || github.ref }}${{ inputs.concurrency-suffix }}
+  group: >-
+    lint-${{ github.event_name == 'push'
+    && format('{0}-{1}', github.sha, github.ref)
+    || github.event.pull_request.number || github.ref }}${{ inputs.concurrency-suffix }}
   cancel-in-progress: true
 
 jobs:

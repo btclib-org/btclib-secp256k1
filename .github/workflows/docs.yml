@@ -19,10 +19,9 @@ on:
   push:
     # main only, for the reason lint.yml gives at the same key: a push to a
     # branch with an open pull request would run this twice, in two
-    # concurrency groups that do not cancel each other for every
-    # pull_request action except closed on a merge -- see that trigger's
-    # own comment below -- and the pull_request run is the one worth
-    # keeping
+    # concurrency groups that do not cancel each other -- see that
+    # trigger's own comment below -- and the pull_request run is the one
+    # worth keeping
     branches: [main]
   pull_request:
     # ready_for_review, so a pull request marked ready gets the run the
@@ -39,9 +38,9 @@ on:
     # the real work on it, the merge commit being main's own push
     # trigger's question. "This pull request's own group" is the part
     # github.ref alone got wrong: for a closed, merged pull request it
-    # resolves to the base branch's ref, the same one the push trigger's
-    # own run computes, so the closed run landed in *that* group instead
-    # and would cancel the run building the actual merge commit's
+    # resolves to the base branch's ref, the key the push trigger's own
+    # run had at the time, so the closed run landed in *that* group
+    # instead and would cancel the run building the actual merge commit's
     # documentation -- observed doing exactly that to bitcoin-core-rpc's
     # own main, after btclib-org/bitcoin-core-rpc#136 merged there. The
     # concurrency block below groups by the pull request's own number
@@ -67,14 +66,18 @@ on:
 permissions:
   contents: read
 
-# cancel superseded runs on the same branch/PR, named literally and
-# discriminated by an input rather than left to github.ref alone, for the three
-# reasons lint.yml gives at length: release.yml calls this workflow beside
-# lint.yml, os-ubuntu.yml, os-macos.yml, os-windows.yml, test.yml and
-# pypi-install.yml, and a group computed from github.workflow would have every
-# one of them cancel the others, that expression being the caller's name in each
+# cancel superseded runs of a pull request, and of dispatches on one branch,
+# named literally and discriminated by an input rather than left to github.ref
+# alone, for the three reasons lint.yml gives at length: release.yml calls this
+# workflow beside lint.yml, os-ubuntu.yml, os-macos.yml, os-windows.yml,
+# test.yml and pypi-install.yml, and a group computed from github.workflow would
+# have every one of them cancel the others, that expression being the caller's
+# name in each
 concurrency:
-  group: docs-${{ github.event.pull_request.number || github.ref }}${{ inputs.concurrency-suffix }}
+  group: >-
+    docs-${{ github.event_name == 'push'
+    && format('{0}-{1}', github.sha, github.ref)
+    || github.event.pull_request.number || github.ref }}${{ inputs.concurrency-suffix }}
   cancel-in-progress: true
 
 jobs:

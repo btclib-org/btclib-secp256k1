@@ -39,8 +39,9 @@ jobs:
     with:
       # what keeps this run out of the branch concurrency groups: inside a
       # called workflow github.ref is the ref of this workflow's own run,
-      # so without it a rehearsal dispatched on a branch and a push to that
-      # branch share a group and cancel each other. The reasoning is in
+      # so without it a rehearsal dispatched on a branch and a dispatch of
+      # the called workflow on that branch share a group and cancel each
+      # other. The reasoning is in
       # lint.yml, next to the group; the value only has to be a string no
       # branch group can contain
       concurrency-suffix: "-release"

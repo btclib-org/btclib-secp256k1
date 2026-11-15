@@ -115,18 +115,24 @@ on:
 permissions:
   contents: read
 
-# cancel superseded runs on the same branch/PR, named literally rather than
-# through github.workflow for the reason lint.yml gives at length. No
+# cancel superseded runs of a pull request, and of dispatches and
+# scheduled runs on one branch, named literally rather than through
+# github.workflow for the reason lint.yml gives at length. No
 # concurrency-suffix input here, unlike every workflow release.yml calls
 # but pypi-install.yml, which takes a version instead: nothing calls this
 # workflow, so no caller's ref is in play.
 # Keyed on the pull request's number where there is one rather than on
 # github.ref alone: for a closed, merged pull request github.ref resolves
-# to the base branch's ref, which is the push trigger's own group, so a
-# group built from it would let the closed run cancel the analysis of the
-# merge commit
+# to the base branch's ref, the group a scheduled run or a dispatch on
+# main computes, so a group built from it would let the closed run cancel
+# that run's analysis. A push run is keyed on its commit and its ref
+# instead, so each push to main has a group of its own, as section 10 of
+# the organization's standard asks
 concurrency:
-  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  group: >-
+    codeql-${{ github.event_name == 'push'
+    && format('{0}-{1}', github.sha, github.ref)
+    || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

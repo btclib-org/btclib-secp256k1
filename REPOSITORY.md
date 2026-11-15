@@ -352,8 +352,13 @@ reports the setting is the one that sets it:
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/code-quality/setup \
   --jq '{state, languages}'
-# {"languages":["python"],"state":"not-configured"}
+```
 
+```json
+{"languages":["python"],"state":"not-configured"}
+```
+
+```shell
 gh api -X PATCH repos/btclib-org/btclib-secp256k1/code-quality/setup \
   -F state=not-configured
 ```
@@ -389,7 +394,10 @@ would change the answer.
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 --jq '.default_branch'
-# main
+```
+
+```text
+main
 ```
 
 Its protection is all read from the endpoint above: the checks the table
@@ -428,7 +436,10 @@ the organization already keeps.
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/branches/main/protection \
   --jq '.required_signatures.enabled'
-# false
+```
+
+```text
+false
 ```
 
 Classic protection's own copy of the signature rule is off, as it is in
@@ -446,7 +457,10 @@ has the ground. Read back on 2026-10-13:
 ```shell
 sub=branches/main/protection/required_status_checks
 gh api "repos/btclib-org/btclib-secp256k1/$sub" --jq .strict
-# false
+```
+
+```text
+false
 ```
 
 Protection reaches `main` and no other branch. That is a consequence of
@@ -614,9 +628,12 @@ the convention CONTRIBUTING.md states:
 gh api repos/btclib-org/btclib-secp256k1 \
   --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge,
          squash_merge_commit_title, squash_merge_commit_message}'
-# {"allow_merge_commit":false,"allow_rebase_merge":false,
-#  "allow_squash_merge":true,"squash_merge_commit_message":"COMMIT_MESSAGES",
-#  "squash_merge_commit_title":"COMMIT_OR_PR_TITLE"}
+```
+
+```json
+{"allow_merge_commit":false,"allow_rebase_merge":false,
+ "allow_squash_merge":true,"squash_merge_commit_message":"COMMIT_MESSAGES",
+ "squash_merge_commit_title":"COMMIT_OR_PR_TITLE"}
 ```
 
 The `squash_merge_commit_*` fields shape the commit the button writes,
@@ -645,12 +662,15 @@ repository setting is flipped.
 
 ## Auto-merge
 
-`allow_auto_merge` is off, so no pull request can be armed: the merge is
-explicit.
+Auto-merge is off, [for the reason section 11
+gives](https://github.com/btclib-org/.github#merge-method).
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 --jq '.allow_auto_merge'
-# false
+```
+
+```text
+false
 ```
 
 ## Token permissions
@@ -660,8 +680,11 @@ needing more declares it:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/actions/permissions/workflow
-# {"default_workflow_permissions":"read",
-#  "can_approve_pull_request_reviews":false}
+```
+
+```json
+{"default_workflow_permissions":"read",
+ "can_approve_pull_request_reviews":false}
 ```
 
 The whole object rather than one field of it: a run that can approve a
@@ -741,7 +764,10 @@ gh api -X PUT repos/btclib-org/btclib-secp256k1/actions/permissions/workflow \
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/actions/permissions \
   --jq '{allowed_actions, sha_pinning_required}'
-# {"allowed_actions":"all","sha_pinning_required":true}
+```
+
+```json
+{"allowed_actions":"all","sha_pinning_required":true}
 ```
 
 `sha_pinning_required` is set at the organization level: [section 11 of
@@ -752,9 +778,18 @@ fields](https://github.com/btclib-org/.github#tokens-publishing-scanning).
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 --jq .web_commit_signoff_required
-# true
+```
+
+```text
+true
+```
+
+```shell
 gh api orgs/btclib-org --jq .web_commit_signoff_required
-# true
+```
+
+```text
+true
 ```
 
 Set at the organization level, [for the reason section 11
@@ -782,7 +817,10 @@ endpoint 404s for it rather than answering an empty list:
 ```shell
 gh api --jq '.branch_policies[] | {name, type}' \
   repos/btclib-org/btclib-secp256k1/environments/pypi/deployment-branch-policies
-# {"name":"v*","type":"tag"}
+```
+
+```json
+{"name":"v*","type":"tag"}
 ```
 
 The asymmetry is worth reading rather than assuming: a policy admitting
@@ -831,14 +869,20 @@ in that file, and they are on:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/automated-security-fixes
-# {"enabled":true,"paused":false}
+```
+
+```json
+{"enabled":true,"paused":false}
 ```
 
 ## Private vulnerability reporting
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/private-vulnerability-reporting
-# {"enabled":true}
+```
+
+```json
+{"enabled":true}
 ```
 
 On. It is what puts the *Report a vulnerability* button on the Security
@@ -871,7 +915,10 @@ rather than assumed:
 
 ```shell
 gh api orgs/btclib-org --jq .plan.name
-# free
+```
+
+```text
+free
 ```
 
 The plan is a fact about a changing world rather than a setting this
@@ -904,7 +951,10 @@ second number in view.
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 \
   --jq '{visibility, has_issues, wiki: .has_wiki, projects: .has_projects}'
-# {"has_issues":true,"projects":false,"visibility":"public","wiki":false}
+```
+
+```json
+{"has_issues":true,"projects":false,"visibility":"public","wiki":false}
 ```
 
 Section 10's `scorecard` sentinel rests on the first answer: public is
@@ -972,7 +1022,10 @@ own copy of it:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1 --jq '.homepage'
-# https://btclib.org/btclib-secp256k1/
+```
+
+```text
+https://btclib.org/btclib-secp256k1/
 ```
 
 `[project.urls] homepage` carries the same URL. Read at
@@ -988,8 +1041,11 @@ automation rule activates each new tag:
 ```shell
 p=https://app.readthedocs.org/api/v3/projects/btclib-secp256k1
 curl -s "$p/" | jq -c '{default_branch, repository: .repository.url}'
-# {"default_branch":"main",
-#  "repository":"https://github.com/btclib-org/btclib-secp256k1.git"}
+```
+
+```json
+{"default_branch":"main",
+ "repository":"https://github.com/btclib-org/btclib-secp256k1.git"}
 ```
 
 `repository.url` says which repository the slug serves. `latest` is a
@@ -1006,10 +1062,19 @@ a setting:
 curl -s "$p/versions/?active=true" \
   | jq -c '.results[] | select(.slug == "latest" or .slug == "stable")
            | [.slug, .type, .ref]'
-# ["stable","tag","v0.8.0.6"]
-# ["latest","branch",null]
+```
+
+```text
+["stable","tag","v0.8.0.6"]
+["latest","branch",null]
+```
+
+```shell
 git tag --list 'v*' --sort=version:refname | tail -1
-# v0.8.0.6
+```
+
+```text
+v0.8.0.6
 ```
 
 `stable` is a tag, and its `ref` is the one `git tag` sorts highest. The
@@ -1027,7 +1092,10 @@ as `redirects/`, answers 401. Read at 2026-09-21T22:39:24Z.
 gh api orgs/btclib-org/installations \
   --jq '.installations[] | select(.app_slug == "read-the-docs-community")
         | [.app_slug, .repository_selection]'
-# ["read-the-docs-community","all"]
+```
+
+```json
+["read-the-docs-community","all"]
 ```
 
 `repository_selection: all` is what makes that the connection for every
@@ -1037,7 +1105,10 @@ no hook:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/hooks --jq length
-# 0
+```
+
+```text
+0
 ```
 
 A hook that command finds is stale and is deleted rather than repaired:
@@ -1062,16 +1133,37 @@ secret stores here answer empty for it:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/actions/secrets --jq .total_count
-# 0
+```
+
+```text
+0
+```
+
+```shell
 gh api repos/btclib-org/btclib-secp256k1/dependabot/secrets \
   --jq .total_count
-# 0
+```
+
+```text
+0
+```
+
+```shell
 gh api orgs/btclib-org/actions/secrets \
   --jq '.secrets[] | [.name, .visibility]'
-# ["CLAUDE_CODE_OAUTH_TOKEN","all"]
+```
+
+```json
+["CLAUDE_CODE_OAUTH_TOKEN","all"]
+```
+
+```shell
 gh api orgs/btclib-org/dependabot/secrets \
   --jq '.secrets[] | [.name, .visibility]'
-# ["CLAUDE_CODE_OAUTH_TOKEN","all"]
+```
+
+```json
+["CLAUDE_CODE_OAUTH_TOKEN","all"]
 ```
 
 Those two zeros record a decision, and it is section 11's: the token is
@@ -1087,7 +1179,10 @@ store is read too:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/actions/variables --jq .total_count
-# 0
+```
+
+```text
+0
 ```
 
 **A facility nobody reached for.** Self-hosted runners, deploy keys,
