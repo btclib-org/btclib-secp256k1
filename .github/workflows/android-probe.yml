@@ -1,0 +1,117 @@
+---
+# PROBE, never to land: measures cibuildwheel's Android platform for
+# btclib-org/btclib-secp256k1#1385 on the branch android-wheels-probe-2 only
+name: android-probe
+
+on:
+  push:
+    branches: [android-wheels-probe-2]
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15"
+          allow-prereleases: true
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Pin the build timestamp to the commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)" >> "$GITHUB_ENV"
+
+      - name: Runner facts
+        run: |
+          set -x
+          uname -a
+          nproc
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          ls "${ANDROID_HOME:-/nonexistent}" || true
+          echo "JAVA_HOME=${JAVA_HOME:-unset}"
+          java -version || true
+          ls -l /dev/kvm || true
+          uv --version
+
+      - name: A. Build every Android identifier as pyproject.toml says
+        if: always()
+        run: uv run --locked --only-group build cibuildwheel --platform android --output-dir wheelhouse-a
+
+      - name: B. Read the binaries
+        if: always()
+        run: |
+          for w in wheelhouse-a/*.whl; do
+            echo "=== $w"
+            unzip -l "$w"
+            d=$(mktemp -d)
+            unzip -q "$w" -d "$d"
+            find "$d" -name '*.so' -print0 | while IFS= read -r -d '' so; do
+              echo "--- $so"
+              file "$so"
+              readelf -hW "$so" | grep -E 'Class|Machine|OS/ABI|Type'
+              readelf -dW "$so" | grep -E 'NEEDED|FLAGS|SONAME|RUNPATH|RPATH'
+              readelf -lW "$so" | grep -E 'GNU_RELRO|GNU_STACK|GNU_PROPERTY|LOAD'
+              readelf -nW "$so" || true
+              echo "undefined dynamic symbols starting Py:"
+              readelf --dyn-syms -W "$so" | awk '$7 == "UND" {print $8}' | grep -c '^_\?Py' || true
+            done
+          done
+
+      - name: C. Resolve the x86_64 wheel for Android, from PyPI alone
+        if: always()
+        run: |
+          set -x
+          uv pip install --python 3.14 --only-binary=:all: \
+            --python-platform x86_64-linux-android --target "$RUNNER_TEMP/c-target" \
+            wheelhouse-a/*cp314-cp314-android_24_x86_64.whl || echo "EXIT_C=$?"
+
+      - name: D. Test cp314 x86_64 in the emulator, cffi from Flet's index by URL
+        if: always()
+        continue-on-error: true
+        env:
+          CIBW_BUILD: "cp314-android_x86_64"
+          CIBW_TEST_SKIP: "pp*"
+          CIBW_TEST_SOURCES: "tests pyproject.toml"
+          CIBW_TEST_COMMAND: >-
+            python -m pytest -n 0 --no-cov -p no:cacheprovider
+            --continue-on-collection-errors -rfEs tests
+          CIBW_ENVIRONMENT_ANDROID: >-
+            UV_PYTHON="$VIRTUAL_ENV/bin/python"
+          CIBW_TEST_REQUIRES: >-
+            pytest==9.2.0 pytest-cov==7.1.0 pytest-xdist==3.8.0
+            pathspec==1.1.1 typing-extensions==4.16.0
+            cffi@https://pypi.flet.dev/-/ver_E2rYs/cffi-2.1.1-1-cp314-cp314-android_24_x86_64.whl#sha256=275e314ac53a3894b702c3736c6bdb5d32e67bb934a5f0d3965a37f4dd5b4684
+        run: uv run --locked --only-group build cibuildwheel --platform android --output-dir wheelhouse-d
+
+      - name: D2. The same test step under pyproject.toml's environment
+        if: always()
+        continue-on-error: true
+        env:
+          CIBW_BUILD: "cp314-android_x86_64"
+          CIBW_TEST_SKIP: "pp*"
+          CIBW_TEST_SOURCES: "tests pyproject.toml"
+          CIBW_TEST_COMMAND: "python -m pytest -n 0 --no-cov tests/callbacks_test.py"
+          CIBW_TEST_REQUIRES: >-
+            pytest==9.2.0 pytest-cov==7.1.0 pytest-xdist==3.8.0
+            pathspec==1.1.1 typing-extensions==4.16.0
+            cffi@https://pypi.flet.dev/-/ver_E2rYs/cffi-2.1.1-1-cp314-cp314-android_24_x86_64.whl#sha256=275e314ac53a3894b702c3736c6bdb5d32e67bb934a5f0d3965a37f4dd5b4684
+        run: uv run --locked --only-group build cibuildwheel --platform android --output-dir wheelhouse-d2
+
+      - name: Upload the wheels
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-probe-wheels
+          path: wheelhouse-*/*
