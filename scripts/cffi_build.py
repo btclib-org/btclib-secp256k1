@@ -1058,8 +1058,9 @@ class VendoredCMakeExtension(FFIExtension):
         sysconfig.get_platform() is where setuptools reads its own target
         from, so deriving this from it keeps the two in agreement by
         construction; on POSIX it also follows the _PYTHON_HOST_PLATFORM
-        that a cross-compiling cibuildwheel sets, so an arm64 macOS wheel
-        built on an Intel runner is built for arm64 throughout.
+        that cibuildwheel sets, and that test.yml's build-dynamic sets for
+        its macOS wheel, so a universal2 interpreter building an arm64
+        wheel builds for arm64 throughout.
 
         Linux has no equivalent option to set: a 32-bit interpreter on a
         64-bit host would need the -m32 of a multilib toolchain, which is
@@ -1240,10 +1241,11 @@ class VendoredCMakeExtension(FFIExtension):
         # what upstream recommends for a desktop. ASM asks the build
         # machine a question too -- AUTO is a compile check, and it falls
         # back to OFF in silence where that check fails -- but it cannot
-        # be pinned in one line: the mingw cell cross-compiles, and the
-        # macOS universal2 one compiles two architectures in a single
-        # pass, which is the `x86_64;arm64` target_architecture_options
-        # names above. Pinning an architecture here would contradict it.
+        # be pinned in one line: the mingw cell cross-compiles, and a
+        # macOS build for universal2 compiles two architectures in a
+        # single pass, which is the `x86_64;arm64`
+        # target_architecture_options names above. Pinning an
+        # architecture here would contradict it.
         # #211 records the values, and why they are left alone
         #
         # Also not in that list: anything pinning the mtime of an object

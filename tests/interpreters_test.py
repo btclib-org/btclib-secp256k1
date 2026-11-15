@@ -133,8 +133,8 @@ _CIBW_FREE_THREADED = re.compile(r"^cp3(?P<minor>\d+)t-", re.MULTILINE)
 _CIBW_FLOOR = re.compile(r"^cibuildwheel>=(?P<version>[0-9.]+)$")
 # cibuildwheel's own vocabulary for --platform, not the runner images
 # build-cibuildwheel's matrix names: ubuntu-latest and ubuntu-24.04-arm
-# are both "linux", macos-26-intel and macos-latest "macos", windows-latest
-# and windows-11-arm "windows". Asked once per platform rather than once,
+# are both "linux", macos-latest "macos", windows-latest and
+# windows-11-arm "windows". Asked once per platform rather than once,
 # because [tool.cibuildwheel]'s `skip` can name one platform's identifier
 # and not another's -- today's `pp*-win*` already does
 _CIBW_PLATFORMS = ("linux", "macos", "windows")

@@ -764,15 +764,15 @@ def test_diff_wheels_names_the_filename_and_compares_the_members_anyway(
     question about their members is still open. Stopping at the name
     would answer it with the name.
     """
-    first = tmp_path / "one" / "pkg-1.0-cp314-cp314-macosx_15_0_x86_64.whl"
-    second = tmp_path / "other" / "pkg-1.0-cp314-cp314-macosx_26_0_x86_64.whl"
+    first = tmp_path / "one" / "pkg-1.0-cp314-cp314-macosx_15_0_arm64.whl"
+    second = tmp_path / "other" / "pkg-1.0-cp314-cp314-macosx_26_0_arm64.whl"
     write_wheel(first, [("pkg/a.py", b"one")])
     write_wheel(second, [("pkg/a.py", b"two!")])
 
     named, content = diff(check, first, second)
 
-    assert "macosx_15_0_x86_64" in named
-    assert "macosx_26_0_x86_64" in named
+    assert "macosx_15_0_arm64" in named
+    assert "macosx_26_0_arm64" in named
     assert "one-image" in named
     assert "other-image" in named
     assert "pkg/a.py: content differs" in content
@@ -1217,16 +1217,16 @@ def test_across_images_names_the_image_and_the_member_that_differ(
 ) -> None:
     """#514's red answer names which member moved and between which images."""
     write_wheel(
-        tmp_path / "macos-x86-64" / "macos-15-intel" / _WHEEL, [("pkg/_ext.so", b"aa")]
+        tmp_path / "macos-arm64" / "macos-15" / _WHEEL, [("pkg/_ext.so", b"aa")]
     )
     write_wheel(
-        tmp_path / "macos-x86-64" / "macos-26-intel" / _WHEEL, [("pkg/_ext.so", b"bbb")]
+        tmp_path / "macos-arm64" / "macos-latest" / _WHEEL, [("pkg/_ext.so", b"bbb")]
     )
 
     assert check.main(["prog", "--across-images", str(tmp_path)]) == 1
 
     err = capsys.readouterr().err
-    assert "::error::macos-x86-64: pkg/_ext.so: content differs" in err
+    assert "::error::macos-arm64: pkg/_ext.so: content differs" in err
     assert "2 vs 3 bytes" in err
 
 

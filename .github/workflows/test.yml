@@ -16,13 +16,12 @@ name: test
 # finished at 24.6 minutes against the 23.5 of the ubuntu-latest build
 # beside them. Four macOS jobs queue; thirty-one contended.
 #
-# A pull request and a push to main build the wheels of every image but
-# one: the x86_64 macOS image, macos-26-intel, builds on a release and a
-# dispatch, and check-dist refuses those runs unless its wheels are there.
-# Section 10 of the organization's standard in btclib-org/.github says
-# why, and CONTRIBUTING.md's *What gates a merge, and what only reports*
-# says how this tree applies it. The iOS wheels of build-ios build on the
-# same events and are checked the same way, as decided on #1385.
+# A pull request and a push to main build the wheels of every image. The
+# iOS wheels of build-ios build on a release and a dispatch, and
+# check-dist refuses those runs unless they are there, as decided on
+# #1385. macOS is arm64 alone, as section 10 of the organization's
+# standard in btclib-org/.github says, and check-dist refuses a macOS
+# wheel an x86_64 Mac would install.
 #
 # macOS was where the wait first showed, and the split is a measurement
 # rather than a preference. Over six pull request runs of this workflow,
@@ -393,7 +392,7 @@ jobs:
   # the flag, the same argument the coverage job's own header gives for
   # measuring coverage once. Linux and not macOS or Windows for the same
   # reason build-dynamic below picks ubuntu-latest first among its own
-  # four: the cheapest cell to schedule, and nothing about the fourth
+  # images: the cheapest cell to schedule, and nothing about the fourth
   # build path in scripts/cffi_build.py is platform-specific in a way
   # the three ordinary paths are not already covered for elsewhere.
   # BTCLIB_LIBSECP256K1_ZKP=true is passed to every step outside the
@@ -473,36 +472,24 @@ jobs:
     strategy:
       # as for the test matrices, and here it costs more: with the
       # default, one platform failing (or one flaky runner) cancels the
-      # five builds in flight beside it, so a rerun is the only way to
+      # builds in flight beside it, so a rerun is the only way to
       # learn whether they would have succeeded. On the release path the
       # cancelled jobs are artifacts the publish job then has to do
       # without
       fail-fast: false
       matrix:
-        # ubuntu-latest/macos-26-intel are x86_64,
-        # ubuntu-24.04-arm/macos-latest are arm64; windows-latest and
-        # windows-11-arm build natively with MSVC, which picks its target
-        # from the host, so win_amd64 and win_arm64 need no configuration
-        # of their own. The vendored library is built with CMake
-        # everywhere, provisioned as a build requirement: no runner needs
-        # a toolchain installed by hand.
-        # Section 10 of the organization's standard in btclib-org/.github
-        # says when the x86_64 macOS images leave
+        # ubuntu-latest is x86_64, ubuntu-24.04-arm and macos-latest are
+        # arm64; windows-latest and windows-11-arm build natively with
+        # MSVC, which picks its target from the host, so win_amd64 and
+        # win_arm64 need no configuration of their own. The vendored
+        # library is built with CMake everywhere, provisioned as a build
+        # requirement: no runner needs a toolchain installed by hand
         os:
           - ubuntu-latest
           - ubuntu-24.04-arm
-          - macos-26-intel
           - macos-latest
           - windows-latest
           - windows-11-arm
-        # a pull request and a push to main build no x86_64 macOS wheel:
-        # see the header. github.event_name and github.ref_type are the
-        # caller's in a called workflow, and a release is a push of a tag,
-        # so it never excludes it
-        exclude: >-
-          ${{ fromJSON((github.event_name == 'pull_request'
-          || github.event_name == 'push' && github.ref_type == 'branch')
-          && '[{"os": "macos-26-intel"}]' || '[]') }}
 
     needs: changes
     steps:
@@ -569,21 +556,18 @@ jobs:
       # interpreters is asked nowhere -- os-ubuntu.yml's header carries
       # that trade and what answers the rest of the question instead.
       #
-      # A push to main builds every interpreter on the images it runs, and
-      # a release and a rehearsal build every interpreter on every image,
-      # macos-26-intel included -- in a called workflow github.event_name
-      # is the caller's, which is never pull_request -- so the
-      # interpreters this does not reach on a branch are reached by the
-      # run that follows the merge, and by the release on macos-26-intel,
-      # and the release publishes nothing this shortcut has touched
+      # A push to main, a release and a rehearsal build every interpreter
+      # on every image -- in a called workflow github.event_name is the
+      # caller's, which is never pull_request -- so the interpreters this
+      # does not reach on a branch are reached by the run that follows the
+      # merge, and the release publishes nothing this shortcut has touched
       #
       # cp311 is the floor requires-python declares, and building it is
       # what lets a pull request reach the standard library of the patch
       # release cibuildwheel pins that interpreter to on the macOS and
       # Windows images. A newer interpreter alone leaves that to the push
-      # to main, and to the release for the x86_64 macOS image, so a
-      # keyword absent from that patch passes a pull request and fails
-      # there -- #529 is that failure, on 3.10.11.
+      # to main, so a keyword absent from that patch passes a pull request
+      # and fails there -- #529 is that failure, on 3.10.11.
       #
       # cp315t is the free-threaded build of the interpreter
       # .python-version pins, and the second pattern selects it on every
@@ -649,10 +633,10 @@ jobs:
   # build-cibuildwheel: there the image is the whole cell, and every
   # image of that list is one wheel-reproducibility.yml's rebuild builds
   # on, through uv build, which builds for the machine it runs on and
-  # not for iOS. A release and a dispatch build it, as they build
-  # macos-26-intel there, and a pull request and a push to main skip it
-  # (see the header): github.event_name and github.ref_type are the
-  # caller's in a called workflow, and a release is a push of a tag
+  # not for iOS. A release and a dispatch build it, and a pull request and
+  # a push to main skip it (see the header): github.event_name and
+  # github.ref_type are the caller's in a called workflow, and a release
+  # is a push of a tag
   build-ios:
     name: Build the iOS wheels, and run the suite in the simulator
     if: >-
@@ -728,14 +712,9 @@ jobs:
       # see build-cibuildwheel
       fail-fast: false
       matrix:
-        # ubuntu-latest/macos-26-intel are x86_64,
-        # ubuntu-24.04-arm/macos-latest are arm64
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-26-intel, macos-latest]
-        # see build-cibuildwheel
-        exclude: >-
-          ${{ fromJSON((github.event_name == 'pull_request'
-          || github.event_name == 'push' && github.ref_type == 'branch')
-          && '[{"os": "macos-26-intel"}]' || '[]') }}
+        # ubuntu-latest is x86_64, ubuntu-24.04-arm and macos-latest are
+        # arm64
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
 
     needs: changes
     steps:
@@ -762,23 +741,27 @@ jobs:
           suffix: ${{ inputs.version-suffix }}
 
       # a dynamic wheel compiles no extension, so nothing derives its
-      # platform tag from a toolchain: without this the macOS version in
-      # the tag is the runner's own, and pip on any older macOS refuses a
-      # wheel that would have loaded there. CMake reads the same variable
-      # (CMAKE_OSX_DEPLOYMENT_TARGET defaults to it), so the vendored
-      # library is built for the floor its tag then claims. 11.0 is where
-      # arm64 macOS starts; 10.13 is what cibuildwheel gives the static
-      # x86_64 wheels of cp312 and cp313, and the Xcode of the macOS 26
-      # image still compiles for it
-      - name: Set the macOS deployment target
+      # platform tag from a toolchain: without MACOSX_DEPLOYMENT_TARGET
+      # the macOS version in the tag is the runner's own, and pip on any
+      # older macOS refuses a wheel that would have loaded there. CMake
+      # reads the same variable (CMAKE_OSX_DEPLOYMENT_TARGET defaults to
+      # it), so the vendored library is built for the floor its tag then
+      # claims. 11.0 is where arm64 macOS starts.
+      #
+      # The interpreter setup-python installs is universal2, and
+      # sysconfig.get_platform() gives the tag its architecture and CMake
+      # the ones it builds the library for (scripts/cffi_build.py). Left
+      # to the interpreter, the wheel is tagged universal2 and its library
+      # carries an x86_64 slice, so pip on an x86_64 Mac would install it.
+      # get_platform() returns _PYTHON_HOST_PLATFORM where that is set,
+      # and cibuildwheel sets this same value for the static arm64
+      # wheels: the wheel is then macosx_11_0_arm64, its library arm64
+      # alone
+      - name: Aim the macOS build at arm64 and macOS 11.0
         if: runner.os == 'macOS'
-        # the expression is a step env var rather than text spliced into
-        # the script: what reaches the shell is then a value and never a
-        # fragment of a command, which is the shape zizmor asks for
-        env:
-          TARGET: ${{ matrix.os == 'macos-26-intel' && '10.13' || '11.0' }}
         run: |
-          echo "MACOSX_DEPLOYMENT_TARGET=$TARGET" >> "$GITHUB_ENV"
+          echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> "$GITHUB_ENV"
+          echo "_PYTHON_HOST_PLATFORM=macosx-11.0-arm64" >> "$GITHUB_ENV"
 
       # the wheel this uploads is repaired too, by the auditwheel or
       # delocate step below rather than by cibuildwheel: see
@@ -1200,32 +1183,43 @@ jobs:
       - name: Show distributions
         run: ls -l dist
 
-      # the matrices above leave macos-26-intel out of a pull request and
-      # a push to main, and nowhere else. The release publishes what they
-      # built, and a cell that went missing from a run would read as a
-      # pass, so a release and a dispatch refuse a dist without both a
-      # static and a dynamic x86_64 macOS wheel. The guard reads no
-      # github.ref_type, unlike the exclusion: a misreading of it must
-      # not skip the check that would catch it. Only release.yml's call
-      # sets use-signed-dist. The dynamic wheel is universal2, and the
-      # deployment target 10.13 that build-dynamic sets on macos-26-intel
-      # alone tells it from the 11.0 one of macos-latest
-      - name: Check the x86_64 macOS wheels were built (release and dispatch)
-        if: ${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}
+      # macOS is arm64 alone (see the header), and the tag is what pip on
+      # an x86_64 Mac reads: it installs x86_64, intel, fat3, fat64,
+      # universal and universal2 wheels. So every run refuses a dist
+      # holding a wheel with a macosx tag that is not arm64, each tag of a
+      # compressed set read on its own. A tag is compared without case,
+      # as packaging lowercases it, and the glob keeps `.whl` lower case,
+      # the only extension packaging reads as a wheel. The names are read
+      # as values and never as shell text
+      - name: Check every macOS wheel is for arm64 alone
         shell: bash
         run: |
-          shopt -s nullglob
-          static=(dist/*-cp3*-macosx_*_x86_64.whl)
-          dynamic=(dist/*-py3-none-macosx_10_13_universal2.whl)
-          if [ ${#static[@]} -eq 0 ] || [ ${#dynamic[@]} -eq 0 ]; then
-            echo "::error::dist lacks a static or a dynamic x86_64 macOS wheel"
+          shopt -s nullglob nocasematch
+          refused=()
+          for wheel in dist/*.whl; do
+            platform=${wheel%.whl}
+            platform=${platform##*-}
+            while :; do
+              tag=${platform%%.*}
+              if [[ $tag == macosx_* && $tag != *_arm64 ]]; then
+                refused+=("$wheel")
+                break
+              fi
+              [[ $platform == *.* ]] || break
+              platform=${platform#*.}
+            done
+          done
+          if [ ${#refused[@]} -ne 0 ]; then
+            echo "::error::dist holds a macOS wheel not for arm64 alone: ${refused[*]}"
             exit 1
           fi
 
       # build-ios is skipped on a pull request and a push to main, and
       # check-dist takes that skip, so a release and a dispatch refuse a
       # dist without a device and a simulator wheel. The guard reads no
-      # github.ref_type, for the reason the step above gives
+      # github.ref_type, unlike build-ios's condition: a misreading of it
+      # must not skip the check that would catch it. Only release.yml's
+      # call sets use-signed-dist
       - name: Check the iOS wheels were built (release and dispatch)
         if: ${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}
         shell: bash

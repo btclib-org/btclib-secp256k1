@@ -64,6 +64,11 @@ The iOS wheels have a job in each file and no matrix: `build-ios` in
 the events each runs on, the image the two share, and that `check-dist`
 asks for their wheels and the release downloads them.
 
+macOS is arm64 alone, as section 10 of the organization's standard says.
+What is held of it is that no workflow names an x86_64 macOS image, that
+the dynamic macOS wheel is aimed at arm64 in both files, and that
+`check-dist` admits a macOS wheel for arm64 alone.
+
 Read with a regex rather than parsed, for the same reason
 `interpreters_test.py` gives: a workflow is yaml and no group here
 carries a parser for it.
@@ -71,8 +76,14 @@ carries a parser for it.
 
 import fnmatch
 import re
+import subprocess
 from collections import defaultdict
+from itertools import takewhile
 from pathlib import Path
+
+import pytest
+
+from .ios_test import STARTS_A_PROCESS
 
 _ROOT = Path(__file__).parents[1]
 _GATE = (_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8")
@@ -101,18 +112,6 @@ _INCLUDE_ENTRY = re.compile(
     r"^          - platform: (?P<platform>\S+)\n            os: (?P<os>\S+)$",
     re.MULTILINE,
 )
-# a platform written as the matrix's own axes, which is how the
-# x86_64 macOS images are written: `exclude` removes only what the axes
-# make, and a pull request builds none of them
-_AXES = re.compile(
-    r"^        platform: \[(?P<platform>[^\]]+)\]\n"
-    r"        os: \[(?P<os>[^\]]+)\]$",
-    re.MULTILINE,
-)
-# the `exclude:` expression a matrix carries, as a folded scalar
-_EXCLUDE = re.compile(
-    r"^        exclude: >-\n(?P<expr>(?:^          \S.*\n)+)", re.MULTILINE
-)
 
 
 def _job_body(text: str, name: str) -> str:
@@ -134,15 +133,13 @@ def _os_list(body: str) -> tuple[str, ...]:
 
 
 def _images_by_platform(body: str) -> dict[str, list[str]]:
-    """Return the images a job body's `include:` rows and axes name.
+    """Return the images a job body's `include:` rows name.
 
     The result is keyed by platform.
     """
     images: dict[str, list[str]] = defaultdict(list)
     for entry in _INCLUDE_ENTRY.finditer(body):
         images[entry["platform"]].append(entry["os"])
-    for axes in _AXES.finditer(body):
-        images[axes["platform"]].extend(o.strip() for o in axes["os"].split(","))
     return images
 
 
@@ -315,73 +312,11 @@ def test_the_aggregate_reads_every_needs_job_result() -> None:
     assert _env_block("NEEDS_RESULTS") == expected
 
 
-def _exclusion(body: str) -> str:
-    """Return the `exclude:` expression of a job body, on one line."""
-    exclude = _EXCLUDE.search(body)
-    assert exclude, "no exclude: expression in this job"
-    return " ".join(exclude["expr"].split())
-
-
-# where each file's matrices drop the Intel image: test.yml on a pull request
-# and on a push to a branch (a release is a push of a tag, and a dispatch
-# is neither), the sentinel on a pull request, having no push trigger
-_GATE_SKIPS = (
-    "(github.event_name == 'pull_request' || github.event_name == 'push'"
-    " && github.ref_type == 'branch')"
-)
-_SENTINEL_SKIPS = "github.event_name == 'pull_request'"
-
-
-def test_no_x86_64_macos_image_runs_where_the_calendar_alone_asks() -> None:
-    """Each job listed below excludes its `-intel` image unless asked.
-
-    CONTRIBUTING.md's *What gates a merge, and what only reports* gives
-    the rule as this tree applies it. A job that lists such an image without
-    excluding it would put it back on every pull request without a test
-    failing, and the branches swapped would run it there alone.
-    """
-    jobs = [
-        (_GATE, "build-cibuildwheel", "os", _GATE_SKIPS),
-        (_GATE, "build-dynamic", "os", _GATE_SKIPS),
-        (_SENTINEL, "rebuild", "platform", _SENTINEL_SKIPS),
-        (_SENTINEL, "repaired", "platform", _SENTINEL_SKIPS),
-        (_SENTINEL, "dynamic", "os", _SENTINEL_SKIPS),
-    ]
-    for text, name, key, skips in jobs:
-        body = _job_body(text, name)
-        listed = set(re.findall(r"macos-\d+-intel", body))
-        assert listed, f"{name} names no x86_64 macOS image"
-        # as include rows the image would escape the exclusion, which
-        # removes only what the axes make
-        rows = [e["os"] for e in _INCLUDE_ENTRY.finditer(body)]
-        assert not [r for r in rows if r.endswith("-intel")], (
-            f"{name} lists an -intel image as an include row"
-        )
-        value = "macos-x86-64" if key == "platform" else "macos-26-intel"
-        expr = _exclusion(body)
-        assert expr == (
-            f"${{{{ fromJSON({skips} && '[{{\"{key}\": \"{value}\"}}]' || '[]') }}}}"
-        ), f"{name} does not exclude {value} where it should: {expr}"
-
-
-def test_check_dist_asks_for_the_x86_64_macos_wheels_at_a_release() -> None:
-    """The step refuses a release or a dispatch that built no Intel wheel."""
-    body = _job_body(_GATE, "check-dist")
-    step = re.search(
-        r"- name: Check the x86_64 macOS wheels were built.*\n        if: (?P<cond>.*)\n",
-        body,
-    )
-    assert step, "check-dist has no step asking for the x86_64 macOS wheels"
-    assert step["cond"] == (
-        "${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}"
-    )
-
-
 # a job's own `if:`, as the folded scalar the iOS jobs write it in
 _IF = re.compile(r"^    if: >-\n(?P<expr>(?:^      \S.*\n)+)", re.MULTILINE)
 # the conditions the iOS jobs carry: the gate's skips a pull request and a
-# push to a branch, as `_GATE_SKIPS` excludes the Intel image there, and
-# the sentinel's a pull request, as `_SENTINEL_SKIPS` does
+# push to a branch (a release is a push of a tag, and a dispatch is
+# neither), the sentinel's a pull request, having no push trigger
 _BUILD_IOS_IF = (
     "${{ !github.event.pull_request.draft"
     " && needs.changes.outputs.code == 'true'"
@@ -432,12 +367,13 @@ def _condition(body: str) -> str:
     return " ".join(found["expr"].split()) if found else ""
 
 
-def test_the_ios_jobs_skip_where_the_x86_64_macos_cells_do() -> None:
-    """`build-ios` and `repaired-ios` run on the events the Intel image does.
+def test_the_ios_jobs_skip_a_pull_request() -> None:
+    """`build-ios` and `repaired-ios` skip a pull request.
 
-    They have no matrix to exclude from, so the events are their `if:`,
-    and each is read whole: a clause dropped, or joined by `||`, is a
-    condition that builds iOS on a pull request, or on no release.
+    `build-ios` is test.yml's and also skips a push to a branch, and
+    `repaired-ios` is wheel-reproducibility.yml's. Each `if:` is read
+    whole: a clause dropped, or joined by `||`, is a different condition,
+    and the test fails on it.
     """
     assert _condition(_job_body(_GATE, "build-ios")) == _BUILD_IOS_IF
     assert _condition(_job_body(_SENTINEL, "repaired-ios")) == _REPAIRED_IOS_IF
@@ -547,3 +483,207 @@ def test_the_release_publishes_the_ios_wheels() -> None:
         patterns = _PATTERN.findall(_job_body(text, job))
         assert patterns, f"{job} downloads no artifact by pattern"
         assert any(fnmatch.fnmatchcase(upload["name"], p) for p in patterns), job
+
+
+# an x86_64 macOS runner label, as the standard's `tests/macos_test.py`
+# spells it: GitHub's end in `-intel` or `-large`, and `-xlarge` is arm64
+_X86_64_MACOS = re.compile(r"\bmacos-(?:\d+|latest)-(?:intel|large)\b")
+# GitHub runs a workflow file of either suffix
+_WORKFLOW_SUFFIXES = ("*.yml", "*.yaml")
+
+
+def _workflows(directory: Path) -> list[Path]:
+    """Return the workflow files of a directory, of either suffix, sorted."""
+    return sorted(
+        path for suffix in _WORKFLOW_SUFFIXES for path in directory.glob(suffix)
+    )
+
+
+_WORKFLOWS = _workflows(_ROOT / ".github/workflows")
+
+
+@pytest.mark.parametrize(
+    "line, expected",
+    [
+        ("runs-on: macos-26-intel", ["macos-26-intel"]),
+        ("os: [ubuntu-latest, macos-15-intel]", ["macos-15-intel"]),
+        ("          - macos-26-large", ["macos-26-large"]),
+        ("# macos-latest-large is x86_64", ["macos-latest-large"]),
+        ("os: [macos-latest, macos-15, macos-26-xlarge]", []),
+    ],
+)
+def test_the_image_pattern_finds_an_x86_64_label_and_no_other(
+    line: str, expected: list[str]
+) -> None:
+    """An `-intel` or `-large` label is found, and an arm64 one is not."""
+    assert _X86_64_MACOS.findall(line) == expected
+
+
+def test_the_workflow_listing_reads_both_suffixes(tmp_path: Path) -> None:
+    """A `.yml` and a `.yaml` file are listed, and nothing else is."""
+    for name in ("a.yml", "b.yaml", "c.txt", "d.yml.orig"):
+        (tmp_path / name).touch()
+    assert [path.name for path in _workflows(tmp_path)] == ["a.yml", "b.yaml"]
+
+
+def test_no_workflow_names_an_x86_64_macos_image() -> None:
+    """No line of a workflow names one, its comments included.
+
+    Section 10 of the organization's standard refuses such a runner, and
+    its `tests/macos_test.py` reads the strings of each parsed workflow.
+    This module parses no yaml, so it reads every line instead.
+    """
+    assert _WORKFLOWS, "no workflow under .github/workflows"
+    found = [
+        f"{path.name}:{number}: {label}"
+        for path in _WORKFLOWS
+        for number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        )
+        for label in _X86_64_MACOS.findall(line)
+    ]
+    assert not found, f"x86_64 macOS images in the workflows: {found}"
+
+
+# the step that aims a macOS dynamic build at arm64, in both files
+_ARM64_ALONE = (
+    "      - name: Aim the macOS build at arm64 and macOS 11.0\n"
+    "        if: runner.os == 'macOS'\n"
+    "        run: |\n"
+    '          echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> "$GITHUB_ENV"\n'
+    '          echo "_PYTHON_HOST_PLATFORM=macosx-11.0-arm64" >> "$GITHUB_ENV"\n'
+)
+
+
+def test_the_dynamic_macos_wheel_is_built_for_arm64_alone() -> None:
+    """`build-dynamic` and `dynamic` aim the macOS build at arm64 first.
+
+    The interpreter setup-python installs is universal2: without the host
+    platform the wheel is tagged universal2 and its library carries an
+    x86_64 slice. The step is read whole, and before the build it feeds.
+    """
+    for text, job, build in (
+        (_GATE, "build-dynamic", "- name: Build wheel\n"),
+        (
+            _SENTINEL,
+            "dynamic",
+            "- name: Build the dynamic wheel twice and diff the two archives\n",
+        ),
+    ):
+        body = _job_body(text, job)
+        assert body.count(_ARM64_ALONE) == 1, f"{job} does not aim at arm64"
+        assert build in body, f"{job} has no step {build.strip()}"
+        assert body.index(_ARM64_ALONE) < body.index(build), job
+
+
+# check-dist's step that admits a macOS wheel for arm64 alone: its name,
+# then its shell and its script, so an `if:` between them is no match
+_ARM64_STEP = (
+    "      - name: Check every macOS wheel is for arm64 alone\n"
+    "        shell: bash\n"
+    "        run: |\n"
+)
+_SCRIPT_INDENT = " " * 10
+_BASH = Path("/bin/bash")
+
+
+def _arm64_step() -> tuple[str, str]:
+    """Return check-dist's arm64 step whole, and its script dedented."""
+    body = _job_body(_GATE, "check-dist")
+    assert body.count(_ARM64_STEP) == 1, "check-dist lacks the arm64 step"
+    start = body.index(_ARM64_STEP)
+    end = body.find("      - name: ", start + len(_ARM64_STEP))
+    step = body[start:end] if end != -1 else body[start:]
+    # the script is the lines at its indent, up to the first that is not
+    lines = step[len(_ARM64_STEP) :].splitlines()
+    script = takewhile(lambda line: line.startswith(_SCRIPT_INDENT), lines)
+    return step, "".join(f"{line[len(_SCRIPT_INDENT) :]}\n" for line in script)
+
+
+def test_check_dist_admits_a_macos_wheel_for_arm64_alone() -> None:
+    """The step runs on every event, after the wheels are downloaded.
+
+    It has no `if:` anywhere in it, and its script ends the job where it
+    refuses a wheel. What it refuses is the test below's.
+    """
+    body = _job_body(_GATE, "check-dist")
+    step, script = _arm64_step()
+    assert "\n        if:" not in step
+    assert body.index("- name: Download the wheels\n") < body.index(_ARM64_STEP)
+    assert "for wheel in dist/*.whl; do\n" in script
+    assert "  exit 1\n" in script
+
+
+def _run_step(root: Path, names: list[str]) -> subprocess.CompletedProcess[str]:
+    """Run the step's script as the runner does, on a `dist` of empty files."""
+    dist = root / "dist"
+    dist.mkdir(exist_ok=True)
+    for name in names:
+        (dist / name).touch()
+    return subprocess.run(  # noqa: S603
+        [
+            str(_BASH),
+            "--noprofile",
+            "--norc",
+            "-e",
+            "-o",
+            "pipefail",
+            "-c",
+            _arm64_step()[1],
+        ],
+        cwd=root,
+        capture_output=True,
+        encoding="utf-8",
+        check=False,
+    )
+
+
+@STARTS_A_PROCESS
+@pytest.mark.skipif(not _BASH.exists(), reason="no /bin/bash to run the step")
+@pytest.mark.parametrize(
+    "tag, refused",
+    [
+        ("macosx_10_15_x86_64", True),
+        ("macosx_10_9_intel", True),
+        ("macosx_10_9_fat3", True),
+        ("macosx_10_9_fat64", True),
+        ("macosx_10_9_universal", True),
+        ("macosx_11_0_universal2", True),
+        ("macosx_10_13_x86_64.macosx_11_0_arm64", True),
+        ("macosx_11_0_arm64.macosx_10_13_x86_64", True),
+        ("MACOSX_11_0_X86_64", True),
+        ("macosx_11_0_arm64.MACOSX_11_0_X86_64", True),
+        ("macosx_11_0_arm64", False),
+        ("macosx_11_0_ARM64", False),
+        ("macosx_11_0_arm64.macosx_12_0_arm64", False),
+        ("manylinux_2_28_x86_64", False),
+        ("ios_13_0_arm64_iphonesimulator", False),
+        ("win_amd64", False),
+    ],
+)
+def test_the_step_refuses_every_macos_tag_but_arm64(
+    tmp_path: Path, tag: str, refused: bool
+) -> None:
+    """A wheel with a macosx tag other than arm64 fails the step.
+
+    The x86_64 tags are those packaging's `mac_platforms` gives pip on an
+    x86_64 Mac, and a compressed set fails on whichever of its tags is
+    not arm64. A tag is read without case, as packaging lowercases it.
+    Wheels of the other platforms pass.
+    """
+    run = _run_step(tmp_path, [f"btclib_secp256k1-0.8.0.16-py3-none-{tag}.whl"])
+    assert run.returncode == (1 if refused else 0), run.stdout + run.stderr
+
+
+@STARTS_A_PROCESS
+@pytest.mark.skipif(not _BASH.exists(), reason="no /bin/bash to run the step")
+def test_the_step_reads_a_hostile_name_as_a_value(tmp_path: Path) -> None:
+    """A name holding shell text runs none of it, admitted or refused."""
+    admitted = "x-0-py3-none-$(touch a)`touch b`.macosx_11_0_arm64.whl"
+    refused = "y-0-py3-none-macosx_10_9_x86_64;touch c.whl"
+    run = _run_step(tmp_path, [admitted])
+    assert run.returncode == 0, run.stdout + run.stderr
+    run = _run_step(tmp_path, [refused])
+    assert run.returncode == 1
+    assert refused in run.stdout
+    assert not [n for n in ("a", "b", "c") if (tmp_path / n).exists()]

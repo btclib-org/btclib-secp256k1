@@ -950,21 +950,23 @@ command at all, for the reason below, and nothing requires its result.
       uv run --locked --only-group build python -m build -w
   ```
 
-  on macOS the job exports a deployment target first, 11.0, or 10.13 on
-  x86_64, and reproducing it means exporting the same one:
+  on macOS the job exports a deployment target and an arm64 host
+  platform first, and reproducing it means exporting the same two:
 
   ```shell
   export MACOSX_DEPLOYMENT_TARGET=11.0
+  export _PYTHON_HOST_PLATFORM=macosx-11.0-arm64
   ```
 
   a dynamic wheel compiles no extension, so nothing derives its platform
-  tag from a toolchain: without that variable `hatch_build.py` falls back
-  to `platform.mac_ver()`, and the wheel comes out `macosx_26_0_arm64` on
-  a macOS 26 machine — a tag `pip` refuses on every older macOS the file
-  would in fact have loaded on. CMake reads the same variable, so the
-  vendored library is built for the floor the tag then claims; the two
-  values and the reasoning behind them are in `test.yml`, next to the
-  step that exports them.
+  tag from a toolchain: without the first variable `hatch_build.py` falls
+  back to `platform.mac_ver()`, and the wheel comes out
+  `macosx_26_0_arm64` on a macOS 26 machine — a tag `pip` refuses on
+  every older macOS the file would in fact have loaded on. CMake reads
+  the same variable, so the vendored library is built for the floor the
+  tag then claims. Without the second, a universal2 interpreter builds a
+  universal2 wheel, its library carrying an x86_64 slice. The reasoning
+  behind both is in `test.yml`, next to the step that exports them.
 
   On every platform of that job the build timestamp is pinned as well,
   as in `Build wheels on <os>` above -- `auditwheel` and `delocate` run
@@ -1478,7 +1480,7 @@ tree's prose:
   `python_version` is a minor version and it refuses a patch, so
   nothing it can be aimed at tells one patch from the next. What does is
   the suite the wheel jobs run under `cp311`, which a pull request
-  builds on every image but the x86_64 macOS one, built at a release
+  builds on every image
 - **the version is declared once,** in `pyproject.toml`, and
   `__version__` reads the installed metadata. Never bump it in an
   ordinary change: releases are cut by a maintainer following
@@ -1538,7 +1540,7 @@ would leave a required check `Pending`, as `REPOSITORY.md` says of
 
 | workflow | when | what it varies |
 | --- | --- | --- |
-| `test` | pull request, push | the wheels, those of x86_64 macOS and iOS at a release and a dispatch only, the sdist, one suite cell |
+| `test` | pull request, push | the wheels, those of iOS at a release and a dispatch only, the sdist, one suite cell |
 | `lint`, `docs` | pull request, push | — |
 | `sourcery` | pull request | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
@@ -1556,7 +1558,7 @@ would leave a required check `Pending`, as `REPOSITORY.md` says of
 | `links` | weekly, a pull request touching its own configuration | — |
 | `mutation` | weekly | — |
 | `fuzz` | weekly | — |
-| `wheel-reproducibility` | weekly, pull request, building only where it touches what it builds | every wheel platform but iOS, on two images, built twice on each, and the repaired, iOS, dynamic and cross-compiled wheels, built twice on one image per platform; x86_64 macOS and iOS weekly and on a dispatch only |
+| `wheel-reproducibility` | weekly, pull request, building only where it touches what it builds | every wheel platform but iOS, on two images, built twice on each, and the repaired, iOS, dynamic and cross-compiled wheels, built twice on one image per platform; iOS weekly and on a dispatch only |
 | `sdist-rebuild` | weekly, a pull request touching its own file | — |
 | `pypi-install` | weekly, a release | what PyPI serves |
 | `release` | a tag | calls the gates and the rows marked *a release* |
@@ -1587,8 +1589,8 @@ on every interpreter, the cell the gate already covers included. A matrix with
 the gate's cell cut out of it is one nobody can read the shape of, and
 whoever asked what ran would have to re-derive the hole from the gate.
 
-**Every image but x86_64 macOS still builds wheels on every pull request
-that `build-cibuildwheel` runs on** (its `if:` in `test.yml` says which):
+**Every image builds wheels on every pull request that
+`build-cibuildwheel` runs on** (its `if:` in `test.yml` says which):
 `cibuildwheel` runs the suite against each wheel as it builds it, and the
 release publishes the artifacts of a run that built every one. What narrows
 on a branch is which interpreters per image — the oldest one and the
@@ -1614,16 +1616,11 @@ against the dynamic wheel as a package — the sentinels compile that
 linkage from the tree instead. `os-ubuntu.yml`'s header records both
 costs beside each other.
 
-**x86_64 macOS builds only at a release, on a dispatch and on the calendar**,
-never on a pull request or a push to `main`. `test` builds its wheels at a
-release and a dispatch, and `check-dist` fails those runs unless they are
-there; `wheel-reproducibility` builds its images weekly and on a dispatch.
-Section 10 of the organization's standard in `btclib-org/.github` has the
-reason and when it ends.
-
-**iOS builds on the same events**, as decided on #1385: `test`'s
-`build-ios` at a release and a dispatch, checked by `check-dist` the same
-way, and `wheel-reproducibility`'s `repaired-ios` weekly and on a dispatch.
+**iOS builds only at a release, on a dispatch and on the calendar**, as
+decided on #1385, never on a pull request or a push to `main`. `test`'s
+`build-ios` builds at a release and a dispatch, and `check-dist` fails
+those runs unless its wheels are there; `wheel-reproducibility`'s
+`repaired-ios` builds weekly and on a dispatch.
 `cibuildwheel` runs the suite in the simulator against each simulator wheel,
 and no test against a device wheel.
 
