@@ -367,13 +367,18 @@ def test_macos_gets_no_branch_protection_and_no_linker_flag(machine: str) -> Non
     assert hardening_options("Darwin", machine, False) == (_COMMON, [])
 
 
-@pytest.mark.parametrize("machine", ["aarch64", "x86_64"])
-def test_android_gets_no_branch_protection_and_no_linker_flag(machine: str) -> None:
-    """The NDK toolchain links `relro` and `now` without being asked.
-
-    No branch protection yet: btclib-org/btclib-secp256k1#1390.
-    """
-    assert hardening_options("Android", machine, False) == (_COMMON, [])
+@pytest.mark.parametrize(
+    "machine, branch",
+    [
+        ("x86_64", "-fcf-protection=full"),
+        ("aarch64", "-mbranch-protection=standard"),
+    ],
+)
+def test_android_gets_branch_protection_and_no_linker_flag(
+    machine: str, branch: str
+) -> None:
+    """Android takes Linux's compile flags; the NDK links `relro` and `now`."""
+    assert hardening_options("Android", machine, False) == ([*_COMMON, branch], [])
 
 
 @pytest.mark.parametrize("machine", ["AMD64", "ARM64"])

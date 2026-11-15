@@ -481,11 +481,13 @@ def _hardening_options(
       Mach-O file has no `relro`, `now` or marking to read back, and
       Apple's compiler rejects `-mbranch-protection` for an x86_64
       target.
-    - Android: the same two flags, and no link flag. The NDK toolchain
+    - Android: Linux's compile flags, and no link flag. The NDK toolchain
       links the glue with a `GNU_RELRO` segment and `BIND_NOW` by
-      default. `-fcf-protection` and `-mbranch-protection` are not given
-      yet: what they leave in the glue's property note there is not
-      measured (btclib-org/btclib-secp256k1#1390).
+      default. The aarch64 extension is marked for BTI. The x86_64 one
+      is not marked for IBT and SHSTK: the NDK's `crtbegin_so.o` and
+      `crtend_so.o` carry no property note there, and `start_files_mark`
+      in `.github/scripts/verify_wheel_contents.py` says why the start
+      files decide.
     - Windows, MSVC: `/GS` and `/guard:cf`, linked with `/GUARD:CF`.
     - Windows, cross-compiled with mingw-w64: no compile flag, because
       the stack protector would link a `libssp` DLL; the DLL is linked
@@ -505,13 +507,13 @@ def _hardening_options(
             return [], ["-Wl,--dynamicbase", "-Wl,--nxcompat", "-Wl,--high-entropy-va"]
         return ["/GS", "/guard:cf"], ["/GUARD:CF"]
     cflags = ["-fstack-protector-strong", "-U_FORTIFY_SOURCE", "-D_FORTIFY_SOURCE=2"]
-    if system != "Linux":
+    if system not in {"Linux", "Android"}:
         return cflags, []
     if machine.lower() in {"x86_64", "amd64"}:
         cflags.append("-fcf-protection=full")
     elif machine.lower() in {"aarch64", "arm64"}:
         cflags.append("-mbranch-protection=standard")
-    return cflags, ["-Wl,-z,relro", "-Wl,-z,now"]
+    return cflags, ["-Wl,-z,relro", "-Wl,-z,now"] if system == "Linux" else []
 
 
 def _link_command(  # noqa: PLR0913, PLR0917
