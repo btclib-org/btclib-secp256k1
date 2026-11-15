@@ -1,0 +1,5 @@
+# uv's configuration in cibuildwheel's Android builds, which
+# [tool.cibuildwheel.android] in pyproject.toml names in UV_CONFIG_FILE,
+# with the reason
+[pip]
+reinstall = true

@@ -1308,3 +1308,36 @@ archs = ["arm64_iphoneos", "arm64_iphonesimulator"]
 # test app holds only the files `test-sources` copies into it and starts
 # no process, where part of the suite reads the tree and starts processes
 test-skip = "*-ios_*"
+
+[tool.cibuildwheel.android]
+# cibuildwheel installs [build-system]'s `requires` into its Android build
+# environment with `uv pip install`, and builds there without isolation:
+# UV_BUILD_CONSTRAINT, which binds an isolated build's requirements, binds
+# none of them, and UV_CONSTRAINT does. cibuildwheel's installs of its own
+# tools name a constraint file on the command line, which uv takes in
+# place of UV_CONSTRAINT.
+#
+# Those tools are installed first, packaging among them, and uv checks no
+# hash of a package already installed. uv-android.toml, which
+# UV_CONFIG_FILE names, has every `uv pip install` reinstall what it
+# installs, so that each build requirement is checked against
+# build-constraints.txt. An isolated build installs each of them into a
+# new environment, and checks it there. The file takes the place of
+# [tool.uv] for uv in those builds, as UV_NO_CONFIG does on Linux above.
+#
+# UV_PYTHON is that environment's interpreter: cibuildwheel's `uv build`
+# names none, and uv then reads .python-version. Where the build's Python
+# is another version, uv takes an interpreter that lacks the build
+# requirements (btclib-org/btclib-secp256k1#1388). A platform's
+# `environment` replaces the global one
+environment = { UV_CONSTRAINT = "build-constraints.txt", UV_CONFIG_FILE = "uv-android.toml", UV_PYTHON = "$VIRTUAL_ENV/bin/python" }
+# both architectures, as `auto64` above selects only the build machine's
+archs = ["arm64_v8a", "x86_64"]
+# the suite does not run on the emulator yet: cffi, which the wheel
+# requires, publishes no Android wheel on PyPI, and the test step installs
+# wheels only. Past that, cibuildwheel refuses the `{project}` of
+# `test-command` on Android, and part of the suite reads the tree and
+# starts processes, where the emulator's test app holds only the files
+# `test-sources` copies into it and starts neither `git` nor the
+# interpreter
+test-skip = "*-android_*"
