@@ -95,6 +95,16 @@ void secp256k1_default_error_callback_fn(const char* str, void* data) {
 }
 """
 
+# the shared context's illegal callback, as cffi's `extern "Python"`:
+# cffi compiles its C into the extension, where `ffi.callback` would
+# allocate memory both writable and executable at run time, which iOS
+# refuses. It is declared in the cdef alone, being no C a compiler
+# reads, and only for a static build: cffi refuses it in ABI mode, where
+# `context.py` takes `ffi.callback` instead
+ILLEGAL_CALLBACK_DECLARATION = """
+extern "Python" void btclib_secp256k1_record_illegal(const char *, void *);
+"""
+
 # what this package's own C below shares: the headers it
 # includes and the export mark. The export is spelled out because this
 # file includes no upstream header to take `SECP256K1_API` from: a mingw
@@ -945,8 +955,9 @@ class VendoredCMakeExtension(FFIExtension):
     What `Secp256k1CFFIExtension` and `Secp256k1ZkpCFFIExtension` do not
     share is which submodule is read, which of its CMake modules are
     turned on, and which of its headers the cdef comes from -- the three
-    arguments `configure` below takes -- and the C of this package's own
-    that `own_source` names. Everything else is a property of
+    arguments `configure` below takes -- the C of this package's own
+    that `own_source` names, and the `extern "Python"` declarations of
+    `extern_python`. Everything else is a property of
     building this shape of upstream CMake project, once per submodule,
     and lives here so that it is written once: the architecture and
     deployment-target options, the callback stubs, the choice among the
@@ -960,6 +971,9 @@ class VendoredCMakeExtension(FFIExtension):
     # that declares none
     own_source = ""
     own_declarations = ""
+    # what a static build's cdef declares `extern "Python"`, after the
+    # preprocessed headers: empty for an extension that declares none
+    extern_python = ""
 
     def configure(
         self,
@@ -1290,6 +1304,8 @@ class VendoredCMakeExtension(FFIExtension):
         then expands the `__attribute__ ((...))` that cffi's parser cannot
         read. Raises RuntimeError if the preprocessing fails, a partial
         cdef being a wrapper that compiles and declares the wrong thing.
+        A static build's cdef then ends with `extern_python`, and a
+        dynamic one's does not, as `ILLEGAL_CALLBACK_DECLARATION` says.
 
         The pattern allows whitespace between `#` and `include`: every
         header of the primary submodule spells it `#include`, but three
@@ -1325,6 +1341,8 @@ class VendoredCMakeExtension(FFIExtension):
             definitions = definitions.replace("\r", "\n")
         if p.returncode != 0:
             raise RuntimeError(f"header preprocessing failed: {p.returncode}")
+        if self.static:
+            definitions += self.extern_python
         return ffi_header, definitions
 
 
@@ -1335,6 +1353,7 @@ class Secp256k1CFFIExtension(VendoredCMakeExtension):
     own_declarations = (
         ECDH_HASH_FUNCTION_XY_DECLARATION + LABEL_LOOKUP_SORTED_DECLARATION
     )
+    extern_python = ILLEGAL_CALLBACK_DECLARATION
 
     def __init__(self) -> None:
         """Name the sources, the headers and where the build output goes."""

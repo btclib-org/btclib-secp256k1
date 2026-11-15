@@ -5,15 +5,17 @@
 """Tests of what libsecp256k1 reports through the context's illegal callback.
 
 What it records is `context.check`'s to raise, except for the
-wrappers that read it through `context._checked`. Three parts are tested
-here. That `check` itself reports, clears and attributes per thread;
-that a wrapper handed an object libsecp256k1 cannot read answers
-*something* -- its own exception where a return code allowed one, and
-otherwise a value that means nothing -- while leaving the reason on the
-thread for a `check` that follows; and that the sums, the sort and the
-ECDH raise the reason instead, leaving the thread as they found it.
+wrappers that read it through `context._checked`. Four parts are tested
+here. That the context is given the `extern "Python"` function of a
+static build, and an `ffi.callback` otherwise; that `check` itself
+reports, clears and attributes per thread; that a wrapper handed an
+object libsecp256k1 cannot read answers *something* -- its own
+exception where a return code allowed one, and otherwise a value that
+means nothing -- while leaving the reason on the thread for a `check`
+that follows; and that the sums, the sort and the ECDH raise the reason
+instead, leaving the thread as they found it.
 
-The second part is the contract a caller has to know, so each of its
+The third part is the contract a caller has to know, so each of its
 shapes is driven rather than described: a raise whose message is the
 wrapper's own, a `False` from a verification, and an ordering from a
 comparison. The public entry points are the counter-case, parsing their
@@ -35,8 +37,10 @@ reasoning.
 from __future__ import annotations
 
 import threading
+import types
 from collections.abc import Callable
 
+import _btclib_secp256k1
 import pytest
 
 from btclib_secp256k1 import (
@@ -93,6 +97,75 @@ def test_check_clears_what_it_reported() -> None:
     # the message is not reported twice, and cannot be attributed to a
     # later call which did not produce one
     context.check()
+
+
+@pytest.mark.skipif(
+    not hasattr(_btclib_secp256k1, "lib"),
+    reason='a dynamic extension declares no extern "Python" function',
+)
+def test_a_static_extension_registers_its_extern_python_function() -> None:
+    """The callback of a static build is the C function cffi compiled.
+
+    That is the `extern "Python"` function, not an `ffi.callback`, and
+    calling it reaches `_record_illegal`, so its record is what `check`
+    raises.
+    """
+    assert context._illegal_callback == lib.btclib_secp256k1_record_illegal
+    lib.btclib_secp256k1_record_illegal(ffi.new("char[]", b"extern"), ffi.NULL)
+    with pytest.raises(ValueError, match="illegal argument: extern"):
+        context.check()
+
+
+def _stand_in_ffi(attached: list[tuple[str, object]]) -> types.SimpleNamespace:
+    """Build an `ffi` that records what it is asked to attach or wrap.
+
+    Args:
+        attached: where `def_extern` appends the name and the function.
+
+    Returns:
+        The stand-in, whose `callback` answers its two arguments.
+    """
+
+    def def_extern(name: str) -> Callable[[object], object]:
+        def attach(function: object) -> object:
+            attached.append((name, function))
+            return function
+
+        return attach
+
+    return types.SimpleNamespace(
+        def_extern=def_extern, callback=lambda cdecl, function: (cdecl, function)
+    )
+
+
+def test_a_lib_with_the_extern_python_function_gets_it() -> None:
+    """The static branch attaches `_record_illegal` and answers the function.
+
+    Stand-ins for the `ffi` and the `lib` run that branch on a dynamic
+    build too, whose `lib` declares no such function.
+    """
+    attached: list[tuple[str, object]] = []
+    function = object()
+    static_lib = types.SimpleNamespace(btclib_secp256k1_record_illegal=function)
+    assert (
+        context._illegal_callback_for(_stand_in_ffi(attached), static_lib) is function
+    )
+    assert attached == [("btclib_secp256k1_record_illegal", context._record_illegal)]
+
+
+def test_a_lib_without_the_extern_python_function_gets_an_ffi_callback() -> None:
+    """The dynamic branch wraps `_record_illegal` in an `ffi.callback`.
+
+    The `lib` stand-in lacks the static extension's function, as the one
+    `ffi.dlopen` returns does. The `ffi` stand-in makes no real callback,
+    so the branch runs on iOS too, which refuses one.
+    """
+    attached: list[tuple[str, object]] = []
+    callback = context._illegal_callback_for(
+        _stand_in_ffi(attached), types.SimpleNamespace()
+    )
+    assert callback == ("void(*)(const char *, void *)", context._record_illegal)
+    assert not attached
 
 
 def test_serialize_raises_its_own_failure() -> None:

@@ -28,6 +28,15 @@ own docstring giving the reason — and is kept the same shape regardless,
 so a dynamic path for it has one place to grow into rather than a call
 site inlined wherever the subpackage is read.
 
+The two builds also give the shared context its illegal callback
+differently: a static extension compiles it as cffi's `extern "Python"`,
+and a dynamic one gets an `ffi.callback`. `ILLEGAL_CALLBACK_DECLARATION`,
+in `scripts/cffi_build.py`, says why.
+`src/btclib_secp256k1/context.py`'s `_illegal_callback_for` takes the
+`ffi` and the `lib` as arguments for the same reason `_load_lib` takes
+the module, and `tests/callbacks_test.py` drives the branch a build
+lacks through a stand-in.
+
 Which of the two a wheel is is a build-time choice
 (`BTCLIB_LIBSECP256K1_DYNAMIC`, below), not a run-time one: a caller
 never selects a linkage, and every wrapper module calls the same `lib`
