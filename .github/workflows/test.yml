@@ -20,8 +20,9 @@ name: test
 # iOS wheels of build-ios build on a release and a dispatch, and
 # check-dist refuses those runs unless they are there, as decided on
 # #1385. macOS is arm64 alone, as section 10 of the organization's
-# standard in btclib-org/.github says, and check-dist refuses a macOS
-# wheel an x86_64 Mac would install.
+# standard in btclib-org/.github says. check-dist refuses a macOS wheel
+# an x86_64 Mac would install, and refuses a release or a dispatch
+# without a static and a dynamic arm64 macOS wheel.
 #
 # macOS was where the wait first showed, and the split is a measurement
 # rather than a preference. Over six pull request runs of this workflow,
@@ -1211,6 +1212,24 @@ jobs:
           done
           if [ ${#refused[@]} -ne 0 ]; then
             echo "::error::dist holds a macOS wheel not for arm64 alone: ${refused[*]}"
+            exit 1
+          fi
+
+      # the step above passes a dist with no macOS wheel, and no other
+      # step here asks for one: an upload that finds no file only warns,
+      # and the job's condition asks that each build succeeded, not that
+      # it uploaded a wheel. So a release and a dispatch refuse a dist
+      # without both a static and a dynamic arm64 macOS wheel. The guard
+      # reads no github.ref_type, for the reason the iOS check below gives
+      - name: Check the arm64 macOS wheels were built (release and dispatch)
+        if: ${{ inputs.use-signed-dist || github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          static=(dist/*-cp3*-macosx_*_arm64.whl)
+          dynamic=(dist/*-py3-none-macosx_*_arm64.whl)
+          if [ ${#static[@]} -eq 0 ] || [ ${#dynamic[@]} -eq 0 ]; then
+            echo "::error::dist lacks a static or a dynamic arm64 macOS wheel"
             exit 1
           fi
 

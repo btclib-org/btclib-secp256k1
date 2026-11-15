@@ -67,7 +67,8 @@ asks for their wheels and the release downloads them.
 macOS is arm64 alone, as section 10 of the organization's standard says.
 What is held of it is that no workflow names an x86_64 macOS image, that
 the dynamic macOS wheel is aimed at arm64 in both files, and that
-`check-dist` admits a macOS wheel for arm64 alone.
+`check-dist` admits a macOS wheel for arm64 alone and, at a release and
+a dispatch, asks for a static and a dynamic one.
 
 Read with a regex rather than parsed, for the same reason
 `interpreters_test.py` gives: a workflow is yaml and no group here
@@ -583,19 +584,28 @@ _ARM64_STEP = (
     "        shell: bash\n"
     "        run: |\n"
 )
+# check-dist's step that asks for the arm64 macOS wheels, with the events
+# it runs on: those of the iOS step
+_PRESENCE_STEP = (
+    "      - name: Check the arm64 macOS wheels were built (release and dispatch)\n"
+    "        if: ${{ inputs.use-signed-dist"
+    " || github.event_name == 'workflow_dispatch' }}\n"
+    "        shell: bash\n"
+    "        run: |\n"
+)
 _SCRIPT_INDENT = " " * 10
 _BASH = Path("/bin/bash")
 
 
-def _arm64_step() -> tuple[str, str]:
-    """Return check-dist's arm64 step whole, and its script dedented."""
+def _step(header: str) -> tuple[str, str]:
+    """Return the check-dist step a header opens, and its script dedented."""
     body = _job_body(_GATE, "check-dist")
-    assert body.count(_ARM64_STEP) == 1, "check-dist lacks the arm64 step"
-    start = body.index(_ARM64_STEP)
-    end = body.find("      - name: ", start + len(_ARM64_STEP))
+    assert body.count(header) == 1, f"check-dist lacks {header.splitlines()[0].strip()}"
+    start = body.index(header)
+    end = body.find("      - name: ", start + len(header))
     step = body[start:end] if end != -1 else body[start:]
     # the script is the lines at its indent, up to the first that is not
-    lines = step[len(_ARM64_STEP) :].splitlines()
+    lines = step[len(header) :].splitlines()
     script = takewhile(lambda line: line.startswith(_SCRIPT_INDENT), lines)
     return step, "".join(f"{line[len(_SCRIPT_INDENT) :]}\n" for line in script)
 
@@ -607,15 +617,30 @@ def test_check_dist_admits_a_macos_wheel_for_arm64_alone() -> None:
     refuses a wheel. What it refuses is the test below's.
     """
     body = _job_body(_GATE, "check-dist")
-    step, script = _arm64_step()
+    step, script = _step(_ARM64_STEP)
     assert "\n        if:" not in step
     assert body.index("- name: Download the wheels\n") < body.index(_ARM64_STEP)
     assert "for wheel in dist/*.whl; do\n" in script
     assert "  exit 1\n" in script
 
 
-def _run_step(root: Path, names: list[str]) -> subprocess.CompletedProcess[str]:
-    """Run the step's script as the runner does, on a `dist` of empty files."""
+def test_check_dist_asks_for_the_arm64_macos_wheels_at_a_release() -> None:
+    """The step runs at a release and a dispatch, after the download.
+
+    The step above passes a dist with no macOS wheel, so this one is what
+    refuses a release whose macOS build uploaded none. What it refuses is
+    the test below's.
+    """
+    body = _job_body(_GATE, "check-dist")
+    _, script = _step(_PRESENCE_STEP)
+    assert body.index("- name: Download the wheels\n") < body.index(_PRESENCE_STEP)
+    assert "  exit 1\n" in script
+
+
+def _run_step(
+    root: Path, names: list[str], header: str = _ARM64_STEP
+) -> subprocess.CompletedProcess[str]:
+    """Run a step's script as the runner does, on a `dist` of empty files."""
     dist = root / "dist"
     dist.mkdir(exist_ok=True)
     for name in names:
@@ -629,7 +654,7 @@ def _run_step(root: Path, names: list[str]) -> subprocess.CompletedProcess[str]:
             "-o",
             "pipefail",
             "-c",
-            _arm64_step()[1],
+            _step(header)[1],
         ],
         cwd=root,
         capture_output=True,
@@ -687,3 +712,36 @@ def test_the_step_reads_a_hostile_name_as_a_value(tmp_path: Path) -> None:
     assert run.returncode == 1
     assert refused in run.stdout
     assert not [n for n in ("a", "b", "c") if (tmp_path / n).exists()]
+
+
+# the wheels a release holds beside the macOS ones, and the two the step
+# asks for
+_OTHERS = [
+    "btclib_secp256k1-0.8.0.16-cp315-cp315-manylinux_2_28_x86_64.whl",
+    "btclib_secp256k1-0.8.0.16-cp315-cp315-win_amd64.whl",
+    "btclib_secp256k1-0.8.0.16-cp315-cp315-ios_13_0_arm64_iphoneos.whl",
+    "btclib_secp256k1-0.8.0.16-py3-none-manylinux_2_28_x86_64.whl",
+    "btclib_secp256k1-0.8.0.16.tar.gz",
+]
+_STATIC = "btclib_secp256k1-0.8.0.16-cp315-cp315-macosx_11_0_arm64.whl"
+_DYNAMIC = "btclib_secp256k1-0.8.0.16-py3-none-macosx_11_0_arm64.whl"
+
+
+@STARTS_A_PROCESS
+@pytest.mark.skipif(not _BASH.exists(), reason="no /bin/bash to run the step")
+@pytest.mark.parametrize(
+    "macos, refused",
+    [
+        ([_STATIC, _DYNAMIC], False),
+        ([_DYNAMIC], True),
+        ([_STATIC], True),
+        ([], True),
+    ],
+    ids=["both", "no-static", "no-dynamic", "none"],
+)
+def test_the_step_refuses_a_dist_without_either_macos_wheel(
+    tmp_path: Path, macos: list[str], refused: bool
+) -> None:
+    """A dist lacking the static or the dynamic arm64 wheel fails the step."""
+    run = _run_step(tmp_path, _OTHERS + macos, _PRESENCE_STEP)
+    assert run.returncode == (1 if refused else 0), run.stdout + run.stderr
