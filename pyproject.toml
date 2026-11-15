@@ -1308,3 +1308,23 @@ archs = ["arm64_iphoneos", "arm64_iphonesimulator"]
 # test app holds only the files `test-sources` copies into it and starts
 # no process, where part of the suite reads the tree and starts processes
 test-skip = "*-ios_*"
+
+[tool.cibuildwheel.android]
+# cibuildwheel installs [build-system]'s `requires` into its Android build
+# environment with `uv pip install`, and builds there without isolation:
+# UV_BUILD_CONSTRAINT, which binds an isolated build's requirements, binds
+# none of them, and UV_CONSTRAINT does. Its installs of its own tools name
+# a constraint file on the command line, which uv takes in place of
+# UV_CONSTRAINT.
+#
+# UV_PYTHON is that environment's interpreter: cibuildwheel's `uv build`
+# names none, and uv then takes the one .python-version names, which
+# lacks the build requirements (btclib-org/btclib-secp256k1#1388). A
+# platform's `environment` replaces the global one
+environment = { UV_CONSTRAINT = "build-constraints.txt", UV_PYTHON = "$VIRTUAL_ENV/bin/python" }
+# both architectures, as `auto64` above selects only the build machine's
+archs = ["arm64_v8a", "x86_64"]
+# the suite does not run on the emulator yet: cffi, which the wheel
+# requires, publishes no Android wheel on PyPI, and the test step installs
+# wheels only
+test-skip = "*-android_*"
