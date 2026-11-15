@@ -494,10 +494,8 @@ def _hardening_options(
     - Android: Linux's compile flags, and no link flag. The NDK toolchain
       links the glue with a `GNU_RELRO` segment and `BIND_NOW` by
       default. The aarch64 extension is marked for BTI. The x86_64 one
-      is not marked for IBT and SHSTK: the NDK's `crtbegin_so.o` and
-      `crtend_so.o` carry no property note there, and `start_files_mark`
-      in `.github/scripts/verify_wheel_contents.py` says why the start
-      files decide.
+      is not marked for IBT and SHSTK, for the reason `start_files_mark`
+      in `.github/scripts/verify_wheel_contents.py` gives.
     - Windows, MSVC: `/GS` and `/guard:cf`, linked with `/GUARD:CF`.
     - Windows, cross-compiled with mingw-w64: no compile flag, because
       the stack protector would link a `libssp` DLL; the DLL is linked

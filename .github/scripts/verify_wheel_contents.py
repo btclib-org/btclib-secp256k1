@@ -424,6 +424,11 @@ def start_files_mark(wheel_name: str) -> bool:
     it for an `_init` that has no `bti` instruction. A pinned image that
     does mark aarch64 is one more case here.
 
+    An Android wheel links the NDK's `crtbegin_so.o` and `crtend_so.o`
+    instead. Read with `readelf -n`, they mark BTI on aarch64 and carry
+    no property note on x86_64. An NDK that marks x86_64 is one more case
+    here.
+
     Args:
         wheel_name: the wheel's file name, the platform tag of which
             names the C runtime.
@@ -432,6 +437,8 @@ def start_files_mark(wheel_name: str) -> bool:
         Whether an ELF file in the wheel has to carry the marking.
     """
     tag = wheel_name[: -len(".whl")].rsplit("-", 1)[-1]
+    if "android" in tag:
+        return "x86_64" not in tag
     return "musllinux" not in tag and "aarch64" not in tag
 
 

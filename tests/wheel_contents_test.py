@@ -861,6 +861,8 @@ def test_a_musllinux_wheel_is_not_asked_for_a_fortified_call(
         ("manylinux_2_17_aarch64.manylinux2014_aarch64", False),
         ("musllinux_1_2_x86_64", False),
         ("musllinux_1_2_aarch64", False),
+        ("android_24_arm64_v8a", True),
+        ("android_24_x86_64", False),
     ],
 )
 def test_the_marking_is_asked_of_the_images_that_can_carry_it(
@@ -882,6 +884,31 @@ def test_an_image_that_cannot_mark_is_not_asked_to(
     assert len(script.verify_wheel(musl)) == 1
     x86 = write_wheel(tmp_path / _X86_64_LINUX, payloads={_SO: elf(feature=None)})
     assert len(script.verify_wheel(x86)) == 1
+
+
+def test_an_android_wheel_is_asked_for_bti_and_not_for_cet(
+    script: ModuleType, tmp_path: Path
+) -> None:
+    """Unmarked, an x86_64 extension passes and an aarch64 one lacks BTI."""
+    android = f"btclib_secp256k1-{_VERSION}-cp314-cp314-android_24"
+    so = "_btclib_secp256k1.cpython-314-{}-linux-android.so"
+    x86_so, arm_so = so.format("x86_64"), so.format("aarch64")
+    x86 = write_wheel(
+        tmp_path / f"{android}_x86_64.whl",
+        extra=(x86_so,),
+        omit=(_SO,),
+        payloads={x86_so: elf(feature=None)},
+    )
+    assert script.verify_wheel(x86) == []
+    arm = write_wheel(
+        tmp_path / f"{android}_arm64_v8a.whl",
+        extra=(arm_so,),
+        omit=(_SO,),
+        payloads={arm_so: elf(183, feature=None)},
+    )
+    complaints = script.verify_wheel(arm)
+    assert len(complaints) == 1
+    assert "BTI" in complaints[0]
 
 
 def test_an_unhardened_macos_wheel_is_refused(

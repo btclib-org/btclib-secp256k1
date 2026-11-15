@@ -130,6 +130,10 @@ phrase per property missing, and a wheel that lacks any is refused:
   musllinux or aarch64 wheel
 - macOS, Mach-O, every architecture of a universal file: the stack
   protector and `_FORTIFY_SOURCE`
+- Android, ELF: the stack protector, `_FORTIFY_SOURCE`, the immediate
+  binding and the read-only relocation segment, as on Linux. The marking
+  is asked of an `arm64_v8a` wheel, for BTI, and of no `x86_64` wheel;
+  `start_files_mark` says which C runtime carries it
 - Windows, `.pyd` from MSVC: address space layout randomization, DEP,
   high entropy address space layout, control flow guard and the security
   cookie. The cookie is in every image the C runtime links, so it shows
