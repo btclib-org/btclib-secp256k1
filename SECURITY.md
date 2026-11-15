@@ -77,6 +77,9 @@ affecting how these bindings drive it:
 - an exception, a repr or a log line that prints a secret, which the
     standard's [*A refusal carries no secret*](https://github.com/btclib-org/.github/blob/main/README.md#a-refusal-carries-no-secret)
     forbids
+- a flaw in how these bindings drive the library that lets funds be
+    stolen, lost or locked, such as a key another party can guess or an
+    output its recipient cannot find
 
 ## Security review
 
