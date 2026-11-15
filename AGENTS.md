@@ -10,8 +10,9 @@ and [RELEASING.md](./RELEASING.md) for releases.
 
 When an agent works here, a separate worktree per task keeps the
 contributor's own checkout clean: hooks and agents change files where
-they run. For example, `git worktree add ../<name> origin/main -b <branch>`,
-and `git worktree remove ../<name>` when done.
+they run. For example, `git worktree add` a directory outside the
+checkout, on a new branch from `origin/main`, and `git worktree remove`
+it when done.
 
 A worktree's submodules are initialized as `CONTRIBUTING.md`'s *The
 environment and the gates* says. They make plain `git worktree remove`

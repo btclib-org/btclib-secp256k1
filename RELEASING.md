@@ -133,6 +133,9 @@ the release it rehearses.
 
 ## Cutting a release
 
+Where `CONTRIBUTING.md` cites this file's *Release to PyPI*, this tree's
+steps are the ones below, until the port of btclib-org/.github#1855.
+
 `deps-latest` is worth dispatching before the tag rather than waiting for its
 cron, because what it answers is cheaper to know before a version is
 consumed than after. It gates nothing, so it will not stop you: reading
@@ -266,6 +269,89 @@ Then:
    `README.md` too (`grep -n 'wraps
    libsecp256k1' README.md` finds the line without a search through the
    prose)
+1. hold the repository's other merges until the release is published, so
+   that `main` does not move under the release between its checks and its
+   tag. Put `release-hold` on the release pull request:
+
+   ```shell
+   pr=<the release pull request's number>
+   ```
+
+   ```shell
+   gh pr edit "${pr:?}" --repo btclib-org/btclib-secp256k1 \
+     --add-label release-hold
+   ```
+
+   While an open or merged pull request carries the label, nobody merges
+   another pull request into `main` here. A red `main`'s repair is the
+   exception: it goes first, as `CONTRIBUTING.md`'s *Landing it* says. A
+   release pull request waits while a merged pull request carries the
+   label, and otherwise only while a lower-numbered open one does, so that
+   releases go out oldest first instead of each waiting on the others. On
+   a pull request closed without merging, the label holds nothing: that
+   release never reached `main`.
+
+   A pull request can merge between the version step and the label. So
+   once the label is on, fetch, and check that `origin/main` is still the
+   branch's base:
+
+   ```shell
+   git fetch origin
+   ```
+
+   ```shell
+   git merge-base --is-ancestor origin/main HEAD
+   ```
+
+   After a fetch that succeeded, where `merge-base` exits 1, `main` has
+   moved. Any other non-zero exit, of either command, is an error to
+   read, not an answer.
+
+   Where `main` has moved, throw the branch away and redo it on the new
+   tip: never rebase it, and never merge `main` into it. A rebase over a
+   change that wrote to `CHANGELOG.md` or `RELEASE_NOTES.md` near this
+   release's edits stops on a conflict there, and deleting the markers at
+   git's default conflict style drops a line both sides share. Reset onto
+   the new tip, then redo the steps from the version step on:
+
+   ```shell
+   tip=$(git rev-parse HEAD) &&
+   git fetch origin &&
+   git reset --hard origin/main
+   ```
+
+   Where the branch is already pushed, the redone one goes up with a
+   lease on `tip`, the head reviewed before the fetch:
+
+   ```shell
+   git push origin HEAD \
+     --force-with-lease="refs/heads/$(git branch --show-current):${tip:?}"
+   ```
+
+   Its commits do not descend from the pushed head, so a plain `git push`
+   is refused. A bare `--force-with-lease` compares against what the
+   fetch just brought, so it would overwrite a push made since the
+   review; the lease on `tip` refuses it.
+
+   An older release or a red `main`'s repair can still move `main` during
+   the hold. So both commands run again just before the merge, and where
+   `main` has moved, the branch is redone the same way, and its checks
+   run again.
+
+   Remove the label once `release.yml`'s run on the tag has published the
+   release, or once the release is abandoned and its pull request closed:
+
+   ```shell
+   gh pr edit "${pr:?}" --repo btclib-org/btclib-secp256k1 \
+     --remove-label release-hold
+   ```
+
+   A label left behind on a merged release already published still holds
+   every merge here. Whoever finds one checks that the release is out,
+   tells the maintainer, and removes the label on his word: a merged
+   release pull request holds until its release is published. One left on
+   a pull request closed without merging holds nothing, and whoever finds
+   it removes it.
 1. give the pull request its title and its body before merging it, not
    after. The title is the version; the body says what the release is —
    what moved, what did not, and which of the two a user would notice.

@@ -57,10 +57,9 @@ on:
   push:
     # main only: a push to a branch that has an open pull request would
     # run this workflow twice, once per event, and the two runs land in
-    # different concurrency groups for every pull_request action except
-    # closed on a merge -- see that trigger's own comment below, and the
-    # concurrency block, for why closed is the exception and how the
-    # group now avoids it. The pull_request run is the one worth
+    # different concurrency groups, which do not cancel each other -- see
+    # that trigger's own comment below, and the concurrency block, for
+    # how each is keyed. The pull_request run is the one worth
     # keeping, because it tests the merge commit and is the only run a
     # fork's pull request produces at all.
     # main keeps a trigger of its own because a merge creates a commit
@@ -82,9 +81,9 @@ on:
     # declines the real work on it, the merge commit being main's own
     # push trigger's question. "This pull request's own group" is the
     # part github.ref alone got wrong: for a closed, merged pull request
-    # it resolves to the base branch's ref, the same one the push
-    # trigger's own run computes, so the closed run landed in *that*
-    # group instead and would cancel the run testing the actual merge
+    # it resolves to the base branch's ref, the key the push trigger's
+    # own run had at the time, so the closed run landed in *that* group
+    # instead and would cancel the run testing the actual merge
     # commit -- observed doing exactly that to bitcoin-core-rpc's own
     # main, after btclib-org/bitcoin-core-rpc#136 merged there. The
     # concurrency block below groups by the pull request's own number
@@ -136,11 +135,15 @@ on:
 permissions:
   contents: read
 
-# cancel superseded runs on the same branch/PR; named literally rather
-# than through github.workflow, and discriminated by an input rather than
-# left to github.ref alone, for the three reasons given in lint.yml
+# cancel superseded runs of a pull request, and of dispatches on one
+# branch; named literally rather than through github.workflow, and
+# discriminated by an input rather than left to github.ref alone, for
+# the three reasons given in lint.yml
 concurrency:
-  group: test-${{ github.event.pull_request.number || github.ref }}${{ inputs.concurrency-suffix }}
+  group: >-
+    test-${{ github.event_name == 'push'
+    && format('{0}-{1}', github.sha, github.ref)
+    || github.event.pull_request.number || github.ref }}${{ inputs.concurrency-suffix }}
   cancel-in-progress: true
 
 jobs:
