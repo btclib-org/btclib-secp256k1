@@ -16,6 +16,7 @@ answers a file with an empty `content` at HTTP 200, which reads as an
 empty file rather than as an error, and one file per release keeps each
 of them under it.
 
+- [v0.8.0.15](./changelog/v0.8.0.15.md)
 - [v0.8.0.14](./changelog/v0.8.0.14.md)
 - [v0.8.0.13](./changelog/v0.8.0.13.md)
 - [v0.8.0.12](./changelog/v0.8.0.12.md)
@@ -38,109 +39,96 @@ The changelog starts at v0.7.1.2. The releases before it were documented
 at release-notes length in the first place, and are still in
 [RELEASE_NOTES.md](./RELEASE_NOTES.md) rather than duplicated here.
 
-## v0.8.0.15
+## v0.8.0.16
 
 ### x86_64 macOS
 
-- **`os-macos` runs on the arm64 image alone** (issue
-  btclib-org/.github#1982, #1308). The release notes announce that the
-  next release publishes no x86_64 macOS wheel.
+- **No x86_64 macOS wheel is built or published, and the dynamic macOS
+  wheel is arm64 alone** (issue btclib-org/.github#1982, #1409).
+
+### iOS wheels
+
+- **cibuildwheel builds them for the device and the arm64 simulator**
+  (issue #1385, #1387) **and runs the suite in the simulator** (closes
+  #1398, #1399); **a release builds and publishes them** (#1402).
+
+### The illegal callback
+
+- **A static extension compiles it as cffi's `extern "Python"`, so its
+  modules import on iOS** (closes #1386, #1397).
+
+### Android wheels
+
+- **cibuildwheel's Android platform builds them, with Linux's branch
+  protection** (issue #1385, #1392; closes #1390, #1395), but no workflow
+  runs it; an x86_64 one is not asked for CET (closes #1394, #1405).
 
 ### A refused item of a list is named by its index
 
-- **`keys` and `silentpayments` name a refused item by its list and
-  index** (closes #1203, #1348).
-
-### Constant time under Valgrind
-
-- **`upstream-tests` runs secp256k1-zkp's own `ctime_tests`, and checks
-  the secret-taking secp256k1-zkp calls they do not make** (closes #1302,
-  closes #1315).
-
-### `REVIEWING.md`
-
-- **It asks whether a CI step reads an overloaded exit code as one
-  outcome** (closes #1333).
-
-### Secrets in refusals
-
-- **The refusal of a label tweak at the order is checked for the
-  secret** (closes #1310); the `secret_free` helper is
-  btclib-org/.github's (issue btclib-org/.github#1950, #1351).
-
-### Coverage
-
-- **A run that leaves a source directory unmeasured is refused** (closes
-  #1345).
-
-### The BIP352 vectors
-
-- **They are refreshed from bitcoin/bips** (closes #1309, closes #1338).
-
-### `check_vendored_vectors.py`
-
-- **It reads every issue its title search answers, and takes only the
-  one titled exactly as searched** (issue btclib-org/.github#2152,
-  btclib-org/.github#2185).
-
-### The package metadata
-
-- **The homepage is the project's page on btclib.org**, and the links
-  to functional-tests and benchmarks follow their renames (closes #1301,
-  closes #1303, closes #1307).
-
-### The README
-
-- **The status badges are in a Status section at its end** (issue
-  btclib-org/.github#1856, #1336, #1337).
-
-### The README's links
-
-- **The README links its own files absolutely, kept local in the docs**
-  (issue btclib-org/.github#1851, #1313, #1335).
+- **`keys.pubkey_sum`, `keys.pubkey_sort` and `silentpayments.scan_outputs`
+  name it too** (closes #1356, #1375).
 
 ### Sourcery
 
-- **Sourcery runs on every pull request, and its findings are cleared**
-  (issue btclib-org/.github#2005).
+- **Every rule is on but `dont-import-test-modules`, and the code takes
+  its forms** (issue btclib-org/.github#2162, #1354); the workflow takes
+  .github's concurrency comment (issue btclib-org/.github#2190, #1370).
 
 ### The bestpractices.dev answers
 
-- **`.bestpractices.json` holds them** (issue btclib-org/.github#2153),
-  **corrected** (issue btclib-org/.github#2159).
+- **Brought to v0.8.0.15** (closes #1357, #1367), **answered by each
+  criterion's text** (#1380, #1391) **and counting vulnerabilities as
+  ruled** (issue btclib-org/.github#2318, #1401, #1406, #1407, #1408).
 
-### The calls of btclib-org/.github
+### `SECURITY.md`
 
-- **They follow its tags** (issue btclib-org/.github#1988, #1314, #1323,
-  #1340).
+- **What belongs here names a flaw that lets funds be stolen, lost or
+  locked** (#1396).
 
-### `CONTRIBUTING.md` and `REVIEWING.md`
+### `REPOSITORY.md`
 
-- **They take the shared part** (#1306; issue btclib-org/.github#2004,
-  btclib-org/.github#2022, btclib-org/.github#2054,
-  btclib-org/.github#2088, btclib-org/.github#2145).
+- **The maintainer holds `main-self-merge`'s bypass** (issue
+  btclib-org/.github#2212, #1372), **and the merge is explicit, with
+  auto-merge off** (issue btclib-org/.github#2272, #1379).
 
-### `.coderabbit.yaml`
+### `CONTRIBUTING.md`
 
-- **It is the shared copy** (issue btclib-org/.github#1998).
+- **The docs block stops on a failed build** (issue
+  btclib-org/.github#2015, #1364), **and the checkout's layout is the
+  contributor's** (issue btclib-org/.github#2263, #1377).
 
-### The citations of the standard
+### Which pull requests the gates run on
 
-- **The standard is cited by its name** (#1339; issue
-  btclib-org/.github#2137).
+- **Each sentence points to the job's `if:`** (#1378).
 
 ### `RELEASING.md`
 
-- **The rehearsal's install refreshes the package, `deps-latest` is read
-  by the declared ranges, and a release does not wait for its
-  dependents** (issue btclib-org/.github#2107).
+- **A bestpractices.dev save nobody can make is recorded as owed**
+  (issue btclib-org/.github#2205, #1368).
 
-### Recreating a skipped GitHub release
+### The shared files of btclib-org/.github
 
-- **The by-hand recovery stops where the tag's notes are missing or
-  empty** (closes btclib-org/.github#2059, #1361).
+- **The tree takes btclib-org/.github@7369e8a** (#1389) **and
+  `AGENTS.md`'s Code Review Rules** (issue btclib-org/.github#2009,
+  #1374).
 
-### Locks, hooks and actions
+### The documentation's links
 
-- **coverage and ruff** (#1322), the hook revisions (#1311, #1343),
-  actions (#1324, #1340) and the clusterfuzzlite image (#1320).
+- **The RootFileLinks transform is section 14's, verbatim** (issue
+  btclib-org/.github#2166, #1365).
+
+### The prettier hook
+
+- **It leaves `.pre-commit-config.yaml` to pre-commit.ci** (issue
+  btclib-org/.github#2038, #1376).
+
+### The fuzz workflow
+
+- **Its header names the branch dispatch, not a release** (issue
+  btclib-org/.github#1927, #1369).
+
+### Locks, actions and the clusterfuzzlite image
+
+- **soupsieve, behind a furo marker** (closes #1371, #1373), coverage
+  (#1360), ruff (#1384), actions (#1359, #1383) and the clusterfuzzlite
+  image (#1382).
