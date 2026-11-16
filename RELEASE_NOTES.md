@@ -5,6 +5,48 @@ release is in [CHANGELOG.md](./CHANGELOG.md) or a file it links; what
 follows is what a user has to act on and what a user gains, and it is
 what the GitHub release of a tag is generated from.
 
+## v0.8.0.16
+
+### No x86_64 macOS wheel is published
+
+As v0.8.0.15 announced, pip on an Intel Mac builds the sdist, which needs
+a C toolchain (the README's Build section). The dynamic macOS wheel is
+for arm64 alone (issue btclib-org/.github#1982).
+
+### iOS wheels are published
+
+For CPython 3.13, 3.14 and 3.15, on the device and the arm64 simulator;
+`pyproject.toml` declares `Operating System :: iOS` (issue #1385). No
+wheel is built for the x86_64 simulator, nor for Android.
+
+### The iOS simulator wheels are tested, and the device wheels checked
+
+The suite runs in the simulator against each simulator wheel before it
+is published. twine, check-wheel-contents and `verify_wheel_contents.py`
+read the device wheels, and nothing runs them (issue #1385).
+
+### A static wheel compiles the illegal callback
+
+It is cffi's `extern "Python"`, since iOS refuses the memory
+`ffi.callback()` allocates; the dynamic wheel keeps `ffi.callback()`.
+What a caller sees is unchanged (closes #1386).
+
+### `zkp` does not work on iOS
+
+No wheel carries its extension, and a flagged build for iOS would make
+its context's illegal callback with `ffi.callback()`, which iOS refuses
+with `MemoryError` (issue #1400).
+
+### A build for iOS from the sdist takes CMake from the machine
+
+`cmake` is no build requirement there, as the README's Build section
+says (issue #1385).
+
+### More refusals name the index of the item they refuse
+
+`keys.pubkey_sum`, `keys.pubkey_sort` and `silentpayments.scan_outputs`
+do, as in "invalid public key at index 1" (closes #1356).
+
 ## v0.8.0.15
 
 ### This is the last release with x86_64 macOS wheels
