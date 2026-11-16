@@ -265,7 +265,8 @@ def test_pubkey_order() -> None:
     # one key equals itself, in either form
     assert keys.pubkey_cmp(compressed[0], uncompressed[0]) == 0
 
-    with pytest.raises(ValueError, match="public key"):
+    # a key that does not parse is named by its index in the list
+    with pytest.raises(ValueError, match="invalid public key at index 1"):
         keys.pubkey_sort([compressed[0], b"\x02" + b"\x00" * 32])
     with pytest.raises(ValueError, match="public key"):
         keys.pubkey_cmp(compressed[0], b"")
@@ -703,7 +704,7 @@ def test_pubkey_sum_answers_the_infinity_combine_refuses() -> None:
     # and a key that is no point is an argument rather than a verdict
     with pytest.raises(ValueError, match="at least one public key"):
         keys.pubkey_sum([])
-    with pytest.raises(ValueError, match="invalid public key"):
+    with pytest.raises(ValueError, match="invalid public key at index 1"):
         keys.pubkey_sum([pubkey_a, b"\x02" + bytes(32)])
 
 
