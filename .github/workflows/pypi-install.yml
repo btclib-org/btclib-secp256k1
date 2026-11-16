@@ -124,7 +124,7 @@ jobs:
   # derived from the repository's; version is forwarded from this workflow's own
   # workflow_call input
   wait-for-index:
-    uses: btclib-org/.github/.github/workflows/reusable-wait-for-index.yml@cb5a79443399980ba717df2dea23dbedf6bdbc3a # v2026.11.12
+    uses: btclib-org/.github/.github/workflows/reusable-wait-for-index.yml@64fe8e701fb481dddd471dd256ade86f90e60b0f # v2026.11.14
     with:
       package: btclib-secp256k1
       version: ${{ inputs.version }}
