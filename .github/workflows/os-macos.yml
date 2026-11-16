@@ -84,11 +84,7 @@ jobs:
       fail-fast: false
       matrix:
         # arm64 alone, the one macOS section 10 of the organization's
-        # standard in btclib-org/.github supports. The static x86_64
-        # wheels a release still publishes are built and tested by
-        # test.yml, whose cibuildwheel runs the suite against each one;
-        # the dynamic x86_64 wheel build-dynamic builds runs no suite
-        # anywhere before it is published
+        # standard in btclib-org/.github supports
         os:
           - macos-latest
         # every interpreter this package claims. os-ubuntu.yml and
