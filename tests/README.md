@@ -29,9 +29,35 @@ git blob SHA-1 of the file kept here. The weekly job holds the file to
 
 `pulled` is the date the file entered this repository, from
 `git log --follow --diff-filter=A`. `behind` counts upstream revisions
-of that path since the pin -- a staleness figure, not a defect: a
-vector file is a fixed set of cases, and refreshing it is a decision,
-not a chore.
+of that path since the pin, except on an entry carrying a `pattern`,
+below. It is a staleness figure, not a defect: a vector file is a fixed
+set of cases, and refreshing it is a decision, not a chore.
+
+A `pattern` line marks a file derived from upstream rather than copied
+from it: the file is every match of that pattern in the regular files
+under `path` (`git grep` reads no symlink), one per line, sorted
+bytewise and deduplicated, as `LC_ALL=C git grep -aohP` of the pattern
+at `commit` over `path`, piped to `LC_ALL=C sort -u`, prints it. `-a`
+has git read every file as text and print its matches: without it, git
+can take a file holding a NUL for binary and print a line saying the
+binary file matches instead. `.github/scripts/check_vendored_vectors.py`
+reads every file as text too, finds the matches as its `_line_matches`
+says, following git's loop and naming where it departs from it, and,
+for an entry whose `behind` reads 0, derives the file again at the tip
+of the path, weekly. It reports the entry where that is not the file
+here, where the file is not here at all, and, as it reports any entry,
+where no commit on the branch it walks touches the path. A commit
+upstream that leaves the derived lines as they are reports nothing, and
+the value of `commit` decides nothing. `behind` there counts the lines
+the derivation and the file do not share, not revisions.
+
+An entry carrying a `pattern` gives `ours`, the blob of the derived
+file, and no `blob`: upstream holds no one file it is a copy of.
+
+The script reads the pattern with Python's `re` and matches it against
+bytes, as `git grep -P` matches it with PCRE under `LC_ALL=C`: under a
+Unicode locale git matches characters instead. A pattern is written in
+what both read alike.
 
 ## Re-checking a pin
 

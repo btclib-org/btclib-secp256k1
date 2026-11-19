@@ -23,9 +23,10 @@ a shape that stops being recognised moves a heading from one list to the
 other rather than going quiet.
 
 The byte half -- each vendored file hashed against the README, and the
-README's blob against upstream's tree -- is exercised at the end, with
+README's blob against upstream's tree -- is exercised after it, with
 files written in a temporary directory and the trees API stubbed, and
-over the real README offline.
+over the real README offline. The derivation of an entry carrying a
+`pattern` is exercised last, against a tree and a tarball built here.
 
 The script is loaded by path, `.github/scripts` being no package, and
 once: `monkeypatch` undoes what each test does to it.
@@ -35,10 +36,12 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 import json
 import re
 import runpy
 import sys
+import tarfile
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
@@ -143,6 +146,16 @@ commit  {_PINNED}
 behind
 ```
 
+### `tests/derived_*.txt`
+
+```text
+repo    upstream/one
+path    src
+pattern [a-z_]+
+commit  {_PINNED}
+behind  0
+```
+
 ### `tests/no_block.csv`
 """
 
@@ -175,10 +188,11 @@ class _Run:
             **_kwargs: whatever it passed beside it, unread here.
 
         Returns:
-            A completed process carrying the canned stdout.
+            A completed process carrying the canned stdout, as bytes, as
+            `subprocess.run` gives it with no encoding.
         """
         self.calls.append(args)
-        return SimpleNamespace(stdout=self.stdout)
+        return SimpleNamespace(stdout=self.stdout.encode())
 
 
 def _no_mismatches(_readme_path: Path) -> tuple[list[str], list[str], int, int]:
@@ -230,6 +244,7 @@ def test_every_heading_is_either_checked_or_named_as_skipped() -> None:
         "`tests/already_behind.csv` (already documented as behind)",
         "`tests/no_behind_line.csv` (no behind line at all)",
         "`tests/empty_behind_line.csv` (behind line present but empty)",
+        "`tests/derived_*.txt` (a pattern and no one file to hold to it)",
         "`tests/no_block.csv` (no fenced block)",
     ]
 
@@ -459,7 +474,7 @@ def test_a_pin_still_at_the_tip_is_no_drift(
         check, "_latest_commit", lambda _repo, _path, _ref=None: (_PINNED, "2026-01-02")
     )
 
-    drifted, skipped = check.find_drift(_readme(tmp_path))
+    drifted, skipped, _derived = check.find_drift(_readme(tmp_path))
 
     assert drifted == []
     assert len(skipped) == len(check._entries_at_tip(_README)[1])
@@ -478,7 +493,7 @@ def test_a_pin_behind_the_tip_is_drift_naming_the_tip(
         check, "_latest_commit", lambda _repo, _path, _ref=None: (_TIP, "2026-02-03")
     )
 
-    drifted, _skipped = check.find_drift(_readme(tmp_path))
+    drifted, _skipped, _derived = check.find_drift(_readme(tmp_path))
 
     assert drifted == [check.Drift(_ENTRY, _TIP, "2026-02-03")]
     assert not drifted[0].has_no_tip
@@ -495,7 +510,7 @@ def test_a_path_with_no_tip_is_drift_with_no_tip_to_name(
     """
     monkeypatch.setattr(check, "_latest_commit", lambda _repo, _path, _ref=None: None)
 
-    drifted, _skipped = check.find_drift(_readme(tmp_path))
+    drifted, _skipped, _derived = check.find_drift(_readme(tmp_path))
 
     assert drifted == [check.Drift(_ENTRY, "", "")]
     assert drifted[0].has_no_tip
@@ -520,7 +535,7 @@ def test_a_removing_commit_is_drift_that_may_be_a_removal(
         check, "_latest_commit", lambda _repo, _path, _ref=None: (_TIP, "2026-02-03")
     )
 
-    drifted, _skipped = check.find_drift(_readme(tmp_path))
+    drifted, _skipped, _derived = check.find_drift(_readme(tmp_path))
 
     assert drifted == [check.Drift(_ENTRY, _TIP, "2026-02-03")]
     assert not drifted[0].has_no_tip
@@ -671,7 +686,7 @@ class _IssueList:
             if "--limit" in args
             else _GH_DEFAULT_LIMIT
         )
-        return SimpleNamespace(stdout=json.dumps(self.issues[:limit]))
+        return SimpleNamespace(stdout=json.dumps(self.issues[:limit]).encode())
 
 
 def test_the_exact_title_is_found_behind_a_full_default_page(
@@ -875,7 +890,7 @@ def test_a_pin_and_a_tip_alike_in_a_prefix_print_as_two_shas(
         f" {_TIP_ALIKE} (2026-09-11)" in out
     )
 
-    drifted, skipped = check.find_drift(readme)
+    drifted, skipped, _derived = check.find_drift(readme)
     body = check._issue_body(readme, drifted, skipped)
     assert f"`{_PINNED_ALIKE}`" in body
     assert f"`{_TIP_ALIKE}` (2026-09-11)" in body
@@ -910,7 +925,7 @@ def test_a_clean_run_says_so_and_still_reports(
     )
 
     assert check.main() == 0
-    assert "Every checked pin is still at upstream's tip." in capsys.readouterr().out
+    assert "No checked pin has drifted from upstream's tip." in capsys.readouterr().out
     assert len(reported) == 1
     # the ledger and the title, in that order: `main` builds this call
     # from two positionals a caller can hand over the wrong way round,
@@ -966,7 +981,7 @@ def test_the_entry_point_guard_runs_the_check_as___main__(
         runpy.run_path(str(_SCRIPT), run_name="__main__")
 
     assert raised.value.code == 0
-    assert "Every checked pin is still at upstream's tip." in capsys.readouterr().out
+    assert "No checked pin has drifted from upstream's tip." in capsys.readouterr().out
 
 
 _ROOT = Path(__file__).parents[1]
@@ -991,14 +1006,23 @@ class _Gh:
     """A `subprocess.run` stand-in answering the `gh` calls of the byte half.
 
     The trees API answers from `trees`, keyed on the repository and the
-    `<commit>:<directory>` the script asks for; the commits API from
-    `commits`; `gh issue list` finds the issue `open_issue` names, under
-    the title searched, and every other `gh issue` call answers nothing.
+    `<commit>:<directory>` the script asks for, or the commit alone for
+    the recursive tree of a derivation; `truncated` is what a tree
+    answers for the field of that name, and `modes` maps a tree entry to
+    the mode a tree answers for it, 100644 where it names none. The
+    tarball call answers from `tarballs`, keyed on the repository and the
+    commit; the commits API from `commits`; `gh issue list` finds the
+    issue `open_issue` names, under the title searched, and every other
+    `gh issue` call answers nothing. Each answer is bytes, as
+    `subprocess.run` gives with no encoding.
     """
 
     def __init__(self) -> None:
-        """Start with no tree, no commit and no open issue."""
+        """Start with no tree, no tarball, no commit and no open issue."""
         self.trees: dict[tuple[str, str], dict[str, str]] = {}
+        self.truncated = False
+        self.modes: dict[str, str] = {}
+        self.tarballs: dict[tuple[str, str], bytes] = {}
         self.commits: dict[tuple[str, str], tuple[str, str]] = {}
         self.open_issue: int | None = None
         self.fail_trees = False
@@ -1020,28 +1044,37 @@ class _Gh:
         self.calls.append(list(argv))
         if argv[1] == "api":
             url = argv[4].removeprefix("repos/")
+            if "/tarball/" in url:
+                repo, _, ref = url.partition("/tarball/")
+                return SimpleNamespace(stdout=self.tarballs[repo, ref])
             if "/git/trees/" in url:
                 if self.fail_trees:
                     raise check.subprocess.CalledProcessError(
-                        1, argv, stderr="HTTP 404\n"
+                        1, argv, stderr=b"HTTP 404\n"
                     )
                 repo, _, tree = url.partition("/git/trees/")
                 items = [
-                    {"path": name, "sha": sha}
+                    {
+                        "path": name,
+                        "mode": self.modes.get(name, "100644"),
+                        "type": "blob",
+                        "sha": sha,
+                    }
                     for name, sha in self.trees[repo, tree].items()
                 ]
-                return SimpleNamespace(stdout=json.dumps({"tree": items}))
+                listing = {"tree": items, "truncated": self.truncated}
+                return SimpleNamespace(stdout=json.dumps(listing).encode())
             sha, date = self.commits[url.removesuffix("/commits"), argv[6][5:]]
             commit = {"sha": sha, "commit": {"committer": {"date": date}}}
-            return SimpleNamespace(stdout=json.dumps([commit]))
+            return SimpleNamespace(stdout=json.dumps([commit]).encode())
         if argv[2] == "list":
             search = argv[argv.index("--search") + 1]
             title = search.removeprefix('"').removesuffix('" in:title')
             issues = (
                 [{"number": self.open_issue, "title": title}] if self.open_issue else []
             )
-            return SimpleNamespace(stdout=json.dumps(issues))
-        return SimpleNamespace(stdout="")
+            return SimpleNamespace(stdout=json.dumps(issues).encode())
+        return SimpleNamespace(stdout=b"")
 
 
 @pytest.fixture
@@ -1467,9 +1500,9 @@ def _failing_gh(
         calls.append(argv)
         if len(calls) <= len(stderrs):
             raise check.subprocess.CalledProcessError(
-                1, argv, stderr=stderrs[len(calls) - 1]
+                1, argv, stderr=stderrs[len(calls) - 1].encode()
             )
-        return SimpleNamespace(stdout="[]")
+        return SimpleNamespace(stdout=b"[]")
 
     monkeypatch.setattr(check.subprocess, "run", run)
     monkeypatch.setattr(check.time, "sleep", slept.append)
@@ -1511,15 +1544,16 @@ def test_a_failed_gh_call_prints_its_stderr_and_is_not_retried_unless_a_server_e
     [
         lambda: check._upstream_blob("r", "d/p", "c0ffee0"),
         lambda: check._open_issue_number("A title"),
+        lambda: check._derived("r", "src", "c0ffee0", "x"),
     ],
-    ids=["trees", "issue-list"],
+    ids=["trees", "issue-list", "derivation"],
 )
 def test_every_gh_call_that_captures_prints_its_stderr(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     call: Any,
 ) -> None:
-    """The trees call and the issue lookup go through the same helper.
+    """The trees call, the issue lookup and the derivation share one helper.
 
     Args:
         monkeypatch: the fixture `subprocess.run` is replaced through.
@@ -1568,3 +1602,423 @@ def test_a_server_error_that_persists_is_raised_after_the_last_attempt(
         check._latest_commit("r", "p")
 
     assert len(calls) == 3
+
+
+# an entry whose file is derived from upstream's `src` with a pattern, the
+# shape of the libsecp256k1 symbols a sibling repository's README pins
+_PATTERN = r"(?<![A-Za-z0-9_])lib_[a-z0-9_]+"
+_TIP_SHA = "7177ca5"
+_SOURCES = {
+    "src/a.c": b"int lib_one(void); /* lib_two */\nint xlib_not(void);\n",
+    "src/sub/b.h": b"lib_one lib_three\n",
+}
+
+
+def _tarball(files: dict[str, bytes], links: dict[str, str] | None = None) -> bytes:
+    """Return a gzipped tar of `files` under one top directory, as GitHub's.
+
+    The archive also carries the top directory and `src/sub` as members of
+    their own, and a file outside `src`, so that what is read is chosen.
+
+    Args:
+        files: each regular file's path and bytes.
+        links: each symlink's path and the path the link names.
+
+    Returns:
+        The archive's bytes.
+    """
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+        for directory in ("r-7177ca5", "r-7177ca5/src", "r-7177ca5/src/sub"):
+            member = tarfile.TarInfo(directory)
+            member.type = tarfile.DIRTYPE
+            tar.addfile(member)
+        for name, data in {"README": b"lib_outside\n", **files}.items():
+            member = tarfile.TarInfo(f"r-7177ca5/{name}")
+            member.size = len(data)
+            tar.addfile(member, io.BytesIO(data))
+        for name, target in (links or {}).items():
+            member = tarfile.TarInfo(f"r-7177ca5/{name}")
+            member.type = tarfile.SYMTYPE
+            member.linkname = target
+            tar.addfile(member)
+    return buffer.getvalue()
+
+
+def _upstream(gh: _Gh, files: dict[str, bytes]) -> None:
+    """Make `files` upstream's `src` at `_TIP_SHA`, in its tree and tarball.
+
+    Args:
+        gh: the stand-in whose tree and tarball are loaded.
+        files: each regular file's path and bytes.
+    """
+    gh.trees["r", _TIP_SHA] = {
+        "README": _blob_of(b"lib_outside\n"),
+        **{name: _blob_of(data) for name, data in files.items()},
+    }
+    gh.tarballs["r", _TIP_SHA] = _tarball(files)
+
+
+def _derived_entry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    held: bytes,
+    commit: str = "0ld0000",
+) -> Path:
+    """Write `held` as the entry's file, and return its README.
+
+    Args:
+        tmp_path: where the file and the README are written, and the
+            working directory the script's relative path is read from.
+        monkeypatch: the fixture the working directory is set through.
+        held: the file's bytes.
+        commit: the entry's `commit`.
+
+    Returns:
+        The README's path.
+    """
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "names.txt").write_bytes(held)
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        _block(
+            "`names.txt`",
+            repo="r",
+            path="src",
+            pattern=_PATTERN,
+            commit=f"{commit}  2026-01-01",
+            behind="0 lines",
+        ),
+        encoding="utf-8",
+    )
+    return readme
+
+
+def test_a_pattern_field_is_read_onto_the_entry() -> None:
+    """A `pattern` line is carried whole, its surrounding blanks trimmed."""
+    readme = _block(
+        "`names.txt`",
+        repo="r",
+        path="src",
+        pattern=f" {_PATTERN} ",
+        commit="deadbeef",
+        behind="0 lines",
+    )
+
+    (found,) = check._entries_at_tip(readme)[0]
+
+    assert found.pattern == _PATTERN
+
+
+# each answer is what `LC_ALL=C git grep --no-index -aohP <pattern>` piped
+# to `LC_ALL=C sort -u` printed for the files, but the last, which is the
+# `^` `_line_matches` names: git prints `a` alone there
+@pytest.mark.parametrize(
+    "pattern, files, printed",
+    [
+        # byte order, not a dictionary's, and once each across files
+        (rb"\w+_fn", [b"b_fn a_fn\nB_fn", b"a_fn\n"], b"B_fn\na_fn\nb_fn\n"),
+        # a file holding a NUL is read as text, as `-a` has git read it
+        (rb"\w+_fn", [b"\0a_fn\n"], b"a_fn\n"),
+        # line by line: `^` anchors each line
+        (rb"^k\w", [b"kx ky\nkz"], b"kx\nkz\n"),
+        # an empty match ends the line, even after a match
+        (rb"z*", [b"azzb"], b""),
+        (rb"(?=b)", [b"ab"], b""),
+        # past a match too, where a plain finditer would go on to `b`
+        (rb"[ab]|(?=c)", [b"acb"], b"a\n"),
+        # what follows a match is a string of its own
+        (rb"(?<![a-z])[a-z]", [b"ab"], b"a\nb\n"),
+        (rb"\b[a-z]", [b"ab"], b"a\nb\n"),
+        (rb"\A\w", [b"ab"], b"a\nb\n"),
+        (rb"(?<=a)b", [b"abab"], b"b\n"),
+        (rb"z", [b"none"], b""),
+        (rb"^\w", [b"ab"], b"a\nb\n"),
+    ],
+)
+def test_matches_is_what_git_grep_only_matching_then_sort_unique_print(
+    pattern: bytes, files: list[bytes], printed: bytes
+) -> None:
+    """Each shape's answer is git's, but the one `^` that is not.
+
+    Args:
+        pattern: the pattern, as bytes.
+        files: the files it is matched in.
+        printed: what git and `sort -u` print for them.
+    """
+    assert check._matches(re.compile(pattern), files) == printed
+
+
+@pytest.mark.parametrize(
+    "found, held, difference",
+    [
+        (b"a\nb\n", b"a\nb\n", None),
+        (b"a\nc\n", b"a\nb\n", "derived only: `c`; here only: `b`"),
+        (b"a\nb\n", b"a\n", "derived only: `b`"),
+        (b"a\n", b"a\nb\n", "here only: `b`"),
+        (b"a\nb\n", b"b\na\n", "the same lines, in other bytes"),
+        (b"\xff\n", b"", "derived only: `\\xff`"),
+        # a line ends at a newline alone, as `_matches` reads one, and a
+        # character that does not print is shown escaped
+        (b"a\rb\n", b"a\n", "derived only: `a\\rb`; here only: `a`"),
+        (b"a\n", b"a\n\0\n", "here only: `\\x00`"),
+        (b"a\n", b"a", "the same lines, in other bytes"),
+        (b"", b"\n", "here only: ``"),
+    ],
+)
+def test_difference_names_the_lines_each_side_alone_holds(
+    found: bytes, held: bytes, difference: str | None
+) -> None:
+    """Nothing for the same bytes; otherwise what a reader acts on.
+
+    Args:
+        found: the derived bytes.
+        held: the file's bytes.
+        difference: what the report says, or None for no drift.
+    """
+    assert check._difference(found, held) == difference
+
+
+def test_derived_reads_the_tarball_under_the_path_alone(gh: _Gh) -> None:
+    """The tree and the tarball of the one commit, and the files under `src`.
+
+    An executable file, of mode 100755, is read as any other.
+
+    Args:
+        gh: the `gh` stand-in.
+    """
+    _upstream(gh, _SOURCES)
+    gh.modes["src/sub/b.h"] = "100755"
+
+    found = check._derived("r", "src", _TIP_SHA, _PATTERN)
+
+    assert found == b"lib_one\nlib_three\nlib_two\n"
+    tree_call, tarball_call = gh.calls
+    assert tree_call[4] == f"repos/r/git/trees/{_TIP_SHA}"
+    assert "recursive=1" in tree_call
+    assert tarball_call[4] == f"repos/r/tarball/{_TIP_SHA}"
+
+
+# a symlink in `src`, its link text a name the pattern matches
+_LINK = {"src/ln.h": "lib_link_target.h"}
+
+
+def test_derived_skips_a_symlink_as_git_grep_does(gh: _Gh) -> None:
+    """A symlink derives nothing, though its link text matches the pattern.
+
+    `git grep` reads regular files alone: on a tree holding `src/one.c` and a
+    symlink `src/ln.h`, git prints the names of `one.c` and nothing of the
+    link. The trees API gives the link as a blob of mode 120000, and the
+    tarball as a symlink member.
+
+    Args:
+        gh: the `gh` stand-in.
+    """
+    _upstream(gh, _SOURCES)
+    gh.trees["r", _TIP_SHA]["src/ln.h"] = _blob_of(b"lib_link_target.h")
+    gh.modes["src/ln.h"] = "120000"
+    gh.tarballs["r", _TIP_SHA] = _tarball(_SOURCES, _LINK)
+
+    found = check._derived("r", "src", _TIP_SHA, _PATTERN)
+
+    assert found == b"lib_one\nlib_three\nlib_two\n"
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "a file the tarball lacks",
+        "a file held otherwise",
+        "a cut tree",
+        "a symlink held as a regular file",
+    ],
+)
+def test_derived_raises_where_the_tarball_is_not_the_tree(gh: _Gh, case: str) -> None:
+    """An `export-ignore` or `export-subst` upstream fails the run, named.
+
+    So does a tarball giving a regular file where the tree holds a
+    symlink, even one holding the link's own bytes, whose blob is the
+    link's.
+
+    Args:
+        gh: the `gh` stand-in.
+        case: how the tarball departs from the tree.
+    """
+    _upstream(gh, _SOURCES)
+    if case == "a file the tarball lacks":
+        gh.tarballs["r", _TIP_SHA] = _tarball({"src/a.c": _SOURCES["src/a.c"]})
+    elif case == "a file held otherwise":
+        gh.tarballs["r", _TIP_SHA] = _tarball({**_SOURCES, "src/a.c": b"$Format:%H$\n"})
+    elif case == "a symlink held as a regular file":
+        gh.trees["r", _TIP_SHA]["src/ln.h"] = _blob_of(b"lib_link_target.h")
+        gh.modes["src/ln.h"] = "120000"
+        gh.tarballs["r", _TIP_SHA] = _tarball({
+            **_SOURCES,
+            "src/ln.h": b"lib_link_target.h",
+        })
+    else:
+        gh.truncated = True
+
+    with pytest.raises(ValueError, match="is not its tree under src"):
+        check._derived("r", "src", _TIP_SHA, _PATTERN)
+
+
+def test_derived_refuses_a_pattern_python_cannot_read(gh: _Gh) -> None:
+    r"""PCRE's `\K` is no escape of Python's: the run fails before asking.
+
+    Args:
+        gh: the `gh` stand-in.
+    """
+    with pytest.raises(re.error):
+        check._derived("r", "src", _TIP_SHA, r"lib_\Kname")
+    assert not gh.calls
+
+
+def test_a_derived_file_whose_pin_alone_moved_has_not_drifted(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A commit to `src` leaving the derived lines as they are is no drift.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _derived_entry(
+        tmp_path, monkeypatch, held=b"lib_one\nlib_three\nlib_two\n"
+    )
+    gh.commits["r", "src"] = (_TIP_SHA, "2026-02-01T00:00:00Z")
+    _upstream(gh, _SOURCES)
+
+    drifted, skipped, derived = check.find_drift(readme)
+
+    assert (drifted, skipped) == ([], [])
+    assert derived == [("`names.txt`", _TIP_SHA)]
+
+
+def test_a_derived_file_upstream_has_changed_has_drifted(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A name only upstream derives and one only the file holds are drift.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _derived_entry(tmp_path, monkeypatch, held=b"lib_gone\nlib_one\n")
+    gh.commits["r", "src"] = (_TIP_SHA, "2026-02-01T00:00:00Z")
+    _upstream(gh, _SOURCES)
+
+    (drift,), _skipped, derived = check.find_drift(readme)
+
+    assert derived == []
+    assert (drift.latest_commit, drift.latest_date) == (_TIP_SHA, "2026-02-01")
+    assert drift.difference == (
+        "derived only: `lib_three`, `lib_two`; here only: `lib_gone`"
+    )
+    body = check._issue_body(readme, [drift], [])
+    assert (
+        f"- **`names.txt`**: not what its `pattern` derives from `src` at"
+        f" `{_TIP_SHA}` (2026-02-01), `r` -- derived only:"
+    ) in body
+
+
+def test_a_derived_file_is_derived_even_where_its_pin_is_the_tip(
+    gh: _Gh, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The pinned commit's value decides nothing; the file's bytes do.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory is set through.
+    """
+    readme = _derived_entry(
+        tmp_path, monkeypatch, held=b"lib_two\nlib_one\nlib_three\n", commit=_TIP_SHA
+    )
+    gh.commits["r", "src"] = (_TIP_SHA, "2026-02-01T00:00:00Z")
+    _upstream(gh, _SOURCES)
+
+    (drift,), _skipped, _derived = check.find_drift(readme)
+
+    assert drift.difference == "the same lines, in other bytes"
+
+
+def test_a_derived_file_that_is_not_here_has_drifted_whatever_upstream_derives(
+    gh: _Gh,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An absent file is drift even where the pattern derives nothing.
+
+    Read as empty, it would equal an empty derivation, and an entry with
+    neither `ours` nor `blob` would then read as DERIVED while the byte
+    check skipped it.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the README is written.
+        monkeypatch: the fixture the working directory and argv are set
+            through.
+        capsys: the captured streams.
+    """
+    readme = _derived_entry(tmp_path, monkeypatch, held=b"")
+    (tmp_path / "names.txt").unlink()
+    gh.commits["r", "src"] = (_TIP_SHA, "2026-02-01T00:00:00Z")
+    _upstream(gh, {"src/a.c": b"nothing the pattern matches\n"})
+    assert check._derived("r", "src", _TIP_SHA, _PATTERN) == b""
+
+    (drift,), _skipped, derived = check.find_drift(readme)
+
+    assert derived == []
+    assert drift.difference == "the file is not here"
+    monkeypatch.setattr(
+        check.sys, "argv", ["prog", str(readme), "A title", "--dry-run"]
+    )
+    assert check.main() == 0
+    out = capsys.readouterr().out
+    assert "DIFFERS: `names.txt` is not what its pattern derives" in out
+    assert out.count(": the file is not here") == 1
+    assert "DERIVED" not in out
+
+
+def test_main_prints_a_derived_file_as_derived_or_as_differing(
+    gh: _Gh,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Stdout names the derived entry either way, so a check that ran shows.
+
+    Args:
+        gh: the `gh` stand-in.
+        tmp_path: where the file and the README are written.
+        monkeypatch: the fixture the working directory and argv are set
+            through.
+        capsys: the captured streams.
+    """
+    readme = _derived_entry(
+        tmp_path, monkeypatch, held=b"lib_one\nlib_three\nlib_two\n"
+    )
+    gh.commits["r", "src"] = (_TIP_SHA, "2026-02-01T00:00:00Z")
+    _upstream(gh, _SOURCES)
+    monkeypatch.setattr(
+        check.sys, "argv", ["prog", str(readme), "A title", "--dry-run"]
+    )
+
+    assert check.main() == 0
+    out = capsys.readouterr().out
+    assert f"DERIVED: `names.txt` is what its pattern derives at {_TIP_SHA}" in out
+    assert "No checked pin has drifted from upstream's tip." in out
+
+    (tmp_path / "names.txt").write_bytes(b"lib_one\n")
+    assert check.main() == 0
+    out = capsys.readouterr().out
+    assert (
+        f"DIFFERS: `names.txt` is not what its pattern derives from src at"
+        f" {_TIP_SHA} (2026-02-01): derived only: `lib_three`, `lib_two`"
+    ) in out
+    assert "DERIVED" not in out
