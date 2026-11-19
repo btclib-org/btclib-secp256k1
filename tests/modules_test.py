@@ -744,11 +744,13 @@ def test_a_prevouts_summary_names_the_index_of_a_bad_key() -> None:
     taproot_pubkey = xonly.from_pubkey(SP_INPUT_PUBKEY)[0]
     with pytest.raises(ValueError, match="invalid taproot public key at index 1"):
         silentpayments.prevouts_summary(
-            SP_OUTPOINT, taproot_pubkeys_bytes=[taproot_pubkey, bytes(32)]
+            SP_OUTPOINT,
+            taproot_pubkeys_bytes=[taproot_pubkey, bytes(32), taproot_pubkey],
         )
     with pytest.raises(ValueError, match="invalid public key at index 1"):
         silentpayments.prevouts_summary(
-            SP_OUTPOINT, pubkeys_bytes=[SP_INPUT_PUBKEY, b"\x02" + bytes(32)]
+            SP_OUTPOINT,
+            pubkeys_bytes=[SP_INPUT_PUBKEY, b"\x02" + bytes(32), SP_INPUT_PUBKEY],
         )
 
 
@@ -769,7 +771,7 @@ def test_scanning_refuses_an_unparsable_output() -> None:
     """An output that is not an x-only public key is named by its index."""
     with pytest.raises(ValueError, match="invalid transaction output at index 1"):
         silentpayments.scan_outputs(
-            [SP_INPUT_PUBKEY[1:], bytes(32)],
+            [SP_INPUT_PUBKEY[1:], bytes(32), SP_INPUT_PUBKEY[1:]],
             SP_SCAN_PRVKEY,
             sp_summary(),
             SP_SPEND_PUBKEY,

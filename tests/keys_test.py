@@ -170,6 +170,13 @@ def test_pubkey_algebra() -> None:
         keys.pubkey_combine([pubkey_a, keys.pubkey_negate(pubkey_a)])
 
 
+def test_pubkey_sort_names_a_refused_middle_key() -> None:
+    """Name the refused key's position, not the first or last position."""
+    pubkey = keys.pubkey_from_prvkey(7)
+    with pytest.raises(ValueError, match="invalid public key at index 1"):
+        keys.pubkey_sort([pubkey, b"\x02" + bytes(32), pubkey])
+
+
 def test_pubkey_combine_names_the_key_it_refused_by_its_index() -> None:
     """A key that does not parse is named by where it is in the list.
 
@@ -178,7 +185,7 @@ def test_pubkey_combine_names_the_key_it_refused_by_its_index() -> None:
     """
     pubkey = keys.pubkey_from_prvkey(7)
     with pytest.raises(ValueError, match="invalid public key at index 1"):
-        keys.pubkey_combine([pubkey, b"\x02" + bytes(32)])
+        keys.pubkey_combine([pubkey, b"\x02" + bytes(32), pubkey])
 
 
 def test_pubkey_tweak_chain() -> None:
@@ -705,7 +712,7 @@ def test_pubkey_sum_answers_the_infinity_combine_refuses() -> None:
     with pytest.raises(ValueError, match="at least one public key"):
         keys.pubkey_sum([])
     with pytest.raises(ValueError, match="invalid public key at index 1"):
-        keys.pubkey_sum([pubkey_a, b"\x02" + bytes(32)])
+        keys.pubkey_sum([pubkey_a, b"\x02" + bytes(32), pubkey_a])
 
 
 def test_pubkey_tweak_mul_sum_is_the_arithmetic_it_names() -> None:
