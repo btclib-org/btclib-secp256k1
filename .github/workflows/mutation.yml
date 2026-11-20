@@ -111,7 +111,7 @@ jobs:
   # extension and the sessions run on, against tests that skip, without
   # saying so.
   mutation:
-    uses: btclib-org/.github/.github/workflows/reusable-mutation.yml@64fe8e701fb481dddd471dd256ade86f90e60b0f # v2026.11.14
+    uses: btclib-org/.github/.github/workflows/reusable-mutation.yml@a96ab77e0b59880c6412f62da26d3f62dfc31e0c # v2026.11.20
     with:
       profiles: >-
         [{"profile": "the bindings", "slug": "bindings", "ceiling": 150,

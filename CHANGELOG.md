@@ -1,13 +1,11 @@
 # Changelog
 
-Every change of a release, in full: what changed, why, and what it cost.
-[RELEASE_NOTES.md](./RELEASE_NOTES.md) has the release notes, which say
-what a user has to act on; this file is the record behind them, and is
-where a claim in those notes can be checked.
-
-A release's own pull request writes the release's section, from the
-squash subjects since the previous tag, and no other pull request adds
-an entry.
+A release's own pull request assembles the release's section here, and
+the same section into [RELEASE_NOTES.md](./RELEASE_NOTES.md), from the
+entries under `changelog/next/`, which each pull request that changes
+what a user gets adds as a file of its own (section 9 of the
+organization's standard). The GitHub release of a tag shows the
+section of RELEASE_NOTES.md.
 
 This file carries the most recent release. Every release before it has
 a file of its own under `changelog/`, holding that release's section

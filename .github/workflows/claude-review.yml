@@ -9,13 +9,14 @@ name: claude-review
 # concurrency group, the workflow-level permissions and this header, none of
 # which the callee holds.
 #
-# It is one more job on every pull request, which is not free: the
-# concurrency ceiling belongs to the organization and is shared, so this
-# job competes for a slot with the other repositories' matrices.
-# REPOSITORY.md's *Plan-gated settings* has the ceiling and the command
-# that answers the plan setting it. It earns the slot by being short --
-# it reads a diff, it does not build a matrix -- and by skipping a
-# draft, which is the callee's own condition.
+# On every pull request it is a review job and two short jobs that set
+# the review's reactions, one of which also runs on a draft, and that is
+# not free: the concurrency ceiling belongs to the organization and is
+# shared, so these jobs compete for slots with the other repositories'
+# matrices. REPOSITORY.md's *Plan-gated settings* has the ceiling and the
+# command that answers the plan setting it. They earn the slots by being
+# short -- the review reads a diff, it does not build a matrix -- and the
+# review skips a draft, which is the callee's own condition.
 
 on:
   pull_request:
@@ -94,8 +95,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # One calling job reaches both of the callee's jobs, and each declines
-  # the events that are not its own, so this job carries no `if:` of the
+  # One calling job reaches the callee's jobs, and each declines the
+  # events that are not its own, so this job carries no `if:` of the
   # review's: the switch, the draft check, the closed check and the fork
   # check are the callee's. Lifting the review's condition onto this job
   # would take the mention out with it.
@@ -106,13 +107,13 @@ jobs:
   #
   # Permissions are the calling job's to declare and not the callee's to
   # restore: a called workflow's own `permissions:` can only downgrade
-  # what its caller granted. `contents: read` is what the checkout takes,
-  # `pull-requests: write` is what posting the review or the reply takes,
-  # and `id-token: write` is the OIDC token the action mints during its
-  # own startup regardless of which Anthropic credential is in use --
-  # btclib-org/.github#912 is where a caller omitting a scope a called
-  # job declares was measured to end the run in `startup_failure` before
-  # any step ran.
+  # what its caller granted. `contents: read` is what the checkout
+  # takes, `pull-requests: write` is what posting the review, its
+  # reactions or the reply takes, and `id-token: write` is the OIDC
+  # token the action mints during its own startup regardless of which
+  # Anthropic credential is in use -- btclib-org/.github#912 is where a
+  # caller omitting a scope a called job declares was measured to end
+  # the run in `startup_failure` before any step ran.
   #
   # secrets: named rather than `inherit`, the callee's own header
   # offering either: `inherit` hands the callee every secret this
@@ -125,8 +126,8 @@ jobs:
     cache-mode: none
     permissions:
       contents: read
-      pull-requests: write # posting the review, and the reply to a mention
+      pull-requests: write # the review, its reactions, the reply to a mention
       id-token: write # the OIDC token the action mints at its own startup
-    uses: btclib-org/.github/.github/workflows/reusable-claude-review.yml@64fe8e701fb481dddd471dd256ade86f90e60b0f # v2026.11.14
+    uses: btclib-org/.github/.github/workflows/reusable-claude-review.yml@a96ab77e0b59880c6412f62da26d3f62dfc31e0c # v2026.11.20
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
