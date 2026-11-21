@@ -7,7 +7,10 @@
 # repo: but local and meta, so a second bot on the same pin would only
 # compete with it. typos is a repo: local hook, which autoupdate skips
 # on purpose (see the comment beside it), so the version pinned in its
-# additional_dependencies moves by nobody until a hand edit does
+# additional_dependencies moves by nobody until a hand edit does. The
+# link hooks are repo: local too: their markdown-it-py pin is the version
+# of the standard's test group (section 4 of the organization's
+# standard), and it moves with the standard's ports
 #
 # every pull request dependabot opens here runs the build and test
 # matrix as far as the `if:` of test.yml's jobs admits it, tens of jobs

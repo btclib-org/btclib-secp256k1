@@ -1,9 +1,12 @@
 # Release notes
 
-Notable changes to the codebase are documented here. Every entry of a
-release is in [CHANGELOG.md](./CHANGELOG.md) or a file it links; what
-follows is what a user has to act on and what a user gains, and it is
-what the GitHub release of a tag is generated from.
+The GitHub release of a tag shows that release's section of this file. A
+release's own pull request assembles the section here, and the same
+section into [CHANGELOG.md](./CHANGELOG.md), from the entries under
+`changelog/next/` (section 9 of the organization's standard). A section
+written before the release assembled it says what a user has to act on
+and what a user gains, and from v0.7.1.2 on, CHANGELOG.md, or a file it
+links, holds every change of that release.
 
 ## v0.8.0.16
 

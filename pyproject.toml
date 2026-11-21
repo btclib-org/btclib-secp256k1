@@ -133,9 +133,9 @@ documentation = "https://btclib-secp256k1.readthedocs.io/"
 repository = "https://github.com/btclib-org/btclib-secp256k1"
 download = "https://github.com/btclib-org/btclib-secp256k1/releases"
 # RELEASE_NOTES.md and not CHANGELOG.md: this url is what an index puts
-# behind "Changelog", and what a user following it wants is the release
-# notes, not the record behind them. CHANGELOG.md is linked from the
-# first line of that file
+# behind "Changelog", and RELEASE_NOTES.md's section is the one the
+# GitHub release of a tag shows. The first paragraph of that file links
+# CHANGELOG.md
 changelog = "https://github.com/btclib-org/btclib-secp256k1/blob/main/RELEASE_NOTES.md"
 issues = "https://github.com/btclib-org/btclib-secp256k1/issues"
 pull_requests = "https://github.com/btclib-org/btclib-secp256k1/pulls"
@@ -459,6 +459,9 @@ test = [
 # mypy from this environment has to find the same things, or it reports
 # errors the gate does not (and passes what the gate would reject)
 lint = [
+    # what mypy reads .github/scripts/check_link_destinations.py against,
+    # at the version the link hooks of .pre-commit-config.yaml install
+    "markdown-it-py>=4.3.0",
     "pre-commit>=4.6.2",
     "ruff>=0.16.7",
     "mypy>=2.3.1",
@@ -679,10 +682,13 @@ extend-ignore-re = ['"[0-9a-fA-F]+"']
 # hex digits as a misspelt word, and this hook runs with --write-changes,
 # so without this table it rewrites the citation into one naming no commit.
 # A glob here matches a file's name and not its path, so `v[0-9]*.md` is
-# what reaches the files under changelog/
+# what reaches the released sections under changelog/, and `pr[0-9]*.md`
+# the entries under changelog/next/ that a release assembles into
+# CHANGELOG.md
 extend-glob = [
     "CHANGELOG.md",
     "v[0-9]*.md",
+    "pr[0-9]*.md",
     "RELEASE_NOTES.md",
     ".pre-commit-config.yaml",
 ]
@@ -1005,6 +1011,10 @@ max-complexity = 10
 # it names on success are what the build-sdist step that runs it shows in
 # its own log: same exemption, same reason as the scripts above
 ".github/scripts/generate_sbom.py" = ["print"]
+# a copy section 14 of the standard keeps byte for byte: what it prints
+# is its report, and its `noqa` is for a rule this tree does not select,
+# which unused-noqa would report (btclib-org/.github#2377)
+".github/scripts/check_link_destinations.py" = ["print", "unused-noqa"]
 # reads one top-level function definition out of scripts/cffi_build.py
 # and execs it on its own, never the whole module: the same reason
 # tests/module_flags_test.py reads the syntax tree instead of importing
@@ -1128,9 +1138,12 @@ source = ["btclib_secp256k1", "tests", ".github/scripts"]
 # the interesting misses are the guard clauses of a wrapper: statement
 # coverage alone would call a half-tested if fully covered
 branch = true
-# btclib-org/.github's own file, tested there and compared with this copy
-# byte for byte by that repository's suite, so not measured here
-omit = [".github/scripts/generate_sbom.py"]
+# btclib-org/.github's own files, tested there and compared with these
+# copies byte for byte by that repository's suite, so not measured here
+omit = [
+    ".github/scripts/check_link_destinations.py",
+    ".github/scripts/generate_sbom.py",
+]
 
 [tool.coverage.report]
 show_missing = true

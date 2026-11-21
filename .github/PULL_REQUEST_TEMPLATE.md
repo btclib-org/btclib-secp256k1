@@ -1,3 +1,8 @@
+<!-- Sign off every commit: `git commit -s` adds the `Signed-off-by:`
+     trailer, and only you can add it to your commits. CONTRIBUTING.md's
+     *Pull requests* says what it certifies and how to add it to commits
+     already made. -->
+
 <!-- a pull request body is a fragment of a page, not a document of its
      own: a top-level heading here would be a heading inside the issue
      view. Suppressed for the one line below rather than for the file, and

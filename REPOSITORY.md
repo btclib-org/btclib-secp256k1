@@ -713,6 +713,9 @@ that workflow's header says why it takes a step the other sentinels
 deliberately do not.
 `api-break.yml` holds `pull-requests: write` on its one calling job, for the
 label the called workflow sets; it is read-only on a fork's pull request.
+`sign-off-comment.yml` holds `pull-requests: write` on its one calling job,
+for the comment the called workflow keeps on a pull request whose commits
+are not all signed off.
 
 One elevation per job is the shape to keep — the job that writes
 releases holds no OIDC token, and the job that signs writes no release.
@@ -1172,10 +1175,11 @@ repository adopting the workflow configures nothing for it, and a copy
 of it in a store here would be that decision undone.
 
 **A switch this repository does not set.** `claude-review.yml` calls
-`btclib-org/.github`'s `reusable-claude-review.yml`, whose jobs guard on
-`vars.CLAUDE_REVIEW_ENABLED`; a variable set here would take precedence
-over one of the same name on the organization, so the repository's own
-store is read too:
+`btclib-org/.github`'s `reusable-claude-review.yml`, whose review and
+mention jobs guard on `vars.CLAUDE_REVIEW_ENABLED`; the job that clears a
+new head's reactions runs whatever it says. A variable set here would
+take precedence over one of the same name on the organization, so the
+repository's own store is read too:
 
 ```shell
 gh api repos/btclib-org/btclib-secp256k1/actions/variables --jq .total_count

@@ -215,7 +215,7 @@ Then:
    bare placeholder. It reports
    breakage alone — a public object removed, a parameter that changed
    kind or default or moved — and says nothing about an addition, so
-   every line it prints wants an entry in `RELEASE_NOTES.md`. Discount
+   every line it prints wants an entry, as the next step says. Discount
    `__init__.py: __version__: Attribute value was changed:
    version('btclib_secp256k1') -> unset` on sight and every time: not a
    break, `__version__` reading installed metadata through a lazy
@@ -232,37 +232,66 @@ Then:
    that release's own `RELEASE_NOTES.md` already named one by one, and
    is the positive control that says the command is reading the package
    rather than finding nothing (#291)
-1. write the release's sections. No other pull request adds an entry to
-   `CHANGELOG.md` or `RELEASE_NOTES.md`, so this one writes both. Put
-   `## v<version>`, the tag's own heading, above the previous release in
-   each. The changelog's section is written from the squash subjects
-   since the previous tag, grouped and shortened:
+1. assemble the release's sections, as section 9 of the organization
+   standard says: btclib-org/.github's `changelog_entries.py` writes
+   `## v<version>`, the tag's own heading, and the entries under
+   `changelog/next/` above the previous release's section of
+   `CHANGELOG.md` and of `RELEASE_NOTES.md`, and removes the entries.
+   The version is the one the version step set:
 
    ```shell
-   tag=v<previous version>
+   version=<the version being released>
    ```
 
    ```shell
-   git log "${tag:?}"..HEAD --format=%s
+   entries=$(mktemp -d) &&
+   ref=$(grep -oE 'reusable-changelog-entry\.yml@[0-9a-f]{40}' \
+       .github/workflows/changelog-entry.yml | cut -d@ -f2) &&
+   scripts=repos/btclib-org/.github/contents/.github/scripts &&
+   gh api -X GET -H 'Accept: application/vnd.github.raw' -f "ref=${ref:?}" \
+       "${scripts:?}/changelog_entries.py" \
+       > "${entries:?}/changelog_entries.py" &&
+   gh api -X GET -H 'Accept: application/vnd.github.raw' -f "ref=${ref:?}" \
+       "${scripts:?}/check_changelog.py" > "${entries:?}/check_changelog.py" &&
+   uv run --no-project --python 3.15 \
+       "${entries:?}/changelog_entries.py" assemble "${version:?}"
    ```
 
-   The previous version takes a fence of its own with nothing under it
-   to reach: written into the range, `v<previous version>..HEAD` is a
-   `<previous` redirection that creates a file named `..HEAD` wherever
-   the reader's directory holds a file called `previous`. `${tag:?}`
-   answers the other paste, the second fence alone, where the value is
-   merely unset: unguarded it asks for `..HEAD`, which is empty.
+   The assembly runs on a commit: it refuses a tree where `git status`
+   shows a history file or anything under `changelog/next/` changed,
+   staged or untracked, or an entry ignored, and a tree that is no git
+   checkout. So it runs before the previous release's move below.
 
-   In the same pull request the previous release leaves `CHANGELOG.md`
-   for `changelog/v<previous version>.md`, and its link goes at the top
-   of the list in `CHANGELOG.md`'s preamble. The new file opens with the
+   The scripts are the ones at the commit `changelog-entry.yml` pins, the
+   ones that checked each entry on its pull request: the first runs the
+   second's checks on the section, from its own directory. Each is
+   written to a file before it runs, because a failed fetch piped into
+   `uv run -` runs an empty script, which exits 0. The assembly refuses
+   an empty `changelog/next/`: nothing changed for a user, and there is
+   no release. Where a step of it fails, it puts back what it changed. A
+   run killed before it finishes leaves a `.changelog-assembly-*`
+   directory, and the next run refuses and prints the `git restore` that
+   takes the history files and the entries back to the commit, which
+   loses nothing since they were committed. The same entries give the
+   same bytes, so the release's reviewer runs the same commands on the
+   base, makes the move below, and compares the history files with the
+   pull request's. No prose is written here, and the release's pull
+   request edits or adds no entry: an entry found wrong is fixed in its
+   file, and a break the griffe check above prints that no entry names
+   gets its entry, in a pull request of its own that lands before the
+   release branch is cut.
+
+   Then the previous release leaves `CHANGELOG.md` for
+   `changelog/v<previous version>.md`, and its link goes at the top of
+   the list in `CHANGELOG.md`'s preamble. The new file opens with the
    title and the paragraph the other files there open with, then carries
    the section unchanged, except that a link relative to the root, such as
    `./RELEASE_NOTES.md`, becomes `../RELEASE_NOTES.md`. `CHANGELOG.md`'s
    preamble says why the file is split (#1267).
 
-   The release notes take what a user has to act on, which includes
-   every line the griffe check above printed. `version-check` refuses a
+   `RELEASE_NOTES.md` takes the same section, so an entry whose change
+   asks something of a user says what in its own lines, every line the
+   griffe check above printed included. `version-check` refuses a
    tag whose section in either file is missing, empty, or carrying
    anything after the version in its heading. If the vendored
    libsecp256k1 moved, update the version named at the top of
@@ -308,11 +337,10 @@ Then:
    read, not an answer.
 
    Where `main` has moved, throw the branch away and redo it on the new
-   tip: never rebase it, and never merge `main` into it. A rebase over a
-   change that wrote to `CHANGELOG.md` or `RELEASE_NOTES.md` near this
-   release's edits stops on a conflict there, and deleting the markers at
-   git's default conflict style drops a line both sides share. Reset onto
-   the new tip, then redo the steps from the version step on:
+   tip: never rebase it, and never merge `main` into it. A rebase brings
+   in the entries that landed meanwhile and leaves them unassembled, and
+   the sections no longer are what the script makes of the new base.
+   Reset onto the new tip, then redo the steps from the version step on:
 
    ```shell
    tip=$(git rev-parse HEAD) &&
@@ -365,15 +393,17 @@ Then:
    which is a version bump, the release's sections of `CHANGELOG.md` and
    `RELEASE_NOTES.md`, and the previous release's move to `changelog/`:
    it is everything merged since the last tag. Read it off the log
-   rather than off the branch, and against the sections the previous
+   rather than off the branch, and against the sections the assembly
    step wrote.
 
-   The previous version is fenced apart from the range, and `${tag:?}`
-   guards the second paste, for the reasons the step writing the
-   release's sections gives. Unguarded, an unset `tag` asks for
-   `..main`, which is `HEAD..main` and empty on a release branch up to
-   date with `main`, and an empty log reads as a cycle that contained
-   nothing.
+   The previous version takes a fence of its own with nothing under it
+   to reach: written into the range, `v<previous version>..main` is a
+   `<previous` redirection that creates a file named `..main` wherever
+   the reader's directory holds a file called `previous`. `${tag:?}`
+   answers the other paste, the second fence alone, where the value is
+   merely unset: unguarded, it asks for `..main`, which is `HEAD..main`
+   and empty on a release branch up to date with `main`, and an empty
+   log reads as a cycle that contained nothing.
 
    ```shell
    tag=v<previous version>
@@ -935,7 +965,7 @@ Then:
     worse than no bump at all: `0.7.0.1` sorts *under* `0.7.1`, so
     nothing would ever resolve it, and `version-check` accepts it, being
     digits and dots. It starts no section in `CHANGELOG.md` or
-    `RELEASE_NOTES.md`: the next release's pull request writes its own.
+    `RELEASE_NOTES.md`: the next release's pull request assembles its own.
     It is owed only after the tag, the `pypi` approval and every check
     above it, in its own pull request and never inside the release's:
     `version-check` compares the tag against what `pyproject.toml`
@@ -960,7 +990,7 @@ the workflow, the packaging metadata or the build matrix changed. A
 release that only bumps versions and notes does not need one.
 
 A release that breaks the public API is rehearsed from the release pull
-request's branch, after its notes are written, so that `public-api`
+request's branch, after its notes are assembled, so that `public-api`
 reads the release's own section.
 
 A trusted publisher can only be registered by an owner of the project,

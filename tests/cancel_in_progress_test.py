@@ -146,9 +146,9 @@ def test_each_trigger_shape_was_read() -> None:
     rather than leaving a workflow silently exempt.
 
     `_CLOSED`'s negative case is a trigger rather than a workflow:
-    every `pull_request` trigger here takes the closed type, and the
-    `issue_comment` list beside one of them is the list a pattern
-    matching any list would match.
+    every `pull_request` trigger here but `changelog-entry.yml`'s takes
+    the closed type, and the `issue_comment` list beside one of them is
+    the list a pattern matching any list would match.
     """
     assert _CLOSES["codeql.yml"], "codeql.yml takes the closed type"
     assert _PUSHES_MAIN["codeql.yml"], "codeql.yml pushes on main"
