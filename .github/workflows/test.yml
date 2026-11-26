@@ -286,7 +286,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           # the wheels of the test group, not the extension: the root
           # project is installed editable, so its build hook (and the
@@ -419,7 +419,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           enable-cache: true
 
@@ -515,7 +515,7 @@ jobs:
           allow-prereleases: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
 
       # skipped on every trigger but a release rehearsal: the inputs
       # context is empty unless this workflow was called, and an empty
@@ -670,7 +670,7 @@ jobs:
           allow-prereleases: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
 
       # see build-cibuildwheel
       - name: Make the version unique for TestPyPI (rehearsal only)
@@ -732,7 +732,7 @@ jobs:
           allow-prereleases: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
 
       # see build-cibuildwheel
       - name: Make the version unique for TestPyPI (rehearsal only)
@@ -840,7 +840,7 @@ jobs:
 
       - name: Setup uv
         if: ${{ !inputs.use-signed-dist }}
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
 
       # what the build below and the normalizer after it both read.
       # hatchling's sdist writer honours this when it is set and falls
@@ -1069,7 +1069,7 @@ jobs:
           allow-prereleases: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
 
       # see build-cibuildwheel
       - name: Make the version unique for TestPyPI (rehearsal only)
@@ -1162,7 +1162,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           # the wheels of the check group, the three tools below among
           # them, keyed on uv.lock
