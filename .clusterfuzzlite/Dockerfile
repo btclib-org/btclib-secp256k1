@@ -13,7 +13,7 @@
 # in below is a dependency `docker`'s own Dependabot entry already
 # tracks (btclib-org/btclib-wallet's identical Dockerfile is the same
 # pattern, one repository over).
-FROM ghcr.io/astral-sh/uv@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d AS uv
+FROM ghcr.io/astral-sh/uv@sha256:a3ea1357342c1a4bf9a0c53a3deb1b55379aefa037338d8113d5771efa01774f AS uv
 
 # The container `build.sh` runs in. `base-builder-python` is the image
 # ClusterFuzzLite's docs/build-integration/python_lang.md names for a
@@ -45,7 +45,7 @@ FROM ghcr.io/astral-sh/uv@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e025
 #     | grep -i docker-content-digest
 #
 # a digest other than the one this line pins is `latest` having moved
-FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:21f6fab17ace4dc76e1c56de91ee95d3d03da021df94b41056ba036f6c6f55e9
+FROM gcr.io/oss-fuzz-base/base-builder-python@sha256:5a20f6927f4157bafbb9f66eb62a99dd9e6e92ed94b10ffaee4262b9bedac08a
 
 COPY --from=uv /uv /usr/local/bin/uv
 
