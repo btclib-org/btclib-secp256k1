@@ -170,6 +170,13 @@ def test_pubkey_algebra() -> None:
         keys.pubkey_combine([pubkey_a, keys.pubkey_negate(pubkey_a)])
 
 
+def test_pubkey_sort_names_a_refused_middle_key() -> None:
+    """A key refused between two valid ones is named by its own index."""
+    pubkey = keys.pubkey_from_prvkey(7)
+    with pytest.raises(ValueError, match="invalid public key at index 1"):
+        keys.pubkey_sort([pubkey, b"\x02" + bytes(32), pubkey])
+
+
 def test_pubkey_combine_names_the_key_it_refused_by_its_index() -> None:
     """A key that does not parse is named by where it is in the list.
 
@@ -178,7 +185,7 @@ def test_pubkey_combine_names_the_key_it_refused_by_its_index() -> None:
     """
     pubkey = keys.pubkey_from_prvkey(7)
     with pytest.raises(ValueError, match="invalid public key at index 1"):
-        keys.pubkey_combine([pubkey, b"\x02" + bytes(32)])
+        keys.pubkey_combine([pubkey, b"\x02" + bytes(32), pubkey])
 
 
 def test_pubkey_tweak_chain() -> None:
@@ -267,7 +274,7 @@ def test_pubkey_order() -> None:
 
     # a key that does not parse is named by its index in the list
     with pytest.raises(ValueError, match="invalid public key at index 1"):
-        keys.pubkey_sort([compressed[0], b"\x02" + b"\x00" * 32])
+        keys.pubkey_sort([compressed[0], b"\x02" + b"\x00" * 32, compressed[1]])
     with pytest.raises(ValueError, match="public key"):
         keys.pubkey_cmp(compressed[0], b"")
 
@@ -705,7 +712,7 @@ def test_pubkey_sum_answers_the_infinity_combine_refuses() -> None:
     with pytest.raises(ValueError, match="at least one public key"):
         keys.pubkey_sum([])
     with pytest.raises(ValueError, match="invalid public key at index 1"):
-        keys.pubkey_sum([pubkey_a, b"\x02" + bytes(32)])
+        keys.pubkey_sum([pubkey_a, b"\x02" + bytes(32), pubkey_a])
 
 
 def test_pubkey_tweak_mul_sum_is_the_arithmetic_it_names() -> None:
@@ -816,15 +823,15 @@ def test_pubkey_tweak_mul_sum_answers_infinity_and_refuses_the_rest() -> None:
         keys.pubkey_tweak_mul_sum([], [])
     # a refusal names the key or tweak at fault by its index
     with pytest.raises(ValueError, match="invalid public key at index 1"):
-        keys.pubkey_tweak_mul_sum([pubkey, b"\x02" + bytes(32)], [3, 3])
+        keys.pubkey_tweak_mul_sum([pubkey, b"\x02" + bytes(32), pubkey], [3, 3, 3])
     # zero and the group order are the two scalars with no product, and
     # a tweak of the wrong width is refused before either is asked
     with pytest.raises(ValueError, match="invalid tweak at index 1"):
-        keys.pubkey_tweak_mul_sum([pubkey, negated], [3, 0])
+        keys.pubkey_tweak_mul_sum([pubkey, negated, pubkey], [3, 0, 3])
     with pytest.raises(ValueError, match="invalid tweak at index 1"):
-        keys.pubkey_tweak_mul_sum([pubkey, negated], [3, N])
+        keys.pubkey_tweak_mul_sum([pubkey, negated, pubkey], [3, N, 3])
     with pytest.raises(ValueError, match="tweak at index 1 must be 32 bytes"):
-        keys.pubkey_tweak_mul_sum([pubkey, negated], [3, b"\x01"])
+        keys.pubkey_tweak_mul_sum([pubkey, negated, pubkey], [3, b"\x01", 3])
 
 
 def test_xonly_pubkey_verify_and_to_pubkey_are_the_two_x_only_twins() -> None:
