@@ -101,9 +101,11 @@ jobs:
   # check are the callee's. Lifting the review's condition onto this job
   # would take the mention out with it.
   #
-  # Neither input is passed: `extra-prompt` takes a paragraph a review of
-  # this tree needs and a review of another tree does not, and
-  # `extra-allowed-tools` a command beyond the callee's base set.
+  # No input is passed: `extra-prompt` takes a paragraph a review of this
+  # tree needs and a review of another tree does not,
+  # `extra-allowed-tools` a command beyond the callee's base set, and
+  # `bitcoin-core-ref` a tag or commit of bitcoin/bitcoin whose source
+  # the review reads.
   #
   # Permissions are the calling job's to declare and not the callee's to
   # restore: a called workflow's own `permissions:` can only downgrade
