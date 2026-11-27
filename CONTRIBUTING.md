@@ -1599,6 +1599,7 @@ would leave a required check `Pending`, as `REPOSITORY.md` says of
 | `api-break` | pull request | — |
 | `verified-signatures` | push to main | — |
 | `vendored-vectors` | weekly, a pull request touching what it reads | — |
+| `zkp-pin` | called by `vendored-vectors`, where it reports, and at a release, where the publish jobs wait for it; a dispatch | — |
 | `upstream-tests` | a pull request touching what the build of either pin reads or `tests/zkp_ctime_tests.c`, a dispatch | x86_64 and aarch64, each in its pinned `manylinux_2_28` image |
 | `codeql` | pull request, push to main, weekly | the two scanned languages |
 | `scorecard` | push to main, weekly | — |
