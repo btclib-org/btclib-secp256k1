@@ -844,7 +844,7 @@ PUBLIC_POSITIONS: dict[str, tuple[Callable[[bytes], object], tuple[str, ...]]] =
     ),
     "keys.pubkey_negate": (keys.pubkey_negate, ("invalid public key",)),
     "keys.pubkey_combine": (
-        lambda v: keys.pubkey_combine([PUB, v]),
+        lambda v: keys.pubkey_combine([PUB, v, PUB]),
         ("invalid public key at index 1",),
     ),
     "keys.reserialize": (keys.reserialize, ("invalid public key",)),

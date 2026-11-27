@@ -581,23 +581,23 @@ def test_silent_payment_creation_refuses_an_invalid_private_key() -> None:
     "lists, message",
     [
         (
-            {"prvkeys": [SP_INPUT_PRVKEY, b"\x01"]},
+            {"prvkeys": [SP_INPUT_PRVKEY, b"\x01", SP_INPUT_PRVKEY]},
             "the private key at index 1 must be 32 bytes",
         ),
         (
-            {"taproot_prvkeys": [SP_INPUT_PRVKEY, b"\x01"]},
+            {"taproot_prvkeys": [SP_INPUT_PRVKEY, b"\x01", SP_INPUT_PRVKEY]},
             "the taproot private key at index 1 must be 32 bytes",
         ),
         (
-            {"taproot_prvkeys": [SP_INPUT_PRVKEY, 0]},
+            {"taproot_prvkeys": [SP_INPUT_PRVKEY, 0, SP_INPUT_PRVKEY]},
             "invalid taproot private key at index 1",
         ),
         (
-            {"prvkeys": [SP_INPUT_PRVKEY, 0]},
+            {"prvkeys": [SP_INPUT_PRVKEY, 0, SP_INPUT_PRVKEY]},
             "invalid private key at index 1",
         ),
         (
-            {"prvkeys": [SP_INPUT_PRVKEY, N]},
+            {"prvkeys": [SP_INPUT_PRVKEY, N, SP_INPUT_PRVKEY]},
             "invalid private key at index 1",
         ),
     ],
@@ -642,7 +642,11 @@ def test_silent_payment_creation_names_the_index_of_a_bad_recipient(
     """
     with pytest.raises(ValueError, match=message):
         silentpayments.create_outputs(
-            [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY), recipient],
+            [
+                (SP_SCAN_PUBKEY, SP_SPEND_PUBKEY),
+                recipient,
+                (SP_SCAN_PUBKEY, SP_SPEND_PUBKEY),
+            ],
             SP_OUTPOINT,
             prvkeys=[SP_INPUT_PRVKEY],
         )
@@ -668,7 +672,11 @@ def test_silent_payment_creation_names_the_index_of_a_recipient_not_a_pair(
     """
     with pytest.raises(error, match="the recipient at index 1 must be a pair"):
         silentpayments.create_outputs(
-            [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY), recipient],  # type: ignore[list-item]
+            [
+                (SP_SCAN_PUBKEY, SP_SPEND_PUBKEY),
+                recipient,  # type: ignore[list-item]
+                (SP_SCAN_PUBKEY, SP_SPEND_PUBKEY),
+            ],
             SP_OUTPOINT,
             prvkeys=[SP_INPUT_PRVKEY],
         )
@@ -979,7 +987,7 @@ def test_the_sender_wipes_the_keys_it_had_when_a_later_one_is_refused(
         silentpayments.create_outputs(
             [(SP_SCAN_PUBKEY, SP_SPEND_PUBKEY)],
             SP_OUTPOINT,
-            taproot_prvkeys=[SP_INPUT_PRVKEY, 0],
+            taproot_prvkeys=[SP_INPUT_PRVKEY, 0, SP_INPUT_PRVKEY],
         )
 
     assert len(wiped) == 1, "the key made before the refusal"
